@@ -2,22 +2,20 @@
  * IPv6 router
  * Use case: 
  *  1. vlan support is added on basic_switch.p4 using add_vlan.p4
- *  2. Hosts on VLAN "vn1" runs on IPv6 address scheme.
- *  3. So, lets make one switch in vn1 a IPv6 router.
+ *  2. Hosts on VLAN "111" runs on IPv6 address scheme.
+ *  3. So, lets make one switch in vn1 an IPv6 router.
  */
 
 # include <core.p4>
 # include "v1model.p4"
 
 header Ether_ht {
-  bit<48> dAddr;
-  bit<48> sAddr;
+  bit<96> addrs;
   bit<16> etherType;
 }
 
 header Vlan_ht {
-  bit<3> prio;
-  bit<1> c;
+  bit<4> cPrio;
   bit<12> tag;
   bit<16> eType;
 }
@@ -40,43 +38,43 @@ struct Parsed_headers {
   IPv6_ht ip;
 }
 
+error { 
+  VLanIDMisMatch,
+  NotVlanTraffic,
+  IPv6IncorrectVersion
+}
 
-
+struct metadata {
+  bit<128> nextHop;
+}
 
 parser TopParser(packet_in b, out Parsed_headers ph, inout metadata meta,
-                 inout standard_metadata_t standard_metadata)) {
+                 inout standard_metadata_t standard_metadata) {
 
   // This parser accepts only vlan tagged packets
   // Parser composition should take care of accept and reject states
   state start {
     b.extract(ph.eth);
-    transition select (p.eth.etherType) {
-      0x8100: parse_vlan;
-      // Native ipv6 traffic is possible For the switches having access and trunk
-      // ports. Application can decide the location of tagging
-      0x86DD: parse_ipv6;
-    }
-  }
-
-  state parse_vlan {
-    packet.extract(p.vlan);
-    transition select (p.vlan.eType) {
+    verify(ph.eth.etherType == 0x8100, error.NotVlanTraffic);
+    b.extract(ph.vlan);
+    verify(ph.vlan.eType == 0x111, error.VLanIDMisMatch);
+    transition select (ph.vlan.eType) {
       0x86DD: parse_ipv6;
     }
   }
 
   state parse_ipv6 {
-    b.extract(p.ip);
-    verify(p.ip.version == 4w6, error.IPv4IncorrectVersion);
+    b.extract(ph.ip);
+    verify(ph.ip.version == 4w6, error.IPv6IncorrectVersion);
     transition accept;
   }
 }
 
-control DeparserImpl(packet_out b, Parsed_headers ph) {
+control DeparserImpl(packet_out b, in Parsed_headers ph) {
   apply {
-    b.emit(ph.ethernet);
+    b.emit(ph.eth);
     b.emit(ph.vlan);
-    
+    b.emit(ph.ip);
   }
 }
 
@@ -90,7 +88,7 @@ control egress(inout Parsed_headers ph, inout metadata meta,
  apply { }
 }
 
-control verifyChecksum(in Parsed_headers ph, inout metadata meta) {
+control verifyChecksum(inout Parsed_headers ph, inout metadata meta) {
   apply { }
 }
 
