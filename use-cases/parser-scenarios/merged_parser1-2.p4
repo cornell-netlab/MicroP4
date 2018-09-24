@@ -1,13 +1,23 @@
+/*
+ * This program describes a possible way to merge parsers of parser1.p4 and
+ * parser2,p4. 
+ * The solution can exist without recirculation, however number of headers and
+ * variables will be huge.
+ * Essentially, the parser is a result of cross-product between states of
+ * parser1.p4's parser and parser2.p4's parser.
+ *
+ * Each header instances defined in parser1.p4 and parser2.p4 need to be
+ * described using multiple possible combinations of headers in this program.
+ * This makes substitution of headers of parser1.p4 and parser2.p4 non-trivial.
+ * Or may be impossible.
+ */
+
+
 #include <core.p4>
 #include <v1model.p4>
 
 #define TABLE_SIZE 1024
 #define MAC_TABLE_SIZE 32
-
-
-// keyfield slicing is done in case of overlapping keyfields in
-// parsers
-
 
 
 header p_ht {

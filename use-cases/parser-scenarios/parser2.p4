@@ -1,3 +1,18 @@
+/*
+ * This is program "p2" describing a parser with DAG structure.
+ * The structure of the parser is following.
+ *          A
+ *      b/     \c
+ *      B-- 1 --C
+ *
+ *      A,B & C are headers described using a_ht, b_ht and c_ht in the
+ *      program.
+ *
+ * This parser is merged with the parser of program "parser2.p4" and its
+ * possible resultant parser is described in "merged_parser1-2.p4"
+ */
+
+
 #include <core.p4>
 #include <v1model.p4>
 

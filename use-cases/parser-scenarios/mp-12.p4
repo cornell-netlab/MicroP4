@@ -1,3 +1,24 @@
+/*
+ *  Parser in this program.
+ *  ethernet -- vlan
+ *      |        |
+ *     ipv41    ipv42 (of 2-eth-vlan-ip.p4)
+ *  (of 1-eth-ip.p4)
+ *
+ *  Related Files for the composition.
+ *  1. 1-eth-ip.p4
+ *  2. 2-eth-vlan-ip.p4
+ *  and the merged parser file.
+ *  3. mp-12.p4 (This file)
+ *
+ *  Because, both the programs parses the IPv4 headers from different relative
+ *  locations. 
+ *
+ *  Check mp-13.p4, mp-45.p4, .. for more examples.
+ */
+
+
+
 #include <core.p4>
 #include <v1model.p4>
 
@@ -46,7 +67,6 @@ header ipv4_t {
 
 struct metadata {
   bit<2> indicator_field;
-    /* empty */
 }
 
 struct headers {

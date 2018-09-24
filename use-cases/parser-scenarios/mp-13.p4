@@ -1,8 +1,15 @@
-
 /*
+ *  Parser in this program.
+ *
  *  ethernet -- vlan
  *          \   |
  *           ipv4
+ *
+ *  Related Files for the composition.
+ *  1. 1-eth-ip.p4
+ *  2. 3-eth-vlan-ip.p4
+ *  and the merged parser file.
+ *  3. mp-13.p4 (This file)
  */
 
 #include <core.p4>

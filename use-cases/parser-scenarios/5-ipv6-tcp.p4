@@ -1,3 +1,19 @@
+/*
+ *  Parser in this program.
+ *
+ *         ethernet
+ *            |
+ *          ipv6
+ *          /  \
+ *        tcp  udp
+ *
+ *  Related Files for the composition.
+ *  1. 4-ipv4-tcp.p4
+ *  2. 5-ipv6-tcp.p4 (This file)
+ *  and the merged parser file.
+ *  3. mp-45.p4
+ */
+
 #include <core.p4>
 #include <v1model.p4>
 

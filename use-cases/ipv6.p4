@@ -3,7 +3,7 @@
  * Use case: 
  *  1. vlan support is added on basic_switch.p4 using add_vlan.p4
  *  2. Hosts on VLAN "111" runs on IPv6 address scheme.
- *  3. So, lets make one switch in vn1 an IPv6 router.
+ *  3. So, lets make one switch in "111" an IPv6 router.
  */
 
 # include <core.p4>
@@ -57,7 +57,7 @@ parser TopParser(packet_in b, out Parsed_headers ph, inout metadata meta,
     b.extract(ph.eth);
     verify(ph.eth.etherType == 0x8100, error.NotVlanTraffic);
     b.extract(ph.vlan);
-    verify(ph.vlan.eType == 0x111, error.VLanIDMisMatch);
+    verify(ph.vlan.eType == 0x86DD, error.VLanIDMisMatch);
     transition select (ph.vlan.eType) {
       0x86DD: parse_ipv6;
     }
