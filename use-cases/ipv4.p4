@@ -2,6 +2,16 @@
  * IPv4 router with ACL checks, it modifies layer 2 header also
  * Functionality - IPv4 processing, ACL and routing
  */
+// There are two ways of enabling modularity between layer 2 and layer 3.
+// 1. vertical mode : deployment of Layer 3 is 
+// oblivious to layer-2 p4 program running on the switch. 
+// e.g., IP.p4 will be processed on vlan, qinq or naive alike. 
+// In this case, IP.p4 can not be a standalone program. However, it can be 
+// executed with any layer-2.p4.  This enforces a requirement on program 
+// development.
+//
+// 2. fallback mode - Layer-3 program can execute in its entirety and any traffic
+// "not processed" with the program is processed by layer-2.
 
 # include <core.p4>
 #include <v1model.p4>
@@ -172,13 +182,12 @@ control ingress(inout Parsed_headers headers, inout ingress_metadata_t  meta,
 
 
   /***************************************************************************/
-  // Two options for composition:
-  // Option 1: Here overridden control bloack can be called from other already
+  // Option 1: Here overridden control block can be called from other already
   // compiled program (maclearning or  l2switch.p4 ) can be called. But, need to 
   // decide mechanism. interface and abstraction for overriding. This is 
   // incremental rather than composition.
   //
-  // Option 2: No sharing of control processing, ipv4 process the entire 
+  // Option 2: fallback - No sharing of control processing, ipv4 process the entire 
   // packet including mac address and interface set up.
 
   // Layer 2 functionality

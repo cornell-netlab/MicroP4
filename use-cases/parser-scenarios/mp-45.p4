@@ -1,3 +1,24 @@
+/*
+ *  Parser in this program.
+ *
+ *         ethernet
+ *             |
+ *        ipv4  ipv6
+ *         /  \_/  \
+ *         |  / \  |
+ *         tcp   udp
+ *
+ *  Related Files for the composition.
+ *  1. 1-eth-ip.p4
+ *  2. 2-eth-vlan-ip.p4 (This file)
+ *  and the merged parser file.
+ *  3. mp-45.p4
+ *
+ *
+ *  Unlike mp-12.p4, this merged parser has single tcp and udp header isntances
+ *  shared between pipeline of both the program.
+ */
+
 #include <core.p4>
 #include <v1model.p4>
 

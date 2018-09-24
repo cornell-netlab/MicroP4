@@ -1,3 +1,23 @@
+/*
+ * This is program "p1" describing a parser with variable header along with DAG.
+ * The structure of the parser is following.
+ *         A
+ *     b/     \c
+ *     B-- 0 --C
+ *     |1
+ *     D
+ *
+ *     A,B,C and D are headers described using a_ht, b_ht, c_ht and d_ht in the
+ *     program.
+ *
+ * This parser is merged with the parser of program "parser2.p4" and its
+ * possible resultant parser is described in "merged_parser1-2.p4"
+ *
+ * In this program, variable header can be unrolled by creating a select key
+ * field on header length field ("hlf" in b_ht) with select cases of all possible
+ * values.
+ */
+
 #include <core.p4>
 #include <v1model.p4>
 
@@ -5,38 +25,18 @@
 #define MAC_TABLE_SIZE 32
 
 header a_ht {
-  bit<2> f1; // p.f1
-  bit<4> kf; // p.kf
-  bit<2> f2; // p.f2
+  bit<2> f1; 
+  bit<4> kf; 
+  bit<2> f2; 
 }
 
 header b_ht {
-  bit<4> f1; // pb.f1
-  bit<4> f2; // q.p2_a_kf
-  bit<2> kf; // q.p1_b_kf
-  bit<2> hlf; // q.hlf   // length field * 8. create 2^2 states 
+  bit<4> f1; 
+  bit<4> f2; 
+  bit<2> kf; 
+  bit<2> hlf;
   varbit<320> vf;
 }
-
-
-/*************************
-header b0_ht {
-  bit<2> hlf; // 0 length
-}
-
-header b1_ht {
-  bit<8> vf1; // vh1.f + vh2.f
-}
-
-header b2_ht {
-  bit<16> vf2; // vh1.f + vh2.f + vh3.f
-}
-
-header b3_ht {
-  bit<24> vf3;
-}
-*************************/
-
 
 header c_ht {
   bit<16> f1; 

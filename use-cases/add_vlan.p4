@@ -1,15 +1,17 @@
-// Scenario: Slicing the switch
+// Scenario: Slicing the switch or horizontal composition
 // -> basic_switch.p4 is provided by vendor along with its controller.
 // -> vlan feature is required to be added along with basic switching as usual
-// for other ports.
+// for other ports. 
 // 
 // Add VLAN support on basic ethernet switch - basic_switch.p4
 // Semantic of this composition "Add" is following
 // Tables in two programs contain overlapping matchkeys. 
 // basic_switch forwards using destMac for native traffic and add_vlan(below
 // program) forwards based on vlan tag and destMac.
-// Ethernet traffic not processed by vlan program will be handled by
-// basic_switch.p4.
+// 
+// Is it possible to have native ethernet traffic coming from Access ports should
+// have fallback processing by basic_switch.p4. May be useful in alpha-testing of
+// the feature.
 
 #include <core.p4>
 #include <v1model.p4>

@@ -1,3 +1,19 @@
+/*
+ *  Parser in this program.
+ *
+ *         ethernet
+ *            |
+ *          ipv4
+ *          /  \
+ *        tcp  udp
+ *
+ *  Related Files for the composition.
+ *  1. 4-ipv4-tcp.p4
+ *  2. 5-ipv6-tcp.p4 (This file)
+ *  and the merged parser file.
+ *  3. mp-45.p4
+ */
+
 #include <core.p4>
 #include <v1model.p4>
 
@@ -40,23 +56,23 @@ header ipv4_t {
 
 
 header tcp_t {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<32> seqNum;
-    bit<32> actNum;
-    bit<4>  dataOffset;
-    bit<3>  reserved;
-    bit<9>  flags;
-    bit<16> windowSize;
-    bit<16> checksum; 
-    bit<16> urgentPointer;
+  bit<16> srcPort;
+  bit<16> dstPort;
+  bit<32> seqNum;
+  bit<32> actNum;
+  bit<4>  dataOffset;
+  bit<3>  reserved;
+  bit<9>  flags;
+  bit<16> windowSize;
+  bit<16> checksum; 
+  bit<16> urgentPointer;
 }
 
 header udp_t {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<16> payloadLength;
-    bit<16> checksum; 
+  bit<16> srcPort;
+  bit<16> dstPort;
+  bit<16> payloadLength;
+  bit<16> checksum; 
 }
 
 struct metadata {
