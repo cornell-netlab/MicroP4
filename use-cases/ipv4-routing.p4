@@ -1,23 +1,15 @@
-/*
- * IPv4 router with ACL checks, it modifies layer 2 header also
- * Functionality - IPv4 processing, ACL and routing
- */
-// There are two ways of enabling modularity between layer 2 and layer 3.
-// 1. vertical mode : deployment of Layer 3 is 
-// oblivious to layer-2 p4 program running on the switch. 
-// e.g., IP.p4 will be processed on vlan, qinq or naive alike. 
-// In this case, IP.p4 can not be a standalone program. However, it can be 
-// executed with any layer-2.p4.  This enforces a requirement on program 
-// development.
-//
-// 2. fallback mode - Layer-3 program can execute in its entirety and any traffic
-// "not processed" with the program is processed by layer-2.
-
 # include <core.p4>
 #include <v1model.p4>
 
 #define TABLE_SIZE 1024
 #define MAC_TABLE_SIZE 32
+
+header cpu_header_h {
+  bit<64> preamble;
+  bit<8>  device;
+  bit<8>  reason;
+  bit<8>  if_index;
+}
 
 header Ethernet_h {
   bit<48> dstAddr;
@@ -41,6 +33,8 @@ header IPv4_h {
 }
 
 struct Parsed_headers {
+  @name("cpu_header")
+  cpu_header_h cpu_header;
   @name("ethernet")
   Ethernet_h ethernet;
   @name("ip")
@@ -55,14 +49,31 @@ error {
 
 struct ingress_metadata_t {
   bit<32> nextHop;
+  bit<8> if_index;
 }
 
 
 parser TopParser(packet_in b, out Parsed_headers p, inout ingress_metadata_t meta, 
                   inout standard_metadata_t standard_metadata) {
 
-  // checksum and local variable intialization
+  // To send out ARP replies, CP can inject packet
   state start {
+    // 9 bit ingress port to 8 bit if_index mapping
+    meta.if_index = (bit<8>)standard_metadata.ingress_port;
+    transition select((b.lookahead<bit<64>>())[63:0]) {
+      64w0:     parse_cpu_header;
+      default:  parse_ethernet;
+    }
+  }
+
+  state parse_cpu_header {
+    b.extract(p.cpu_header);
+    meta.if_index = p.cpu_header.if_index;
+    transition parse_ethernet;
+  }
+
+  // checksum and local variable intialization
+  state parse_ethernet {
     b.extract(p.ethernet);
     transition select (p.ethernet.etherType) {
       0x0800: parse_ipv4;
@@ -82,36 +93,24 @@ parser TopParser(packet_in b, out Parsed_headers p, inout ingress_metadata_t met
 control ingress(inout Parsed_headers headers, inout ingress_metadata_t  meta,
                 inout standard_metadata_t standard_metadata) {
   
-  action set_nexthop(bit<32> nexthop_ipv4_address, bit<9> port) {
-    // TODO: update ttl and other header fields
-    // Not of a concern for now
-    meta.nextHop = nexthop_ipv4_address;
-    standard_metadata.egress_port = port;
+  action set_nexthop(bit<32> nexthop_ipv4_addr, bit<9> port) {
+    headers.ip.ttl = headers.ip.ttl-1;
+    meta.nextHop = nexthop_ipv4_addr;
+    standard_metadata.egress_spec = port;
   }
 
-  action send_to_cpu() {
-    // TODO: how does V1model send it to cpu
-    //standard_metadata.egress_port = CPU_OUT_PORT;
+  action send_to_cpu(bit<8> reason, bit<9> cpu_port) {
+    headers.cpu_header.setValid();
+    headers.cpu_header.preamble = 64w0;
+    headers.cpu_header.device = 8w0;
+    headers.cpu_header.reason = reason;
+    headers.cpu_header.if_index = meta.if_index;
+    standard_metadata.egress_spec = cpu_port;
   }
 
 
   action drop_action() {
     mark_to_drop();
-  }
-
-  // ACL check
-  table ipv4_acl {
-    key = {
-      headers.ip.srcAddr : ternary;
-      headers.ip.dstAddr : ternary;
-      headers.ip.protocol : ternary;
-    }
-    actions = {
-      drop_action;
-      set_nexthop;
-    }
-
-    size = TABLE_SIZE;
   }
 
   // next hop routing
@@ -124,44 +123,37 @@ control ingress(inout Parsed_headers headers, inout ingress_metadata_t  meta,
       set_nexthop;
     }
 
+    default_action = send_to_cpu();
     size = TABLE_SIZE;
   }
 
+  action set_dmac(bit<48> dmac) {
+    headers.ethernet.dstAddr = dmac;
+  }
 
-  /***************************************************************************/
-  /* If architecture allows following code can go in egress processing       */
-  /* Composition is switch arch file dependent..                             */
-  /***************************************************************************/
-    action set_dmac(bit<48> dmac) {
-      headers.ethernet.dstAddr = dmac;
+  table dmac {
+    key = { meta.nextHop: exact; }
+    actions = {
+      drop_action;
+      set_dmac;
     }
+    size = TABLE_SIZE;
+    default_action = drop_action;
+  }
 
-    table dmac {
-      key = { meta.nextHop: exact; }
-      actions = {
-        drop_action;
-        set_dmac;
-      }
-      size = TABLE_SIZE;
-      default_action = drop_action;
+  action set_smac(bit<48> smac) {
+    headers.ethernet.srcAddr = smac;
+  }
+
+  table smac {
+    key = { standard_metadata.egress_port: exact; }
+    actions = {
+      drop_action;
+      set_smac;
     }
-
-
-    action set_smac(bit<48> smac) {
-      headers.ethernet.srcAddr = smac;
-    }
-
-
-    table smac {
-      key = { standard_metadata.egress_port: exact; }
-      actions = {
-        drop_action;
-        set_smac;
-      }
-      size = MAC_TABLE_SIZE;
-      default_action = drop_action;
-    }
-  /***************************************************************************/
+    size = MAC_TABLE_SIZE;
+    default_action = drop_action;
+  }
 
   apply {
     if (standard_metadata.parser_error != error.NoError) {
@@ -169,32 +161,12 @@ control ingress(inout Parsed_headers headers, inout ingress_metadata_t  meta,
       return;
     }
 
-    /*
-     Why can't we store automatically synthesized table.apply result in a generic
-     struct instance
-     if (ipv4_acl.apply().action_run == drop_action)
-      return;
-    */
+    ipv4_fib_lpm.apply();
 
-    if (!ipv4_acl.apply().hit) {
-      ipv4_fib_lpm.apply();
-    }
-
-
-  /***************************************************************************/
-  // Option 1: Here overridden control block can be called from other already
-  // compiled program (maclearning or  l2switch.p4 ) can be called. But, need to 
-  // decide mechanism. interface and abstraction for overriding. This is 
-  // incremental rather than composition.
-  //
-  // Option 2: fallback - No sharing of control processing, ipv4 process the entire 
-  // packet including mac address and interface set up.
-
-  // Layer 2 functionality
-  /***************************************************************************/
+    // Layer 2 functionality
     dmac.apply();
-    //if(dmac.apply().action_run == drop_action);
-      smac.apply();
+    // if(dmac.apply().action_run == drop_action);
+    smac.apply();
   }
 }
 
@@ -208,6 +180,7 @@ control egress(inout Parsed_headers headers, inout ingress_metadata_t meta,
 // deparser section
 control DeparserImpl(packet_out b, in Parsed_headers p) {
   apply {
+    b.emit(p.cpu_header);
     b.emit(p.ethernet);
     b.emit(p.ip);
   }
