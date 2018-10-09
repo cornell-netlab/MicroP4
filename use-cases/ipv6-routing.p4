@@ -2,8 +2,8 @@
  * IPv6 routing only
  */
 
-# include <core.p4>
-# include "v1model.p4"
+#include <core.p4>
+#include "v1model.p4"
 
 #define TABLE_SIZE 1024
 #define MAC_TABLE_SIZE 1024
@@ -66,10 +66,20 @@ parser TopParser(packet_in b, out Parsed_headers ph, inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
   state start {
+    transition parse_ethernet;
+  }
+
+
+  state parse_ethernet {
     b.extract(ph.eth);
-    verify(ph.eth.etherType == 0x8100, error.NotVlanTraffic);
+    transition select (ph.eth.etherType) {
+      0x86DD: parse_ipv6;
+      0x8100: parse_vlan;
+    }
+  }
+  
+  state parse_vlan {
     b.extract(ph.vlan);
-    verify(ph.vlan.eType == 0x86DD, error.VLanIDMisMatch);
     transition select (ph.vlan.eType) {
       0x86DD: parse_ipv6;
     }
