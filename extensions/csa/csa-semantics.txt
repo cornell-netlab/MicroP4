@@ -1,0 +1,555 @@
+/*
+ * Hardik Soni (hardik.soni@cornell.edu)
+ * This file describes execution semanics for composable switch package types.
+ */
+
+/********* Expressing full program compositions and their semantics ************\
+ *
+ * Two major changes in current P4 front-end grammar and package execution
+ * semantics:
+ * 1. Additional "apply" method semantics for package types:
+ * 2. The Production rule for packageTypeDeclaration is modified.
+ *    and packageDeclaration is added.
+ *    
+ *    Short preview of changes in grammar, which are minimal but effective.
+ *
+ *    packageTypeDeclaration
+ *      : optAnnotations PACKAGE name optTypeParameters '(' parameterList ')'
+ *          { packageTypeDeclarationBody }
+ *      ;
+ *    packageTypeDeclarationBody
+ *      : typeDeclaration
+ *      | packageTypeDeclaration // Or add packageTypeDeclaration 
+ *                                      under typeDeclaration
+ *      | externDeclaration
+ *      ;
+ *    
+ *    packageDeclaration
+ *      : declaration
+ *      ;
+ *
+ * All the packages should be seen as black box.
+ * The input to the box are byte stream as an instance of packet_in type, an
+ * instance of standard_metadata_t and runtime parameters passed to the proram.
+ * These parameters have in, out or inout directions.
+ *
+ * The output is 1 to n copies of packet_out, standard_metadata and values
+ * updated in the parameters passed to them according to their directions.
+ * Additionally, each top level package is associated with two virtual buffers,
+ * "in" and  "out".
+ * On invoking a package instance, execution control reads bytes(packet_in.data 
+ * and standard metadata) from the package's `in` buffer and writes (packet_out,
+ * standard_metadata) to the `out` buffer.
+ *
+ *   ___                                                      ___
+ *  |in |               ___________________                  |out|
+ *  |   |              |                   |--packet_out.1-->|   |
+ *  | b |--packet_in-->|                   |-- standard      | b |
+ *  | u |              | Top Level Package |    metadata.1-->| u |
+ *  | f |-- standard   |                   |..               | f |
+ *  | f |  metadata -->|                   |--packet_out.n-->| f |
+ *  | e |              |___________________|-- standard      | e |
+ *  |_r_|                                       metadata.n-->|_r_|
+ *
+ * H type headers, M type metadata are internal state of packages. 
+ * They should be enclosed within packages.
+ *
+ *
+ * Similarly, execution semantics for instances of MATs, Actions and 
+ * Controls are augmented with `in` and `out` virtual buffers.
+ * On every invocation of a instance, execution control reads headers, metadata 
+ * and standard_metdata etc., from the instance's in buffer, modifies them and 
+ * write them on ithe instance's out buffer.
+ * If multiple copies of the data are generated as a result of applying a table,
+ * control or action, the copies are added to the out buffer in an undefined 
+ * order.
+ * 
+ * The content of elements in the in-out buffer are decided by the 
+ * parameters (both optConstructor and runtime) in the type declaration.
+ *
+ * Program's control flow graph dictates the interconnection and sharing of
+ * in-out buffers of each instances of MATs, Actions and Controls.
+ *
+ *   ___                                                        ___ 
+ *  |in |               _____________________                  |out|
+ *  | b |              |                     |-- Headers.a1 -->| b |
+ *  | u |-- Headers -->|       Actions       |-- Metadata.a1-->| u |  
+ *  | f |              |         MAT         |..               | f |
+ *  | f |-- Metadata-->|    Multicast MAT    |..               | f |
+ *  | e |              |      Control        |-- Headers.an -->| e |
+ *  |_r_|              |_____________________|-- Metadata.an-->|_r_|
+ *
+ *  For control statements like if-else and switch.
+ *  Switch statement is skipped here.
+ *  Short explanation: For each case switch stmt have an out buffer.
+ *   ___                                                        _________ 
+ *  |in |               _____________________                  |   True  |
+ *  | b |              |                     |-- Headers.a1 -->|   out   |
+ *  | u |-- Headers -->|                     |-- Metadata.a1-->| buffer  |  
+ *  | f |              |       if-else       |..               |---------|
+ *  | f |-- Metadata-->|        stmt         |..               |  False  |
+ *  | e |              |                     |-- Headers.a1 -->|   out   |
+ *  |_r_|              |_____________________|-- Metadata.a1-->|__buffer_|
+ *
+ ******************************************************************************/
+
+
+// SM: architecture specific standard metadata type, common to all the programs
+// XMT: metadata type to import(READ) or export(write) data as a part of packet 
+// processing OR pass program scope metadata.
+// program scope metadat retains the value in-between calls of deparser and
+// parser. It is similar to recirculation metadata of PSA.
+// The instance of XMT is described as extra_metadata of the program.
+//
+// Following structures and buffer types are not part of CSA packages for P4
+// program.
+// The definitions are used to describe semantics P4 constructs and their 
+// runtime behaviour.
+
+struct packet_context_t<SM, XMT> {
+  byte[] data;
+  unsigned lengthInBits;
+
+  SM standard_metadata;
+  XMT extra_metadata;
+
+  var val = get_value(field f);
+}
+
+// H: headers type
+// UM: user-defined metadata, (internal to program and not visible outside) 
+// SM: standard metadata 
+// XMT: This type parameter allows to pass Import, Export or recirculate 
+//      metadata type
+struct program_data_t<H, UM, SM, XMT> {
+
+  parsed_headers_t<H, UM, SM> parsed_headers;
+
+  XMT extra_metadata;
+
+  var val = get_value(field f);
+}
+
+// H: headers type
+// UM: user-defined metadata 
+// SM: architecture specific standarad metadata 
+struct parsed_headers_t<H, UM, SM> {
+  H hdr;
+  UM meta;
+  SM standard_metadata;
+
+  var val = get_value(field f);
+}
+
+
+struct vbuffer_t<ETYPE> {
+
+  ETYPE buffer[];
+
+  unsigned int element_counter;
+
+  ETYPE get_next_element() {
+    // element_counter-- ;
+  }
+
+  insert_element(ETYPE element) {
+    // element_counter++;
+    //
+    // if the control node is multicast table
+    //  increment by a variable n; n in known only at runtime
+    //
+    // if the control node is a MAT with clone function call
+    //  increment by 2
+    //
+    //  depending on hardware there could be option program compile-time known
+    //  replication efficiently without using buffer or PRE.
+
+  }
+}
+/***************************************************************************/
+package CSASwitch<IND, OUTD, INOUTD, H, UM, SM, PSM>(
+          packet_in pin, packet_out po,
+          in IN in_meta, out OUT out_meta, inout INOUT inout_meta) {
+
+  // For simplicity of semantic description
+  struct in_vbuf_meta_ele_t<IND, INOUTD> {
+    IND in_meta;
+    INOUTD inout_meta;
+  }
+  struct out_vbuf_meta_ele_t<OUTD, INOUTD> {
+    OUTD out_meta;
+    INOUTD inout_meta;
+  }
+  typedef in_vbuf_meta_ele_t<IND, INOUTD> IN;
+  typedef out_vbuf_meta_ele_t<OUTD, INOUTD> OUT;
+
+
+  // element type for the in and out virtual buffers of the package
+  typedef packet_context_t<SM, IN> in_vbuf_element_t;
+  typedef packet_context_t<SM, OUT> out_vbuf_element_t;
+
+  // package's in and out buffer
+  vbuffer_t<in_vbuf_element_t> in_vbuf;
+  vbuffer_t<out_vbuf_element_t> out_vbuf;
+
+  in_vbuf_element_t pkt_in_ctxt;
+  out_vbuf_element_t pkt_out_ctxt;
+
+
+  // Declarations for programmable blocks of basic switch package type
+  parser Parser<H, UM, SM, PSM>(packet_in b, out H parsed_hdr, 
+                                inout UM meta, inout SM standard_metadata, 
+                                in PSM program_scope_metadata) {
+  
+    typedef packet_context_t<SM, PSM> in_vbuf_element_t;
+    typedef program_data_t<H, UM, SM, PSM> out_vbuf_element_t;
+    vbuffer_t<out_vbuf_element_t> out_vbuf;
+    vbuffer_t<in_vbuf_element_t> in_vbuf;
+
+    apply() {
+      // take an element from the in buffer
+      in_vbuf_element_t ele = in_vbuf.get_next_element();
+      
+      // run the programmer's code
+
+      // insert the element in the out buffer
+      out_vbuf.insert_element();
+    }
+  }
+
+  // optional
+  control Import<IND, INOUTD, H, UM, SM>(in IND in_meta, 
+                                         inout INOUTD inout_meta, 
+                                         in H parsed_hdr, inout UM meta, 
+                                         inout SM standard_metadata) {
+    apply {
+      typedef program_data_t<H, UM, SM, IN> in_vbuf_element_t;
+      typedef parsed_headers_t<H, UM, SM> out_vbuf_element_t;
+
+      vbuffer_t<in_vbuf_element_t> in_vbuf;
+      vbuffer_t<out_vbuf_element_t> out_vbuf;
+      // take an element from the in buffer
+      in_vbuf_element_t ele = in_vbuf.get_next_element();
+      
+      // run the programmer's code
+
+      // insert the element in the out buffer
+      out_vbuf.insert_element();
+    }
+  }
+
+  control Pipe<H, UM, SM>(inout H hdr, inout UM meta,
+                          inout SM standard_metadata) {
+    apply {
+      typedef parsed_headers_t<H, UM, SM> vbuf_element_t;
+      vbuffer_t<parsed_headers_element_t> in_vbuf, out_vbuf;
+      // take an element from the in buffer
+      in_vbuf_element_t ele = in_vbuf.get_next_element();
+      
+      // run the programmer's code
+
+      // insert the element in the out buffer
+      out_vbuf.insert_element();
+    }
+  }
+
+  // optional
+  control Export<OUTD, INOUTD, H, UM, SM>(out OUTD out_meta, 
+                                          inout INOUTD inout_meta,
+                                          in H parsed_hdr, in UM meta, 
+                                          in SM standard_metadata);  
+  Export.apply(...) {
+
+    typedef parsed_headers_t<H, UM, SM> in_vbuf_element_t;
+    typedef program_data_t<H, UM, SM, OUT> out_vbuf_element_t;
+
+    vbuffer_t<in_vbuf_element_t> in_vbuf;
+    vbuffer_t<out_vbuf_element_t> out_vbuf;
+  }
+
+
+  control Deparser<H, PSM>(packet_out b, in H hdr, 
+                           out PSM program_scope_metadata);
+  Deparser.apply(...) {
+
+    typedef parsed_headers_t<H, UM, SM> in_vbuf_element_t;
+    typedef packet_context_t<SM, PSM> out_vbuf_element_t;
+
+    vbuffer_t<in_vbuf_element_t> in_vbuf, 
+    vbuffer_t<out_vbuf_element_t> out_vbuf;
+  }
+  
+  packet_out po;
+  // UM and PSM are program's internal metadata structures
+  PSM program_scope_metadata;
+  // virtual buffer sharing.
+  // eliminates get_next_element and insert_element calls before and after
+  // Pipe.apply call
+  Import.out_vbuf = Pipe.in_vbuf;
+  Export.in_vbuf = Pipe.out_vbuf;
+
+  apply {
+  
+    pkt_in_ctxt = in_vbuf.get_next_element();
+
+    Parser.in_vbuf.insert_element( 
+      packet_context_t<SM, PSM>(pkt_in_ctxt.data, program_scope_metadata));
+    // Invoking Parser
+    Parser.apply();
+    program_data_t<H, UM, SM, PSM> parser_out_element = 
+                                   Parser.out_vbuf.get_next_element();
+    // Invoking Import control
+    Import.in_vbuf.insert_element(
+      program_data_t<H, UM, SM, IN> (parser_out_element.parsed_headers, 
+                                     pkt_in_ctxt.extra_metadata));
+    Import.apply();
+
+    // Invoking Pipe control
+    Pipe.apply();
+    
+    // Invoking Export control
+    Export.apply();
+    program_data_t<H, UM, SM, OUT> export_inst_out_element = 
+                                   export_inst.out_vbuf.get_next_element();
+
+    Deparser.in_vbuf.insert_element(
+      parsed_headers_t<H, UM, SM> (export_inst_out_element.parsed_headers);
+    Deparser.apply();
+    packet_context_t<SM, PSM> deparser_out_element =
+                              Deparser.get_next_element();
+
+    pkt_out_ctxt.data = deparser_out_element.data;
+    pkt_out_ctxt.extra_metadata = export_inst_out_element.extra_metadata;
+
+    program_scope_metadata = deparser_out_element.extra_metadata;
+    out_vbuf_element_t.insert_element(pkt_out_ctxt);
+  }
+
+
+  // Allows to invoke other packages form this type.
+  // execute can be invoked only from Pipe control type
+  extern void Execute<CPTYPE<INC, OUTC, INOUTC, _, _, _, _>, INC, OUTC, INOUTC>(
+    CPTYPE callee_inst, in INC in_meta, out OUTC out_meta, 
+    inout INOUTC inout_meta, inout H parsed_hdr, inout UM meta,
+    inout SM standard_metadata) {
+
+    typedef in_vbuf_meta_ele_t<INC, INOUTC> IN;
+    typedef out_vbuf_meta_ele_t<OUTC, INOUTC> OUT;
+
+    typedef program_data_t<H, UM, SM, IN> in_vbuf_element_t;
+    typedef program_data_t<H, UM, SM, OUT> out_vbuf_element_t;
+    vbuffer_t<in_vbuf_element_t> in_vbuf;
+    vbuffer_t<out_vbuf_element_t> out_vbuf;
+
+    // this.Deparser.in_vbuf = in_vbuf;
+    // this.Parser.out_vbuf = out_vbuf;
+
+    apply() {
+
+      // Starting by fetching an element form execute's in_vbuf;
+      in_vbuf_element_t in_element = in_vbuf.get_next_element();
+
+      parsed_headers_t<H, UM, SM> deparser_in_element = in_element.parsed_headers;
+      this.Deparser.insert_element(deparser_in_element);
+      this.Deparser.apply();
+      packet_context_t<SM, PSM> deparser_out_element = 
+                                this.Deparser.out_vbuf.get_next_element();
+
+      typedef packet_context_t<SM, IN> callee_in_vbuf_element;
+      callee_in_vbuf_element.data = deparser_out_element.data;
+      // Setting INC and INOUTC metadata in callee's IN
+      callee_in_vbuf_element.extra_metadata = in_element.extra_metadata;
+      // This is used in invoking parser after the execution of the callee
+      program_scope_metadata = deparser_out_element.extra_metadata;
+
+      callee_inst.in_vbuf.insert_element(callee_in_vbuf_element);
+      callee_inst.apply();
+
+      while(callee_inst.out_vbuf is not empty) {
+        packet_context_t<SM, OUT> callee_out_element =
+                                  callee_inst.out_vbuf.get_next_element();
+       
+        // Writing out metadata back to the caller
+        out_meta = callee_out_element.extra_metadata.out_meta;
+        inout_meta = callee_out_element.extra_metadata.inout_meta;
+       
+        packet_context_t<SM, PSM> parser_in_element;
+        parser_in_element.data = callee_out_element.data;
+        parser_in_element.extra_metadata = program_scope_metadata;
+        parser_in_element.standard_metadata = callee_out_element.standard_metadata;
+     
+        this.Parser.in_vbuf.insert_element(parser_in_element);
+        this.Parser.apply();
+      }
+    }
+
+
+  // optional
+  package ParallelSwitch<INC, OUTC, INOUTC, PTYPE1, PTYPE2>(
+          PTYPE1<INC, OUTC, INOUTC, _, _, _, _> callee_one_inst, 
+          PTYPE2<INC, OUTC, INOUTC, _, _, _, _> callee_two_inst,
+          in INC in_meta, out OUTC out_meta, inout INOUTC inout_meta,
+          inout H parsed_hdr, inout UM meta, inout SM standard_metadata) {
+
+
+    typedef in_vbuf_meta_ele_t<INC, INOUTC> IN;
+    typedef out_vbuf_meta_ele_t<OUTC, INOUTC> OUT;
+
+    // in out buffers of the package
+    typedef program_data_t<H, UM, SM, IN> in_vbuf_element_t;
+    typedef program_data_t<H, UM, SM, OUT> out_vbuf_element_t;
+    vbuffer_t<in_vbuf_element_t> in_vbuf;
+    vbuffer_t<out_vbuf_element_t> out_vbuf;
+
+    struct rp_vbuf_meta_ele_t<INC, OUTC, INOUTC, PSM> {
+      INC in_meta;
+      OUTC out_meta;
+      INOUTC inout_meta;
+      PSM  ps_meta;
+      bit<1> flag;
+    }
+
+    typedef program_data_t<H, UM, SM, 
+                           rp_in_vbuf_meta_ele_t<INC, INOUTC, PSM> >
+                              rp_vbuf_element_t;
+
+    // Recirculation call in this control will execute ParallelSwitch
+    // again, not the top level CSASwitch package.
+    // However, the instance of  program_scope_metadata will be passed in the
+    // argument. (in future, is it easy to modify semantic here.)
+    control ResultPipe<INC, OUTC, INOUTC, H, UM, SM, PSM>(
+      in INC in_meta, out OUTC out_meta, inout INOUTC inout_meta, 
+      inout H hdr, inout UM meta, inout SM standard_metadata, 
+      inout PSM program_scope_metadata) {
+
+      vbuffer_t<rp_vbuf_element_t> in_vbuf, out_vbuf;;
+
+      apply() {
+        
+      }
+    }
+
+
+    apply() {
+
+      // Starting by fetching an element form execute's in_vbuf;
+      in_vbuf_element_t in_element = in_vbuf.get_next_element();
+
+      // Setting up deparser execution
+      parsed_headers_t<H, UM, SM> deparser_in_element = 
+                                  in_element.parsed_headers;
+      this.Deparser.insert_element(deparser_in_element);
+      this.Deparser.apply();
+      packet_context_t<SM, PSM> deparser_out_element = 
+                                this.Deparser.out_vbuf.get_next_element();
+
+      typedef packet_context_t<SM, IN> callee_in_vbuf_element;
+      callee_in_vbuf_element.data = deparser_out_element.data;
+      callee_in_vbuf_element.extra_metadata = in_element.extra_metadata;
+      // This is used in invoking parser after the execution of the callee
+      program_scope_metadata = deparser_out_element.extra_metadata;
+
+      callee_one_inst.in_vbuf.insert_element(callee_in_vbuf_element);
+      callee_two_inst.in_vbuf.insert_element(callee_in_vbuf_element);
+
+      callee_one_inst.apply();
+      callee_two_inst.apply();
+
+      flag = 0b0;
+      foreach (callee_inst in (callee_one_inst, callee_two_inst)) {
+  
+        while (callee_inst.out_vbuf is not empty) {
+          packet_context_t<SM, OUT> callee_out_element =
+                                    callee_inst.out_vbuf.get_next_element();
+
+          // out and inout meta modified by the invocation and they will be
+          // passed to the ResultPipe
+          OUTC out_local = callee_out_element.extra_metadata.out_meta;
+          INOUTC inout_local = callee_out_element.extra_metadata.inout_meta;
+
+          packet_context_t<SM, PSM> parser_in_element;
+          parser_in_element.data = callee_out_element.data;
+          parser_in_element.extra_metadata = program_scope_metadata;
+          parser_in_element.standard_metadata = 
+                            callee_out_element.standard_metadata;
+    
+          this.Parser.in_vbuf.insert_element(parser_in_element);
+          this.Parser.apply();
+          parser_out_element = this.Parser.out_vbuf.get_next_element();
+
+          rp_vbuf_element_t rp_in_element;
+          
+          rp_in_element.extra_metadata.in_meta = 
+            in_element.extra_metadata.in_meta;
+          // parameters reflects values updated after callees execution
+          rp_in_element.extra_metadata.out_meta = out_local;
+          rp_in_element.extra_metadata.inout_meta = inout_local;
+
+          rp_in_element.parsed_headers = parser_out_element.parsed_headers;
+          // this is the same instance as parser had
+          rp_in_element.extra_metadata.ps_meta = program_scope_metadata;
+          rp_in_element.extra_metadata.flag = flag;
+
+          this.ResultPipe.in_vbuf.insert_element(rp_in_element);
+          this.ResultPipe.apply();
+          rp_vbuf_element_t rp_out_element =
+                                this.ResultPipe.out_vbuf.get_next_element();
+
+          out_vbuf_element_t out_element;
+          out_element.parsed_headers = rp_out_element.parsed_headers;
+
+          out_element.extra_metadata.out_meta = 
+            rp_out_element.extra_metadata.out_meta;
+          out_element.extra_metadata.out_meta =
+            rp_out_element.extra_metadata.out_meta;
+
+          this.out_vbuf.insert_element(out_element);
+        }
+        flag = 0b1;
+      }
+    }
+
+  }  
+}
+
+
+/*
+ * TODO: semantic description for OrchestrationSwitch
+ */
+package OrchestrationSwitch<IND, OUTD, INOUTD, _, UM, SM, PSM>(packet_in pin,
+          packet_out po, in IN in_meta, out OUT out_meta, 
+          inout INOUT inout_meta) {
+
+  // optional
+  control Import<IND, INOUTD, UM, SM>(in IND in_meta, 
+                                      inout INOUTD inout_meta, 
+                                      inout UM meta, 
+                                      inout SM standard_metadata);
+  /*
+   * It is possible to invoke callee_pkg_inst.apply(...), because pin and po are
+   * available.
+   */
+  control Pipe<UM, SM, PSM>(packet_in pin, packet_out po, inout UM meta, 
+                            inout SM standard_metadata, 
+                            inout PSM recirculate_meta);
+  
+  // optional
+  control Export<OUTD, INOUTD, UM, SM>(out OUTD out_meta, 
+                                       inout INOUTD inout_meta,
+                                       in H parsed_hdr, in UM meta, 
+                                       in SM standard_metadata);
+
+  // optional
+  package ParallelSwitch<INC, OUTC, INOUTC, PTYPE1, PTYPE2>(
+          PTYPE1<INC, OUTC, INOUTC, _, _, _, _> pkg_one_inst, 
+          PTYPE2<INC, OUTC, INOUTC, _, _, _, _> pkg_two_inst,
+          packet_in pin, packet_out po,
+          in INC in_meta, out OUTC out_meta, inout INOUTC inout_meta) {
+
+    control ResultPipe<INC, OUTC, INOUTC, UM, SM>(
+      in INC in_meta, out OUTC out_meta, inout INOUTC inout_meta, 
+      inout UM meta, inout SM standard_metadata);
+  }
+
+}
+

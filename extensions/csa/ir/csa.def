@@ -1,0 +1,66 @@
+class Type_ComposablePackage : Type_ArchBlock, ISimpleNamespace, IApply, IContainer {
+    ParameterList applyParams;
+    ParameterList constructorParams;
+    optional NullOK IndexedVector<Type_Declaration>  typeLocalDeclarations = nullptr;
+
+#emit    
+    Util::Enumerator<const IDeclaration*>* getDeclarations() const override {
+        if (typeLocalDeclarations != nullptr)
+            return typeLocalDeclarations->getDeclarations();
+        else
+            return Util::Enumerator<const IDeclaration*>::emptyEnumerator();
+    }
+#end
+
+    IDeclaration getDeclByName(cstring name) const override {
+        if (typeLocalDeclarations != nullptr)
+            return typeLocalDeclarations->getDeclaration(name); 
+        else
+            return nullptr;
+    }
+
+    Type_Method getApplyMethodType() const override;
+    ParameterList getApplyParameters() const override { return applyParams; }
+    Type_Method getConstructorMethodType() const override;
+    ParameterList getConstructorParameters() const override { return constructorParams; }
+    toString { return cstring("Type_ComposablePackage ") + externalName(); }
+}
+
+class P4ComposablePackage : Type_Declaration, ISimpleNamespace, IApply, IContainer {
+    optional Annotations annotations = Annotations::empty;
+    Type                                      interfaceType;
+//    Type_Name                                      interfaceType;
+    IndexedVector<Type_Declaration>                packageLocals;
+
+    // This is not initialized during object creation, but in TypeInference.
+    // FIXME: change this type tp P4ComposablePackage
+    optional NullOK Type_ComposablePackage         type = nullptr;
+
+    optional inline IndexedVector<Declaration>     packageLocalDeclarations;
+
+    TypeParameters getTypeParameters() const override;
+
+    Util::Enumerator<IDeclaration>* getDeclarations() const override {
+        return packageLocals->getDeclarations(); }
+    IDeclaration getDeclByName(cstring name) const override {
+        return packageLocals->getDeclaration(name); }
+
+    Type_Method getApplyMethodType() const override;
+    ParameterList getApplyParameters() const override;
+
+    Type_Method getConstructorMethodType() const override;
+    ParameterList getConstructorParameters() const override;
+    
+    toString { return cstring("P4ComposablePackage ") + externalName(); }
+
+}
+
+class P4ComposablePackageBlock : InstantiatedBlock {
+    P4ComposablePackage container;
+    ParameterList getConstructorParameters() const override {
+        return container->getConstructorParameters(); }
+    toString { return container->toString(); }
+    ID getName() const override { return container->getName(); }
+#nodbprint
+}
+

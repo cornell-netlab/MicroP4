@@ -1,0 +1,11 @@
+#include <core.p4>
+
+struct empty_t {}
+struct external_meta_t {
+  bit<32> next_hop;
+} 
+
+
+cpackage Layer2Switch(packet_in pin, packet_out po, in external_meta_t in_meta, 
+            out empty_t out_meta, inout empty_t inout_meta) 
+            (/*constructor parameters*/);
