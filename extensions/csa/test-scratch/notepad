@@ -1,0 +1,8 @@
+./extensions/csa/p4c-csa  -T*:1 /home/hardik/hksoni-p4c/extensions/csa/test-scratch/ipv4-routing-csa.p4
+
+cp ../extensions/csa/p4include/csa.p4  ./p4include/
+b /home/hardik/hksoni-p4c/ir/pass_manager.cpp:35
+
+b P4::TypeInference::init_apply
+
+./p4c-csa --top4 MoveConstructors --dump /home/hardik/hksoni-p4c/extensions/csa/test-scratch/  /home/hardik/hksoni-p4c/extensions/csa/test-scratch/l2switch.p4
