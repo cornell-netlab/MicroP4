@@ -52,6 +52,8 @@ class NamedSymbol {
     virtual bool sameType(const NamedSymbol* other) const {
         return typeid(*this) == typeid(*other);
     }
+
+    virtual NamedSymbol* clone() const = 0;
 };
 
 class Namespace : public NamedSymbol {
@@ -60,9 +62,14 @@ class Namespace : public NamedSymbol {
     bool allowDuplicates;
 
  public:
+    Namespace(const Namespace& ns)
+        : NamedSymbol(ns.getName(), ns.getSourceInfo()), 
+          allowDuplicates(ns.allowDuplicates) {}
+
     Namespace(cstring name, Util::SourceInfo si, bool allowDuplicates) :
             NamedSymbol(name, si),
             allowDuplicates(allowDuplicates) {}
+
     void declare(NamedSymbol* symbol) {
         cstring symname = symbol->getName();
         if (symname.isNullOrEmpty()) return;
@@ -84,12 +91,29 @@ class Namespace : public NamedSymbol {
         }
         contents.emplace(symbol->getName(), symbol);
     }
+
+    void cloneNamedSymbolsTo(Namespace* parent) const {
+        for (const auto& item : contents) {
+            auto symbol = item.second->clone();
+            symbol->setParent(parent);
+            parent->declare(symbol);
+        }
+    }
+
     NamedSymbol* lookup(cstring name) const {
         auto it = contents.find(name);
         if (it == contents.end())
             return nullptr;
         return it->second;
     }
+
+    virtual Namespace* clone() const override {
+        Namespace* newNS = new Namespace(*this);
+        newNS->clear();
+        cloneNamedSymbolsTo(newNS);
+        return newNS;
+    }
+
     cstring toString() const override { return cstring("Namespace ") + getName(); }
     void dump(std::stringstream& into, unsigned indent) const override {
         std::string s(indent, ' ');
@@ -108,13 +132,30 @@ class Namespace : public NamedSymbol {
 class Object : public NamedSymbol {
  public:
     Object(cstring name, Util::SourceInfo si) : NamedSymbol(name, si) {}
+
+    Object(const Object& obj)
+      : NamedSymbol(obj.getName(), obj.getSourceInfo()) {}
+
+
     cstring toString() const override { return cstring("Object ") + getName(); }
+    virtual Object* clone() const override {
+        Object* obj = new Object(*this);
+        return obj;
+    }
 };
 
 class SimpleType : public NamedSymbol {
  public:
     SimpleType(cstring name, Util::SourceInfo si) : NamedSymbol(name, si) {}
+
+    SimpleType(const SimpleType& st)
+      : NamedSymbol(st.getName(), st.getSourceInfo()) {}
+  
     cstring toString() const { return cstring("SimpleType ") + getName(); }
+    virtual SimpleType* clone() const override {
+        SimpleType* st = new SimpleType(*this);
+        return st;
+    }
 };
 
 // A Type that is also a namespace (e.g., a parser)
@@ -122,7 +163,20 @@ class ContainerType : public Namespace {
  public:
     ContainerType(cstring name, Util::SourceInfo si, bool allowDuplicates) :
             Namespace(name, si, allowDuplicates) {}
+
+    ContainerType(const ContainerType& ct) 
+      : Namespace(ct.getName(), ct.getSourceInfo(), ct.allowDuplicates)  {}
+  
+
     cstring toString() const { return cstring("ContainerType ") + getName(); }
+
+    virtual ContainerType* clone() const override {
+        ContainerType* ct = new ContainerType(*this);
+        ct->clear();
+        cloneNamedSymbolsTo(ct);
+        return ct;
+    }
+
 };
 
 /////////////////////////////////////////////////
@@ -158,6 +212,35 @@ void ProgramStructure::pushNamespace(SourceInfo si, bool allowDuplicates) {
 void ProgramStructure::pushContainerType(IR::ID id, bool allowDuplicates) {
     auto ct = new Util::ContainerType(id.name, id.srcInfo, allowDuplicates);
     push(ct);
+}
+
+/* change implementedFrom  to IR::Type.
+ *  IR::Type -> IR::Type_Name has  path OR
+ *  IR::Type -> Type_Specialized has IR::Type_Name has path
+ */
+void ProgramStructure::pushContainerType(IR::ID id, const IR::Type* implements, 
+                                         bool allowDuplicates) {
+    cstring implementedFrom;
+    if (implements->is<IR::Type_Name>()) {
+        implementedFrom = implements->to<IR::Type_Name>()->path->name;
+    } else if (implements->is<IR::Type_Specialized>()) {
+        implementedFrom = implements->to<IR::Type_Specialized>()->baseType->path->name;
+    } else {
+        BUG("unexpected base type for interface to be implemented");
+    }
+    pushContainerType(id, implementedFrom, allowDuplicates);
+}
+
+
+void ProgramStructure::pushContainerType(IR::ID id, cstring implementedFrom, 
+                                         bool allowDuplicates) {
+    auto ct = new Util::ContainerType(id.name, id.srcInfo, allowDuplicates);
+    if (Namespace *ns = dynamic_cast<Namespace*>(lookup(implementedFrom))) {
+        ns->cloneNamedSymbolsTo(ct);
+        push(ct);
+    } else {
+        ::error("%1% can not be implemented", implementedFrom.c_str());
+    }
 }
 
 void ProgramStructure::pop() {

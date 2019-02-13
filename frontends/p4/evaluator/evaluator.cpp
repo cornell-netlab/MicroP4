@@ -215,6 +215,20 @@ Evaluator::processConstructor(
             block->instantiate(values);
         popBlock(block);
         return block;
+    } else if (decl->is<IR::P4ComposablePackage>()) {
+        auto cpackage = decl->to<IR::P4ComposablePackage>();
+        auto block = new IR::P4ComposablePackageBlock(node->srcInfo, node, instanceType, cpackage);
+        pushBlock(block);
+        auto values = evaluateArguments(cpackage->getConstructorParameters(), arguments, current);
+        if (values != nullptr) {
+            block->instantiate(values);
+            for (auto a : *(cpackage->packageLocals->getDeclarations()))
+                visit(a->to<IR::Type_Declaration>());
+            for (auto a : cpackage->packageLocalDeclarations)
+                visit(a);
+        }
+        popBlock(block);
+        return block;
     }
 
     BUG("Unhandled case %1%: type is %2%", node, type);

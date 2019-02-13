@@ -90,6 +90,17 @@ void TypeVariableSubstitution::simpleCompose(const TypeVariableSubstitution* oth
     }
 }
 
+bool TypeVariableSubstitution::remove(const TypeVariableSubstitution* other) {
+    for (auto v : other->binding) {
+        if (!removeBinding(v.first, v.second)) {
+            LOG3("Removed " << v.first << " -> " << v.second);
+            return false;
+        }
+        LOG3("Removed " << v.first << " -> " << v.second);
+    }
+    return true;
+}
+
 bool TypeVariableSubstitution::setBindings(const IR::Node* errorLocation,
                                            const IR::TypeParameters* params,
                                            const IR::Vector<IR::Type>* args) {

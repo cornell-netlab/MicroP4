@@ -11,11 +11,13 @@ namespace P4 {
 // Insert explicit type specializations where they are missing
 class DoBindTypeVariables : public Transform {
     IR::IndexedVector<IR::Node> *newTypes;
+    ReferenceMap                *refMap;
     TypeMap                     *typeMap;
     const IR::Type* getVarValue(const IR::Type_Var* var, const IR::Node* errorPosition) const;
     const IR::Node* insertTypes(const IR::Node* node);
  public:
-    explicit DoBindTypeVariables(TypeMap* typeMap) : typeMap(typeMap) {
+    explicit DoBindTypeVariables(ReferenceMap* refMap, TypeMap* typeMap) 
+        : refMap(refMap), typeMap(typeMap) {
         CHECK_NULL(typeMap);
         setName("DoBindTypeVariables");
         newTypes = new IR::IndexedVector<IR::Node>(); }
@@ -27,6 +29,8 @@ class DoBindTypeVariables : public Transform {
     { return insertTypes(parser); }
     const IR::Node* postorder(IR::P4Control* control) override
     { return insertTypes(control); }
+
+    // const IR::Node* postorder(IR::Type_ComposablePackage* tcpkg) override;
 };
 
 class BindTypeVariables : public PassManager {
@@ -39,7 +43,7 @@ class BindTypeVariables : public PassManager {
         passes.push_back(new ClearTypeMap(typeMap));
         passes.push_back(new ResolveReferences(refMap));
         passes.push_back(new TypeInference(refMap, typeMap, false));  // may insert casts
-        passes.push_back(new DoBindTypeVariables(typeMap));
+        passes.push_back(new DoBindTypeVariables(refMap, typeMap));
         setName("BindTypeVariables");
     }
 };

@@ -15,6 +15,7 @@
  */
 namespace P4 {
 
+/*
 class ReplaceTypeName final : public Transform {
     ReferenceMap* refMap;
     const TypeVariableSubstitution* tvs;
@@ -32,6 +33,7 @@ class ReplaceTypeName final : public Transform {
     const IR::Type_Name* preorder(IR::Type_Name* cp) override;
 
 };
+*/
 
 class AnnotateTypes final : public Transform {
     ReferenceMap* refMap;

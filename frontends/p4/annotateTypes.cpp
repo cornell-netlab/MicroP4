@@ -5,6 +5,7 @@
 
 namespace P4 {
 
+/*
 const IR::Type_Name* ReplaceTypeName::preorder(IR::Type_Name* tn) {
     auto decl = refMap->getDeclaration(tn->path, false);
     if (!decl->is<IR::Type_Var>()) 
@@ -19,21 +20,22 @@ const IR::Type_Name* ReplaceTypeName::preorder(IR::Type_Name* tn) {
                     new IR::Path(newTV->getName()));
     return newTN;
 }
+*/
 
 unsigned int AnnotateTypes::i = 0;
 const IR::P4ComposablePackage* AnnotateTypes::preorder(IR::P4ComposablePackage* cp) {
 
+
+    const IR::Path* path = nullptr;
+    if (cp->interfaceType->is<IR::Type_Specialized>())
+        path = cp->interfaceType->to<IR::Type_Specialized>()->baseType->path;
+    if (cp->interfaceType->is<IR::Type_Name>()) {
+        path = cp->interfaceType->to<IR::Type_Name>()->path;
+        ::error("support to implement packages  without type args is disabled for now, not even checking if %1% was generic", path);
+        return cp;
+    }
+
     i++;
-
-        const IR::Path* path = nullptr;
-        if (cp->interfaceType->is<IR::Type_Specialized>())
-            path = cp->interfaceType->to<IR::Type_Specialized>()->baseType->path;
-        if (cp->interfaceType->is<IR::Type_Name>()) {
-            path = cp->interfaceType->to<IR::Type_Name>()->path;
-            ::error("support to implement packages  without type args is disabled for now, not even checking if %1% was generic", path);
-            return cp;
-        }
-
     const IR::IDeclaration* decl = refMap->getDeclaration(path, false);
     if (decl == nullptr) {
         ::error("Cannot find declaration for %1%", path);
@@ -44,8 +46,9 @@ const IR::P4ComposablePackage* AnnotateTypes::preorder(IR::P4ComposablePackage* 
         return cp;
     }
     
-    auto type = decl->to<IR::Type_ComposablePackage>();
+    auto interfaceType = decl->to<IR::Type_ComposablePackage>();
 
+    /*
     TypeVariableSubstitution tvs;
     auto setBindings =  [&] (const IR::IMayBeGenericType* genType, unsigned int i) {
         for (auto v : genType->getTypeParameters()->parameters) {
@@ -67,8 +70,9 @@ const IR::P4ComposablePackage* AnnotateTypes::preorder(IR::P4ComposablePackage* 
     ReplaceTypeName rtn(refMap, &tvs);
     cp->type = cp->type->apply(rtn)->to<IR::Type_ComposablePackage>();
 
+    */
 
-    for (auto typeDecl : *(cp->type->getDeclarations())) {
+    for (auto typeDecl : *(interfaceType->getDeclarations())) {
         auto typeArchBlock = typeDecl->to<IR::Type_ArchBlock>();
         if (!typeArchBlock)
             continue;

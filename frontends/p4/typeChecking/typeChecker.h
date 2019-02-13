@@ -69,13 +69,19 @@ class TypeInference : public Transform {
     TypeMap* typeMap;
     // If true we expect to leave the program unchanged
     bool readOnly;
-    const IR::Node* initialNode;
 
+    std::vector<std::pair<std::string, 
+                          const IR::TypeParameters*>> unifiableTypeParams;
+
+    const IR::Node* initialNode;
  public:
     // If readOnly=true it will assert that it behaves like
     // an Inspector.
-    TypeInference(ReferenceMap* refMap, TypeMap* typeMap,
-                  bool readOnly = false);
+    TypeInference(ReferenceMap* refMap, TypeMap* typeMap, 
+                  bool readOnly = false, 
+                  std::vector<std::pair<std::string, 
+                                       const IR::TypeParameters*>> 
+                  unifiableTypeParams = {});
 
  protected:
     const IR::Type* getType(const IR::Node* element) const;
@@ -138,6 +144,7 @@ class TypeInference : public Transform {
     const IR::Node* typeSet(const IR::Operation_Binary* op);
 
     const IR::Type* cloneWithFreshTypeVariables(const IR::IMayBeGenericType* type);
+    const IR::Type* cloneWithFreshTypeVariables(const IR::Type_ComposablePackage* type);
     std::pair<const IR::Type*, const IR::Vector<IR::Argument>*>
     containerInstantiation(const IR::Node* node,
                            const IR::Vector<IR::Argument>* args,
@@ -162,6 +169,10 @@ class TypeInference : public Transform {
     const IR::ActionListElement* validateActionInitializer(const IR::Expression* actionCall,
                                                            const IR::P4Table* table);
 
+    void pushTypeParameters(cstring nsname, const IR::TypeParameters* type);
+    bool popTypeParameters(cstring nsname);
+    void addUnifiableTypeParams(TypeConstraints* constraints);
+
     //////////////////////////////////////////////////////////////
 
  public:
@@ -185,11 +196,14 @@ class TypeInference : public Transform {
     // check invariants for entire list before checking the entries
     const IR::Node* preorder(IR::EntriesList* el) override;
 
+    const IR::Node* preorder(IR::P4ComposablePackage* pkg) override;
+
     const IR::Node* postorder(IR::Declaration_MatchKind* decl) override;
     const IR::Node* postorder(IR::Declaration_Variable* decl) override;
     const IR::Node* postorder(IR::Declaration_Constant* constant) override;
     const IR::Node* postorder(IR::P4Control* cont) override;
     const IR::Node* postorder(IR::P4Parser* cont) override;
+    // const IR::Node* postorder(IR::Type_ComposablePackage* pkg) override;
     const IR::Node* postorder(IR::Method* method) override;
 
     const IR::Node* postorder(IR::Type_Type* type) override;

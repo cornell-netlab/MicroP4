@@ -208,6 +208,8 @@ bool ToP4::preorder(const IR::Type_InfInt* t) {
 
 bool ToP4::preorder(const IR::Type_Var* t) {
     builder.append(t->name);
+    builder.append("/");
+    builder.append(std::to_string(t->getDeclId()));
     return false;
 }
 
@@ -468,9 +470,49 @@ bool ToP4::preorder(const IR::Type_Package* package) {
     return false;
 }
 
+bool ToP4::preorder(const IR::Type_ComposablePackage* tcpkg) {
+    dump(2); 
+    visit(tcpkg->annotations);
+    builder.append("cpackage ");
+    builder.append(tcpkg->name);
+    visit(tcpkg->typeParameters);
+    visit(tcpkg->applyParams);
+    visit(tcpkg->constructorParams);
+
+    builder.spc();
+    builder.blockStart();
+    setVecSep("\n", "\n");
+    preorder(tcpkg->typeLocalDeclarations);
+    doneVec();
+    builder.blockEnd(true);
+    return false;
+}
+
+bool ToP4::preorder(const IR::P4ComposablePackage* cpkg) {
+    visit(cpkg->type);
+    dump(2);
+    visit(cpkg->annotations);
+    builder.append("cpackage ");
+    builder.append(cpkg->name);
+    builder.append(" : implements ");
+    visit(cpkg->interfaceType);
+
+    builder.spc();
+    builder.blockStart();
+    setVecSep("\n");
+    visit(cpkg->packageLocals);
+    doneVec();
+    setVecSep("\n", "\n");
+    visit(&(cpkg->packageLocalDeclarations));
+    doneVec();
+    builder.blockEnd(true);
+    return false;
+
+}
+
 bool ToP4::process(const IR::Type_StructLike* t, const char* name) {
     dump(2);
-    builder.emitIndent();
+    //builder.emitIndent();
     visit(t->annotations);
     builder.appendFormat("%s ", name);
     builder.append(t->name);
@@ -512,7 +554,7 @@ bool ToP4::process(const IR::Type_StructLike* t, const char* name) {
 
 bool ToP4::preorder(const IR::Type_Parser* t) {
     dump(2);
-    builder.emitIndent();
+    //builder.emitIndent();
     visit(t->annotations);
     builder.append("parser ");
     builder.append(t->name);
@@ -524,7 +566,7 @@ bool ToP4::preorder(const IR::Type_Parser* t) {
 
 bool ToP4::preorder(const IR::Type_Control* t) {
     dump(2);
-    builder.emitIndent();
+    //builder.emitIndent(); // is not parent not appending spaces according to depth?
     visit(t->annotations);
     builder.append("control ");
     builder.append(t->name);
@@ -713,6 +755,7 @@ VECTOR_VISIT(IndexedVector, Declaration_ID)
 VECTOR_VISIT(IndexedVector, Node)
 VECTOR_VISIT(IndexedVector, ParserState)
 VECTOR_VISIT(IndexedVector, StatOrDecl)
+VECTOR_VISIT(IndexedVector, Type_Declaration)
 
 #undef VECTOR_VISIT
 

@@ -40,7 +40,8 @@ MethodCallExpressions.  Since there are no function pointers in P4,
 methods can completely be resolved at compilation time.  The static
 method 'resolve' will categorize each method call into one of several
 kinds:
-- apply method, could be of a table, control or parser
+- apply method, could be of a table, control or parser P4ComposablePackage & 
+  Type_ComposablePackage
 - extern function
 - extern method (method of an extern object)
 - action call
@@ -97,6 +98,7 @@ class MethodInstance : public InstanceBase {
 
 /** Represents the call of an Apply method on an object that implements IApply:
     a table, control or parser */
+// +Type_ComposablePackage  +P4ComposablePackage
 class ApplyMethod final : public MethodInstance {
     ApplyMethod(const IR::MethodCallExpression* expr, const IR::IDeclaration* decl,
                 const IR::IApply* applyObject) :
@@ -314,6 +316,32 @@ class ControlInstantiation : public Instantiation {
         substitute(); }
     const IR::P4Control* control;
 };
+
+// Since we allow to instantiate Composable package declared in .ip4.
+// This does not have definition in the source.
+// If needed, create a different IR node types for interface and composable type.
+class TypeComposableInstantiation : public Instantiation {
+ public:
+    TypeComposableInstantiation(const IR::Declaration_Instance* instance,
+                                const IR::Vector<IR::Type>* typeArguments,
+                                const IR::Type_ComposablePackage* tcpkg) :
+            Instantiation(instance, typeArguments), typeComposablePackage(tcpkg) {
+        constructorParameters = tcpkg->getConstructorParameters();
+        substitute(); }
+    const IR::Type_ComposablePackage* typeComposablePackage;
+};
+
+class P4ComposablePackageInstantiation : public Instantiation {
+ public:
+    P4ComposablePackageInstantiation(const IR::Declaration_Instance* instance,
+                                     const IR::Vector<IR::Type>* typeArguments,
+                                     const IR::P4ComposablePackage* p4pkg) :
+            Instantiation(instance, typeArguments), p4ComposablePackage(p4pkg) {
+        constructorParameters = p4pkg->getConstructorParameters();
+        substitute(); }
+    const IR::P4ComposablePackage* p4ComposablePackage;
+};
+
 
 }  // namespace P4
 

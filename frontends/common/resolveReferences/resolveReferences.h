@@ -97,6 +97,11 @@ class ResolutionContext : public IHasDbPrint {
 
     // Resolve a refrence to a type @p type.
     const IR::Type *resolveType(const IR::Type *type) const;
+
+ private:
+
+    const std::vector<const IR::IDeclaration*> * filterComposablePackageTypeDeclaration(
+        const std::vector<const IR::IDeclaration*>* decls) const;
 };
 
 /** Inspector that computes `refMap`: a map from paths to declarations.
@@ -159,6 +164,8 @@ class ResolveReferences : public Inspector {
     void postorder(const IR::TYPE* t) override; \
 
     DECLARE(P4Program)
+    DECLARE(P4ComposablePackage)
+    DECLARE(Type_ComposablePackage)
     DECLARE(P4Control)
     DECLARE(P4Parser)
     DECLARE(P4Action)
@@ -175,10 +182,11 @@ class ResolveReferences : public Inspector {
     bool preorder(const IR::MethodCallExpression* mce) override;
     bool preorder(const IR::P4Table* table) override;
     bool preorder(const IR::Declaration_MatchKind* d) override;
-    bool preorder(const IR::Declaration* d) override
-    { refMap->usedName(d->getName().name); return true; }
+    bool preorder(const IR::Declaration* d) override {
+      refMap->usedName(d->getName().name); return true; }
     bool preorder(const IR::Type_Declaration* d) override
     { refMap->usedName(d->getName().name); return true; }
+    const IR::Node* initialNode;
 
     void checkShadowing(const IR::INamespace*ns) const;
 };

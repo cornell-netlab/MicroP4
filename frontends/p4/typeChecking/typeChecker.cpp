@@ -39,7 +39,7 @@ class ConstantTypeSubstitution : public Transform {
                              ReferenceMap* refMap,
                              TypeMap* typeMap) : subst(subst), refMap(refMap), typeMap(typeMap) {
         CHECK_NULL(subst); CHECK_NULL(refMap); CHECK_NULL(typeMap);
-        LOG3("ConstantTypeSubstitution " << subst);
+        LOG3("ConstantTypeSubstitution  \n" << subst);
         setName("ConstantTypeSubstitution"); }
     const IR::Node* postorder(IR::Constant* cst) override {
         auto cstType = typeMap->getType(getOriginal(), true);
@@ -113,14 +113,38 @@ const IR::Type* TypeInference::cloneWithFreshTypeVariables(const IR::IMayBeGener
     auto clone = type->to<IR::Type>()->apply(sv);
     CHECK_NULL(clone);
     // Learn this new type
-    TypeInference tc(refMap, typeMap, true);
+    TypeInference tc(refMap, typeMap, true, unifiableTypeParams);
     (void)clone->apply(tc);
     LOG3("Cloned for type variables " << type << " into " << clone);
     return clone->to<IR::Type>();
 }
 
-TypeInference::TypeInference(ReferenceMap* refMap, TypeMap* typeMap, bool readOnly) :
-        refMap(refMap), typeMap(typeMap), readOnly(readOnly),
+const IR::Type* TypeInference::cloneWithFreshTypeVariables(const IR::Type_ComposablePackage* type) {
+    TypeVariableSubstitution tvs;
+    auto setBindings =  [&] (const IR::IMayBeGenericType* genType) {
+        for (auto v : genType->getTypeParameters()->parameters) {
+            auto tv = new IR::Type_Var(v->srcInfo, v->getName());
+            bool b = tvs.setBinding(v, tv);
+            BUG_CHECK(b, "%1%: failed replacing %2% with %3%", genType, v, tv);
+        }
+    };
+    setBindings(type);
+    for (auto decl : *(type->getDeclarations())) {
+        if (decl->is<IR::IMayBeGenericType>()) {
+            setBindings(decl->to<IR::IMayBeGenericType>());
+        }
+    }
+    TypeVariableSubstitutionVisitor sv(&tvs, true);
+    auto clone = type->to<IR::Type>()->apply(sv);
+    LOG3("Cloned for type variables " << type << " into " << clone);
+    return clone->to<IR::Type>();
+}
+
+TypeInference::TypeInference(ReferenceMap* refMap, TypeMap* typeMap, bool readOnly,
+                             std::vector<std::pair<std::string, 
+                                                   const IR::TypeParameters*>> 
+                                                   unifiableTypeParams) :
+        refMap(refMap), typeMap(typeMap), readOnly(readOnly), unifiableTypeParams(unifiableTypeParams),
         initialNode(nullptr) {
     CHECK_NULL(typeMap);
     CHECK_NULL(refMap);
@@ -173,7 +197,8 @@ const IR::Type* TypeInference::getTypeType(const IR::Node* element) const {
             BUG("Could not find type of %1%", element);
         return nullptr;
     }
-    BUG_CHECK(result->is<IR::Type_Type>(), "%1%: expected a TypeType", dbp(result));
+    // BUG_CHECK(result->is<IR::Type_Type>(), "%1%: expected a TypeType", dbp(result));
+    BUG_CHECK(result->is<IR::Type_Type>(), "%1%: expected a TypeType for %2%", dbp(result), element->toString());
     return result->to<IR::Type_Type>()->type;
 }
 
@@ -182,7 +207,7 @@ void TypeInference::setType(const IR::Node* element, const IR::Type* type) {
 }
 
 void TypeInference::addSubstitutions(const TypeVariableSubstitution* tvs) {
-    if (readOnly)
+    if (readOnly) 
         // we only need to do this the first time
         return;
     typeMap->addSubstitutions(tvs);
@@ -196,6 +221,7 @@ TypeVariableSubstitution* TypeInference::unify(const IR::Node* errorPosition,
         return new TypeVariableSubstitution();
 
     TypeConstraints constraints(typeMap->getSubstitutions());
+    addUnifiableTypeParams(&constraints);
     constraints.addEqualityConstraint(destType, srcType);
     auto tvs = constraints.solve(errorPosition);
     addSubstitutions(tvs);
@@ -414,6 +440,49 @@ const IR::Type* TypeInference::canonicalize(const IR::Type* type) {
         if (pl != tp->constructorParams || tps != tp->typeParameters)
             return new IR::Type_Package(tp->srcInfo, tp->name, tp->annotations, tps, pl);
         return type;
+    } else if (type->is<IR::Type_ComposablePackage>()) {
+        auto tcp = type->to<IR::Type_ComposablePackage>();
+        // std::cout<<"canon : "<<tcp->name<<"\n";
+        auto tps = tcp->typeParameters;
+        auto cpl = canonicalizeParameters(tcp->constructorParams);
+        auto rpl = canonicalizeParameters(tcp->applyParams);
+        if (cpl == nullptr || rpl == nullptr || tps == nullptr)
+            return nullptr;
+        auto newVec = new IR::IndexedVector<IR::Type_Declaration>();
+        bool vecFlag = false;
+        for (auto decl : *(tcp->getDeclarations())) { 
+            auto tdecl = decl->to<IR::Type_Declaration>();
+            //std::cout<<"in canon Type_ComposablePackage "<<tdecl->name<<"\n";
+            auto  cdecl = getTypeType(tdecl);
+            newVec->push_back(cdecl->to<IR::Type_Declaration>());
+            if (cdecl != tdecl) vecFlag = true;
+        }
+        if (cpl != tcp->constructorParams || rpl != tcp->applyParams 
+            || tps != tcp->typeParameters || vecFlag)
+            return new IR::Type_ComposablePackage(
+                             tcp->srcInfo, tcp->name, tcp->annotations, tps, rpl, 
+                             cpl, newVec);
+        return type;
+    } else if (type->is<IR::P4ComposablePackage>()) {
+        auto cp = type->to<IR::P4ComposablePackage>();
+        // auto ci = canonicalize(cp->interfaceType);
+        auto ctcp = canonicalize(cp->type);
+        if (ctcp == nullptr)
+            return nullptr;
+        auto ctype = ctcp->to<IR::Type_ComposablePackage>();
+        auto newVec = new IR::IndexedVector<IR::Type_Declaration>();
+        bool vecFlag = false;
+        for (auto decl : *(cp->packageLocals->getDeclarations())) { 
+            auto tdecl = decl->to<IR::Type_Declaration>();
+            auto  cdecl = getTypeType(tdecl);
+            newVec->push_back(cdecl->to<IR::Type_Declaration>());
+            if (cdecl != tdecl) vecFlag = true;
+        }
+        if (ctype != cp->type || vecFlag) {
+            return new IR::P4ComposablePackage(cp->srcInfo, cp->name, 
+                                               cp->interfaceType, newVec, ctype);
+        }
+        return type;
     } else if (type->is<IR::P4Control>()) {
         auto cont = type->to<IR::P4Control>();
         auto ctype0 = getTypeType(cont->type);
@@ -424,6 +493,7 @@ const IR::Type* TypeInference::canonicalize(const IR::Type* type) {
         if (pl == nullptr)
             return nullptr;
         if (ctype != cont->type || pl != cont->constructorParams)
+            // std::cout<<"creating new  P4Control"<<"\n";
             return new IR::P4Control(cont->srcInfo, cont->name,
                                      ctype, pl, cont->controlLocals, cont->body);
         return type;
@@ -565,7 +635,7 @@ const IR::Type* TypeInference::canonicalize(const IR::Type* type) {
             type->srcInfo, baseCanon, args, specialized);
         // learn the types of all components of the specialized type
         LOG2("Scanning the specialized type");
-        TypeInference tc(refMap, typeMap, true);
+        TypeInference tc(refMap, typeMap, true, unifiableTypeParams);
         (void)result->apply(tc);
         return result;
     } else {
@@ -903,6 +973,11 @@ const IR::Node* TypeInference::preorder(IR::Declaration_Instance* decl) {
         prune();
         return decl;
     }
+
+    if (type->to<IR::Type_ComposablePackage>()) {
+        std::cout<<"Type from getTypeType Declaration_Instance \n";
+        type->dbprint(std::cout); std::cout<<"\n";
+    }
     auto orig = getOriginal<IR::Declaration_Instance>();
 
     auto simpleType = type;
@@ -936,7 +1011,9 @@ const IR::Node* TypeInference::preorder(IR::Declaration_Instance* decl) {
             prune();
             return decl;
         }
-        if (!simpleType->is<IR::Type_Package>() && (findContext<IR::IContainer>() == nullptr)) {
+        if ((! (simpleType->is<IR::Type_Package>()
+                 || simpleType->is<IR::P4ComposablePackage>()) 
+            && (findContext<IR::IContainer>() == nullptr))) {
             ::error("%1%: cannot instantiate at top-level", decl);
             return decl;
         }
@@ -996,6 +1073,7 @@ TypeInference::containerInstantiation(
                                             new IR::Vector<IR::Type>(),
                                             rettype, args);
     TypeConstraints constraints(typeMap->getSubstitutions());
+    addUnifiableTypeParams(&constraints);
     constraints.addEqualityConstraint(constructor, callType);
     auto tvs = constraints.solve(node);
     if (tvs == nullptr)
@@ -1006,6 +1084,13 @@ TypeInference::containerInstantiation(
     auto newArgs = cts.convert(constructorArguments);
 
     auto returnType = tvs->lookup(rettype);
+
+    TypeInference learn(refMap, typeMap, true);
+    (void)returnType->apply(learn);
+
+    std::cout<<"------------containerInstantiation return type-------\n";
+    returnType->dbprint(std::cout); std::cout<<"\n";
+    std::cout<<"-----------------------------------------------------\n";
     BUG_CHECK(returnType != nullptr, "Cannot infer constructor result type %1%", node);
     return std::pair<const IR::Type*, const IR::Vector<IR::Argument>*>(returnType, newArgs);
 }
@@ -1056,7 +1141,7 @@ const IR::Type* TypeInference::setTypeType(const IR::Type* type, bool learn) {
     if (canon != nullptr) {
         // Learn the new type
         if (canon != typeToCanonicalize && learn) {
-            TypeInference tc(refMap, typeMap, true);
+            TypeInference tc(refMap, typeMap, true, unifiableTypeParams);
             unsigned e = ::errorCount();
             (void)canon->apply(tc);
             if (::errorCount() > e)
@@ -1083,6 +1168,100 @@ const IR::Node* TypeInference::postorder(IR::P4Parser* parser) {
     return parser;
 }
 
+void TypeInference::pushTypeParameters(cstring nsname, 
+                                       const IR::TypeParameters* typeParams) {
+    std::cout<<typeParams->toString()<<std::endl;
+    unifiableTypeParams.emplace_back(nsname, typeParams);
+}
+
+bool TypeInference::popTypeParameters(cstring nsname) {
+
+    BUG_CHECK(unifiableTypeParams.size() > 0,
+              "%1% is removing Type Parameters but, the stack is empty", nsname);
+    auto ele = unifiableTypeParams[unifiableTypeParams.size()-1];
+    BUG_CHECK(ele.first == nsname,
+              "%1% is TypeParameters stack, %2% is being removed",
+              ele.first, nsname);
+    unifiableTypeParams.pop_back();
+    return true;
+}
+
+void TypeInference::addUnifiableTypeParams(TypeConstraints* constraints) {
+
+    for (const auto& ele : unifiableTypeParams) {
+        for (auto tp : *(ele.second->getDeclarations())) {
+            constraints->addUnifiableTypeVariable(tp->to<IR::ITypeVar>());
+        }
+    }
+}
+
+const IR::Node* TypeInference::preorder(IR::P4ComposablePackage* pkg) {
+    // std::cout<<"preorder: starts "<<pkg->name<<" "<<pkg->id<<"\n";
+    if (done()) return pkg;
+
+    BUG_CHECK(!(readOnly && pkg->type==nullptr), "TI should be run in  non-readonly mode at least once before running it in read only mode");
+    visit(pkg->annotations, "annotations");
+
+    TypeVariableSubstitution *tvs = new TypeVariableSubstitution();
+    if (pkg->type == nullptr) {
+        visit(pkg->interfaceType, "interfaceType");
+        auto specializedCanon = getTypeType(pkg->interfaceType)->to<IR::Type_SpecializedCanonical>();
+        pkg->type = specializedCanon->substituted->to<IR::Type_ComposablePackage>();
+
+        std::cout<<"\n---------after specialization substituted type------\n";
+        pkg->type->dbprint(std::cout);
+        std::cout<<"\n----------------------------------------------------\n";
+    } else {
+        visit(pkg->type);
+    }
+    
+    auto specializedCanon = getTypeType(pkg->interfaceType)->to<IR::Type_SpecializedCanonical>();
+    auto typeParameters = specializedCanon->baseType->
+                          to<IR::Type_ComposablePackage>()->getTypeParameters();
+    bool success = tvs->setBindings(pkg->type->getNode(), typeParameters,
+                                    specializedCanon->arguments);
+
+    if (!typeMap->hasSubstitutions(typeParameters))
+        typeMap->addSubstitutions(tvs);
+
+    /*
+    if (pkg->type == nullptr) {
+        auto decl = refMap->getDeclaration(pkg->interfaceType->path, true);
+        BUG_CHECK(decl->is<IR::Type_ComposablePackage>(), "Type object for %1% should be cpackage type",  pkg->interfaceType->path);
+        pkg->type = decl->to<IR::Type_ComposablePackage>();
+        // std::cout<<"before clone \n";
+        // pkg->type->dbprint(std::cout);
+        // std::cout<<"-----------\n";
+        auto cpkgType = canonicalize(pkg->type)->to<IR::Type_ComposablePackage>();
+        pkg->type =
+          cloneWithFreshTypeVariables(cpkgType)->to<IR::Type_ComposablePackage>();
+    }
+    */
+
+    // pushTypeParameters(pkg->name, pkg->type->getTypeParameters());
+    // this will visit MethodCallExpression at 3006
+    visit(pkg->packageLocals, "packageLocals"); 
+    visit(pkg->packageLocalDeclarations, "packageLocalDeclarations");
+
+
+    auto cpkg = canonicalize(pkg);
+    auto ccpkg = cpkg->to<IR::P4ComposablePackage>();
+    auto cpkgType = ccpkg->type;
+
+    if (!readOnly) {
+        typeMap->removeSubstitutions(tvs);
+    }
+    std::cout<<"before unify call \n";
+    (void)unify(pkg, cpkgType, ccpkg);
+    
+    setTypeType(pkg, true);
+
+    // popTypeParameters(pkg->name);
+    // std::cout<<"preorder: ends "<<pkg->name<<" "<<pkg->id<<"\n";
+    prune();
+    return pkg;
+}
+ 
 const IR::Node* TypeInference::postorder(IR::Type_InfInt* type) {
     if (done()) return type;
     auto tt = new IR::Type_Type(getOriginal<IR::Type>());
@@ -1091,6 +1270,8 @@ const IR::Node* TypeInference::postorder(IR::Type_InfInt* type) {
 }
 
 const IR::Node* TypeInference::postorder(IR::Type_ArchBlock* decl) {
+    // std::cout<<"Type_ArchBlock: "<<decl->id<<" "<<decl->name<<"\n";
+    if (done()) return decl;
     (void)setTypeType(decl);
     return decl;
 }
@@ -1233,7 +1414,7 @@ const IR::Node* TypeInference::postorder(IR::P4ValueSet* decl) {
     if (canon != nullptr) {
         // Learn the new type
         if (canon != decl->elementType) {
-            TypeInference tc(refMap, typeMap, true);
+            TypeInference tc(refMap, typeMap, true, unifiableTypeParams);
             unsigned e = ::errorCount();
             (void)canon->apply(tc);
             if (::errorCount() > e)
@@ -1267,6 +1448,7 @@ const IR::Node* TypeInference::postorder(IR::Type_Extern* type) {
 }
 
 const IR::Node* TypeInference::postorder(IR::Type_Method* type) {
+     // std::cout<<"postorder type method "<<type->toString()<<"\n";;
     (void)setTypeType(type);
     return type;
 }
@@ -2390,6 +2572,7 @@ const IR::Node* TypeInference::postorder(IR::TypeNameExpression* expression) {
 }
 
 const IR::Node* TypeInference::postorder(IR::Member* expression) {
+    LOG2("Visiting Member " << dbp(expression));
     if (done()) return expression;
     auto type = getType(expression->expr);
     if (type == nullptr)
@@ -2489,7 +2672,7 @@ const IR::Node* TypeInference::postorder(IR::Member* expression) {
         if (methodType == nullptr)
             return expression;
         // sometimes this is a synthesized type, so we have to crawl it to understand it
-        TypeInference learn(refMap, typeMap, true);
+        TypeInference learn(refMap, typeMap, true, unifiableTypeParams);
         (void)methodType->apply(learn);
 
         setType(getOriginal(), methodType);
@@ -2677,6 +2860,7 @@ TypeInference::actionCall(bool inActionList,
 
     setType(getOriginal(), resultType);
     setType(actionCall, resultType);
+    addUnifiableTypeParams(&constraints);
     auto tvs = constraints.solve(actionCall);
     if (tvs == nullptr)
         return actionCall;
@@ -2858,6 +3042,7 @@ const IR::Node* TypeInference::postorder(IR::MethodCallExpression* expression) {
                                                 typeArgs, rettype, args);
 
         TypeConstraints constraints(typeMap->getSubstitutions());
+        addUnifiableTypeParams(&constraints);
         constraints.addEqualityConstraint(ft, callType);
         auto tvs = constraints.solve(expression);
         if (tvs == nullptr)
@@ -2871,7 +3056,7 @@ const IR::Node* TypeInference::postorder(IR::MethodCallExpression* expression) {
 
         // construct types for the specMethodType, use a new typeChecker
         // that uses the same tables!
-        TypeInference learn(refMap, typeMap, true);
+        TypeInference learn(refMap, typeMap, true, unifiableTypeParams);
         (void)specMethodType->apply(learn);
 
         auto canon = getType(specMethodType);
