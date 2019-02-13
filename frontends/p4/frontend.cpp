@@ -28,6 +28,7 @@ limitations under the License.
 #include "frontends/common/resolveReferences/resolveReferences.h"
 // Passes
 #include "actionsInlining.h"
+#include "annotateTypes.h"
 #include "checkConstants.h"
 #include "checkNamedArgs.h"
 #include "createBuiltins.h"
@@ -133,6 +134,9 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         // Synthesize some built-in constructs
         new CreateBuiltins(),
         new ResolveReferences(&refMap, true),  // check shadowing
+        new AnnotateTypes(&refMap),
+        new ResolveReferences(&refMap, true),  // check shadowing
+        
         // First pass of constant folding, before types are known --
         // may be needed to compute types.
         new ConstantFolding(&refMap, nullptr),
@@ -144,27 +148,36 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         new ResolveReferences(&refMap),  // check shadowing
         new Deprecated(&refMap),
         new CheckNamedArgs(),
-        new TypeInference(&refMap, &typeMap, false),  // insert casts
+        new TypeInference(&refMap, &typeMap, false), // insert casts
         new DefaultArguments(&refMap, &typeMap),  // add default argument values to parameters
+        new FrontEndDump(),  // used for testing the program at this point
         new BindTypeVariables(&refMap, &typeMap),
         new StructInitializers(&refMap, &typeMap),
         new TableKeyNames(&refMap, &typeMap),
+        new FrontEndDump(),  // used for testing the program at this point
         // Another round of constant folding, using type information.
         new ConstantFolding(&refMap, &typeMap),
         new StrengthReduction(),
+        new FrontEndDump(),  // used for testing the program at this point
         new UselessCasts(&refMap, &typeMap),
         new SimplifyControlFlow(&refMap, &typeMap),
-        new FrontEndDump(),  // used for testing the program at this point
         new RemoveAllUnusedDeclarations(&refMap, true),
+        new FrontEndDump(),  // used for testing the program at this point
         new SimplifyParsers(&refMap),
         new ResetHeaders(&refMap, &typeMap),
         new UniqueNames(&refMap),  // Give each local declaration a unique internal name
         new MoveDeclarations(),  // Move all local declarations to the beginning
+        new FrontEndDump(),  // used for testing the program at this point
         new MoveInitializers(),
+        new FrontEndDump(),  // used for testing the program at this point
         new SideEffectOrdering(&refMap, &typeMap, skipSideEffectOrdering),
+        new FrontEndDump(),  // used for testing the program at this point
         new SetHeaders(&refMap, &typeMap),
+        new FrontEndDump(),  // used for testing the program at this point
         new SimplifyControlFlow(&refMap, &typeMap),
+        new FrontEndDump(),  // used for testing the program at this point
         new MoveDeclarations(),  // Move all local declarations to the beginning
+        new FrontEndDump(),  // used for testing the program at this point
         new SimplifyDefUse(&refMap, &typeMap),
         new UniqueParameters(&refMap, &typeMap),
         new SimplifyControlFlow(&refMap, &typeMap),
@@ -174,6 +187,7 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         new RemoveDontcareArgs(&refMap, &typeMap),
         new MoveConstructors(&refMap),
         new RemoveAllUnusedDeclarations(&refMap),
+        new FrontEndDump(),  // used for testing the program at this point
         new ClearTypeMap(&typeMap),
         evaluator,
         new Inline(&refMap, &typeMap, evaluator),
@@ -181,6 +195,7 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         new InlineFunctions(&refMap, &typeMap),
         // Check for constants only after inlining
         new CheckConstants(&refMap, &typeMap),
+        new FrontEndDump(),  // used for testing the program at this point
         new SimplifyControlFlow(&refMap, &typeMap),
         new RemoveParserControlFlow(&refMap, &typeMap),
         new UniqueNames(&refMap),

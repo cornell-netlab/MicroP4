@@ -50,6 +50,11 @@ class TypeUnification final {
                      const IR::Type_ArchBlock* src,
                      bool reportErrors);
 
+    bool unifyComposablePackages(const IR::Node* errorPosition,
+                                 const IR::Type_ComposablePackage* dest,
+                                 const IR::P4ComposablePackage* src,
+                                 bool reportErrors);
+
  public:
     explicit TypeUnification(TypeConstraints* constraints) : constraints(constraints) {}
     /**

@@ -146,6 +146,7 @@ class ToP4 : public Inspector {
     bool preorder(const IR::Type_Extern* t) override;
     bool preorder(const IR::Type_Unknown* t) override;
     bool preorder(const IR::Type_Tuple* t) override;
+    bool preorder(const IR::Type_ComposablePackage* t) override;
 
     // declarations
     bool preorder(const IR::Declaration_Constant* cst) override;
@@ -192,6 +193,7 @@ class ToP4 : public Inspector {
     bool preorder(const IR::IndexedVector<IR::Node>* v) override;
     bool preorder(const IR::IndexedVector<IR::ParserState>* v) override;
     bool preorder(const IR::IndexedVector<IR::StatOrDecl>* v) override;
+    bool preorder(const IR::IndexedVector<IR::Type_Declaration>* v) override;
 
     // statements
     bool preorder(const IR::AssignmentStatement* s) override;
@@ -219,6 +221,7 @@ class ToP4 : public Inspector {
     bool preorder(const IR::ParameterList* p) override;
     bool preorder(const IR::Method* p) override;
     bool preorder(const IR::Function* function) override;
+    bool preorder(const IR::P4ComposablePackage* cpkg) override;
 
     bool preorder(const IR::ExpressionValue* v) override;
     bool preorder(const IR::ActionListElement* ale) override;

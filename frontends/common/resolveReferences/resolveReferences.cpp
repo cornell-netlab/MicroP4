@@ -104,7 +104,6 @@ ResolutionContext::resolve(IR::ID name, P4::ResolutionType type, bool forwardOK)
                 if (!before)
                     continue;
             }
-
             LOG3("Resolved in " << dbp(current->getNode()));
             auto result = new std::vector<const IR::IDeclaration*>();
             result->push_back(decl);
@@ -113,6 +112,38 @@ ResolutionContext::resolve(IR::ID name, P4::ResolutionType type, bool forwardOK)
     }
 
     return &empty;
+}
+
+const std::vector<const IR::IDeclaration*> *
+ResolutionContext::filterComposablePackageTypeDeclaration(
+                      const std::vector<const IR::IDeclaration*>* decls) const {
+
+    std::function<bool(const IR::IDeclaration*)> cpFilter =
+            [](const IR::IDeclaration* d) {
+            return !(d->is<IR::P4ComposablePackage>() || d->is<IR::Type_ComposablePackage>()); 
+    };
+    std::function<bool(const IR::IDeclaration*)> p4cpFilter =
+            [](const IR::IDeclaration* d) {
+            return (d->is<IR::P4ComposablePackage>()); 
+    };   
+    auto cpDecls = Util::Enumerator<const IR::IDeclaration*>::createEnumerator(
+        *(new std::vector<const IR::IDeclaration*>(*decls)));
+    
+    auto p4cpDecls = Util::Enumerator<const IR::IDeclaration*>::createEnumerator(
+        *(new std::vector<const IR::IDeclaration*>(*decls)));
+
+    cpDecls = cpDecls->where(cpFilter);
+    std::vector<const IR::IDeclaration*>* retvec =  cpDecls->toVector();
+    p4cpDecls = p4cpDecls->where(p4cpFilter);
+
+    if (p4cpDecls->count() > 0) {
+        p4cpDecls->reset();
+        auto vec = p4cpDecls->toVector();
+        retvec->insert(retvec->end(), vec->begin(), vec->end());
+        return retvec;
+    }
+    return decls;
+    
 }
 
 void ResolutionContext::done() {
@@ -125,6 +156,7 @@ ResolutionContext::resolveUnique(IR::ID name,
                                  P4::ResolutionType type,
                                  bool forwardOK) const {
     const std::vector<const IR::IDeclaration*> *decls = resolve(name, type, forwardOK);
+    decls = filterComposablePackageTypeDeclaration(decls);
     // Check overloaded symbols.
     if (!argumentStack.empty() && decls->size() > 1) {
         auto arguments = argumentStack.back();
@@ -141,10 +173,11 @@ ResolutionContext::resolveUnique(IR::ID name,
         ::error("Could not find declaration for %1%", name);
         return nullptr;
     }
+
     if (decls->size() == 1)
         return decls->at(0);
 
-    ::error("Multiple matching declarations for %1%", name);
+      ::error("Multiple matching declarations for %1%", name);
     for (auto a : *decls)
         ::error("Candidate: %1%", a);
     return nullptr;
@@ -251,6 +284,14 @@ void ResolveReferences::checkShadowing(const IR::INamespace* ns) const {
                 // attribute locals often match attributes
                 continue;
 
+            // These are not shadows, these are declarations and implementations.
+            // The declarations are added in the same  context as
+            // implementations.
+            if (pnode->is<IR::Type_Parser>() && node->is<IR::P4Parser>() )
+                continue;
+            if (pnode->is<IR::Type_Control>() && node->is<IR::P4Control>() )
+                continue;
+
             ::warning("%1% shadows %2%", node, pnode);
         }
     }
@@ -315,6 +356,84 @@ bool ResolveReferences::preorder(const IR::PathExpression* path) {
 
 bool ResolveReferences::preorder(const IR::Type_Name* type) {
     resolvePath(type->path, true); return true; }
+
+bool ResolveReferences::preorder(const IR::Type_ComposablePackage *tcp) {
+    refMap->usedName(tcp->name.name);
+    addToContext(tcp->getTypeParameters());
+    addToContext(tcp->getApplyParameters());
+    addToContext(tcp->getConstructorParameters());
+
+    addToContext(tcp);
+    return true;
+}
+
+void ResolveReferences::postorder(const IR::Type_ComposablePackage *tcp) {
+
+    removeFromContext(tcp);
+    removeFromContext(tcp->getConstructorParameters());
+
+    // Shadow warnings
+    removeFromContext(tcp->getApplyParameters());
+    removeFromContext(tcp->getTypeParameters());
+}
+
+bool ResolveReferences::preorder(const IR::P4ComposablePackage *cp) {
+    if (cp->type == nullptr) {
+        // visit (cp->interfaceType); 
+        /*
+         *  experimental code: add BUG Checks and errors
+         */
+        const IR::Path* path = nullptr;
+        if (cp->interfaceType->is<IR::Type_Specialized>())
+            path = cp->interfaceType->to<IR::Type_Specialized>()->baseType->path;
+        if (cp->interfaceType->is<IR::Type_Name>())
+            path = cp->interfaceType->to<IR::Type_Name>()->path;
+        resolvePath(path, true);
+        auto decl = refMap->getDeclaration(path, false);
+
+        if (!decl->is<IR::Type_ComposablePackage>()) {
+            ::error("%1% should be defined before used in %2%", path->name, cp->name);
+            return false;
+        } else {
+            auto tcp = decl->to<IR::Type_ComposablePackage>();
+            addToContext(tcp);
+        }
+    }
+    refMap->usedName(cp->name.name);
+    
+    if (cp->type != nullptr) {
+        addToContext(cp->type);
+        addToContext(cp->getTypeParameters());
+        //addToContext(cp->getApplyParameters());
+        addToContext(cp->getConstructorParameters());
+    }
+    addToContext(cp);
+    return true;
+}
+
+void ResolveReferences::postorder(const IR::P4ComposablePackage *cp) {
+    removeFromContext(cp);
+    if (cp->type != nullptr) {
+        removeFromContext(cp->getConstructorParameters());
+        //removeFromContext(cp->getApplyParameters());
+        removeFromContext(cp->getTypeParameters());
+        removeFromContext(cp->type);
+    } else {
+        const IR::Path* path = nullptr;
+        if (cp->interfaceType->is<IR::Type_Specialized>())
+            path = cp->interfaceType->to<IR::Type_Specialized>()->baseType->path;
+        if (cp->interfaceType->is<IR::Type_Name>())
+            path = cp->interfaceType->to<IR::Type_Name>()->path;
+
+        auto decl = refMap->getDeclaration(path, false);
+        if (!decl->is<IR::Type_ComposablePackage>()) {
+            ::error("%1% should be defined before used in %2%", path->name, cp->name);
+        } else {
+            auto tcp = decl->to<IR::Type_ComposablePackage>();
+            removeFromContext(tcp);
+        }
+    }
+}
 
 bool ResolveReferences::preorder(const IR::P4Control *c) {
     refMap->usedName(c->name.name);

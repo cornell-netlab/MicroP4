@@ -52,6 +52,7 @@ const IR::Node* TypeVariableSubstitutionVisitor::replacement(IR::ITypeVar* typeV
     const IR::ITypeVar* current = getOriginal<IR::ITypeVar>();
     const IR::Type* replacement = nullptr;
     while (true) {
+        // std::cout<<"infinite while \n";
         // This will end because there should be no circular chain of variables pointing
         // to each other.
         const IR::Type* type = bindings->lookup(current);
@@ -65,8 +66,22 @@ const IR::Node* TypeVariableSubstitutionVisitor::replacement(IR::ITypeVar* typeV
     if (replacement == nullptr)
         return typeVariable->getNode();
     LOG2("Replacing " << getOriginal() << " with " << replacement);
+    // std::cout<<"Replacing " << getOriginal() << " with " << replacement<<std::endl;
     return replacement;
 }
+
+/*
+const IR::Node* TypeVariableSubstitutionVisitor::preorder(IR::Type_Name* typeName) {
+    if (!typeMap) return typeName;
+
+    std::cout<<"TypeVariableSubstitutionVisitor typeName: "<<typeName->toString()<<"\n";
+    auto typeVar = typeMap->getType(getOriginal<IR::Type_Name>(), true);
+    if (typeVar->is<IR::Type_Var>())  {   
+        return replacement(typeVar->to<IR::Type_Var>());
+    }
+    return typeName;
+}
+*/
 
 const IR::Node* TypeNameSubstitutionVisitor::preorder(IR::Type_Name* typeName) {
     auto type = bindings->lookup(typeName);

@@ -239,6 +239,80 @@ bool TypeUnification::unifyBlocks(const IR::Node* errorPosition,
     return false;
 }
 
+bool TypeUnification::unifyComposablePackages(const IR::Node* errorPosition,
+                                              const IR::Type_ComposablePackage* dest,
+                                              const IR::P4ComposablePackage* src,
+                                              bool reportErrors) {
+    bool retVal = true;
+    CHECK_NULL(dest); CHECK_NULL(src);
+    LOG3("Unifying composable packages " << dest->name << " with " << src->name);
+
+/*
+    for (auto tv : dest->typeParameters->parameters)
+        constraints->addUnifiableTypeVariable(tv);
+*/
+
+    // std::unordered_map<cstring, const IR::Type_Declaration*> destTypeDecls;
+    std::unordered_map<cstring, const IR::Type_Declaration*> srcDecls;
+    // BUG check null on dest_type_decls->typeLocalDeclarations and src->packageLocals-
+
+    for (auto decl : *(src->getDeclarations())) {
+        BUG_CHECK(decl->is<IR::Type_Declaration>(), 
+                  "%1% has non Type_Declaration objects", src->name);
+        const IR::Type_Declaration* typeDecl = nullptr;
+        if (decl->is<IR::P4Parser>()) {
+            auto p4parser = decl->to<IR::P4Parser>();
+            typeDecl = p4parser->type;
+        } else if (decl->is<IR::P4Control>()) {
+            auto p4control = decl->to<IR::P4Control>();
+            typeDecl = p4control->type;
+        } else if (decl->is<IR::P4ComposablePackage>()) {
+            auto p4cpkg =  decl->to<IR::P4ComposablePackage>();
+            typeDecl = p4cpkg->type;
+        }
+        else {
+            typeDecl = nullptr;
+        }
+        if (typeDecl != nullptr)
+            srcDecls.emplace(typeDecl->name, typeDecl);
+    }
+
+    for (auto decl : *(dest->getDeclarations())) {
+        BUG_CHECK(decl->is<IR::Type_Declaration>(), 
+                  "%1% has non Type_Declaration objects", src->name);
+        auto typeDecl = decl->to<IR::Type_Declaration>();
+        if (typeDecl->is<IR::Type_ArchBlock>()) {
+            auto typeArchBlock = typeDecl->to<IR::Type_ArchBlock>();
+            auto iter = srcDecls.find(typeDecl->name.name);
+            if ( iter == srcDecls.end()) {
+                if (typeArchBlock->getAnnotation(
+                        IR::Annotation::optionalAnnotation) == nullptr) {
+                  if (reportErrors)
+                      ::error("%1% is not implemented" , typeArchBlock->name);
+                  retVal = false;
+                }
+
+            } else {
+                if (!iter->second->is<IR::Type_Declaration>())
+                    continue;
+                auto srcArch = iter->second->to<IR::Type_ArchBlock>();
+                //std::cout<<"unifying "<<typeDecl->name<<" with "<<srcArch->name<<"\n";
+                if (!unify(iter->second, typeArchBlock, srcArch, reportErrors)) {
+                    if (reportErrors) {
+                        ::error("%1%: Cannot unify %2% to %3%",
+                                errorPosition, typeDecl->toString(), 
+                                srcArch->toString());
+                    }
+                    retVal = false;
+                } else {
+                    retVal &= retVal;
+                }
+            }
+        }
+    } 
+    return retVal;
+}
+
 bool TypeUnification::unify(const IR::Node* errorPosition,
                             const IR::Type* dest,
                             const IR::Type* src,
@@ -246,6 +320,7 @@ bool TypeUnification::unify(const IR::Node* errorPosition,
     // These are canonical types.
     CHECK_NULL(dest); CHECK_NULL(src);
     LOG3("Unifying " << dest << " with " << src);
+    // std::cout<<"Unifying " << dest << " with " << src << std::endl;
 
     if (src->is<IR::ITypeVar>())
         src = src->apply(constraints->replaceVariables)->to<IR::Type>();
@@ -262,6 +337,18 @@ bool TypeUnification::unify(const IR::Node* errorPosition,
 
     if (src->is<IR::Type_Dontcare>() || dest->is<IR::Type_Dontcare>())
         return true;
+
+    if (dest->is<IR::Type_ComposablePackage>()) {
+        auto destt = dest->to<IR::Type_ComposablePackage>();
+        if (!src->is<IR::P4ComposablePackage>()) {      
+            if (reportErrors)
+                ::error("%1%: Cannot unify %2% to %3%",
+                        errorPosition, dest->toString(), src->toString());
+            return false;
+        }
+        auto srcc = src->to<IR::P4ComposablePackage>();
+        return unifyComposablePackages(errorPosition, destt, srcc, reportErrors);
+    }
 
     if (dest->is<IR::Type_ArchBlock>()) {
         if (!src->is<IR::Type_ArchBlock>()) {

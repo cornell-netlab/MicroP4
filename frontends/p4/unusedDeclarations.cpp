@@ -21,6 +21,8 @@ namespace P4 {
 
 Visitor::profile_t RemoveUnusedDeclarations::init_apply(const IR::Node* node) {
     LOG4("Reference map " << refMap);
+    // std::cout<<"init_apply "<<node->is<IR::P4Program>()<<"\n";
+    hasMain = containsMain(node);
     return Transform::init_apply(node);
 }
 
@@ -51,7 +53,8 @@ const IR::Node* RemoveUnusedDeclarations::preorder(IR::Type_SerEnum* type) {
 }
 
 const IR::Node* RemoveUnusedDeclarations::preorder(IR::P4Control* cont) {
-    if (!refMap->isUsed(getOriginal<IR::IDeclaration>())) {
+    if (!refMap->isUsed(getOriginal<IR::IDeclaration>()) && hasMain) {
+        // std::cout<<"being removed   "<<cont->name<<"\n";
         LOG3("Removing " << cont);
         prune();
         return nullptr;
@@ -64,12 +67,13 @@ const IR::Node* RemoveUnusedDeclarations::preorder(IR::P4Control* cont) {
 }
 
 const IR::Node* RemoveUnusedDeclarations::preorder(IR::P4Parser* cont) {
-    if (!refMap->isUsed(getOriginal<IR::IDeclaration>())) {
+
+    if (!refMap->isUsed(getOriginal<IR::IDeclaration>()) && hasMain) {
+        // std::cout<<"being removed   "<<cont->name<<"\n";
         LOG3("Removing " << cont);
         prune();
         return nullptr;
     }
-
     visit(cont->parserLocals, "parserLocals");
     visit(cont->states, "states");
     prune();
@@ -103,6 +107,7 @@ const IR::Node* RemoveUnusedDeclarations::process(const IR::IDeclaration* decl) 
     if (refMap->isUsed(getOriginal<IR::IDeclaration>()))
         return decl->getNode();
     LOG3("Removing " << getOriginal());
+    // std::cout<<"Removing " <<getOriginal()->getNode()->toString()<<" "<<getOriginal()->id<<"\n";
     prune();  // no need to go deeper
     return nullptr;
 }
@@ -111,6 +116,15 @@ const IR::Node* RemoveUnusedDeclarations::preorder(IR::Declaration_Instance* dec
     // Don't delete instances; they may have consequences on the control-plane API
     if (decl->getName().name == IR::P4Program::main && getParent<IR::P4Program>())
         return decl;
+    
+    // This will retain default and  unused programmer declared instances.
+    // Revisit here and refine the logic.
+    auto parentDecl = getParent<IR::P4ComposablePackage>();
+    if (parentDecl && nsDeclDecisionStack.back().first->getName() 
+                                      == parentDecl->getName()
+                   && nsDeclDecisionStack.back().second)
+        return decl;
+        
     if (!refMap->isUsed(getOriginal<IR::Declaration_Instance>())) {
         if (giveWarning(getOriginal()))
             ::warning("%1%: unused instance", decl);
@@ -142,5 +156,56 @@ const IR::Node* RemoveUnusedDeclarations::preorder(IR::ParserState* state) {
     prune();
     return nullptr;
 }
+
+const IR::Node* RemoveUnusedDeclarations::preorder(IR::P4ComposablePackage* p4cpkg) {
+    bool pkgUsed = refMap->isUsed(getOriginal<IR::P4ComposablePackage>());
+    // std::cout<<"Had Main "<<hasMain<<std::endl;
+    // std::cout<<"pkgUsed "<<pkgUsed<<std::endl;
+    if (pkgUsed || !hasMain) {
+        nsDeclDecisionStack.emplace_back(p4cpkg, true);
+        return p4cpkg;
+    } else { 
+        prune();
+        return nullptr;
+    }
+}
+
+const IR::Node* RemoveUnusedDeclarations::postorder(IR::P4ComposablePackage* p4cpkg) {
+    BUG_CHECK(nsDeclDecisionStack.back().first->getName() == p4cpkg->getName(), 
+        "Unexpected %1% declaration on namespace stack ",p4cpkg->getName());
+    nsDeclDecisionStack.pop_back();
+    return p4cpkg;
+}
+
+const IR::Node* RemoveUnusedDeclarations::preorder(IR::Type_ComposablePackage* 
+                                                                      tcpkg) {
+    // This is needed, because interfaceType Type_Name of P4ComposablePackage 
+    // does not point to its type member in RefMap. 
+    // First ResolveReference pass make interfaceType point to common
+    // declaration, then TypeInference clones the declaration saves in type
+    // field.
+    // It would be nice to have interfaceType pointing to the clone.
+    prune();
+    if (getParent<IR::P4ComposablePackage>() 
+        || refMap->isUsed(getOriginal<IR::Type_ComposablePackage>()) )
+        return tcpkg;
+    return nullptr;
+}
+
+// If the program does not have a declaration with "main", do not remove 
+// top level declarations.
+// Compiler will create a library json file for composable architecture.
+// If there is a main declaration all unused declarations should be removed as
+// per normal scenario.
+bool RemoveUnusedDeclarations::containsMain(const IR::Node* node) {
+    auto p4Program = node->to<IR::P4Program>();
+    if (p4Program)
+        hasMain = p4Program->getDeclsByName(IR::P4Program::main)
+                               ->toVector()->size() == 1;
+    else
+        std::cout<<"P4Program "<<p4Program<<"\n";
+    return hasMain;
+}
+
 
 }  // namespace P4

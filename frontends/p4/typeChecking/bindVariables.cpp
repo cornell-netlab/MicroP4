@@ -71,13 +71,21 @@ const IR::Node* DoBindTypeVariables::postorder(IR::Declaration_Instance* decl) {
     }
     decl->type = new IR::Type_Specialized(
         decl->type->srcInfo, decl->type->to<IR::Type_Name>(), typeArgs);
+    std::cout<<"bindVariables decl --- "<<decl<<std::endl;;
     return decl;
 }
 
 const IR::Node* DoBindTypeVariables::postorder(IR::MethodCallExpression* expression) {
     if (!expression->typeArguments->empty())
         return expression;
+    auto mi = MethodInstance::resolve(expression, refMap, typeMap);
     auto type = typeMap->getType(expression->method, true);
+    auto iApply = type->to<IR::Type_Method>()->returnType;
+    if (mi->isApply() && (iApply->is<IR::Type_ComposablePackage>() 
+                          || iApply->is<IR::P4ComposablePackage>())) {
+        std::cout<<"type args are not added in  --- "<<expression<<"\n";
+        return expression;
+    }
     BUG_CHECK(type->is<IR::IMayBeGenericType>(), "%1%: unexpected type %2% for method",
               expression->method, type);
     auto mt = type->to<IR::IMayBeGenericType>();
@@ -91,6 +99,7 @@ const IR::Node* DoBindTypeVariables::postorder(IR::MethodCallExpression* express
         typeArgs->push_back(type);
     }
     expression->typeArguments = typeArgs;
+    std::cout<<"bindVariables MethodCallExpression --- "<<expression<<std::endl;;
     return expression;
 }
 
@@ -127,4 +136,12 @@ const IR::Node* DoBindTypeVariables::insertTypes(const IR::Node* node) {
     return result;
 }
 
+/*
+const IR::Node* DoBindTypeVariables::postorder(IR::Type_ComposablePackage* tcpkg) {
+
+    TypeVariableSubstitutionVisitor substVisitor(typeMap->getSubstitutions());
+    auto spec = tcpkg->apply(substVisitor);
+    return spec;
+}
+*/
 }  // namespace P4

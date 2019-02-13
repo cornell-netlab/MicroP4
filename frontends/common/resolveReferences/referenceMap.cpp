@@ -35,9 +35,15 @@ void ReferenceMap::setDeclaration(const IR::Path* path, const IR::IDeclaration* 
     CHECK_NULL(decl);
     LOG1("Resolved " << path << " to " << decl);
     auto previous = get(pathToDeclaration, path);
-    if (previous != nullptr && previous != decl)
+    if (previous != nullptr && previous != decl) {
+      /*
+        std::cout<<"overwriting " << path << previous << "->" << decl->getNode()<<"\n";
+
+        LOG1("overwriting " << path << "OLD " << previous << "-> NEW "<< decl->getNode());
+        */
         BUG("%1% already resolved to %2% instead of %3%",
-            dbp(path), dbp(previous), dbp(decl->getNode()));
+              dbp(path), dbp(previous), dbp(decl->getNode()));
+    }
     pathToDeclaration.emplace(path, decl);
     usedName(path->name.name);
     used.insert(decl);

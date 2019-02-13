@@ -22,6 +22,8 @@ limitations under the License.
 
 namespace P4 {
 
+// Will revisit this pass to refine the logic.
+// Declaration_Instance should be revisited.
 /** @brief Removes unused declarations.
  *
  * The following kinds of nodes are not removed even if they are unreferenced:
@@ -31,6 +33,7 @@ namespace P4 {
  *  - IR::Type_Extern
  *  - IR::Type_Method
  *  - IR::Type_StructLike
+ *  - IR::P4ComposablePackage
  *
  * Additionally, IR::Declaration_Instance nodes for extern instances are not
  * removed but still trigger warnings.
@@ -60,6 +63,11 @@ class RemoveUnusedDeclarations : public Transform {
      */
     bool giveWarning(const IR::Node* node);
     const IR::Node* process(const IR::IDeclaration* decl);
+
+    bool hasMain = false;
+
+
+    std::vector<std::pair<const IR::IDeclaration*, bool> > nsDeclDecisionStack;
 
  public:
     explicit RemoveUnusedDeclarations(const ReferenceMap* refMap,
@@ -99,6 +107,13 @@ class RemoveUnusedDeclarations : public Transform {
     const IR::Node* preorder(IR::Declaration_Variable* decl)  override;
     const IR::Node* preorder(IR::Declaration* decl) override { return process(decl); }
     const IR::Node* preorder(IR::Type_Declaration* decl) override { return process(decl); }
+    
+    const IR::Node* preorder(IR::Type_ComposablePackage* tcpkg) override;
+    const IR::Node* preorder(IR::P4ComposablePackage* p4cpkg) override;
+    const IR::Node* postorder(IR::P4ComposablePackage* p4cpkg) override;
+
+ private:
+    bool containsMain(const IR::Node* node);
 };
 
 /** @brief Iterates RemoveUnusedDeclarations until convergence.

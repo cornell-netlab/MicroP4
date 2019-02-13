@@ -56,6 +56,21 @@ class TypeSubstitution : public IHasDbPrint {
         binding.emplace(id, type);
         return true;
     }
+    
+    /*
+     *  This removes binding and returns true, if key and value both matches.
+     *  Else returns false.
+     */
+    bool removeBinding(T id, const IR::Type* type) {
+        CHECK_NULL(id); CHECK_NULL(type);
+        auto it = binding.find(id);
+        if (it == binding.end())
+            return false;
+        if (it->second != type)
+            return false;
+        binding.erase(it);
+        return true;
+    }
 
     void dbprint(std::ostream& out) const {
         if (isIdentity())
@@ -84,6 +99,7 @@ class TypeVariableSubstitution final : public TypeSubstitution<const IR::ITypeVa
     // In this variant of compose all variables in 'other' that are
     // assigned to are disjoint from all variables already in 'this'.
     void simpleCompose(const TypeVariableSubstitution* other);
+    bool remove(const TypeVariableSubstitution* other);
 };
 
 class TypeNameSubstitution final : public TypeSubstitution<const IR::Type_Name*> {};

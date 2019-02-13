@@ -82,6 +82,8 @@ class TypeMap final : public ProgramMap {
     { return allTypeVariables.lookup(var); }
     const TypeVariableSubstitution* getSubstitutions() const { return &allTypeVariables; }
 
+    bool removeSubstitutions(const TypeVariableSubstitution* tvs);
+
     /// Check deep structural equivalence; defined between canonical types only.
     static bool equivalent(const IR::Type* left, const IR::Type* right);
     /// This is the same as equivalence, but it also allows some legal
@@ -91,6 +93,8 @@ class TypeMap final : public ProgramMap {
 
     // Used for tuples and stacks only
     const IR::Type* getCanonical(const IR::Type* type);
+
+    bool hasSubstitutions(const IR::TypeParameters* keys);
 };
 }  // namespace P4
 

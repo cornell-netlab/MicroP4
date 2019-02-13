@@ -63,6 +63,10 @@ class ProgramStructure final {
     void setDebug(bool debug) { this->debug = debug; }
     void pushNamespace(SourceInfo info, bool allowDuplicates);
     void pushContainerType(IR::ID id, bool allowDuplicates);
+    void pushContainerType(IR::ID id, cstring implementedFrom, 
+                           bool allowDuplicates);
+    void pushContainerType(IR::ID id, const IR::Type* implements, 
+                            bool allowDuplicates);
     void declareType(IR::ID id);
     void declareObject(IR::ID id);
 

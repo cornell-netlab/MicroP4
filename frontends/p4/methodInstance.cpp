@@ -189,6 +189,10 @@ Instantiation* Instantiation::resolve(const IR::Declaration_Instance* instance,
         return new ParserInstantiation(instance, typeArguments, pt);
     } else if (auto ct = simpleType->to<IR::P4Control>()) {
         return new ControlInstantiation(instance, typeArguments, ct);
+    } else if (auto tcpkg = simpleType->to<IR::Type_ComposablePackage>()) {
+        return new TypeComposableInstantiation(instance, typeArguments, tcpkg);
+    } else if (auto cpkg = simpleType->to<IR::P4ComposablePackage>()) {
+        return new P4ComposablePackageInstantiation(instance, typeArguments, cpkg);
     }
     BUG("Unexpected instantiation %1%", instance);
     return nullptr;  // unreachable

@@ -193,6 +193,7 @@ inline std::ostream& operator<<(std::ostream& out, const P4::Token& t) {
                    ELSE ENTRIES ENUM ERROR EXIT EXTERN HEADER HEADER_UNION IF IN INOUT
                    INT KEY SELECT MATCH_KIND TYPE OUT PACKAGE PARSER PRAGMA RETURN STATE
                    STRUCT SWITCH TABLE TRANSITION TUPLE TYPEDEF VARBIT VALUESET VOID
+                   CPACKAGE IMPLEMENTS
 
 %token<cstring> IDENTIFIER TYPE_IDENTIFIER STRING_LITERAL
 %token<UnparsedConstant>  INTEGER
@@ -249,9 +250,14 @@ inline std::ostream& operator<<(std::ostream& out, const P4::Token& t) {
                               headerUnionDeclaration derivedTypeDeclaration
                               parserDeclaration controlDeclaration enumDeclaration
                               typedefDeclaration packageTypeDeclaration typeDeclaration
+                              composablePackageDeclaration
+%type<IR::Type_ComposablePackage*>  composablePackageTypeInterfaceDeclaration composablePackageTypeDeclaration
+%type<IR::IndexedVector<IR::Type_Declaration>*> composablePackageLocalDeclarations
+%type<IR::Type_Declaration*> composablePackageLocalDeclaration
 %type<IR::Type_Error*>      errorDeclaration
 %type<IR::Node*>            fragment
 %type<IR::Node*>            declaration externDeclaration matchKindDeclaration
+%type<IR::IndexedVector<IR::Type_Declaration>*>  typeDeclarations
 %type<IR::Type_Parser*>     parserTypeDeclaration
 %type<IR::Type_Control*>    controlTypeDeclaration
 %type<IR::IndexedVector<IR::Declaration>*>  parserLocalElements controlLocalDeclarations
@@ -378,6 +384,7 @@ declaration
     | errorDeclaration        { driver.onReadErrorDeclaration($1); $$ = nullptr; }
     | matchKindDeclaration    { $$ = $1; }
     | functionDeclaration     { $$ = $1; }
+    | composablePackageDeclaration { $$ = $1; }
     ;
 
 nonTypeName
@@ -475,6 +482,8 @@ annotationToken
     | OUT              { $$ = $1; }
     | PARSER           { $$ = $1; }
     | PACKAGE          { $$ = $1; }
+    | CPACKAGE         { $$ = $1; }
+    | IMPLEMENTS       { $$ = $1; }
     | PRAGMA           { $$ = $1; }
     | RETURN           { $$ = $1; }
     | SELECT           { $$ = $1; }
@@ -626,6 +635,52 @@ optConstructorParameters
 dotPrefix
     : "."                      { driver.structure->startAbsolutePath(); }
     ;
+
+/************************ COMPOSABLE PACKAGE ***********************/
+
+composablePackageTypeDeclaration
+    : optAnnotations CPACKAGE name { driver.structure->pushContainerType(*$3, false); }
+      optTypeParameters { driver.structure->declareTypes(&$5->parameters); }
+      "(" parameterList ")" optConstructorParameters  
+          { auto pl = new IR::ParameterList(@8, *$8); 
+            auto cpl = new IR::ParameterList(@10, *$10);
+            $$ = new IR::Type_ComposablePackage(@3, *$3, $1, $5, pl, cpl); }
+    ;
+
+composablePackageTypeInterfaceDeclaration
+    : composablePackageTypeDeclaration
+      "{" typeDeclarations "}"  
+       { driver.structure->pop(); $$ = $1; 
+            $$->typeLocalDeclarations = $3; } 
+    ;
+
+typeDeclarations
+    : typeDeclaration  { $$ = new IR::IndexedVector<IR::Type_Declaration>(); $$->push_back($1);}
+    | typeDeclarations typeDeclaration  { $$ = $1; $$->push_back($2); }
+    ;
+
+composablePackageDeclaration
+    : optAnnotations CPACKAGE name ":" IMPLEMENTS namedType /* typeName  namedType */
+          { driver.structure->pushContainerType(*$3, $6, true); }
+      "{" composablePackageLocalDeclarations "}"
+          {  driver.structure->pop(); $$ = new IR::P4ComposablePackage(@3, *$3, $1, $6, $9);}
+    ;
+
+composablePackageLocalDeclarations
+    : composablePackageLocalDeclaration { 
+          $$ = new IR::IndexedVector<IR::Type_Declaration>(); $$->push_back($1);}
+    | composablePackageLocalDeclarations composablePackageLocalDeclaration
+          { $$ = $1; $$->push_back($2); }
+    ;
+
+composablePackageLocalDeclaration
+    : parserDeclaration                  { $$ = $1; }
+    | controlDeclaration                 { $$ = $1; }
+    | errorDeclaration                   { $$ = $1; }
+    | composablePackageDeclaration       { $$ = $1; }
+    | derivedTypeDeclaration             { $$ = $1; }
+    ;
+
 
 /**************************** PARSER ******************************/
 
@@ -933,6 +988,9 @@ typeDeclaration
     | parserTypeDeclaration ";"  { driver.structure->pop(); $$ = $1; }
     | controlTypeDeclaration ";" { driver.structure->pop(); $$ = $1; }
     | packageTypeDeclaration ";" { driver.structure->pop(); $$ = $1; }
+    | composablePackageTypeInterfaceDeclaration { $$ = $1; }
+    | composablePackageTypeDeclaration ";" { driver.structure->pop(); $$ = $1; }
+
     ;
 
 derivedTypeDeclaration
