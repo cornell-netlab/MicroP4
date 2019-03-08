@@ -16,6 +16,7 @@
 #include "extensions/csa/switch/version.h"
 #include "extensions/csa/switch/options.h"
 #include "extensions/csa/switch/parseInput.h"
+#include "extensions/csa/midend/csamidend.h"
 
 int main(int argc, char *const argv[]) {
     setup_gc_logging();
@@ -33,7 +34,7 @@ int main(int argc, char *const argv[]) {
     auto hook = options.getDebugHook();
 
     auto p4ProgramIRs = CSA::getPreCompiledIRs(options);
-    std::cout<<"# of IRs "<<p4ProgramIRs.size()<<"\n";
+    // std::cout<<"in Main number of IRs "<<p4ProgramIRs.size()<<"\n";
 
     auto program = P4::parseP4File(options);
     if (program == nullptr || ::errorCount() > 0)
@@ -46,18 +47,18 @@ int main(int argc, char *const argv[]) {
         return 1;
 
     try {
-
         P4::FrontEnd frontend;
         frontend.addDebugHook(hook);
         program = frontend.run(options, program);
-        if (options.dumpJsonFile)
-            JSONGenerator(*openFile(options.dumpJsonFile, true)) << program << std::endl;
     } catch (const Util::P4CExceptionBase &bug) {
         std::cerr << bug.what() << std::endl;
         return 1;
     }
     if (program == nullptr || ::errorCount() > 0)
         return 1;
+
+    CSA::CSAMidEnd csaMidend(options);
+    program = csaMidend.run(program);
 
     if (options.dumpJsonFile)
         JSONGenerator(*openFile(options.dumpJsonFile, true)) << program << std::endl;

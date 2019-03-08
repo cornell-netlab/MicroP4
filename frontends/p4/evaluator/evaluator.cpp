@@ -229,8 +229,18 @@ Evaluator::processConstructor(
         }
         popBlock(block);
         return block;
+    } else if (decl->is<IR::Type_ComposablePackage>()) {
+        auto cpackage = decl->to<IR::Type_ComposablePackage>();
+        auto block = new IR::Type_ComposablePackageBlock(node->srcInfo, node, 
+                                                         instanceType, cpackage);
+        pushBlock(block);
+        auto values = evaluateArguments(cpackage->getConstructorParameters(), arguments, current);
+        if (values != nullptr) {
+            block->instantiate(values);
+        }
+        popBlock(block);
+        return block;
     }
-
     BUG("Unhandled case %1%: type is %2%", node, type);
     return nullptr;
 }

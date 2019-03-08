@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <vector>
 #include <unordered_set>
+#include <set>
 #include <algorithm>
 #include "lib/log.h"
 #include "lib/exceptions.h"
@@ -342,6 +343,7 @@ class CallGraph {
         return loop;
     }
 
+
  public:
     // Sort that computes strongly-connected components - all nodes in
     // a strongly-connected components will be consecutive in the
@@ -373,6 +375,7 @@ class CallGraph {
         }
         return cycles;
     }
+
 };
 
 }  // namespace P4

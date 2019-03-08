@@ -28,6 +28,7 @@ bool TypeUnification::unifyCall(const IR::Node* errorPosition,
     // These are canonical types.
     CHECK_NULL(dest); CHECK_NULL(src);
     LOG3("Unifying function " << dest << " with caller " << src);
+    // std::cout<<"Unifying function " << dest << " with caller " << src <<"\n";;
 
     for (auto tv : dest->typeParameters->parameters)
         constraints->addUnifiableTypeVariable(tv);
@@ -296,7 +297,7 @@ bool TypeUnification::unifyComposablePackages(const IR::Node* errorPosition,
                 if (!iter->second->is<IR::Type_Declaration>())
                     continue;
                 auto srcArch = iter->second->to<IR::Type_ArchBlock>();
-                //std::cout<<"unifying "<<typeDecl->name<<" with "<<srcArch->name<<"\n";
+                // std::cout<<"unifying "<<typeDecl->name<<" with "<<srcArch->name<<"\n";
                 if (!unify(iter->second, typeArchBlock, srcArch, reportErrors)) {
                     if (reportErrors) {
                         ::error("%1%: Cannot unify %2% to %3%",

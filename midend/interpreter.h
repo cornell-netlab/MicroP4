@@ -76,10 +76,16 @@ class SymbolicValueFactory {
 class ValueMap final : public IHasDbPrint {
  public:
     std::map<const IR::IDeclaration*, SymbolicValue*> map;
+
+    // holds information useful to transform expression
+    std::map<const IR::Expression*, SymbolicValue*> expValue;
+
     ValueMap* clone() const {
         auto result = new ValueMap();
         for (auto v : map)
             result->map.emplace(v.first, v.second->clone());
+        for (auto v : expValue)
+            result->expValue.emplace(v.first, v.second->clone());
         return result;
     }
     ValueMap* filter(std::function<bool(const IR::IDeclaration*, const SymbolicValue*)> filter) {
@@ -93,6 +99,12 @@ class ValueMap final : public IHasDbPrint {
     { CHECK_NULL(left); CHECK_NULL(right); map[left] = right; }
     SymbolicValue* get(const IR::IDeclaration* left) const
     { CHECK_NULL(left); return ::get(map, left); }
+
+    void set(const IR::Expression* e, SymbolicValue* right)
+    { CHECK_NULL(e); CHECK_NULL(right); expValue[e] = right; }
+
+    SymbolicValue* get(const IR::Expression* e)
+    { CHECK_NULL(e); return ::get(expValue, e);}
 
     void dbprint(std::ostream& out) const {
         bool first = true;
@@ -137,8 +149,10 @@ class ExpressionEvaluator : public Inspector {
     SymbolicValue* set(const IR::Expression* expression, SymbolicValue* v)
     { value.emplace(expression, v); return v; }
     SymbolicValue* get(const IR::Expression* expression) const {
+        // expression->dbprint(std::cout);std::cout<<", value";
         auto r = ::get(value, expression);
         BUG_CHECK(r != nullptr, "no evaluation for %1%", expression);
+        // r->dbprint(std::cout);std::cout<<"\n";
         return r;
     }
     void postorder(const IR::Constant* expression) override;
@@ -391,6 +405,9 @@ class SymbolicStruct : public SymbolicValue {
 };
 
 class SymbolicHeader : public SymbolicStruct {
+    
+    unsigned startOffset;
+    unsigned endOffset;
  public:
     explicit SymbolicHeader(const IR::Type_Header* type) : SymbolicStruct(type) {}
     SymbolicBool* valid;
@@ -404,6 +421,10 @@ class SymbolicHeader : public SymbolicStruct {
     void dbprint(std::ostream& out) const override;
     bool merge(const SymbolicValue* other) override;
     bool equals(const SymbolicValue* other) const override;
+    void setCoordinatesFromBitStream(unsigned start, unsigned end);
+    void getCoordinatesFromBitStream(unsigned& start, unsigned& end) const {
+        start = startOffset; end = endOffset;
+    }
 };
 
 class SymbolicArray final : public SymbolicValue {
@@ -545,7 +566,45 @@ class SymbolicPacketIn final : public SymbolicExtern {
     { minimumStreamOffset += width; }
     bool merge(const SymbolicValue* other) override;
     bool equals(const SymbolicValue* other) const override;
+    unsigned getCurrentStreamOffset() const {
+        return minimumStreamOffset;
+    }
 };
+
+// Models an extern of type packet_out
+class SymbolicPacketOut final : public SymbolicExtern {
+    // Maximum possible number of bits emitted.
+    // Existing evaluation is conservative. 
+    // It is assumed that every emit may add header bits in the stream. 
+    unsigned maximumStreamOffset;
+
+    std::vector<SymbolicHeader*>  emitCalledHeaders;
+    
+ public:
+    explicit SymbolicPacketOut(const IR::Type_Extern* type) :
+            SymbolicExtern(type), maximumStreamOffset(0) {}
+    void dbprint(std::ostream& out) const override {
+        out << "packet_out; offset =" << maximumStreamOffset;
+    }
+    SymbolicValue* clone() const override {
+        auto result = new SymbolicPacketOut(type->to<IR::Type_Extern>());
+        result->maximumStreamOffset = maximumStreamOffset;
+        return result;
+    }
+
+    void addEmitCallHeader(SymbolicHeader* value) {
+        emitCalledHeaders.push_back(value);
+    }
+
+    void advance(unsigned width)
+    { maximumStreamOffset += width; }
+    bool merge(const SymbolicValue* other) override;
+    bool equals(const SymbolicValue* other) const override;
+    unsigned getCurrentStreamOffset() const {
+        return maximumStreamOffset;
+    }
+};
+
 
 }  // namespace P4
 

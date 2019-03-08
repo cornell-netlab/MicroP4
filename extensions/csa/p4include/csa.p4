@@ -112,22 +112,80 @@ extern egress_spec {
     bit<32> get_value(metadata_t field_type);
 }
 
+/*
+extern generic_buffer<IN_ELE_T, OUT_ELE_T> {
+    virtual_buffer();
+    packet_in read(); // finalize
+    write(packet_out po); // writer
+}
+*/
+
+extern packet_buffer<IN_EXT_ELE_T, OUT_EXT_ELE_T> {
+    packet_buffer();
+    <packet_in, IN_EXT_ELE_T> read();   // finalize
+    write(<packet_out, OUT_EXT_ELE_T>); // writer
+}
+
+cpackage OrchestrationSwitch<IND, OUTD, INOUTD, UM, PSM>(
+          packet_in b, packet_out po, 
+          in IND in_args, out OUTD out_args, inout INOUTD inout_args) () {
+
+    @optional
+    control Import(in IND in_meta, inout INOUTD inout_meta, inout UM meta, 
+                   inout standard_metadata_t standard_metadata, egress_spec es);
+    /*
+     * It is possible to directly invoke callee_pkg_inst.apply(...), because 
+     * pin and po are available. Therefore, this OrchestrationSwitch does not have
+     * "Execute" extern like CSASwitch.
+     */
+    control Pipe(packet_in pin, packet_out po, inout UM meta, 
+                 inout standard_metadata_t standard_metadata, egress_spec es,
+                 inout PSM recirculate_meta);
+    
+    @optional
+    control Export(out OUTD out_meta, inout INOUTD inout_meta, in UM meta, 
+                   in standard_metadata_t standard_metadata, egress_spec es);
+ 
+    @optional
+    cpackage ParallelSwitch<INC, OUTC, INOUTC, CPTYPE1, CPTYPE2>(
+             CPTYPE1 pkg_one_inst, CPTYPE2 pkg_two_inst, packet_in pin, 
+             packet_out po, in INC in_meta, out OUTC out_meta, 
+             inout INOUTC inout_meta)() {
+ 
+        struct callee_context_t {
+            bool callee_flag;
+        }
+       
+        control ResultPipe(in INC callee_in_args, out OUTC callee_out_args, 
+                           inout INOUTC callee_inout_args, inout UM meta, 
+                           inout standard_metadata_t standard_metadata, 
+                           egress_spec es, inout PSM program_scope_metadata, 
+                           in callee_context_t ctx);
+    }
+}
 
 /*
  * Composable package interface declaration. 
  */
+cpackage CSASwitch<IND, OUTD, H, UM, PSM>(
+          packet_buffer<IND> in_buf, packet_buffer<OUTD> out_buf) {
+          
+/*          in IND in_args, out OUTD out_args)() {
+ * If a program generates multiple packet_out for one packet_in,  
 cpackage CSASwitch<IND, OUTD, INOUTD, H, UM, PSM>(
-          packet_in pin, packet_out po, out H parsedHdr,
+          packet_in pin, packet_out po, 
           in IND in_args, out OUTD out_args, inout INOUTD inout_args)() {
+*/
 
+/*
   @optional
-  cpackage ExecuteSwitch<CPTYPE, INC, OUTC, INOUTC>( /* rt params */ 
+  cpackage ExecuteSwitch<CPTYPE, INC, OUTC>( //  rt params
                          in INC in_meta, out OUTC out_meta, 
-                         inout INOUTC inout_meta,
                          inout H parsed_hdr, 
                          inout UM meta,
                          inout  standard_metadata_t standard_metadata) 
-                         (CPTYPE callee_inst) /* ctor params */;
+                         (CPTYPE callee_inst) // ctor params ;
+*/
 
   // Declarations for programmable blocks of basic switch package type
   parser Parser(packet_in b, out H parsed_hdr, inout UM meta, 
@@ -135,7 +193,7 @@ cpackage CSASwitch<IND, OUTD, INOUTD, H, UM, PSM>(
                 in PSM program_scope_metadata);
 
   @optional
-  control Import(in IND in_meta, inout INOUTD inout_meta, in H parsed_hdr, 
+  control Import(in IND in_meta, in H parsed_hdr, 
                  inout UM meta, inout standard_metadata_t standard_metadata, 
                  egress_spec es);
   
@@ -144,12 +202,28 @@ cpackage CSASwitch<IND, OUTD, INOUTD, H, UM, PSM>(
                egress_spec es);
 
   @optional
-  control Export(out OUTD out_meta, inout INOUTD inout_meta, in H parsed_hdr, 
+  control Export(out OUTD out_meta, in H parsed_hdr, 
                  in UM meta, in standard_metadata_t standard_metadata, 
                  egress_spec es);
   
   control Deparser(packet_out b, in H hdr, out PSM program_scope_metadata);
   
+
+/************************************************************
+    apply {
+        
+        <packet_in, >
+
+        parser.apply();
+
+        Pipe.apply()
+
+        Deparser.apply()
+
+    }
+*************************************************************/
+
+/*  
   // Optional
   // Programmer can define more than one Parallel Switch.
   // And they can be invoked in the Pipe Control block.
@@ -160,8 +234,8 @@ cpackage CSASwitch<IND, OUTD, INOUTD, H, UM, PSM>(
   cpackage ParallelSwitch<INC, OUTC, INOUTC, CPTYPE1, CPTYPE2>(
              in INC callee_in_args, out OUTC callee_out_args, 
              inout INOUTC callee_inout_args, inout H parsed_hdr, inout UM meta, 
-             inout standard_metadata_t standard_metadata) /* rt params */ 
-             (CPTYPE1 pkg_one_inst, CPTYPE2 pkg_two_inst) /* ctor params */ {
+             inout standard_metadata_t standard_metadata) // rt params  
+             (CPTYPE1 pkg_one_inst, CPTYPE2 pkg_two_inst) // ctor params {
 
     struct callee_context_t {
         bool callee_flag;
@@ -172,54 +246,9 @@ cpackage CSASwitch<IND, OUTD, INOUTD, H, UM, PSM>(
                        egress_spec es, inout PSM program_scope_metadata,
                        in callee_context_t ctx);
   }
+*/
 
 }
 
-/*
- * This package type allows to program execution CFG (DAG) by only using
- * instances of other programs.
- * Hence, programmer does not need to program parser and deparser blocks.
- *
- * This package is more useful for ease of programming and composition.
- */
-cpackage OrchestrationSwitch<IND, OUTD, INOUTD, UM, PSM>(packet_in b,
-          packet_out p, in IND in_args, out OUTD out_args, 
-          inout INOUTD inout_args) () {
-
-  @optional
-  control Import(in IND in_meta, inout INOUTD inout_meta, inout UM meta, 
-                 inout standard_metadata_t standard_metadata, egress_spec es);
-  /*
-   * It is possible to directly invoke callee_pkg_inst.apply(...), because 
-   * pin and po are available. Therefore, this OrchestrationSwitch does not have
-   * "Execute" extern like CSASwitch.
-   */
-  control Pipe(packet_in pin, packet_out po, inout UM meta, 
-               inout standard_metadata_t standard_metadata, egress_spec es,
-               inout PSM recirculate_meta);
-  
-  @optional
-  control Export(out OUTD out_meta, inout INOUTD inout_meta, in UM meta, 
-                 in standard_metadata_t standard_metadata, egress_spec es);
-
-  @optional
-  cpackage ParallelSwitch<INC, OUTC, INOUTC, CPTYPE1, CPTYPE2>(
-           CPTYPE1 pkg_one_inst, CPTYPE2 pkg_two_inst, packet_in pin, 
-           packet_out po, in INC in_meta, out OUTC out_meta, 
-           inout INOUTC inout_meta)() {
-
-    struct callee_context_t {
-        bool callee_flag;
-    }
-
-    control ResultPipe(in INC callee_in_args, out OUTC callee_out_args, 
-                       inout INOUTC callee_inout_args, inout UM meta, 
-                       inout standard_metadata_t standard_metadata, 
-                       egress_spec es, inout PSM program_scope_metadata, 
-                       in callee_context_t ctx);
-
-  }
-
-}
 
 #endif  /* _CSA_P4_ */

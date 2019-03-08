@@ -4,21 +4,24 @@
 namespace P4 {
 
 bool AnalyzeParser::preorder(const IR::ParserState* state) {
-    LOG1("Found state " << state << " of " << current->parser);
+    // LOG1("Found state " << state << " of " << current->parser);
     if (state->name.name == IR::ParserState::start)
         current->start = state;
     current->addState(state);
-    return false;
+    return true;
 }
 
 void AnalyzeParser::postorder(const IR::PathExpression* expression) {
     auto state = findContext<IR::ParserState>();
-    if (state == nullptr)
+    if (state == nullptr) {
         return;
+    }
     auto decl = refMap->getDeclaration(expression->path);
     if (decl->is<IR::ParserState>())
         current->calls(state, decl->to<IR::ParserState>());
 }
+
+std::map<cstring, unsigned> ParserStateInfo::stateNameIndices = {};
 
 /////////////////////////////////////
 
@@ -42,6 +45,8 @@ struct AllDefinitions {
     std::map<const IR::Node*, Definitions*> perStatement;
 };
 
+
+
 class ParserSymbolicInterpreter {
     ParserStructure*    structure;
     const IR::P4Parser* parser;
@@ -55,7 +60,7 @@ class ParserSymbolicInterpreter {
         ValueMap* result = new ValueMap();
         ExpressionEvaluator ev(refMap, typeMap, result);
 
-        for (auto p : parser->getApplyParameters()->parameters) {
+        for (const auto p : parser->getApplyParameters()->parameters) {
             auto type = typeMap->getType(p);
             bool initialized = p->direction == IR::Direction::In ||
                     p->direction == IR::Direction::InOut;
@@ -88,11 +93,15 @@ class ParserSymbolicInterpreter {
 
     ParserStateInfo* newStateInfo(const ParserStateInfo* predecessor,
                                   cstring stateName, ValueMap* values) {
-        if (stateName == IR::ParserState::accept ||
-            stateName == IR::ParserState::reject)
-            return nullptr;
+        auto name = stateName;
         auto state = structure->get(stateName);
-        auto pi = new ParserStateInfo(stateName, parser, state, predecessor, values->clone());
+        if (stateName != IR::ParserState::accept &&
+            stateName != IR::ParserState::reject)
+            name = ParserStateInfo::GetStateNameWithIndex(stateName);
+        else 
+            name = "csa_"+stateName;
+
+        auto pi = new ParserStateInfo(name, parser, state, predecessor, values->clone());
         synthesizedParser->add(pi);
         return pi;
     }
@@ -174,7 +183,7 @@ class ParserSymbolicInterpreter {
         return success;
     }
 
-    std::vector<ParserStateInfo*>* evaluateSelect(const ParserStateInfo* state) {
+    std::vector<ParserStateInfo*>* evaluateSelect(ParserStateInfo* state) {
         // TODO: update next state map
         auto select = state->state->selectExpression;
         if (select == nullptr)
@@ -185,18 +194,28 @@ class ParserSymbolicInterpreter {
             auto next = refMap->getDeclaration(path);
             BUG_CHECK(next->is<IR::ParserState>(), "%1%: expected a state", path);
             auto nextInfo = newStateInfo(state, next->getName(), state->after);
-            if (nextInfo != nullptr)
+            // if (nextInfo != nullptr) {
+                state->nextParserStateInfo.emplace_back(nullptr, nextInfo);
                 result->push_back(nextInfo);
+            //} else {
+                // state->isLeafState = true;
+            //}
         } else if (select->is<IR::SelectExpression>()) {
             // TODO: really try to match cases; today we are conservative
+            // evaluate ListExpression member "select" 
             auto se = select->to<IR::SelectExpression>();
+            // se->select; // ListExpression
             for (auto c : se->selectCases) {
                 auto path = c->state->path;
                 auto next = refMap->getDeclaration(path);
                 BUG_CHECK(next->is<IR::ParserState>(), "%1%: expected a state", path);
                 auto nextInfo = newStateInfo(state, next->getName(), state->after);
-                if (nextInfo != nullptr)
+                // if (nextInfo != nullptr) {
+                    state->nextParserStateInfo.emplace_back(c->keyset, nextInfo);
                     result->push_back(nextInfo);
+                //} else {
+                    // state->isLeafState = true;
+                //}
             }
         } else {
             BUG("%1%: unexpected expression", select);
@@ -254,6 +273,7 @@ class ParserSymbolicInterpreter {
             if (crt == nullptr)
                 break;
             if (crt->state == state->state) {
+                LOG1("Loop detected at original parser state name : " << state->state->name);
                 // Loop detected.
                 // Check if any packet in the valueMap has changed
                 auto filter = [](const IR::IDeclaration*, const SymbolicValue* value)
@@ -302,6 +322,15 @@ class ParserSymbolicInterpreter {
         }
         state->after = valueMap;
         auto result = evaluateSelect(state);
+        if (result == nullptr) {
+        // if (state->isLeafState) {
+            LOG1("After leaf state = "<<state->name<<", original state name = "<<state->state->name<<", ValueMap = "<< state->after);
+            std::cout<<"After leaf state = "<<state->name
+              <<", original state name = "<<state->state->name
+              <<", ValueMap = "<< state->after<<"\n";
+            synthesizedParser->allPossileFinalValueMaps.push_back(state->after);
+        }
+            
         return result;
     }
 
@@ -334,6 +363,7 @@ class ParserSymbolicInterpreter {
                 // don't evaluate successors anymore
                 continue;
             auto nextStates = evaluateState(stateInfo);
+            // stateInfo->nextParserStateInfo = nextStates;
             if (nextStates == nullptr) {
                 LOG1("No next states");
                 continue;
@@ -341,12 +371,14 @@ class ParserSymbolicInterpreter {
             toRun.insert(toRun.end(), nextStates->begin(), nextStates->end());
         }
 
+        //std::cout<<synthesizedParser->toString();
         return synthesizedParser;
     }
 };
 }  // namespace ParserStructureImpl
 
 void ParserStructure::analyze(ReferenceMap* refMap, TypeMap* typeMap, bool unroll) {
+    ParserStateInfo::stateNameIndices.clear();
     ParserStructureImpl::ParserSymbolicInterpreter psi(this, refMap, typeMap, unroll);
     result = psi.run();
 }

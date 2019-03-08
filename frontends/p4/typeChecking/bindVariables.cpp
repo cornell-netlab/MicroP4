@@ -80,9 +80,15 @@ const IR::Node* DoBindTypeVariables::postorder(IR::MethodCallExpression* express
         return expression;
     auto mi = MethodInstance::resolve(expression, refMap, typeMap);
     auto type = typeMap->getType(expression->method, true);
-    auto iApply = type->to<IR::Type_Method>()->returnType;
-    if (mi->isApply() && (iApply->is<IR::Type_ComposablePackage>() 
-                          || iApply->is<IR::P4ComposablePackage>())) {
+    const IR::Type_Method* typeMethod = nullptr;
+    const IR::Type* iApply = nullptr;
+    if (type->is<IR::Type_Method>()) {
+        typeMethod = type->to<IR::Type_Method>();
+        iApply = typeMethod->returnType;
+    }
+
+    if (mi->isApply() && iApply && (iApply->is<IR::Type_ComposablePackage>() 
+                                    || iApply->is<IR::P4ComposablePackage>())) {
         std::cout<<"type args are not added in  --- "<<expression<<"\n";
         return expression;
     }

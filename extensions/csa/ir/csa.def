@@ -64,3 +64,14 @@ class P4ComposablePackageBlock : InstantiatedBlock {
 #nodbprint
 }
 
+class Type_ComposablePackageBlock : InstantiatedBlock {
+    Type_ComposablePackage container;
+    ParameterList getConstructorParameters() const override {
+        return container->getConstructorParameters(); }
+    toString { return container->toString(); }
+    ID getName() const override { return container->getName(); }
+#nodbprint
+}
+
+
+
