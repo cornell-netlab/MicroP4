@@ -15,11 +15,12 @@ set (CSA_SWITCH_SRCS
     switch/options.h
     switch/parseInput.h
     switch/parseInput.cpp
-    linker/virtualBuffer.h
-#    switch/midend.cpp
-#    switch/midend.h
-#    switch/Switch.cpp
-#    switch/Switch.h
+    midend/csamidend.h
+    midend/csamidend.cpp
+    midend/parserConverter.h
+    midend/parserConverter.cpp
+    midend/deparserConverter.h
+    midend/deparserConverter.cpp
     )
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
 

@@ -974,10 +974,12 @@ const IR::Node* TypeInference::preorder(IR::Declaration_Instance* decl) {
         return decl;
     }
 
+    /*
     if (type->to<IR::Type_ComposablePackage>()) {
         std::cout<<"Type from getTypeType Declaration_Instance \n";
         type->dbprint(std::cout); std::cout<<"\n";
     }
+    */
     auto orig = getOriginal<IR::Declaration_Instance>();
 
     auto simpleType = type;
@@ -1088,9 +1090,11 @@ TypeInference::containerInstantiation(
     TypeInference learn(refMap, typeMap, true);
     (void)returnType->apply(learn);
 
+    /*
     std::cout<<"------------containerInstantiation return type-------\n";
     returnType->dbprint(std::cout); std::cout<<"\n";
     std::cout<<"-----------------------------------------------------\n";
+    */
     BUG_CHECK(returnType != nullptr, "Cannot infer constructor result type %1%", node);
     return std::pair<const IR::Type*, const IR::Vector<IR::Argument>*>(returnType, newArgs);
 }
@@ -1208,9 +1212,11 @@ const IR::Node* TypeInference::preorder(IR::P4ComposablePackage* pkg) {
         auto specializedCanon = getTypeType(pkg->interfaceType)->to<IR::Type_SpecializedCanonical>();
         pkg->type = specializedCanon->substituted->to<IR::Type_ComposablePackage>();
 
+        /*
         std::cout<<"\n---------after specialization substituted type------\n";
         pkg->type->dbprint(std::cout);
         std::cout<<"\n----------------------------------------------------\n";
+        */
     } else {
         visit(pkg->type);
     }
@@ -1218,8 +1224,8 @@ const IR::Node* TypeInference::preorder(IR::P4ComposablePackage* pkg) {
     auto specializedCanon = getTypeType(pkg->interfaceType)->to<IR::Type_SpecializedCanonical>();
     auto typeParameters = specializedCanon->baseType->
                           to<IR::Type_ComposablePackage>()->getTypeParameters();
-    bool success = tvs->setBindings(pkg->type->getNode(), typeParameters,
-                                    specializedCanon->arguments);
+    (void)tvs->setBindings(pkg->type->getNode(), typeParameters,
+                           specializedCanon->arguments);
 
     if (!typeMap->hasSubstitutions(typeParameters))
         typeMap->addSubstitutions(tvs);
@@ -1244,16 +1250,16 @@ const IR::Node* TypeInference::preorder(IR::P4ComposablePackage* pkg) {
     visit(pkg->packageLocalDeclarations, "packageLocalDeclarations");
 
 
-    auto cpkg = canonicalize(pkg);
-    auto ccpkg = cpkg->to<IR::P4ComposablePackage>();
+    auto ccpkg = canonicalize(pkg)->to<IR::P4ComposablePackage>();
     auto cpkgType = ccpkg->type;
 
     if (!readOnly) {
         typeMap->removeSubstitutions(tvs);
+    // std::cout<<"Now unifing...\n";
+    auto tvs0 = unify(pkg, cpkgType, ccpkg);
+    if (!tvs0) 
+        std::cout<<"\n error should have been reported\n";
     }
-    std::cout<<"before unify call \n";
-    (void)unify(pkg, cpkgType, ccpkg);
-    
     setTypeType(pkg, true);
 
     // popTypeParameters(pkg->name);

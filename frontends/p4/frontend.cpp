@@ -150,7 +150,7 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         new CheckNamedArgs(),
         new TypeInference(&refMap, &typeMap, false), // insert casts
         new DefaultArguments(&refMap, &typeMap),  // add default argument values to parameters
-        new FrontEndDump(),  // used for testing the program at this point
+        // new FrontEndDump(),  // used for testing the program at this point
         new BindTypeVariables(&refMap, &typeMap),
         new StructInitializers(&refMap, &typeMap),
         new TableKeyNames(&refMap, &typeMap),
@@ -158,26 +158,23 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         // Another round of constant folding, using type information.
         new ConstantFolding(&refMap, &typeMap),
         new StrengthReduction(),
-        new FrontEndDump(),  // used for testing the program at this point
+        // new FrontEndDump(),  // used for testing the program at this point
         new UselessCasts(&refMap, &typeMap),
         new SimplifyControlFlow(&refMap, &typeMap),
         new RemoveAllUnusedDeclarations(&refMap, true),
-        new FrontEndDump(),  // used for testing the program at this point
+        // new FrontEndDump(),  // used for testing the program at this point
         new SimplifyParsers(&refMap),
         new ResetHeaders(&refMap, &typeMap),
         new UniqueNames(&refMap),  // Give each local declaration a unique internal name
         new MoveDeclarations(),  // Move all local declarations to the beginning
-        new FrontEndDump(),  // used for testing the program at this point
+        // new FrontEndDump(),  // used for testing the program at this point
         new MoveInitializers(),
-        new FrontEndDump(),  // used for testing the program at this point
         new SideEffectOrdering(&refMap, &typeMap, skipSideEffectOrdering),
-        new FrontEndDump(),  // used for testing the program at this point
+        // new FrontEndDump(),  // used for testing the program at this point
         new SetHeaders(&refMap, &typeMap),
-        new FrontEndDump(),  // used for testing the program at this point
         new SimplifyControlFlow(&refMap, &typeMap),
-        new FrontEndDump(),  // used for testing the program at this point
         new MoveDeclarations(),  // Move all local declarations to the beginning
-        new FrontEndDump(),  // used for testing the program at this point
+        // new FrontEndDump(),  // used for testing the program at this point
         new SimplifyDefUse(&refMap, &typeMap),
         new UniqueParameters(&refMap, &typeMap),
         new SimplifyControlFlow(&refMap, &typeMap),
@@ -195,15 +192,15 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         new InlineFunctions(&refMap, &typeMap),
         // Check for constants only after inlining
         new CheckConstants(&refMap, &typeMap),
-        new FrontEndDump(),  // used for testing the program at this point
         new SimplifyControlFlow(&refMap, &typeMap),
         new RemoveParserControlFlow(&refMap, &typeMap),
         new UniqueNames(&refMap),
         new LocalizeAllActions(&refMap),
-        new UniqueNames(&refMap),  // needed again after inlining
+        new UniqueNames(&refMap),  // needed again after inlining // TODO: decide after merging code
         new UniqueParameters(&refMap, &typeMap),
         new SimplifyControlFlow(&refMap, &typeMap),
-        new HierarchicalNames(),
+        new HierarchicalNames(),  // TODO: once multiple cpackage are unrolled, fix this
+        new FrontEndDump(),  // used for testing the program at this point
         new FrontEndLast(),
     };
 

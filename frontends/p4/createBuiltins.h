@@ -38,6 +38,7 @@ class CreateBuiltins final : public Modifier {
     bool preorder(IR::P4Table* table) override;
     void postorder(IR::ActionList* actions) override;
     void postorder(IR::TableProperties* properties) override;
+    void postorder(IR::SelectExpression* selectExpression) override;
 };
 }  // namespace P4
 

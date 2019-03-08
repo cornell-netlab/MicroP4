@@ -8,7 +8,7 @@ namespace P4 {
 unsigned SymbolicValue::crtid = 0;
 
 SymbolicValue* SymbolicValueFactory::create(const IR::Type* type, bool uninitialized) const {
-    type = typeMap->getType(type, true);
+    type = typeMap->getTypeType(type, true);
     if (type->is<IR::Type_Bits>())
         return new SymbolicInteger(ScalarValue::init(uninitialized), type->to<IR::Type_Bits>());
     if (type->is<IR::Type_Boolean>())
@@ -32,6 +32,9 @@ SymbolicValue* SymbolicValueFactory::create(const IR::Type* type, bool uninitial
         if (te->name.name == P4CoreLibrary::instance.packetIn.name) {
             return new SymbolicPacketIn(te);
         }
+        if (te->name.name == P4CoreLibrary::instance.packetOut.name) {
+            return new SymbolicPacketOut(te);
+        }
         return new SymbolicExtern(te);
     }
     if (type->is<IR::Type_Enum>() ||
@@ -53,13 +56,14 @@ SymbolicValue* SymbolicValueFactory::create(const IR::Type* type, bool uninitial
 }
 
 bool SymbolicValueFactory::isFixedWidth(const IR::Type* type) const {
-    type = typeMap->getType(type, true);
+    type = typeMap->getTypeType(type, true);
     if (type->is<IR::Type_Varbits>())
         return false;
     if (type->is<IR::Type_Extern>())
         return false;
-    if (type->is<IR::Type_Stack>())
+    if (type->is<IR::Type_Stack>()) {
         return isFixedWidth(type->to<IR::Type_Stack>()->elementType);
+    }
     if (type->is<IR::Type_StructLike>()) {
         auto st = type->to<IR::Type_StructLike>();
         for (auto f : st->fields)
@@ -79,7 +83,7 @@ bool SymbolicValueFactory::isFixedWidth(const IR::Type* type) const {
 }
 
 unsigned SymbolicValueFactory::getWidth(const IR::Type* type) const {
-    type = typeMap->getType(type, true);
+    type = typeMap->getTypeType(type, true);
     if (type->is<IR::Type_Bits>())
         return type->to<IR::Type_Bits>()->size;
     if (type->is<IR::Type_Boolean>())
@@ -334,6 +338,8 @@ SymbolicValue* SymbolicHeader::clone() const {
     for (auto f : fieldValue)
         result->fieldValue[f.first] = f.second->clone();
     result->valid = valid->clone()->to<SymbolicBool>();
+    result->startOffset = startOffset;
+    result->endOffset = endOffset;
     return result;
 }
 
@@ -368,10 +374,16 @@ bool SymbolicHeader::equals(const SymbolicValue* other) const {
     return SymbolicStruct::equals(other);
 }
 
+void SymbolicHeader::setCoordinatesFromBitStream(unsigned start, unsigned end) {
+    startOffset = start;
+    endOffset = end;
+}
+
 void SymbolicHeader::dbprint(std::ostream& out) const {
     out << "{ ";
     out << "valid=>";
     valid->dbprint(out);
+    out<<" loc=["<<startOffset<<","<<endOffset<<"] ";
 #if 0
     for (auto f : fieldValue) {
         out << ", ";
@@ -581,6 +593,24 @@ bool SymbolicPacketIn::equals(const SymbolicValue* other) const {
     return minimumStreamOffset == sp->minimumStreamOffset;
 }
 
+bool SymbolicPacketOut::merge(const SymbolicValue* other) {
+    BUG_CHECK(other->is<SymbolicPacketOut>(), "%1%: merging with non- packet out", other);
+    auto sp = other->to<SymbolicPacketOut>();
+    bool changes = false;
+    if (maximumStreamOffset < sp->maximumStreamOffset) {
+        maximumStreamOffset = sp->maximumStreamOffset;
+        changes = true;
+    }
+    return changes;
+}
+
+bool SymbolicPacketOut::equals(const SymbolicValue* other) const {
+    if (!other->is<SymbolicPacketOut>())
+        return false;
+    auto sp = other->to<SymbolicPacketOut>();
+    return maximumStreamOffset == sp->maximumStreamOffset;
+}
+
 SymbolicVoid* SymbolicVoid::instance = new SymbolicVoid();
 
 /*****************************************************************************************/
@@ -667,6 +697,8 @@ void ExpressionEvaluator::postorder(const IR::Constant* expression) {
 }
 
 void ExpressionEvaluator::postorder(const IR::ListExpression* expression) {
+    // std::cout<<"ListExpression expression "; expression->dbprint(std::cout);
+    // std::cout<<"\n";
     auto type = typeMap->getType(expression, true);
     auto result = new SymbolicTuple(type->to<IR::Type_Tuple>());
     for (auto e : expression->components) {
@@ -769,6 +801,10 @@ void ExpressionEvaluator::postorder(const IR::Member* expression) {
         } else {
             BUG("%1%: unexpected expression", expression);
         }
+        /*
+        std::cout<<"-----> ";expression->dbprint(std::cout);std::cout<<", value = ";
+        v->dbprint(std::cout);std::cout<<"\n";
+        */
         set(expression, v);
     } else {
         BUG_CHECK(l->is<SymbolicStruct>(), "%1%: expected a struct", l);
@@ -828,6 +864,12 @@ void ExpressionEvaluator::postorder(const IR::PathExpression* expression) {
         result = new SymbolicEnum(type, decl->getName());
     else
         result = valueMap->get(decl);
+    /*
+    std::cout<<"\n--------start---------\n";
+    std::cout<<"expression = ";expression->dbprint(std::cout);std::cout<<" value = ";
+    result->dbprint(std::cout);std::cout<<"\n";
+    std::cout<<"----------end----------\n";
+    */
     set(expression, result);
 }
 
@@ -897,8 +939,8 @@ void ExpressionEvaluator::postorder(const IR::MethodCallExpression* expression) 
                 auto hdr = get(arg0->expression);
                 bool fixed = factory->isFixedWidth(argType);
                 unsigned width = factory->getWidth(argType);
-                // For variable-sized objects width is the "minimum" width.
 
+                // For variable-sized objects width is the "minimum" width.
                 if (expression->arguments->size() == 1) {
                     // 1-argument extract method
                     if (!fixed || !argType->is<IR::Type_Header>()) {
@@ -929,6 +971,8 @@ void ExpressionEvaluator::postorder(const IR::MethodCallExpression* expression) 
 
                 auto decl = em->object;
                 auto obj = valueMap->get(decl);
+                // std::cout<<"decl = ";decl->dbprint(std::cout);;
+                // std::cout<<", obj-valueMap = ";obj->dbprint(std::cout);std::cout<<"\n";
                 CHECK_NULL(obj);
                 if (obj->is<SymbolicError>()) {
                     set(expression, obj);
@@ -937,7 +981,9 @@ void ExpressionEvaluator::postorder(const IR::MethodCallExpression* expression) 
 
                 BUG_CHECK(obj->is<SymbolicPacketIn>(), "%1%: expected a packetIn", decl);
                 auto pkt = obj->to<SymbolicPacketIn>();
+                unsigned startOffset = pkt->getCurrentStreamOffset();
                 pkt->advance(width);
+                
                 if (!fixed)
                     pkt->setConservative();
 
@@ -949,9 +995,19 @@ void ExpressionEvaluator::postorder(const IR::MethodCallExpression* expression) 
                     set(expression, result);
                     return;
                 }
+                sh->setCoordinatesFromBitStream(startOffset, startOffset+width);
+
                 sh->setAllUnknown();
                 sh->setValid(true);
+                // TODO: check if expression original already exists in ValueMap,
+                // raise error/warning, if so.
+                valueMap->set(arg0->expression, sh);
                 set(expression, SymbolicVoid::get());
+                /*
+                std::cout<<"["<<startOffset<<"."<<startOffset+width
+                         <<"]"<<"width:"<<width<<"\n";
+                std::cout<<"-------------------------------------------------\n";
+                */
                 return;
             }
         }

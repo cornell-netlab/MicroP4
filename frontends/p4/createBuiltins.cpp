@@ -47,6 +47,17 @@ void CreateBuiltins::postorder(IR::ExpressionValue* expression) {
             new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
 }
 
+void CreateBuiltins::postorder(IR::SelectExpression* selectExpression) {
+    for (auto c : selectExpression->selectCases) {
+        if (c->keyset != nullptr && c->keyset->is<IR::DefaultExpression>())
+          return;
+    }
+    auto state = new IR::PathExpression(IR::ParserState::reject);
+    auto keyset = new IR::DefaultExpression();
+    auto selectCase = new IR::SelectCase(keyset, state);
+    selectExpression->selectCases.push_back(selectCase);
+}
+
 void CreateBuiltins::postorder(IR::ParserState* state) {
     if (state->selectExpression == nullptr) {
         warning("%1%: implicit transition to `reject'", state);

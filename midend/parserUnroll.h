@@ -34,23 +34,64 @@ struct ParserStateInfo {
     const IR::P4Parser*    parser;
     const IR::ParserState* state;  // original state this is produced from
     const ParserStateInfo* predecessor;  // how we got here in the symbolic evaluation
+    std::vector<std::pair<const IR::Expression*, const ParserStateInfo*>>
+                           nextParserStateInfo;  
     cstring                name;  // new state name
     ValueMap*              before;
     ValueMap*              after;
 
+    bool                   isLeafState;
+
+    static std::map<cstring, unsigned> stateNameIndices;
+
+    static cstring GetStateNameWithIndex(cstring stateName) {
+        unsigned i = 0;
+        auto iter = ParserStateInfo::stateNameIndices.find(stateName);
+        if (iter == ParserStateInfo::stateNameIndices.end())
+            ParserStateInfo::stateNameIndices.emplace(stateName, i);
+        else
+            i = ++(iter->second);
+        return stateName+"_"+std::to_string(i);
+    }
+
     ParserStateInfo(cstring name, const IR::P4Parser* parser, const IR::ParserState* state,
                     const ParserStateInfo* predecessor, ValueMap* before) :
             parser(parser), state(state), predecessor(predecessor),
-            name(name), before(before), after(nullptr)
-    { CHECK_NULL(parser); CHECK_NULL(state); CHECK_NULL(before); }
+            name(name), before(before), after(nullptr), isLeafState(false)
+    { CHECK_NULL(parser); CHECK_NULL(state); CHECK_NULL(before); 
+      //nextParserStateInfo = nullptr;
+    }
+
+    cstring toString() {
+        std::ostringstream out(std::ostringstream::ate);
+        out<<"ParserStateInfo: new state name - "<<name
+           <<" original state name - "<<state->name<<"\n";
+        return cstring(out.str());
+    }
+
 };
 
 // Information produced for a parser by the symbolic evaluator
 class ParserInfo {
     // for each original state a vector of states produced by unrolling
     std::map<cstring, std::vector<ParserStateInfo*>*> states;
+
  public:
-    std::vector<ParserStateInfo*>* get(cstring origState) {
+    std::vector<ValueMap*> allPossileFinalValueMaps;
+
+    std::vector<ParserStateInfo*>* get(cstring origState) const {
+        std::vector<ParserStateInfo*> *vec;
+        auto it = states.find(origState);
+        if (it == states.end()) {
+            vec = new std::vector<ParserStateInfo*>;
+            // states.emplace(origState, vec);
+        } else {
+            vec = it->second;
+        }
+        return vec;
+    }
+    void add(ParserStateInfo* si) {
+        cstring origState = si->state->name.name;
         std::vector<ParserStateInfo*> *vec;
         auto it = states.find(origState);
         if (it == states.end()) {
@@ -59,12 +100,39 @@ class ParserInfo {
         } else {
             vec = it->second;
         }
-        return vec;
-    }
-    void add(ParserStateInfo* si) {
-        cstring origState = si->state->name.name;
-        auto vec = get(origState);
+       // auto vec = get(origState);
         vec->push_back(si);
+    }
+
+    cstring toString() {
+        std::ostringstream out(std::ostringstream::ate);
+        out<<"ParserInfo states size : "<<states.size()<<"\n";
+        for (auto kv :  states) {
+            out<<"State : " << kv.first 
+               <<" number of unrolled states " << kv.second->size() <<"\n";
+            for (auto e : *(kv.second)) {
+                out<<e->toString();
+            }
+        }
+        return cstring(out.str());
+    }
+
+
+    unsigned getPacketInMaxOffset() const {
+        unsigned ret = 0;
+        for (auto valueMap : allPossileFinalValueMaps) {
+            auto filter = [](const IR::IDeclaration*, const P4::SymbolicValue* value)
+                            { return value->is<P4::SymbolicPacketIn>(); };
+            auto vm = valueMap->filter(filter);
+            unsigned val = 0;
+            if (vm->map.size() == 1) {
+                auto spi = vm->map.begin()->second->to<P4::SymbolicPacketIn>();
+                val = spi->getCurrentStreamOffset();
+                if (ret < val)
+                    ret = val;
+            }
+        }
+        return ret;
     }
 };
 
@@ -73,8 +141,8 @@ typedef CallGraph<const IR::ParserState*> StateCallGraph;
 // Information about a parser in the input program
 class ParserStructure {
     std::map<cstring, const IR::ParserState*> stateMap;
-    StateCallGraph* callGraph;
  public:
+    StateCallGraph* callGraph;
     const IR::P4Parser*    parser;
     const IR::ParserState* start;
     const ParserInfo*      result;
@@ -89,7 +157,7 @@ class ParserStructure {
     const IR::ParserState* get(cstring state) const
     { return ::get(stateMap, state); }
     void calls(const IR::ParserState* caller, const IR::ParserState* callee)
-    { callGraph->calls(caller, callee); }
+    {  callGraph->calls(caller, callee); }
 
     void analyze(ReferenceMap* refMap, TypeMap* typeMap, bool unroll);
 };
@@ -125,26 +193,33 @@ class ParserUnroller : public Transform {
 
 // Applied to a P4Parser object.
 class ParserRewriter : public PassManager {
-    ParserStructure  current;
+    ParserStructure  *current;
  public:
-    ParserRewriter(ReferenceMap* refMap, TypeMap* typeMap, bool unroll) {
+    ParserRewriter(ReferenceMap* refMap, TypeMap* typeMap, bool unroll, 
+                   ParserStructure* parserEval = nullptr) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
-        passes.push_back(new AnalyzeParser(refMap, &current));
+        if(parserEval == nullptr) 
+            current = new ParserStructure();
+        else 
+            current = parserEval;
+    
+        passes.push_back(new AnalyzeParser(refMap, current));
         passes.push_back(new VisitFunctor (
             [this, refMap, typeMap, unroll](const IR::Node* root) -> const IR::Node* {
-                current.analyze(refMap, typeMap, unroll);
+                current->analyze(refMap, typeMap, unroll);
                 return root;
             }));
 #if 0
         if (unroll)
-            passes.push_back(new ParserUnroller(refMap, typeMap, &current));
+            passes.push_back(new ParserUnroller(refMap, typeMap, current));
 #endif
     }
+
     Visitor::profile_t init_apply(const IR::Node* node) override {
         LOG1("Scanning " << node);
         BUG_CHECK(node->is<IR::P4Parser>(), "%1%: expected a parser", node);
-        current.parser = node->to<IR::P4Parser>();
-        return Visitor::init_apply(node);
+        current->setParser(node->to<IR::P4Parser>());
+        return PassManager::init_apply(node);
     }
 };
 
