@@ -141,7 +141,7 @@ control ingress(inout Parsed_headers headers,  inout metadata meta,
       send_to_cpu;
       set_nexthop;
     }
-    default_action = send_to_cpu();
+    default_action = send_to_cpu(0xff, 0xff);
     size = TABLE_SIZE;
   }
 

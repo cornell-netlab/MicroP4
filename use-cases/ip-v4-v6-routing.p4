@@ -244,6 +244,9 @@ control ingress(inout Parsed_headers headers,  inout metadata meta,
 
 
   apply {
+
+  // error handling and sanity checks
+  /*
     if (standard_metadata.parser_error != error.NoError) {
       ipv4_drop_action();
       return;
@@ -252,6 +255,7 @@ control ingress(inout Parsed_headers headers,  inout metadata meta,
       ipv6_drop_action();
       return;
     }
+  */
 
     ipv4_fib_lpm.apply();
 

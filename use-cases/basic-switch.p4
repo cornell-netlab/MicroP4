@@ -42,6 +42,8 @@ control DeparserImpl(packet_out packet, in headers hdr) {
 }
  control ingress(inout headers hdr, inout metadata meta, inout 
                 standard_metadata_t standard_metadata) {
+
+  data da;
   action nop() {}
   action mac_learn () {
     digest<learn_digest_t> (1, {hdr.ethernet.srcAddr,
@@ -49,6 +51,7 @@ control DeparserImpl(packet_out packet, in headers hdr) {
   }
    action forward(bit<9> out_port) {
     standard_metadata.egress_port = out_port;
+    da.md = 0;
   }
    action broadcast() {
     standard_metadata.mcast_grp = 1;
@@ -73,10 +76,10 @@ control DeparserImpl(packet_out packet, in headers hdr) {
       forward;
       broadcast;
     }
-    default_action = broadcast;
+    default_action = broadcast();
   }
    apply {
-    learn_notify.apply();
+    //learn_notify.apply();
     dmac_switching.apply();
   }
 }

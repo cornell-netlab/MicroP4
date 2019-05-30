@@ -2,11 +2,10 @@
  *  Composing 2 ethernet switches with a router connected in star topology with
  *  router as a central node.
  *  The router provides routing across the two broadcast domains.
- *  It does not manage any l3 port of interface.
- *
- *   -------------------------------
- *  | switch s1 --- R --- switch s2 |
- *   -------------------------------
+ *  It does not manage any physical port or interface.
+ *  -------------------
+ *  | s1 --- R --- s2 |
+ *  -------------------
  *  The composed data plane can provide switching to 4 ethernet switches and
  *  routing across them.
  */
