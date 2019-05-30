@@ -3,13 +3,21 @@
  * parser2,p4. 
  * The solution can exist without recirculation, however number of headers and
  * variables will be huge.
- * Essentially, the parser is a result of cross-product between states of
+ * Essentially, the parser is a result of cross-product between states
+ * (fundamentally, transitions from key-fields in headers) of
  * parser1.p4's parser and parser2.p4's parser.
  *
  * Each header instances defined in parser1.p4 and parser2.p4 need to be
  * described using multiple possible combinations of headers in this program.
- * This makes substitution of headers of parser1.p4 and parser2.p4 non-trivial.
- * Or may be impossible.
+ * There exists multiple mappings between header fields of the merged program and
+ * header fields of parser1,p4 and parser2,p4. This makes substitution of
+ * headers of parser1.p4 and parser2.p4 non-trivial.
+ * Without matching the key-fields in match+action tables, it is not possible to
+ * identify the correct mapping for headers in parser1.p4 and parser2,p4
+ * for a given packet.
+ *
+ * Not all the cross-products are listed here.
+ * 
  */
 
 
