@@ -141,6 +141,7 @@ But, the control blocks globally share different types of metadata structures an
 Without understanding implementation details of the program, reuse of the code is difficult due to lack of clear interface and abstraction.
 Existing data plane programming paradigm needs modularity that allow programmers to expose interface to reuse code written to process packet at any granularity of functionalities while abstracting away the implementation details.
 
+<<Draw a diagram that can be shared with this text and section 2>>
 Let's consider a simple scenario. A program, l3.p4, (defines a callable entity that) parses IPv4 header from packets, performs longest-prefix match and determines next hop. 
 Moreover, it decrements the ttl field and deparse the packet. 
 Another program, l2.p4, processes the same packet and takes the next hop as input argument, parses Ethernet header, matches on next-hop and modifies ethernet addresses.
@@ -148,8 +149,6 @@ Finally, it deparses the packet and sends on appropriate port.
 In this example, l3.p4 is not generating a functionally correct packet to forward on wire. 
 However, it can be reused with different layer-2 forwarding mechanism or even with MPLS and create functionally correct packet to forward on wire.
 Such fine-grained packet processing modules enable code reuse and modular control over data plane objects, thereby facilitating incremental development of network functions. 
-
-                        
 
 
 
