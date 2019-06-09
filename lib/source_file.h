@@ -208,16 +208,31 @@ class SourceInfo final {
        This is true if the start of other is strictly before
        the start of this. */
     bool operator< (const SourceInfo& rhs) const {
+        if (compareSrcInfoHackForCSA((*this), rhs)) return true;
         if (!rhs.isValid()) return false;
         if (!isValid()) return true;
         return this->start < rhs.start;
     }
-    inline bool operator> (const SourceInfo& rhs) const
-    { return rhs.operator< (*this); }
-    inline bool operator<=(const SourceInfo& rhs) const
-    { return !this->operator> (rhs); }
-    inline bool operator>=(const SourceInfo& rhs) const
-    { return !this->operator< (rhs); }
+    inline bool operator> (const SourceInfo& rhs) const { 
+        if (compareSrcInfoHackForCSA((*this), rhs)) return true;
+        return rhs.operator< (*this); 
+    }
+    inline bool operator<=(const SourceInfo& rhs) const { 
+        if (compareSrcInfoHackForCSA((*this), rhs)) return true;
+        return !this->operator> (rhs); 
+    }
+    inline bool operator>=(const SourceInfo& rhs) const { 
+        if (compareSrcInfoHackForCSA((*this), rhs)) return true;
+        return !this->operator< (rhs); 
+    }
+
+    bool compareSrcInfoHackForCSA(const SourceInfo& lhs, const SourceInfo& rhs) const {
+        if (lhs.sources == nullptr || rhs.sources == nullptr)
+            return true;
+        if (lhs.getSourceFile() != rhs.getSourceFile())
+            return true;
+        return false;
+    }
 
  private:
     const InputSources* sources;

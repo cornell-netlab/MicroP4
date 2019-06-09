@@ -408,6 +408,7 @@ class SymbolicHeader : public SymbolicStruct {
     
     unsigned startOffset;
     unsigned endOffset;
+
  public:
     explicit SymbolicHeader(const IR::Type_Header* type) : SymbolicStruct(type) {}
     SymbolicBool* valid;
@@ -421,6 +422,7 @@ class SymbolicHeader : public SymbolicStruct {
     void dbprint(std::ostream& out) const override;
     bool merge(const SymbolicValue* other) override;
     bool equals(const SymbolicValue* other) const override;
+    void setCoordinatesFromBitStream(unsigned start);
     void setCoordinatesFromBitStream(unsigned start, unsigned end);
     void getCoordinatesFromBitStream(unsigned& start, unsigned& end) const {
         start = startOffset; end = endOffset;

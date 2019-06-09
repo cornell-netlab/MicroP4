@@ -17,10 +17,22 @@ set (CSA_SWITCH_SRCS
     switch/parseInput.cpp
     midend/csamidend.h
     midend/csamidend.cpp
+    midend/controlStateReconInfo.h
+    midend/controlStateReconInfo.cpp
     midend/parserConverter.h
     midend/parserConverter.cpp
     midend/deparserConverter.h
     midend/deparserConverter.cpp
+    midend/mergeDeclarations.h
+    midend/mergeDeclarations.cpp
+    midend/slicePipeControl.h
+    midend/slicePipeControl.cpp
+    midend/toControl.h
+    midend/toControl.cpp
+    midend/toV1Model.h
+    midend/toV1Model.cpp
+    midend/csaExternSubstituter.h
+    midend/csaExternSubstituter.cpp
     )
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
 

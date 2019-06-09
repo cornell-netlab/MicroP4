@@ -61,12 +61,12 @@ class HierarchicalNames : public Transform {
 
     HierarchicalNames() { setName("HierarchicalNames"); visitDagOnce = false; }
     const IR::Node* preorder(IR::P4Parser* parser) override
-    { stack.push_back(getName(parser)); return parser; }
+    { stack.push_back(getName(parser->type)); return parser; }
     const IR::Node* postorder(IR::P4Parser* parser) override
     { stack.pop_back(); return parser; }
 
     const IR::Node* preorder(IR::P4Control* control) override
-    { stack.push_back(getName(control)); return control; }
+    { stack.push_back(getName(control->type)); return control; }
     const IR::Node* postorder(IR::P4Control* control) override
     { stack.pop_back(); return control; }
 
@@ -74,6 +74,12 @@ class HierarchicalNames : public Transform {
     { visit(table->annotations); prune(); return table; }
 
     const IR::Node* postorder(IR::Annotation* annotation) override;
+
+    const IR::Node* preorder(IR::P4ComposablePackage* p4cpkg) override
+    { stack.push_back(getName(p4cpkg)); return p4cpkg; }
+    const IR::Node* postorder(IR::P4ComposablePackage* p4cpkg) override
+    { stack.pop_back(); return p4cpkg; }
+
 };
 
 }  // namespace P4
