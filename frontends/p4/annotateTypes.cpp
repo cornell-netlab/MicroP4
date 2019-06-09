@@ -5,22 +5,29 @@
 
 namespace P4 {
 
-/*
-const IR::Type_Name* ReplaceTypeName::preorder(IR::Type_Name* tn) {
-    auto decl = refMap->getDeclaration(tn->path, false);
-    if (!decl->is<IR::Type_Var>()) 
-        return tn;
+const IR::Node* RenameTypeDeclarations::preorder(IR::Type_Declaration* idecl) {
+    auto n = getContext()->node;
+    if (n->is<IR::P4Program>())
+        std::cout<<"top level decl "<<idecl->getName()<<"\n";
+    return idecl;
+}
 
-    auto tv = decl->to<IR::Type_Var>();
-    auto newTV = tvs->lookup(tv)->to<IR::Type_Var>();
-    if (!newTV) 
-        return tn;
-  
-    auto newTN = new IR::Type_Name(tn->srcInfo, 
-                    new IR::Path(newTV->getName()));
-    return newTN;
+const IR::Node* RenameTypeDeclarations::preorder(IR::Declaration* idecl) {
+    auto n = getContext()->node;
+    if (n->is<IR::P4Program>())
+        std::cout<<"top level decl "<<idecl->getName()<<"\n";
+    return idecl;
+}
+/*
+const IR::Node* RenameTypeDeclarations::preorder(IR::P4ComposablePackage* cp) {
+    return cp;
+}
+
+const IR::Node* RenameTypeDeclarations::preorder(IR::Type_ComposablePackage* cp) {
+    return tcp;
 }
 */
+
 
 unsigned int AnnotateTypes::i = 0;
 const IR::P4ComposablePackage* AnnotateTypes::preorder(IR::P4ComposablePackage* cp) {
@@ -94,16 +101,17 @@ const IR::P4ComposablePackage* AnnotateTypes::preorder(IR::P4ComposablePackage* 
             }
 
             // create declaration_instance of instance of idecl
-            auto name = refMap->newName(cp->name+"_"+idecl->getName()+ 
-                                        "default_ctor_inst");
+            auto name = refMap->newName(cp->name+"_"+idecl->getName()+"_inst");
             auto annos = new IR::Annotations();
             annos->add(new IR::Annotation(IR::Annotation::nameAnnotation,
-                  { new IR::StringLiteral(cp->name+"_"+idecl->getName())}));
+                  { new IR::StringLiteral(cp->name+"."+idecl->getName())}));
 
             IR::Type_Name* typeName = new IR::Type_Name(
                                               new IR::Path(idecl->getName()));
-            auto inst = new IR::Declaration_Instance(cp->srcInfo, 
-                            IR::ID(name), annos, typeName, 
+            auto inst = new IR::Declaration_Instance(
+                            // cp->srcInfo, 
+                            //IR::ID(name), annos, typeName, 
+                            IR::ID(name), typeName, 
                             new IR::Vector<IR::Argument>());
             cp->packageLocalDeclarations.push_back(inst);
 

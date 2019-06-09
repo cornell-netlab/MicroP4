@@ -26,16 +26,20 @@ class Type_ComposablePackage : Type_ArchBlock, ISimpleNamespace, IApply, IContai
     toString { return cstring("Type_ComposablePackage ") + externalName(); }
 }
 
-class P4ComposablePackage : Type_Declaration, ISimpleNamespace, IApply, IContainer {
+class P4ComposablePackage : Type_Declaration, ISimpleNamespace, IApply, IContainer, IAnnotated {
     optional Annotations annotations = Annotations::empty;
     Type                                      interfaceType;
 //    Type_Name                                      interfaceType;
     IndexedVector<Type_Declaration>                packageLocals;
 
+    Annotations getAnnotations() const override { return annotations; }
+
     // This is not initialized during object creation, but in TypeInference.
     // FIXME: change this type tp P4ComposablePackage
     optional NullOK Type_ComposablePackage         type = nullptr;
 
+    // This is not set p4-16 parser, it used to store internal default
+    // Declaration_Instances
     optional inline IndexedVector<Declaration>     packageLocalDeclarations;
 
     TypeParameters getTypeParameters() const override;

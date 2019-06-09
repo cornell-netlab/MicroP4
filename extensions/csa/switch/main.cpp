@@ -18,6 +18,12 @@
 #include "extensions/csa/switch/parseInput.h"
 #include "extensions/csa/midend/csamidend.h"
 
+
+bool hasMain(const IR::P4Program* p4Program) {
+    auto mainDecls = p4Program->getDeclsByName(IR::P4Program::main)->toVector();
+    return (mainDecls->size() != 0);
+}
+
 int main(int argc, char *const argv[]) {
     setup_gc_logging();
 
@@ -33,8 +39,8 @@ int main(int argc, char *const argv[]) {
 
     auto hook = options.getDebugHook();
 
-    auto p4ProgramIRs = CSA::getPreCompiledIRs(options);
-    // std::cout<<"in Main number of IRs "<<p4ProgramIRs.size()<<"\n";
+    auto precompiledP4Programs = CSA::getPreCompiledIRs(options);
+    // std::cout<<"in Main number of IRs "<<precompiledP4Programs.size()<<"\n";
 
     auto program = P4::parseP4File(options);
     if (program == nullptr || ::errorCount() > 0)
@@ -54,19 +60,40 @@ int main(int argc, char *const argv[]) {
         std::cerr << bug.what() << std::endl;
         return 1;
     }
-    if (program == nullptr || ::errorCount() > 0)
-        return 1;
 
-    CSA::CSAMidEnd csaMidend(options);
-    program = csaMidend.run(program);
-
-    if (options.dumpJsonFile)
-        JSONGenerator(*openFile(options.dumpJsonFile, true)) << program << std::endl;
-/*
-    P4::serializeP4RuntimeIfRequired(program, options);
-    if (::errorCount() > 0)
+    if (program == nullptr || ::errorCount() > 0) {
+        std::cout<<"nullptr or error after frontend \n";
         return 1;
-*/
+    }
+
+        /*
+        CSA::CSAMidEnd csaMidend(options);
+        program = csaMidend.run(program, precompiledP4Programs);
+        */
+
+    if (options.outputFile || !hasMain(program)) {
+        std::cout<<"Generating P4Runtime APIs...\n";
+        P4::serializeP4RuntimeIfRequired(program, options);
+        if (::errorCount() > 0) {
+            std::cout<<"error in generating P4Runtime APIs\n";
+            return 1;
+        }
+        JSONGenerator(*openFile(options.outputFile, true)) << program << std::endl;
+        return 0;
+    }
+
+    if (hasMain(program)) {
+        std::cout<<"Running CSAMidend \n";
+        CSA::CSAMidEnd csaMidend(options);
+        program = csaMidend.run(program, precompiledP4Programs);
+        if (::errorCount() > 0) {
+            std::cout<<"error in running CSAMidend\n";
+            return 1;
+        }
+        return 0;
+    }
+
+
 
 /*
     const IR::ToplevelBlock* toplevel = nullptr;

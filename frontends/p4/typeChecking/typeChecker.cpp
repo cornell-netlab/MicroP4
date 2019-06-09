@@ -1217,7 +1217,10 @@ const IR::Node* TypeInference::preorder(IR::P4ComposablePackage* pkg) {
         pkg->type->dbprint(std::cout);
         std::cout<<"\n----------------------------------------------------\n";
         */
+        
     } else {
+        // if (!readOnly)
+            visit(pkg->interfaceType, "interfaceType");
         visit(pkg->type);
     }
     

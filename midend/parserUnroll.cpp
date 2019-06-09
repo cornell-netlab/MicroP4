@@ -325,9 +325,9 @@ class ParserSymbolicInterpreter {
         if (result == nullptr) {
         // if (state->isLeafState) {
             LOG1("After leaf state = "<<state->name<<", original state name = "<<state->state->name<<", ValueMap = "<< state->after);
-            std::cout<<"After leaf state = "<<state->name
-              <<", original state name = "<<state->state->name
-              <<", ValueMap = "<< state->after<<"\n";
+            //std::cout<<"After leaf state = "<<state->name
+            //  <<", original state name = "<<state->state->name
+            //  <<", ValueMap = "<< state->after<<"\n";
             synthesizedParser->allPossileFinalValueMaps.push_back(state->after);
         }
             

@@ -15,25 +15,25 @@
  */
 namespace P4 {
 
-/*
-class ReplaceTypeName final : public Transform {
-    ReferenceMap* refMap;
-    const TypeVariableSubstitution* tvs;
+class RenameTypeDeclarations final : public Transform {
 
-  public:
+    P4::ReferenceMap* refMap;
+
+ public:
     using Transform::preorder;
 
-    explicit ReplaceTypeName(ReferenceMap* refMap, 
-                             const TypeVariableSubstitution* tvs) 
-      : refMap(refMap), tvs(tvs) { 
-        CHECK_NULL(refMap);
-        setName("ReplaceTypeName"); 
+    explicit RenameTypeDeclarations(P4::ReferenceMap* refMap) 
+      : refMap(refMap) {
+        setName("RenameTypeDeclarations"); 
     }
-
-    const IR::Type_Name* preorder(IR::Type_Name* cp) override;
-
+    const IR::Node* preorder(IR::Declaration* idecl) override;
+    const IR::Node* preorder(IR::Type_Declaration* idecl) override;
+    /*
+    const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
+    const IR::Node* preorder(IR::Type_ComposablePackage* cp) override;
+    */
 };
-*/
+
 
 class AnnotateTypes final : public Transform {
     ReferenceMap* refMap;
@@ -57,6 +57,7 @@ class AnnotateTypes final : public Transform {
         }
     }
 };
+
 
 }  // namespace P4
 

@@ -133,6 +133,10 @@ const IR::P4Program *FrontEnd::run(const CompilerOptions &options, const IR::P4P
         new ValidateParsedProgram(),
         // Synthesize some built-in constructs
         new CreateBuiltins(),
+
+        // new ResolveReferences(&refMap, true),  // check shadowing
+        // new RenameTypeDeclarations(&refMap),
+        
         new ResolveReferences(&refMap, true),  // check shadowing
         new AnnotateTypes(&refMap),
         new ResolveReferences(&refMap, true),  // check shadowing

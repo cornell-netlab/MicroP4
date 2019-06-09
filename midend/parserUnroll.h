@@ -40,7 +40,7 @@ struct ParserStateInfo {
     ValueMap*              before;
     ValueMap*              after;
 
-    bool                   isLeafState;
+    // bool                   isLeafState;
 
     static std::map<cstring, unsigned> stateNameIndices;
 
@@ -54,11 +54,12 @@ struct ParserStateInfo {
         return stateName+"_"+std::to_string(i);
     }
 
-    ParserStateInfo(cstring name, const IR::P4Parser* parser, const IR::ParserState* state,
-                    const ParserStateInfo* predecessor, ValueMap* before) :
-            parser(parser), state(state), predecessor(predecessor),
-            name(name), before(before), after(nullptr), isLeafState(false)
-    { CHECK_NULL(parser); CHECK_NULL(state); CHECK_NULL(before); 
+    ParserStateInfo(cstring name, const IR::P4Parser* parser, 
+          const IR::ParserState* state, const ParserStateInfo* predecessor, 
+          ValueMap* before) 
+        : parser(parser), state(state), predecessor(predecessor), name(name), 
+          before(before), after(nullptr) /*, isLeafState(false)*/ { 
+            CHECK_NULL(parser); CHECK_NULL(state); CHECK_NULL(before); 
       //nextParserStateInfo = nullptr;
     }
 

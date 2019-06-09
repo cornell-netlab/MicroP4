@@ -262,6 +262,43 @@ bool TypeMap::equivalent(const IR::Type* left, const IR::Type* right) {
         return true;
     }
 
+    if (left->is<IR::P4ComposablePackage>()) {
+        auto lp = left->to<IR::P4ComposablePackage>();
+        auto rp = right->to<IR::P4ComposablePackage>();
+
+        // Name must be the same
+        if (lp->name != rp->name)
+            return false;
+
+        // The following gets into an infinite loop, since the return type of the
+        // constructor is the Type_Package itself.
+        // return equivalent(lp->getConstructorMethodType(), rp->getConstructorMethodType());
+        // The following code is equivalent.
+        auto lm = lp->getConstructorMethodType();
+        auto rm = rp->getConstructorMethodType();
+        if (lm->typeParameters->size() != rm->typeParameters->size())
+            return false;
+        for (size_t i = 0; i < lm->typeParameters->size(); i++) {
+            auto lp = lm->typeParameters->parameters.at(i);
+            auto rp = rm->typeParameters->parameters.at(i);
+            if (!equivalent(lp, rp))
+                return false;
+        }
+        // Don't check the return type.
+        if (lm->parameters->size() != rm->parameters->size())
+            return false;
+        for (size_t i = 0; i < lm->parameters->size(); i++) {
+            auto lp = lm->parameters->parameters.at(i);
+            auto rp = rm->parameters->parameters.at(i);
+            if (lp->direction != rp->direction)
+                return false;
+            if (!equivalent(lp->type, rp->type))
+                return false;
+        }
+        return true;
+    }
+
+
     if (left->is<IR::IApply>()) {
         return equivalent(left->to<IR::IApply>()->getApplyMethodType(),
                           right->to<IR::IApply>()->getApplyMethodType());

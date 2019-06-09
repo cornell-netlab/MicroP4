@@ -19,6 +19,13 @@ limitations under the License.
 namespace P4 {
 
 cstring HierarchicalNames::getName(const IR::IDeclaration* decl) {
+    if (decl->is<IR::IAnnotated>()) {
+        auto node = decl->to<IR::IAnnotated>();
+        auto annotation = node->getAnnotation(IR::Annotation::nameAnnotation);
+        if (annotation != nullptr) {
+            return IR::Annotation::getName(annotation);
+        }
+    }
     return decl->getName();
 }
 
@@ -27,6 +34,7 @@ const IR::Node* HierarchicalNames::postorder(IR::Annotation* annotation) {
         return annotation;
 
     cstring name = IR::Annotation::getName(annotation);
+    // std::cout<<name<<"\n";
     if (name.startsWith("."))
         return annotation;
     cstring newName = "";

@@ -2,150 +2,84 @@
  * Hardik Soni (hardik.soni@cornell.edu)
  *
  */
-
-/********* Expressing full program compositions and their semantics ************\
- *
- * Two major changes in current P4 front-end grammar and package execution
- * semantics:
- * 1. Additional "apply" method semantics for package types:
- * 2. The new Production rules are added for composable package.
- *    
- * All the packages should be seen as black box.
- * The input to the box are byte stream as an instance of packet_in type, an
- * instance of standard_metadata_t and runtime parameters passed to the proram.
- * These parameters have in, out or inout directions.
- *
- * The output is 1 to n copies of packet_out, standard_metadata and values
- * updated in the parameters passed to them according to their directions.
- * Additionally, each top level package is associated with two virtual buffers,
- * "in" and  "out".
- * On invoking a package instance, execution control reads bytes(packet_in.data 
- * and standard metadata) from the package's `in` buffer and writes (packet_out,
- * standard_metadata) to the `out` buffer.
- *
- *   ___                                                      ___
- *  |in |               ___________________                  |out|
- *  |   |              |                   |--packet_out.1-->|   |
- *  | b |--packet_in-->|                   |-- standard      | b |
- *  | u |              | Top Level Package |    metadata.1-->| u |
- *  | f |-- standard   |                   |..               | f |
- *  | f |  metadata -->|                   |--packet_out.n-->| f |
- *  | e |              |___________________|-- standard      | e |
- *  |_r_|                                       metadata.n-->|_r_|
- *
- * H type headers, M type metadata are internal state of packages. 
- * They should be enclosed within packages.
- *
- *
- * Similarly, execution semantics for instances of MATs, Actions and 
- * Controls are augmented with `in` and `out` virtual buffers.
- * On every invocation of a instance, execution control reads headers, metadata 
- * and standard_metdata etc., from the instance's in buffer, modifies them and 
- * write them on ithe instance's out buffer.
- * If multiple copies of the data are generated as a result of applying a table,
- * control or action, the copies are added to the out buffer in an undefined 
- * order.
- * 
- * The content of elements in the in-out buffer are decided by the 
- * parameters (both optConstructor and runtime) in the type declaration.
- *
- * Program's control flow graph dictates the interconnection and sharing of
- * in-out buffers of each instances of MATs, Actions and Controls.
- *
- *   ___                                                        ___ 
- *  |in |               _____________________                  |out|
- *  | b |              |                     |-- Headers.a1 -->| b |
- *  | u |-- Headers -->|       Actions       |-- Metadata.a1-->| u |  
- *  | f |              |         MAT         |..               | f |
- *  | f |-- Metadata-->|    Multicast MAT    |..               | f |
- *  | e |              |      Control        |-- Headers.an -->| e |
- *  |_r_|              |_____________________|-- Metadata.an-->|_r_|
- *
- *  For control statements like if-else and switch.
- *  Switch statement is skipped here.
- *  Short explanation: For each case switch stmt have an out buffer.
- *   ___                                                        _________ 
- *  |in |               _____________________                  |   True  |
- *  | b |              |                     |-- Headers.a1 -->|   out   |
- *  | u |-- Headers -->|                     |-- Metadata.a1-->| buffer  |  
- *  | f |              |       if-else       |..               |---------|
- *  | f |-- Metadata-->|        stmt         |..               |  False  |
- *  | e |              |                     |-- Headers.a1 -->|   out   |
- *  |_r_|              |_____________________|-- Metadata.a1-->|__buffer_|
- *
- ******************************************************************************/
-
 #ifndef _CSA_P4_
 #define _CSA_P4_
 
-typedef   bit<8>    PortId_t;
+#include <core.p4>
+
+typedef   bit<9>    PortId_t;
 const   PortId_t    PORT_CPU = 255;
 const   PortId_t    PORT_RECIRCULATE = 254;
 
-enum CSA_PacketPath_t {
+enum csa_packet_path_t {
     NORMAL,     /// Packet received by ingress that is none of the cases below.
     RECIRCULATE /// Packet arrival is the result of a recirculate operation
 }
 
+// extern void recirculate();
 
-extern void recirculate();
-
-struct standard_metadata_t {
-
-    CSA_PacketPath_t packet_path;
+struct csa_standard_metadata_t {
+    csa_packet_path_t packet_path;
     PortId_t ingress_port;
     bool drop_flag;  // true
 }
 
-// There are two options to enforce dependency on egress_port assignment and
-// queuing related metadata.
-// 1. Init returns structure of queuing related metadata)
-// 2. separate functions returning value for each field in queuing related
-// metadata
-enum metadata_t {
-    EGRESS_PORT_QUEUE_LENGTH
+
+enum csa_metadata_fields_t {
+    QUEUE_DEPTH_AT_DEQUEUE
 }
+
 
 extern egress_spec {
-    void set_egress_port(PortId_t egress_port);
+    void set_egress_port(in PortId_t egress_port);
     PortId_t get_egress_port(); // default 0x00
-    bit<32> get_value(metadata_t field_type);
+    bit<32> get_value(csa_metadata_fields_t field_type);
 }
 
+extern csa_packet_in {
+    csa_packet_in();
+}
+
+
+extern csa_packet_out {
+    csa_packet_out();
+    void get_packet_in(csa_packet_in csa_pin);
+}
+
+action csa_no_action(){}
+
 /*
-extern generic_buffer<IN_ELE_T, OUT_ELE_T> {
-    virtual_buffer();
-    packet_in read(); // finalize
-    write(packet_out po); // writer
+extern csa_packet_buffer_v2<EXTRA_ELE_T> {
+    csa_packet_buffer_v2();
+    //void get_packet_in(csa_packet_out po, csa_packet_in pin);
+    void enqueue(csa_packet_out csa_po, in EXTRA_ELE_T ele); // writer
+    void dequeue(csa_packet_in csa_pin, out EXTRA_ELE_T data); // finalize
 }
 */
 
-extern packet_buffer<IN_EXT_ELE_T, OUT_EXT_ELE_T> {
-    packet_buffer();
-    <packet_in, IN_EXT_ELE_T> read();   // finalize
-    write(<packet_out, OUT_EXT_ELE_T>); // writer
-}
+
 
 cpackage OrchestrationSwitch<IND, OUTD, INOUTD, UM, PSM>(
-          packet_in b, packet_out po, 
+          csa_packet_in b, csa_packet_out po, 
+          inout csa_standard_metadata_t standard_metadata, egress_spec es,
           in IND in_args, out OUTD out_args, inout INOUTD inout_args) () {
 
     @optional
-    control Import(in IND in_meta, inout INOUTD inout_meta, inout UM meta, 
-                   inout standard_metadata_t standard_metadata, egress_spec es);
+    control csa_import(in IND in_meta, inout INOUTD inout_meta, inout UM meta, 
+                   inout csa_standard_metadata_t sm, egress_spec e);
     /*
      * It is possible to directly invoke callee_pkg_inst.apply(...), because 
      * pin and po are available. Therefore, this OrchestrationSwitch does not have
      * "Execute" extern like CSASwitch.
      */
-    control Pipe(packet_in pin, packet_out po, inout UM meta, 
-                 inout standard_metadata_t standard_metadata, egress_spec es,
-                 inout PSM recirculate_meta);
+    control csa_pipe(csa_packet_in pin, csa_packet_out pout, inout UM meta, 
+                 inout csa_standard_metadata_t sm, egress_spec e);
     
     @optional
-    control Export(out OUTD out_meta, inout INOUTD inout_meta, in UM meta, 
-                   in standard_metadata_t standard_metadata, egress_spec es);
+    control csa_export(out OUTD out_meta, inout INOUTD inout_meta, in UM meta, 
+                   in csa_standard_metadata_t sn, egress_spec e);
  
+/*
     @optional
     cpackage ParallelSwitch<INC, OUTC, INOUTC, CPTYPE1, CPTYPE2>(
              CPTYPE1 pkg_one_inst, CPTYPE2 pkg_two_inst, packet_in pin, 
@@ -162,66 +96,38 @@ cpackage OrchestrationSwitch<IND, OUTD, INOUTD, UM, PSM>(
                            egress_spec es, inout PSM program_scope_metadata, 
                            in callee_context_t ctx);
     }
+*/
+
 }
 
 /*
  * Composable package interface declaration. 
  */
-cpackage CSASwitch<IND, OUTD, H, UM, PSM>(
-          packet_buffer<IND> in_buf, packet_buffer<OUTD> out_buf) {
           
-/*          in IND in_args, out OUTD out_args)() {
- * If a program generates multiple packet_out for one packet_in,  
 cpackage CSASwitch<IND, OUTD, INOUTD, H, UM, PSM>(
-          packet_in pin, packet_out po, 
+          csa_packet_in pin, csa_packet_out po, 
+          inout csa_standard_metadata_t standard_metadata, egress_spec es,
           in IND in_args, out OUTD out_args, inout INOUTD inout_args)() {
-*/
 
-/*
-  @optional
-  cpackage ExecuteSwitch<CPTYPE, INC, OUTC>( //  rt params
-                         in INC in_meta, out OUTC out_meta, 
-                         inout H parsed_hdr, 
-                         inout UM meta,
-                         inout  standard_metadata_t standard_metadata) 
-                         (CPTYPE callee_inst) // ctor params ;
-*/
-
-  // Declarations for programmable blocks of basic switch package type
-  parser Parser(packet_in b, out H parsed_hdr, inout UM meta, 
-                inout standard_metadata_t standard_metadata, 
-                in PSM program_scope_metadata);
-
-  @optional
-  control Import(in IND in_meta, in H parsed_hdr, 
-                 inout UM meta, inout standard_metadata_t standard_metadata, 
-                 egress_spec es);
-  
-  control Pipe(inout H hdr, inout UM meta, 
-               inout standard_metadata_t standard_metadata,
-               egress_spec es);
-
-  @optional
-  control Export(out OUTD out_meta, in H parsed_hdr, 
-                 in UM meta, in standard_metadata_t standard_metadata, 
-                 egress_spec es);
-  
-  control Deparser(packet_out b, in H hdr, out PSM program_scope_metadata);
+    // Declarations for programmable blocks of basic switch package type
+    parser csa_parser(packet_in b, out H parsed_hdr, inout UM meta, 
+                  inout csa_standard_metadata_t sm);
+ 
+    @optional
+    control csa_import(in IND in_meta, inout INOUTD inout_meta, in H parsed_hdr, 
+                   inout UM meta, inout csa_standard_metadata_t sm, 
+                   egress_spec e);
+    
+    control csa_pipe(inout H hdr, inout UM meta, inout csa_standard_metadata_t sm, 
+                 egress_spec e);
+ 
+    @optional
+    control csa_export(out OUTD out_meta, inout INOUTD inout_meta, in H parsed_hdr, 
+                   in UM meta, in csa_standard_metadata_t sm, egress_spec e);
+    
+    control csa_deparser(packet_out b, in H hdr);
   
 
-/************************************************************
-    apply {
-        
-        <packet_in, >
-
-        parser.apply();
-
-        Pipe.apply()
-
-        Deparser.apply()
-
-    }
-*************************************************************/
 
 /*  
   // Optional
