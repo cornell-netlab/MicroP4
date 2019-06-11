@@ -1,5 +1,9 @@
 \documentclass[10pt,sigconf,letterpaper,anonymous]{acmart}
 
+\usepackage{listings, multicol}
+\usepackage{lipsum}
+\usepackage{xcolor}
+
 
 %%
 %% \BibTeX command to typeset BibTeX logo in the docs
@@ -31,13 +35,43 @@
 %% of the event, and this ID should be used as the parameter to this command.
 %%\acmSubmissionID{123-A56-BU3}
 
+\definecolor{mygray}{gray}{0.95}
+\definecolor{commentcolor}{RGB}{0,100,0}
+
+\lstdefinelanguage{P4}{
+  keywords={in, out, inout, function, return, switch, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply},
+  keywordstyle=\color{blue}\bfseries,
+  keywords=[2]{boolean, string, number, objectid},
+  keywordstyle=[2]\color{green}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{commentcolor}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+   language=P4,
+   backgroundcolor=\color{mygray},
+   extendedchars=true,
+   basicstyle=\small\ttfamily,
+   showstringspaces=false,
+   showspaces=false,
+   tabsize=2,
+   frame=single,
+   breaklines=true,
+   showtabs=false
+}
 
 \begin{document}
 
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{To be decided}
+\title{$\mu$P4:}
 
 %%
 %% The "author" command and its associated commands are used to define
@@ -127,6 +161,9 @@
 
 \section{Introduction}
 
+\textbf{TODO: unify the terminology, functions / modules / packages}
+
+
 Software-Define Networking paradigm provides a great flexibility to control and manage network devices by separating control and data planes.
 Using APIs, Control plane can configure objects in data plane at run-time or compile time to achieve desired packet processing behavior or modify it.
 Adding into that, P4, a data plane programming language, allows to describe data plane of packet processing logic required to realize a network function and expose APIs to configure the objects the in data plane.
@@ -138,18 +175,88 @@ Also, it requires novel mechanisms to build complex network functions by reusing
 However, P4 mandates to write a monolithic data plane program and carefully configure the data plane objects to build a application processing various protocols and performing multiple network functions.
 For example, switch.p4~\cite{switch.p4} has control blocks defined to processes different protocol headers and network functions(e.g., l2 switching, l3 routing etc.,). 
 But, the control blocks globally share different types of metadata structures and parsed headers. 
-Without understanding implementation details of the program, reuse of the code is difficult due to lack of clear interface and abstraction.
+Without understanding implementation details of the program, reuse of the code is difficult due to lack of clear interface.
 Existing data plane programming paradigm needs modularity that allow programmers to expose interface to reuse code written to process packet at any granularity of functionalities while abstracting away the implementation details.
 
-<<Draw a diagram that can be shared with this text and section 2>>
-Let's consider a simple scenario. A program, l3.p4, (defines a callable entity that) parses IPv4 header from packets, performs longest-prefix match and determines next hop. 
+Let's consider a simple scenario as shown in Figure~\ref{fig:l3.p4.l2.p4}. A program, l3.p4, parses IPv4 header from packets, performs longest-prefix match and determines next hop. 
 Moreover, it decrements the ttl field and deparse the packet. 
-Another program, l2.p4, processes the same packet and takes the next hop as input argument, parses Ethernet header, matches on next-hop and modifies ethernet addresses.
+Another program, l2.p4, processes the same packet and takes the next hop as input argument, parses Ethernet header, matches on id of next hop and modifies ethernet addresses.
 Finally, it deparses the packet and sends on appropriate port.
 In this example, l3.p4 is not generating a functionally correct packet to forward on wire. 
-However, it can be reused with different layer-2 forwarding mechanism or even with MPLS and create functionally correct packet to forward on wire.
+However, it can be reused with different layer-2 forwarding mechanism or even with MPLS and create functionally correct packet to forward on wire. 
+Similarly, l2.p4 can be reused with IPv6 based routing.
 Such fine-grained packet processing modules enable code reuse and modular control over data plane objects, thereby facilitating incremental development of network functions. 
 
+\begin{figure*}
+\noindent \begin{minipage}[t]{.48\textwidth}
+\begin{lstlisting}[frame=none]
+// l3.p4
+parser P(packet_in pin, out hdr_t hdrs) {
+  state start {
+    pin.extract(hdrs.eth);
+    transition select(hdrs.eth.ethType){
+       0x0800: parse_ipv4;
+    }
+  }
+  state parse_ipv4 {
+      pin.extract(hdrs.ipv4);
+      transition accept;
+  }
+}
+control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
+  action process(bit<16> nh) {
+    hdrs.ipv4.ttl = hdrs.ipv4 - 1;
+    nexthop_id = nh;// setting out param
+  }
+  table ipv4_lpm_tbl {
+    key = { hdrs.ipv4.dstAddr : lpm } 
+    actions = { process; }
+  }
+  apply {
+    ipv4_lpm_tbl.apply();
+  }
+}
+control D(packet_out po, in hdr_t hdrs) {
+  apply() {
+    po.emit(hdrs.eth);
+\end{lstlisting}
+\end{minipage}
+\hfill\begin{minipage}[t]{.48\textwidth}
+\begin{lstlisting}[frame=none]
+    po.emit(hdrs.ipv4);
+  }
+}
+// l2.p4
+parser P(packet_in pin, out hdr_t hdrs) {
+  state start {
+    pin.extract(hdrs.eth);
+  }
+}
+control Pipe(inout hdr_t hdrs, in bit<16> nexthop_id, inout sm_t sm) {
+  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> out_port) {
+    hdrs.eth.dstAddr = dest_mac;
+    hdrs.eth.srcAddr = src_mac;
+    sm.out_port = out_port;    
+  }
+  table forward_tbl {
+    key = { nexthop_id : exact } 
+    actions = { process; }
+  }
+  apply {
+    forward_tbl.apply();
+  }
+}
+control D(packet_out po, in hdr_t hdrs) {
+  apply() {
+    po.emit(hdrs.eth);
+  }
+}
+\end{lstlisting}
+\end{minipage}
+\vspace*{-10pt}
+\caption{Fine-grained packet processing modules - l3.p4  and l2.p4}
+\label{fig:l3.p4.l2.p4}
+\end{figure*}
 
 
 Previous work, HyPer4~\cite{Hancock:2016:HUP:2999572.2999607}, HyperV~\cite{8038396} use virtualization to support modularity.
@@ -161,8 +268,9 @@ Encapsulating customized headers inside the packet may allow such communication,
 implementation details of deparser in one module to write complimentary parser in other and vice versa. 
 
 
-In this paper, we present...
-A composable(Modular or better name) architecture(CSA) with simple layout of packet processing blocks to abstract away complex interaction and packet execution flow of the target devices.
+
+
+In this paper, we present, a Micro Switch Architecture($\mu$SA) for a logical target that provides a simplified abstraction for packet processing blocks over architectures of real target devices.
 The architecture allows to write fine-grained packet processing functions(packages?) and define interface to expose them as callable modules(functions, package..?).
 P4 programmers can make reuse of the code by invoking the modules using their interfaces without knowing their implementation details.
 \begin{itemize}
@@ -186,6 +294,10 @@ P4 programmers can make reuse of the code by invoking the modules using their in
 
 \section{An example scenario}
 
+
+
+
+
 Compilation procedure.. with diagram
 
 Take the above example and explain how to use
@@ -196,21 +308,49 @@ how to write fine-grained packet processing code, how to define interface etc..
 
 What happens to control plane APIs?
 
-\section{Composable Switch Architecture}
+\section{Micro Switch Architecture}
+\subsection{Motivation}
+P4 is developed to specify data plane functionality of software or hardware targets (e.g., simple\_switch ~\cite{simple_switch.md}, TOFINO~\cite{tofino} etc.,) devices.
+Target device manufacturer provides an architecture description along with a P4 compiler for the device.
+The architecture source file (e.g., v1model.p4~\cite{v1model.p4} for simple\_switch) contains declaration of a set of pro\-gram\-ma\-ble blocks, their data plane interfaces and the target specific metadata (called intrinsic metadata) and extern functions.
+To program the data plane of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture file.
 
-Rationale
 
-P4 programs are tightly coupled with target architecture and layout of programmable blocks.
+The architecture description of a target specifies pro\-gram\-ma\-ble and fixed-function blocks and flow of user-defined and target-specific (called intrinsic) metadata among them.
+% In addition, it provides semantics of the target-specific actions and extern functions.
+For example, figure x(draw figure ) depicts packet processing blocks and extern functions to programs flow of packet and intrinsic metadata across the blocks for Portable Switch Architecture (PSA)~\cite{psa}. 
+% For example, a software target simple\_switch built using BMv2~\cite{bmv2} framework has ingress parser, ingress control, egress parser, egress control as programmable blocks and packet buffer with packet replication engine as fixed-function block.
+% Similarly, Portable Switch Architecture (PSA)~\cite{psa} specifies target architecture model additionally containing ingress deparser, egress parser as programmable blocks and Buffer Queuing Engine as a fixed-function block.
+% Both architectures provide intrinsic metadata, actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet path and flow of data across all the processing blocks.
+The existing architectures expose target-specific constraints and flow of data and packet enforced by the targets.
+E.g., output port can not be changed in egress control block, scope of some  intrinsic metadata bounded by particular programmable block, etc.,  
+Programmers implement execution logic conforming to architecture model and semantics of actions and extern functions of the target device.
+Therefor, P4 programs are tightly coupled with architecture of the target devices.
+In any programming language, caller and callee should have compatible abstract machines to reuse code and enable modularity.
+Currently, packet processing logic of P4 programs are sectioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
+In addition, programmers need to implement homogeneous blocks (e.g., ingress and egress control) satisfying different accessibility constraints on intrinsic metadata exposed by the architecture. 
+Hence, \textbf{composition(reuse?)} of data plane programs is extremely difficult, even for the same targets. 
+Also, existing compilers and architecture specifications do not provide simplified and common abstractions for packet processing blocks in data plane to facilitate target agnostic reuse of data plane programs.
 
-Lacks unified abstraction for heterogeneous packet processing blocks in hardware  .
+Our primary design goal is  to derive logical constructs to have uniform abstract-machine for packet processing blocks and data flow in the data plane.
+First, we reduce fragmentation of packet processing logic by minimizing number of packet processing blocks to be implemented.
+For this purpose, $(1)$ introduce logical constructs and externs in our model to abstract target-specific constraints of homogeneous blocks.
+And, $(2)$ provide compiler back-end to translate logical constructs into target-specific constraints and generate required processing blocks for a given target architecture.
 
-That makes it difficult to compose..
+Second, enable programmers to expose single interface to reuse fine-grained functions implemented across heterogeneous packet processing blocks.
 
-Need to minimize hardware details exposed in architecture and provide better abstraction to programmer to write packet processing blocks.
+\subsection{Architecture Model}
 
-So, we need simple packet processing pipeline
 
-ingress-egress, buffer, packet-replication engine etc can be abstracted away from the programmer
+\begin{figure}
+ \includegraphics[trim=0 480 805 0,clip,scale=0.5]{micro-orchestration-pipeline}
+\end{figure}
+
+\subsubsection{Processing Blocks}
+MSA provides two types of P4 packages interfaces, MicroSwitch and OrchestrationSwitch.
+Programmers can provides implementations of 
+has three programmable blocks, parser, pipe control and deparser control. 
+
 
 
 \section{Compiler}
@@ -227,6 +367,9 @@ Explain constraint.. take an example and show split of control-flow graph
 
 \section{Related Work}
 
+All data and control plane and policy composition related work 
+pyretic, covisor
+p4bricks
 \section{Conclusion}
 
 %%
