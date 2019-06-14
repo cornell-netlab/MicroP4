@@ -18,13 +18,11 @@ enum msa_packet_path_t {
     RECIRCULATE /// Packet arrival is the result of a recirculate operation
 }
 
-
 /*
  * Recirculate is required to process the packet through same the same piece of
  * code repeatedly in control block.
  */
 extern void recirculate();
-
 
 /*
  * Programmers can declare and instance of this and create copies of it
@@ -35,11 +33,9 @@ struct msa_standard_metadata_t {
     bool drop_flag;  // true
 }
 
-
 enum msa_metadata_fields_t {
     QUEUE_DEPTH_AT_DEQUEUE
 }
-
 
 extern egress_spec {
     void set_egress_port(in PortId_t egress_port);
@@ -50,10 +46,14 @@ extern egress_spec {
 
 extern msa_packet_in {
     msa_packet_in();
+
+    packet_in pin;
     void copy_from(msa_packet_in msa_pin);
 }
 
 extern msa_packet_out {
+    packet_out po;
+
     msa_packet_out();
     void get_packet_in(msa_packet_in msa_pin);
 }
@@ -97,13 +97,13 @@ extern msa_multicast_engine {
     */
 }
 
-extern msa_multicast_buffer<EXTRA_ELE_T> {
-    packet_buffer();
+extern msa_packet_buffer<EXTRA_ELE_T> {
+    msa_packet_buffer();
     void enqueue(msa_packet_out msa_po, in msa_standard_metadata_t sm,
-                 egress_spec es, in EXTRA_ELE_T ele); // writer
+                 egress_spec es, in EXTRA_ELE_T data); // writer
     
     void dequeue(msa_packet_in msa_pin, out msa_standard_metadata_t sm,
-                 egress_spec es, out EXTRA_ELE_T data); // finalize, writes on arguments
+                 egress_spec es, out EXTRA_ELE_T data); // finalize
 }
 
 
@@ -122,7 +122,7 @@ cpackage OrchestrationSwitch<IND, OUTD, INOUTD, RM>(
 
 }
 
-cpackage CSASwitch<IND, OUTD, INOUTD, H, UM, RM>(
+cpackage MicroSwitch<IND, OUTD, INOUTD, H, UM, RM>(
           msa_packet_in pin, msa_packet_out po, 
           inout msa_standard_metadata_t standard_metadata, egress_spec es,
           in IND in_args, out OUTD out_args, inout INOUTD inout_args)() {
