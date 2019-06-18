@@ -160,143 +160,8 @@
 %% information and builds the first part of the formatted document.
 \maketitle
 
-\section{Introduction}
 
-\textbf{TODO: unify the terminology, functions / modules / packages}
-
-
-Software-Define Networking paradigm provides a great flexibility to control and manage network devices by separating control and data planes.
-Using APIs, Control plane can configure objects in data plane at run-time or compile time to achieve desired packet processing behavior or modify it.
-Adding into that, P4, a data plane programming language, allows to describe data plane of packet processing logic required to realize a network function and expose APIs to configure the objects the in data plane.
-<<1 line on programmable blocks and on re-configurable hardware, Flexpipe, RMT >>
-
-More often, programmers need to describe data and control plane logic of network functions as different programs and in different languages.
-This, by design split of logic and execution control flow across multiple heterogeneous programs, increases development, test and deployment complexity of network functions.
-Also, it requires novel mechanisms to build complex network functions by reusing independently developed and tested data and control plane code.
-However, P4 mandates to write a monolithic data plane program and carefully configure the data plane objects to build a application processing various protocols and performing multiple network functions.
-For example, switch.p4~\cite{switch.p4} has control blocks defined to processes different protocol headers and network functions(e.g., l2 switching, l3 routing etc.,). 
-But, the control blocks globally share different types of metadata structures and parsed headers. 
-Without understanding implementation details of the program, reuse of the code is difficult due to lack of clear interface.
-<<Why passing headers to controls as parameters is not good interface?
-Explain using innerIP, outer IP, ethernet, vxlan examples that passing headers does not provide unambiguous interface to process packet. 
->>
-Existing data plane programming paradigm needs modularity that allow programmers to expose interface to reuse code written to process packet at any granularity of functionalities while abstracting away the implementation details.
-
-Let's consider a simple scenario as shown in Figure~\ref{fig:l3.p4.l2.p4}. A program, l3.p4, parses IPv4 header from packets, performs longest-prefix match and determines next hop. 
-Moreover, it decrements the ttl field and deparse the packet. 
-Another program, l2.p4, processes the same packet and takes the next hop as input argument, parses Ethernet header, matches on id of next hop and modifies ethernet addresses.
-Finally, it deparses the packet and sends on appropriate port.
-In this example, l3.p4 is not generating a functionally correct packet to forward on wire. 
-However, it can be reused with different layer-2 forwarding mechanism or even with MPLS and create functionally correct packet to forward on wire. 
-Similarly, l2.p4 can be reused with IPv6 based routing.
-Such fine-grained packet processing modules enable code reuse and modular control over data plane objects, thereby facilitating incremental development of network functions. 
-
-\begin{figure*}
-\noindent \begin{minipage}[t]{.48\textwidth}
-\begin{lstlisting}[frame=none]
-// l3.p4
-parser P(packet_in pin, out hdr_t hdrs) {
-  state start {
-    pin.extract(hdrs.eth);
-    transition select(hdrs.eth.ethType){
-       0x0800: parse_ipv4;
-    }
-  }
-  state parse_ipv4 {
-      pin.extract(hdrs.ipv4);
-      transition accept;
-  }
-}
-control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
-  action process(bit<16> nh) {
-    hdrs.ipv4.ttl = hdrs.ipv4 - 1;
-    nexthop_id = nh;// setting out param
-  }
-  table ipv4_lpm_tbl {
-    key = { hdrs.ipv4.dstAddr : lpm } 
-    actions = { process; }
-  }
-  apply {
-    ipv4_lpm_tbl.apply();
-  }
-}
-control D(packet_out po, in hdr_t hdrs) {
-  apply() {
-    po.emit(hdrs.eth);
-\end{lstlisting}
-\end{minipage}
-\hfill\begin{minipage}[t]{.48\textwidth}
-\begin{lstlisting}[frame=none]
-    po.emit(hdrs.ipv4);
-  }
-}
-// l2.p4
-parser P(packet_in pin, out hdr_t hdrs) {
-  state start {
-    pin.extract(hdrs.eth);
-  }
-}
-control Pipe(inout hdr_t hdrs, in bit<16> nexthop_id, inout sm_t sm) {
-  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> out_port) {
-    hdrs.eth.dstAddr = dest_mac;
-    hdrs.eth.srcAddr = src_mac;
-    sm.out_port = out_port;    
-  }
-  table forward_tbl {
-    key = { nexthop_id : exact } 
-    actions = { process; }
-  }
-  apply {
-    forward_tbl.apply();
-  }
-}
-control D(packet_out po, in hdr_t hdrs) {
-  apply() {
-    po.emit(hdrs.eth);
-  }
-}
-\end{lstlisting}
-\end{minipage}
-\vspace*{-10pt}
-\caption{Fine-grained packet processing modules - l3.p4  and l2.p4}
-\label{fig:l3.p4.l2.p4}
-\end{figure*}
-
-
-Previous work, HyPer4~\cite{Hancock:2016:HUP:2999572.2999607}, HyperV~\cite{8038396} use virtualization to support modularity.
-P4Visor~\cite{Zheng:2018:PLV:3281411.3281436} supports testing specific composition operators(A-B and Differential) by merging P4 programs using compiler techniques.
-In both approaches, minimal composable unit is a data plane program of a network function(e.g., switching, routing etc.,). 
-Hence, it does not allow to incrementally develop and enrich a network function by reusing code to support more protocols.
-Also, these approaches lack inter-module communication mechanism(e.g., next hop in above example) except via packets.
-Encapsulating customized headers inside the packet may allow such communication, but that would require to know
-implementation details of deparser in one module to write complimentary parser in other and vice versa. 
-
-parallel processing -copy semantics
-
-
-In this paper, we present, a Micro Switch Architecture($\mu$SA) and a compiler, $\mu$P4C, for a logical target to build network functions by reusing fine-grained packet processing code.
-% $\mu$SA provides a simplified abstraction for packet processing blocks over real targets' architectures.
-$\mu$SA allows define interface to expose code modules as callable P4 packages.
-P4 programmers can reuse of the code by invoking the packages interfaces without knowing implementation details of the code.
-Using $\mu$P4C, programmers can compile real target specific executable by linking all the $\mu$SA based programs, composing them into a single program.
-\begin{itemize}
- \item Compiler Midend to link all the programmable blocks compose them as dictated by their call location in execution-control of the source program.
- \item and transform complete CSA specific P4 program to any target architecture (e.g., v1model of BMV2 or PSA)
-\end{itemize}
-
-%  
-% Contribution in this paper,
-% 
-%  P4 programs adhering CSA are translated to other architectures(e.g., v1model, PSA) pertaining to software or hardweare target. 
-%  
-%  we developed backend and blah blah  
-%  
-%  
-%  Techniques to transform parser and deparser architecture blocks of P4 programs into control-blocks comprising match-action tables.
-% Compiler midend to merge packet processing functionality described in other p4 programs.
-
-<<Paper outline para  >> rest of the paper is arranged....
-
+\input{introduction}
 
 
 \section{Challenges}
@@ -355,7 +220,7 @@ Second, we abstract out fixed-function blocks by deriving logical externs.
 Third, we develop compiler mechanisms to have uniform abstract-machine for programmable blocks.
 Finally, we translate our unified abstract machine and logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
 
-In section~\ref{section-micros-awitch-architecture}, we explain the design of Micro Switch Architecture for a logical target that reduces number of programmable blocks and introduces logical externs to minimize heterogeneity in abstract model of P4 programs.
+In section~\ref{section:micros-awitch-architecture}, we explain the design of Micro Switch Architecture for a logical target that reduces number of programmable blocks and introduces logical externs to minimize heterogeneity in abstract model of P4 programs.
 
 
 
@@ -430,177 +295,16 @@ $\mu$SA provides abstraction to avail features of maximum processing blocks at a
         \centering
         \includegraphics[trim=0 405 623 0, clip,scale=0.55]{mp4c-compiler}
         \caption{Composition and Translation of Main Instance}
-        \label{subfig:orchestration}
+        \label{subfig:composition-translation-of-main-instance}
     \end{subfigure}
 \caption{Compiling $\mu$SA programs}
-\label{fig:msa-pipelines}
+\label{fig:compiling-msa-programs}
 \end{figure}
 
 
 
-\section{Micros-Switch Architecture}
-\label{section-micros-awitch-architecture}
-$\mu$SA, is designed for a logical target, unlike fixed pipeline of real target data planes with stationary processing blocks.
-$\mu$SA provides multiple types of logical pipelines.
-For each pipeline type, it exposes an interface type comprising a set of programmable blocks.
-Programmers can define a P4 \texttt{package} type by implementing all the programmable blocks of a interface type.
-In the same source file, programmers can provide multiple implementations of the same interface type to define multiple package types.
-$\mu$SA pipelines do not have fixed-function blocks, instead it provides a set of logical externs which can be instantiated and used within control blocks of the $\mu$SA pipelines.
-This design choice reduces heterogeneity in abstract model of data plane programs.
-
-$\mu$SA defines various architecture specific structures and externs that allow programmers to express sequential and parallel composition of fine-grained packet processing functions.
-It defines standard intrinsic metadata as~\texttt{msa\_sm\_t} as a struct type.
-The fields of this struct provide basic information populated by the target e.g.,~\texttt{packet\_length}.
-Some fields are not mutable, however $\mu$SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
-Sections~\ref{subsection-pipelines} and~\ref{subsection-logical-externs} describe pipelines and logical externs, respectively.
-
-
-
-\subsection{Pipelines}
-\label{subsection-pipelines}
-$\mu$SA has two types pipeline, Micro and Orchestration.
-Figure~\ref{fig:msa-pipelines} shows programmable blocks of two types.
-Micro pipeline interface comprises of parser, Micro-Pipe control and Deparser programmable blocks.
-Every incoming packet is parsed and validated by the parser, if parser terminates in~\texttt{accept} parse state, then execution-control is transferred to micro-pipe control block.
-Depending on use of logical externs in implementation, packet may not complete the processing of the control block.
-If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
-\begin{figure}[!h]
-    \begin{subfigure}{0.45\linewidth}
-        \centering
-        \includegraphics[trim=0 482 692 0, clip,scale=0.45]{msa-pipeline}
-        \caption{Micro}
-        \label{subfig:micro}
-    \end{subfigure}
-    \begin{subfigure}{0.45\linewidth}
-        \centering
-        \includegraphics[trim=0 480 805 0,clip,scale=0.45]{micro-orchestration-pipeline}
-        \caption{Orchestration}
-        \label{subfig:orchestration}
-    \end{subfigure}
-\caption{$\mu$SA Pipelines}
-\label{fig:msa-pipelines}
-\end{figure}
-
-Orchestration pipeline interface has only a control block, orchestration pipe.
-Programmers can implement imperative control flow using intrinsic metadata of $\mu$SA and runtime parameters to the package types.
-In addition of existing language features, it allows programmers to instantiate package types and invoke them in the body(~\texttt{apply}) of the control block.
-
-
-
-% \begin{figure*}
-% \noindent \begin{minipage}[t]{\linewidth}
-% \begin{lstlisting}[frame=none]
-% 
-% Orchestration<I, O, IO, U, R>(msa_packet_in b, msa_packet_out po, inout msa_sm_t sm, egress_spec es, in I iargs, out O oargs, inout IO ioargs) ()
-% 
-% MicroSwitch<I, O, IO, U, R>(msa_packet_in b, msa_packet_out po, inout msa_sm_t sm, egress_spec es, in I iargs, out O oargs, inout IO ioargs) ()
-% 
-% \end{lstlisting}
-% \end{minipage}
-% \vspace*{-10pt}
-% \caption{$\mu$SA Pipeline Interface Types}
-% \end{figure*}
-
-
-\subsection{Logical Externs}
-\label{subsection-logical-externs}
-\subsubsection{Packet Externs}
-Packets are represented using \texttt{packet\-\_in} and \texttt{packet\_out} externs defined in P4-16 core library~\cite{core.p4}.
-However, these externs do not provide functions and semantics required to describe sequential and parallel composition of programs.
-We define $\mu$SA specific packet externs to allow programmers to express sequential and parallel processing. 
-$\mu$SA specific packet externs \texttt{msa\_packet\_in} and \texttt{msa\_packet\_out} contain an instance of \texttt{packet\_in} and \texttt{packet\_out}, respectively.
-We introduce a function, \texttt{get\-\_packet\-\_in}, in \texttt{msa\-\_packet\-\_out}.
-\begin{lstlisting}[frame=none]
-void get_packet_in(msa_packet_in msa_pin);
-\end{lstlisting}
-Similarly, we introduce copy\_from function in \texttt{msa\_packet\_in} that replicates the state of passed argument (\texttt{msa\_pin}) to the calling instance.
-\begin{lstlisting}[frame=none]
-void copy_from(msa_packet_in msa_pin);
-\end{lstlisting}
-
-
-\subsubsection{Egress Specifications}
-To support special features, the architectures of real target devices provide intrinsic metadata  that depends on operations on other intrinsic metadata.
-For example,  many real targets allow to measure every packet's queuing latency through the device.
-The queuing latency is computed by recording enqueue and dequeue timestamps in the device.
-These timestamps can be measured only after the packet's egress port is finalized and the packet is sent to the packet buffer.
-The architectures of real target devices expose timestamps as intrinsic metadata which can be accessed only after the egress port is finalized.
-\begin{figure}[!h]
-\begin{lstlisting}[frame=none]
-enum msa_metadata_t {
-  INGRESS_TIMESTAMP,
-  EGRESS_TIMESTAMP
-}
-extern egress_spec {
-  void set_egress_port(in bit<8> port);
-  bit<8> get_egress_port();
-  bit<32> get_value(in msa_metadata_t ft);
-  void copy_from(egress_spec es);
-}
-\end{lstlisting}
-\caption{Egress\_Spec Extern}
-\label{fig:msa-egress-spec-extern}
-\end{figure}
-$\mu$SA considers \texttt{egress\_spec} as a stateful extern object (Figure ~\ref{fig:msa-egress-spec-extern}) providing functions to set and get \texttt{egress\_port} and retrieve values of other egress\_port dependent intrinsic metadata.
-$\mu$P4C allows repeated usage of the extern's functions in the single control block of $\mu$SA pipelines.
-$\mu$P4C uses their occurrences to transform the code to multi-control pipelines of real target architectures.
-If \texttt{get\_value} occurs before \texttt{set\_egress\_port} on any possible execution-control path, $\mu$P4C raises a compile-time error.
-
-\subsubsection{Packet Buffer}
-$\mu$P4 allows programmer to express parallel processing of multiple P4 programs by passing the copy of the packet and intrinsic metadata to multiple programs.
-Programmers can use assignment statements to create copies of standard intrinsic metadata (msa\_sm\_t) and use~\texttt{copy\_from} functions in~\texttt{msa\_packet\_in} and~\texttt{egress\_spec} to create copies of the packet and intrinsic metadata.
-In addition, it provides logical a packet buffer as an extern (Figure~\ref{fig:msa-packet-buffer-extern}) to serialize output packet and intrinsic metadata.
-The instances of logical buffer can only be used in the control block of orchestration pipeline.
-The output of the multiple programs generated by processing the same packet can be enqueued in the logical buffer.
-The dequeue function allows to fetch the packets and either pass it to another program to process or assign it to the msa\_packet\_out argument of orchestration pipe control block.
-\begin{figure}[!h]
-\begin{lstlisting}[frame=none]
-extern msa_packet_buffer<ET> {
-  msa_packet_buffer();
-  void enqueue(msa_packet_out po, in msa_sm_t sm, egress_spec es, in ET data);
-  void dequeue(msa_packet_in pin, out msa_sm_t sm, egress_spec es, out ET data); 
-}
-\end{lstlisting}
-\caption{Packet Buffer Extern}
-\label{fig:msa-packet-buffer-extern}
-\end{figure}
-
-\subsubsection{Multicast Extern}
-$\mu$SA's multicast extern (Figure~\ref{fig:msa-multicast-extern}) can be instantiated in the control blocks of its pipelines.
-The \texttt{set\_multicast\_group} can be used to assign replication group to the packet. 
-The \texttt{apply} function is allowed to use only in \texttt{apply} body control blocks. 
-It is analogous to~\texttt{fork} system call in C except that processing of original packet terminates at the apply call.
-It returns instance id of the replicated packets and populates the egress\_spec instance with the port id set by the control plane.
-$\mu$P4C translates this extern to multicast mechanism defined in architectures of real targets.
-We assume these architectures would have sufficient fields to program their replication engine, so that a combination of the fields can be used as packet instance id.
-\begin{figure}[!h]
-\begin{lstlisting}[frame=none]
-extern msa_multicast_engine {
-  msa_multicast_engine();
-  void set_multicast_group(GroupId_t gid);
-  PacketInstanceId_t apply(egress_spec es);
-}
-\end{lstlisting}
-\caption{Multicast Extern}
-\label{fig:msa-multicast-extern}
-\end{figure}
-
-
-
-
-
-\section{$\mu$P4C Compiler}
-\label{section-mp4c-compiler}
-
-\subsection{Parser Block Transformation}
-converting parser and deparser into control blocks
-
-\subsection{Deparser Block Transformation}
-
-\subsection{Cross-Architecture Code Translation}
-
-
-
+\input{msa}
+\input{mp4c}
 
 \section{implementation}
 
