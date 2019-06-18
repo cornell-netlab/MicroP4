@@ -1,0 +1,136 @@
+\section{Introduction}
+
+\textbf{TODO: unify the terminology, functions / modules / packages}
+
+
+Software-Define Networking paradigm provides a great flexibility to control and manage network devices by separating control and data planes.
+Using APIs, Control plane can configure objects in data plane at run-time or compile time to achieve desired packet processing behavior or modify it.
+Adding into that, P4, a data plane programming language, allows to describe data plane of packet processing logic required to realize a network function and expose APIs to configure the objects the in data plane.
+<<1 line on programmable blocks and on re-configurable hardware, Flexpipe, RMT >>
+
+More often, programmers need to describe data and control plane logic of network functions as different programs and in different languages.
+This, by design split of logic and execution control flow across multiple heterogeneous programs, increases development, test and deployment complexity of network functions.
+Also, it requires novel mechanisms to build complex network functions by reusing independently developed and tested data and control plane code.
+However, P4 mandates to write a monolithic data plane program and carefully configure the data plane objects to build a application processing various protocols and performing multiple network functions.
+For example, switch.p4~\cite{switch.p4} has control blocks defined to processes different protocol headers and network functions(e.g., l2 switching, l3 routing etc.,). 
+But, the control blocks globally share different types of metadata structures and parsed headers. 
+Without understanding implementation details of the program, reuse of the code is difficult due to lack of clear interface.
+<<Why passing headers to controls as parameters is not good interface?
+Explain using innerIP, outer IP, ethernet, vxlan examples that passing headers does not provide unambiguous interface to process packet. 
+>>
+Existing data plane programming paradigm needs modularity that allow programmers to expose interface to reuse code written to process packet at any granularity of functionalities while abstracting away the implementation details.
+
+Let's consider a simple scenario as shown in Figure~\ref{fig:l3.p4.l2.p4}. A program, l3.p4, parses IPv4 header from packets, performs longest-prefix match and determines next hop. 
+Moreover, it decrements the ttl field and deparse the packet. 
+Another program, l2.p4, processes the same packet and takes the next hop as input argument, parses Ethernet header, matches on id of next hop and modifies ethernet addresses.
+Finally, it deparses the packet and sends on appropriate port.
+In this example, l3.p4 is not generating a functionally correct packet to forward on wire. 
+However, it can be reused with different layer-2 forwarding mechanism or even with MPLS and create functionally correct packet to forward on wire. 
+Similarly, l2.p4 can be reused with IPv6 based routing.
+Such fine-grained packet processing modules enable code reuse and modular control over data plane objects, thereby facilitating incremental development of network functions. 
+
+\begin{figure*}
+\noindent \begin{minipage}[t]{.48\textwidth}
+\begin{lstlisting}[frame=none]
+// l3.p4
+parser P(packet_in pin, out hdr_t hdrs) {
+  state start {
+    pin.extract(hdrs.eth);
+    transition select(hdrs.eth.ethType){
+       0x0800: parse_ipv4;
+    }
+  }
+  state parse_ipv4 {
+      pin.extract(hdrs.ipv4);
+      transition accept;
+  }
+}
+control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
+  action process(bit<16> nh) {
+    hdrs.ipv4.ttl = hdrs.ipv4 - 1;
+    nexthop_id = nh;// setting out param
+  }
+  table ipv4_lpm_tbl {
+    key = { hdrs.ipv4.dstAddr : lpm } 
+    actions = { process; }
+  }
+  apply {
+    ipv4_lpm_tbl.apply();
+  }
+}
+control D(packet_out po, in hdr_t hdrs) {
+  apply() {
+    po.emit(hdrs.eth);
+\end{lstlisting}
+\end{minipage}
+\hfill\begin{minipage}[t]{.48\textwidth}
+\begin{lstlisting}[frame=none]
+    po.emit(hdrs.ipv4);
+  }
+}
+// l2.p4
+parser P(packet_in pin, out hdr_t hdrs) {
+  state start {
+    pin.extract(hdrs.eth);
+  }
+}
+control Pipe(inout hdr_t hdrs, in bit<16> nexthop_id, inout sm_t sm) {
+  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> out_port) {
+    hdrs.eth.dstAddr = dest_mac;
+    hdrs.eth.srcAddr = src_mac;
+    sm.out_port = out_port;    
+  }
+  table forward_tbl {
+    key = { nexthop_id : exact } 
+    actions = { process; }
+  }
+  apply {
+    forward_tbl.apply();
+  }
+}
+control D(packet_out po, in hdr_t hdrs) {
+  apply() {
+    po.emit(hdrs.eth);
+  }
+}
+\end{lstlisting}
+\end{minipage}
+% \vspace*{-10pt}
+\caption{Fine-grained packet processing modules - l3.p4  and l2.p4}
+\label{fig:l3.p4.l2.p4}
+\end{figure*}
+
+
+Previous work, HyPer4~\cite{Hancock:2016:HUP:2999572.2999607}, HyperV~\cite{8038396} use virtualization to support modularity.
+P4Visor~\cite{Zheng:2018:PLV:3281411.3281436} supports testing specific composition operators(A-B and Differential) by merging P4 programs using compiler techniques.
+In both approaches, minimal composable unit is a data plane program of a network function(e.g., switching, routing etc.,). 
+Hence, it does not allow to incrementally develop and enrich a network function by reusing code to support more protocols.
+Also, these approaches lack inter-module communication mechanism(e.g., next hop in above example) except via packets.
+Encapsulating customized headers inside the packet may allow such communication, but that would require to know
+implementation details of deparser in one module to write complimentary parser in other and vice versa. 
+
+parallel processing -copy semantics
+
+
+In this paper, we present, a Micro Switch Architecture($\mu$SA) and a compiler, $\mu$P4C, for a logical target to build network functions by reusing fine-grained packet processing code.
+% $\mu$SA provides a simplified abstraction for packet processing blocks over real targets' architectures.
+$\mu$SA allows define interface to expose code modules as callable P4 packages.
+P4 programmers can reuse of the code by invoking the packages interfaces without knowing implementation details of the code.
+Using $\mu$P4C, programmers can compile real target specific executable by linking all the $\mu$SA based programs, composing them into a single program.
+\begin{itemize}
+ \item Compiler Midend to link all the programmable blocks compose them as dictated by their call location in execution-control of the source program.
+ \item and transform complete CSA specific P4 program to any target architecture (e.g., v1model of BMV2 or PSA)
+\end{itemize}
+
+%  
+% Contribution in this paper,
+% 
+%  P4 programs adhering CSA are translated to other architectures(e.g., v1model, PSA) pertaining to software or hardweare target. 
+%  
+%  we developed backend and blah blah  
+%  
+%  
+%  Techniques to transform parser and deparser architecture blocks of P4 programs into control-blocks comprising match-action tables.
+% Compiler midend to merge packet processing functionality described in other p4 programs.
+
+<<Paper outline para  >> rest of the paper is arranged....
