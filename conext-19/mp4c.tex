@@ -1,6 +1,5 @@
 \section{$\mu$P4C Compiler}
 \label{section-mp4c-compiler}
-$\mu$P4 
 
 
 \subsection{Parser Block Transformation}
@@ -16,21 +15,22 @@ Also, we note that network packets are of finite length, hence they can be parse
 Successful parsing of a packet is essentially finding a match for a finite number of bytes from finite set of values.
 However, we need to extract all the bytes that might be required to perform match-actions from packets' bit streams.
 
-We compute number of bytes required to extract in section~\ref{subsubsection:computing-size-of-byte-array}, followed by an algorithm to convert parser without loops and variable length headers, called \textit{simple parsers}, into a series of match-action tables.
+
+We compute number of bytes required to extract in section~\ref{subsubsection:computing-size-of-byte-array}, followed by an approach to convert parser without loops and variable length headers, called \textit{simple parsers}, into a series of match-action tables.
 Next, we explain loops unrolling and variable length headers removal techniques transforming every parser into a simple parser.
 Finally, we discuss an optimization to reduce number of MATs to one.
 
 
 \subsubsection{Computing Size of Byte Array}
 \label{subsubsection:computing-size-of-byte-array}
-We perform symbolic execution of parser, control and deparser blocks to determine size of byte array buffer.
 Every~\texttt{extract} method call statement in parser states advances bit index by number of bits equal to the size of the header type of the instance passed as the argument.
+We perform symbolic execution of parser, control and deparser blocks to determine size of byte array buffer by evaluating calls of ~\texttt{extract} method of core library extern~\texttt{packet\_in}, ~\texttt{setValid} and ~\texttt{setInvalid} of P4 header types and~\texttt{emit} method of another core library extern~\texttt{packet\_out}.
 Symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph and computes total number of bytes extracted on every path.
-For program $p$'s parser, we define length $l_{p}(x)$ of a path $x$ from the start to the accept state in the parse graph as total number of bytes extracted.
+We define length $l_{p}(x)$ of a path $x$ from the start to the accept state in the parse graph of program $p$'s parser as total number of bytes extracted.
 And, the input buffer size for program $p$'s parser as $\mathcal{I}(p) = \max_{x}(l_{p}(x))$. 
 
 
-Programs may increase or decrease size of packets, therefor considering only parser buffer size is not enough.
+Programs may increase or decrease size of packets, therefore, considering only parser buffer size is not enough.
 We analyse control and deparser blocks to determine maximum increase and decrease in packet size by the program.
 Initially, we set the validity bit of all the headers instances that could be extracted by the parser. 
 We perform symbolic execution of control blocks to evaluate validity of each header instance on every path of the control flow graph.
@@ -64,27 +64,27 @@ Similarly, we define extract length, $\mathcal{E}l_{P}$ and buffer length $\math
 \label{subsubsection:simple-parser-to-mats}
 % We create action stage using parserStatements and match stage using ~\texttt{transitionStatement}.
 Every path enumerated by symbolic execution of a parser consists of evaluated instances of the parser states.
-<<>Diagram>
-Every evaluated instance of a state provides a set of extracted (valid) header instances and their start bit indices corresponding to the state and the path.
 A parser state can be a part of multiple paths, thereby having multiple instances.
-
-Moreover, P4 parser states consist of~\texttt{parser\-Statements} and~\texttt{transition\-Statement}.
+<<>Diagram>
+% Every evaluated instance of a state provides a set of extracted (valid) header instances and their start bit indices corresponding to the state and the path.
+P4 parser states consist of~\texttt{parser\-Statements} and~\texttt{transition\-Statement}.
 The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
 The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
 Therefore, we perform Forward Substitution on select expressions in evaluated instances of states
 % (https://dl.acm.org/citation.cfm?id=7904)
 on each path and eliminate such data dependency.
 
-We synthesise 1 bit local variables, called $visit$ bit, for each parser state to track the state transition of the parser's FSM.
+We synthesise local binary variables, called $visit$, for each parser state to track the state transition of the parser's FSM.
 For every evaluated instance of a parser state, we synthesise an action comprising its~\texttt{parser\-Statements} and replace extract method call statements to assignment statements.
-The assignment statements copies bytes from the array to header instances' fields using start bit indices computed by symbolic execution for the evaluated state instance.
+The assignment statements copies bytes from the buffer array to header instances' fields according to their sizes.
+Next, we add pop method call with the header size as the argument to remove the header from the byte array.
 We insert~\texttt{setValid} method call statement for the extracted header instances.
-We add assignment statement to set $visit$ bit of the parser state.
+We add an assignment statement to set $visit$ variable associated with the parser state.
 
-For every parser state, we create a match key comprising key-fields from three sources. 
-$(1)$ Set of all its ancestors' $visit$ bit,
-$(2)$ $visit$ bit of the state itself and
-$(3)$ union of select expression of all of its evaluated instances.
+
+For every parser state, we create a match key comprising key-fields from sets of keys. 
+$(1)$ $visit$ variable assocociated with the set of all its ancestors and the state itself and
+$(2)$ union of select expression of all of its evaluated instances.
 In most cases, the union of select expression would have a single key-field, unless forward substitution has produced different expressions in the state's evaluated instances.
 
 The~\texttt{start} being a special state has only one evaluated instance.
@@ -98,13 +98,44 @@ The apply body of the control block consists of an action call invalidating all 
 
 
 
-\subsubsection{Loops and Variable Length Headers Elimination}
-\label{loops-and-variable-length-headers-elimination}
+\subsubsection{Variable Length Headers and Loops Elimination}
+\label{variable-length-headers-loops-and-elimination}
+The two-argument extract method is replaced with a synthesised sub-parser with three arguments.
+First to arguments are the same as two-argument extract method and the third arguments is maximum size of variable field.
+The start state of the sub-parser contains a~\texttt{transition\-Statement} with a~\texttt{select\-Expression}.
+The sub-parser contains a state for each possible value of variable field size that extracts constant number of bits using single argument extract method and transits to accept state.
+The~\texttt{select\-Expression} of the start state uses the variable field size parameter(the second parameter) to match on and transit to the corresponding next state.
 
-\subsubsection{Optimization}
-
+How to unroll loops in parser? 
+Solution: First, we need to find loops. 
+If there is a loop, all( or at least one?) the extract stmts in the loop must(should ?) on header stack.
+yet to find a proper general solution.
 
 
 \subsection{Deparser Block Transformation}
+\label{subsection:deparser-block-transformation}
+Recall that deparser blocks are specialized control blocks having~\texttt{packet\_out} extern as one of the arguments.
+The extern's ~\texttt{emit} method inserts bits on packets' bit-stream, if the header instance provided in the argument is valid, else no operation is performed.
+We precisely perform the same operation on byte array buffer, but first we create a match-action table to push fixed number of bytes on the byte array buffer.
+Recall that the program's parser transformation pops the total number of extracted bytes from the byte array for each packet.
+% If the program's parser extracts less than $\mathcal{E}l$ for a particular packet, there are valid data on byte array.
+
+The key of the table are created using~\texttt{isValid} method call of each header instance.
+The table contains entries enumerating all possible combination of validity of the headers and action corresponding to each match key value to push the number of bytes equals to sum of lengths of all valid headers.
+
+
+The deparser block may contain P4 language constructs like~\texttt{if-else} and~\texttt{switch} statements in addition of~\texttt{emit} method call statements.
+Therefore, deparser block may have multiple execution paths emitting the same header instances. 
+We derive a directed-acyclic-graph,~\texttt{emit graph}, with each node representing a emit call from the control flow graph of the deparser control block.
+We synthesise a match-action table for every~\texttt{emit} method call in deparser blocks.
+Similar to one bit $visit$ variable for parser states, we create one bit variable, $emit$, for each node in the emit graph.
+The match key for the match-action table for an emit node comprises valid bit of the header instances passed as argument to its ancestors.
+In addition, the match key includes $emit$ variables associated with the ancestors.
+The idea behind introducing $emit$ variable is to record execution of previous emit calls in the control path and copy header instance  of emit call at appropriate location in the byte array buffer.
+
+
+
+\subsection{(De)parser Control Block Optimization}
+
 
 \subsection{Cross-Architecture Code Translation}

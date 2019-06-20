@@ -21,7 +21,7 @@
 \copyrightyear{2019}
 \acmYear{2019}
 %% \acmDOI{TBD}
-
+    
 %% These commands are for a PROCEEDINGS abstract or paper.
 \acmConference{CoNEXT '19}{December 9-12, 2019}{Orlando, Florida, USA}
 %% \acmBooktitle{}
@@ -195,10 +195,10 @@ For example, Figure~\ref{subfig:psa-model} and~\ref{subfig:v1model} show data pl
 
 Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
 Control blocks are expressed using a sub-language modelling imperative control-flow.
-Deparser are special control blocks that allows to use statements, to reassemble packets, that are not prohibited in other control blocks.
+Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
 Packet processing logic in P4 programs are sectioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
 Therefore, a control block can not instantiate and execute parser blocks. Similarly, deparser block can not invoke and execute parser blocks.  
-Consider the example in Figure~\ref{fig:l3.p4.l2.p4}, at the end of deparser control block ``D'' of l3.p4, parser ``P'' of l2.p4 can not be executed.
+Consider the example in Figure~\ref{fig:l3.p4.l2.p4}, parser ``P'' of l2.p4 can not be executed at the end of deparser control block ``D'' of l3.p4.
 
 
 Moreover, architectures models expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in~\cite{simple_switch.md} and ~\cite{psa}
