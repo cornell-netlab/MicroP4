@@ -11,14 +11,14 @@ Packet processing in data plane is primarily divided in three phases. $(1)$ Pars
 The re-configurable hardware based targets provide of programmable packet processing blocks (Parser, match-action tables (MATs) and deparser) to support processing of each phase. 
 P4 comprises of multiple sub-languages and each sub-language is designed to express logic for one or more types of programmable blocks. 
 In addition, target devices may have function specific blocks (e.g., Packet Replication Engine to create copies of packets in the device).
-All the packet processing blocks, programmable and fixed function, may be arranged in different layout in different target devices creating different architecture models for packet processing.
+All the packet processing blocks, programmable and fixed function, may be arranged in different layout in different target devices forming different pipelines and different architecture models (e.g., v1model\cite{v1model.p4}, PSA \cite{psa}) for packet processing.
 P4 allows to express architectures of target devices using a sub-language.
 This synergy between P4 and re-configurable hardware have greatly enhanced data plane programmability. 
-However, the same synergy has created tight coupling between the language and target device by exposing target-specific architecture details to programmers.
+However, the same synergy has created tight coupling between the language and target devices by exposing target-specific architecture details to programmers.
 Therefore, reuse of code across different target devices is extremely difficult.
 
 
-Even for the target devices with the same architecture and set of processing blocks, P4 mandates to write a monolithic data plane program and carefully configure the data plane objects to build an application processing various protocols and performing multiple network functions.
+Even for the target devices with the same architecture and pipeline, P4 mandates to write a monolithic data plane program and carefully configure the data plane objects to build an application processing various protocols and performing multiple network functions.
 For example, \texttt{switch.p4} \cite{switch.p4} has P4 code written to processes different protocol headers and network functions(e.g., l2 switching, l3 routing etc.,). 
 But, the code globally share different types of metadata structures and parsed headers.
 To program a target device only for ethernet switching using switch.p4, it is required to understand complete program and macros used in it to disable extraneous code.
@@ -40,34 +40,19 @@ Also, these approaches lack mechanisms to facilitate inter-module communication 
 Encapsulating customized headers inside the packet may allow such communication, but that would require to know implementation details of deparser in one module to write complimentary parser in other and vice versa. 
 
 
-Current programmable data plane ecosystem enforces programmers to write code amenable to the architectural layout of processing blocks in the data plane of the device.
-In other words, programmers provide code for processing blocks in data plane instead of compilers automatically allocating code to the required processing blocks.
+The current ecosystem of programmable data plane enforces programmers to write code amenable to the target device's data plane architecture and pipeline.
+Programmers write code for programmable blocks taking into account their location in pipeline rather than compilers automatically allocating code to the appropriate blocks.
+We believe that devices should only expose abstraction for processing blocks and the onus of code allocation to the blocks in pipeline should be on compilers for the devices.
 
-In this paper, we present a system $\mu$P4 designed using completely opposite philosophy.
-
-
-Micro Switch Architecture ($\mu$SA) for a logical target and $\mu$P4C, a compiler, which allows reuse P4 programs across real target devices with different architectures.
-
-
-
-% $\mu$SA provides a simplified abstraction for packet processing blocks over real targets' architectures.
-$\mu$SA allows define interface to expose code modules as callable P4 packages.
-P4 programmers can reuse of the code by invoking the packages interfaces without knowing implementation details of the code.
-Using $\mu$P4C, programmers can compile real target specific executable by linking all the $\mu$SA based programs, composing them into a single program.
+With this philosophy, we present a system, $\mu$P4, designed to enhance packet processing abstraction at target device level and enable code reuse across different targets.
+$\mu$P4 consists of two components, Micro Switch Architecture ($\mu$SA) for a logical micro-switch target and a compiler, $\mu$P4C, for the logical target. 
+$\mu$SA exposes simplified data plane pipelines and abstracts away fixed function blocks by providing logical constructs.
+$\mu$SA allows programmers to define interface for code modules for easy reuse and write P4 code libraries.
+Using $\mu$P4C, programmers can compile $\mu$SA specific code and independently developed libraries to a real target-specific single executable program or source.
+In summary, we make following contributions.
 \begin{itemize}
- \item Compiler Midend to link all the programmable blocks compose them as dictated by their call location in execution-control of the source program.
- \item and transform complete CSA specific P4 program to any target architecture (e.g., v1model of BMV2 or PSA)
+\item \textbf{Micro-Switch Architecture:} We introduce abstraction for fixed-function blocks and mechanisms to translate the abstractions into real target-specific functions using the compiler.
+\item \textbf{Micro-Switch P4 compiler:} We show code transformations of parser and deparser blocks to match-action based control blocks that provides us flexibility to allocate code at appropriate blocks in pipeline of real targets.
 \end{itemize}
-
-%  
-% Contribution in this paper,
-% 
-%  P4 programs adhering CSA are translated to other architectures(e.g., v1model, PSA) pertaining to software or hardweare target. 
-%  
-%  we developed backend and blah blah  
-%  
-%  
-%  Techniques to transform parser and deparser architecture blocks of P4 programs into control-blocks comprising match-action tables.
-% Compiler midend to merge packet processing functionality described in other p4 programs.
 
 <<Paper outline para  >> rest of the paper is arranged....
