@@ -1,0 +1,235 @@
+\documentclass{hotnets19}
+
+\usepackage{times}  
+\usepackage{hyperref}
+\usepackage{listings, multicol}
+\usepackage{lipsum}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{mdframed}
+
+
+\usepackage{float}
+% \usepackage[export]{adjustbox}
+
+\usepackage{booktabs}
+
+\hypersetup{pdfstartview=FitH,pdfpagelayout=SinglePage}
+
+\setlength\paperheight {11in}
+\setlength\paperwidth {8.5in}
+\setlength{\textwidth}{7in}
+\setlength{\textheight}{9.25in}
+\setlength{\oddsidemargin}{-.25in}
+\setlength{\evensidemargin}{-.25in}
+
+
+\definecolor{mygray}{gray}{0.99}
+\definecolor{commentcolor}{RGB}{0,100,0}
+
+\lstdefinelanguage{P4}{
+  keywords={in, out, inout, function, return, switch, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply},
+  keywordstyle=\color{blue}\bfseries,
+  keywords=[2]{boolean, string, number, objectid},
+  keywordstyle=[2]\color{green}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{commentcolor}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+   language=P4,
+%    backgroundcolor=\color{mygray},
+   extendedchars=true,
+   basicstyle=\small\ttfamily,
+   showstringspaces=false,
+   showspaces=false,
+   tabsize=2,
+   frame=single,
+   breaklines=true,
+   showtabs=false
+}
+
+
+\begin{document}
+
+% \conferenceinfo{HotNets 2019} {}
+% \CopyrightYear{2019}
+% \crdata{X}
+% \date{}
+
+%%%%%%%%%%%% THIS IS WHERE WE PUT IN THE TITLE AND AUTHORS %%%%%%%%%%%%
+
+\title{HotNets 2019 Paper}
+
+\author{Paper \#0, 3 pages}
+
+\maketitle
+
+%%%%%%%%%%%%%  ABSTRACT GOES HERE %%%%%%%%%%%%%%
+\begin{abstract}
+
+
+
+\end{abstract}
+
+\input{introduction}
+
+
+\section{Challenges}
+P4 is developed to specify data plane functionality of software or hardware targets (e.g., simple\_\-switch~\cite{simple_switch.md}, TOFINO~\cite{tofino} etc.,) devices.
+Target device manufacturer provides an architecture description of data plane along with a P4 compiler for the device.
+The architecture source file (e.g., v1model.p4~\cite{v1model.p4} for simple\_switch) contains declaration of a set of pro\-gram\-ma\-ble blocks, their data plane interfaces and the target specific metadata (called intrinsic metadata) and extern functions.
+To program the packet processing pipeline of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture file.
+Therefore, P4 programs are tightly coupled with architecture of the target devices.
+
+
+The architecture description of a target specifies data plane pipeline comprising a set of pro\-gram\-ma\-ble and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
+For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model~\cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
+
+\begin{figure}
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=7 450 281 0, clip,scale=0.36]{psa-pipeline.pdf}
+        \caption{PSA Model}
+        \label{subfig:psa-model}
+    \end{subfigure}
+    \begin{subfigure}[b]{\linewidth}
+        \centering
+        \includegraphics[trim=3 460 357 0, clip,scale=0.35]{v1model-pipeline.pdf}
+        \caption{simple\_switch v1 Model}
+        \label{subfig:v1model}
+    \end{subfigure}
+\caption{Real Target Architectures}
+\label{fig:real-target-architectures}
+\end{figure}
+
+
+Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
+Control blocks are expressed using a sub-language modelling imperative control flow.
+Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
+Packet processing logic in P4 programs are sectioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
+Therefore, a control block can not instantiate and execute parser blocks. Similarly, deparser block can not invoke and execute parser blocks.  
+Consider the example in Figure~\ref{fig:l3.p4.l2.p4}, parser ``P'' of l2.p4 can not be executed at the end of deparser control block ``D'' of l3.p4.
+
+
+Moreover, architectures models expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in~\cite{simple_switch.md} and ~\cite{psa}
+In turn, adding different abstract-machine to program packet-path and data flow across the blocks and further increasing heterogeneity in the model of a data plane program.
+<<For example, resubmit or recirculate calls are like event trigger.. effects happen after the block>>
+
+Finally, the existing architecture models expose target-specific constraints.
+E.g., output port can not be changed in egress control block, scope of some intrinsic metadata bounded by particular programmable blocks, etc.,  
+Programmers need implement execution logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
+
+
+% P4 programmers need to implement homogeneous blocks (e.g., ingress and egress control) satisfying different accessibility constraints on intrinsic metadata exposed by the architecture. 
+Due to absence of uniform abstract machine for a program and presence of target-specific constraints, composition of data plane program modules is extremely difficult, even for the same target. 
+Also, existing compilers and architecture specifications do not provide simplified and common abstractions for packet processing blocks in data plane to facilitate target agnostic reuse of data plane programs.
+
+
+First, we simplify abstract machine for P4 data plane programs by reducing code fragmentation and number of programmable blocks.
+Second, we abstract out fixed-function blocks by deriving logical externs.
+Third, we develop compiler mechanisms to have uniform abstract-machine for programmable blocks.
+Finally, we translate our unified abstract machine and logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
+
+In section~\ref{section:micros-awitch-architecture}, we explain the design of Micro Switch Architecture for a logical target that reduces number of programmable blocks and introduces logical externs to minimize heterogeneity in abstract model of P4 programs.
+
+
+
+% \begin{figure}
+%  \includegraphics[trim=3 459 281 0, clip,scale=0.35]{psa-pipeline.pdf}
+%  \includegraphics[trim=3 460 357 0, clip,scale=0.35]{v1model-pipeline.pdf}
+%  \includegraphics[trim=0 390 650 0, clip,scale=0.5]{v1model-pipeline-wrap.pdf}
+%  \includegraphics[trim=0 380 620 0, clip,scale=0.5]{psa-pipeline-wrap.pdf}
+%  \includegraphics[trim=0 482 692 0, clip,scale=0.7]{msa-pipeline.pdf}
+%  \includegraphics[trim=0 450 645 0, clip,scale=0.6]{mp4c-frontend.pdf}
+%  \includegraphics[trim=0 405 623 0, clip,scale=0.7]{mp4c-compiler}
+%  \includegraphics[trim=0 480 805 0,clip,scale=0.5]{micro-orchestration-pipeline}
+% \end{figure}
+
+
+\section{Micros P4}
+
+overview:
+
+
+Define types of composition: 
+Sequential
+Parallel
+
+
+What do we need to provide interface to code modules?
+
+We need runtime behaviour with package. 
+packet, sm, es, inargs, inout args -> package -> packet, sm, es, out args, inout args
+P4 extended to 
+allow Define new Package types
+runtime behavior with package types
+
+MicroP4 defines package interfaces.
+
+
+MicroP4 captures intrinsic metadata dependency of real targets using logical extern (egress\_spec)
+
+MicroP4 defines common abstractions for target specific operations that can not be expressed in P4
+e.g., multicast
+
+
+
+Micro P4 higher-level description and usage:
+
+% \begin{figure}
+%     \begin{subfigure}{0.45\linewidth}
+%         \centering
+%         \includegraphics{\}
+%         \label{subfig:micro}
+%     \end{subfigure}
+% \caption{Runtime Behavior of Package Types}
+% \label{fig:E-msa-pipelines}
+% \end{figure}
+
+Architecture model of real targets provides a default path, comprising  processing blocks, for packet and data in data plane pipeline.
+Programmers can use target-specific externs to change the default path and route the packet through required processing block.
+Intuitively, we can say that the packet-processing code is stationary whereas packet and data are propagated through the stationary code blocks in pipeline.
+P4 compiler backends of real targets mandates programmers to map logic and provide code for different processing units in data plane instead of automatically allocating code to the units. 
+
+Micro-Switch Architecture, $\mu$SA, is designed with completely opposite philosophy.
+$\mu$SA provides abstraction to avail features of maximum processing blocks at any stage of execution-control of a program and $\mu$P4C compiler transforms code according to the abstractions to allocate on stationary processing blocks of the real target device.
+
+\begin{figure}[!h]
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=0 450 645 0, clip,scale=0.55]{mp4c-frontend}
+        \caption{Library Program Compilation}
+        \label{subfig:compiling-modules}
+    \end{subfigure}
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=0 405 623 0, clip,scale=0.55]{mp4c-compiler}
+        \caption{Composition and Translation of Main Instance}
+        \label{subfig:composition-translation-of-main-instance}
+    \end{subfigure}
+\caption{Compiling $\mu$SA programs}
+\label{fig:compiling-msa-programs}
+\end{figure}
+
+
+
+\input{msa}
+\input{mp4c}
+
+\section*{Acknowledgments}
+
+\bibliographystyle{abbrv} 
+\begin{small}
+\bibliography{main}
+\end{small}
+
+\end{document}
+

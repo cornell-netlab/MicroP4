@@ -1,0 +1,73 @@
+\section{Introduction}
+% hardware and software together, cool
+Over the last decade, synergistic development of hardware and software systems based on match-action based abstraction has fundamentally changed packet processing in network devices.
+In one hand packet processing chips based on the domain-specific hardware (e.g., RMT \cite{Bosshart:2013:FMF:2486001.2486011}, d-RMT \cite{Chole:2017:DDP:3098822.3098823}) provide a  great flexibility to reconfigure the data plane without modifying hardware of the target device, on the other hand P4 \cite{Bosshart:2014:PPP:2656877.2656890, p4lang} allows to program the re-configurable chips based target devices (e.g., TOFINO \cite{tofino}, FlexPipe etc.,).
+P4 is designed to describe packet processing logic required in data plane of target devices to realize a network function and expose control plane APIs to configure the data plane objects.
+% Using the APIs, Control plane can configure objects in data plane at run-time or compile time to achieve desired packet processing behavior or modify it.
+
+%  What does it mean to have hardware and software targeted to specific domain.
+% It did not mean we end up devloping mahcine langauge
+Packet processing in data plane is primarily divided in three phases. $(1)$ Parsing headers, $(2)$ Headers and data modifications using match-action processing and $(3)$ Packet reassembly by deparsing.
+The re-configurable hardware based targets provide of programmable packet processing blocks (Parser, match-action tables (MATs) and deparser) to support processing of each phase. 
+P4 comprises of multiple sub-languages and each sub-language is designed to express logic for one or more types of programmable blocks. 
+In addition, target devices may have function specific blocks (e.g., Packet Replication Engine to create copies of packets in the device).
+All the packet processing blocks, programmable and fixed function, may be arranged in different layout in different target devices creating different architecture models for packet processing.
+P4 allows to express architectures of target devices using a sub-language.
+This synergy between P4 and re-configurable hardware have greatly enhanced data plane programmability. 
+However, the same synergy has created tight coupling between the language and target device by exposing target-specific architecture details to programmers.
+Therefore, reuse of code across different target devices is extremely difficult.
+
+
+Even for the target devices with the same architecture and set of processing blocks, P4 mandates to write a monolithic data plane program and carefully configure the data plane objects to build an application processing various protocols and performing multiple network functions.
+For example, \texttt{switch.p4} \cite{switch.p4} has P4 code written to processes different protocol headers and network functions(e.g., l2 switching, l3 routing etc.,). 
+But, the code globally share different types of metadata structures and parsed headers.
+To program a target device only for ethernet switching using switch.p4, it is required to understand complete program and macros used in it to disable extraneous code.
+Without understanding implementation details of the program with multiple features, it is difficult to reuse fine-grained fragments of code from it.
+The difficulty arises due to absence of language constructs that can allow to define fine-grained packet processing modules with interfaces to communicate with them.
+Existing data plane programming ecosystem needs modularity that allow programmers to expose interface to reuse code written to process packet at any granularity while abstracting away the implementation details.
+% <<Why passing headers to controls as parameters is not good interface?
+% Explain using innerIP, outer IP, ethernet, vxlan examples that passing headers does not provide unambiguous interface to process packet. 
+% >>
+
+\input{example}
+
+
+Previous work, HyPer4 \cite{Hancock:2016:HUP:2999572.2999607}, HyperV \cite{8038396} use virtualization to support modularity.
+P4Visor~\cite{Zheng:2018:PLV:3281411.3281436} supports testing specific composition operators(A-B and Differential) by merging P4 programs using compiler techniques.
+In both approaches, minimal unit of re-usable code is an entire data plane program of a network function. 
+These approaches may allow reuse of network functions but they can not allow selective reuse of fine-grained packet processing code from libraries of network functions.
+Also, these approaches lack mechanisms to facilitate inter-module communication and define interface for the same.(e.g., next\_hop id in above example).
+Encapsulating customized headers inside the packet may allow such communication, but that would require to know implementation details of deparser in one module to write complimentary parser in other and vice versa. 
+
+
+Current programmable data plane ecosystem enforces programmers to write code amenable to the architectural layout of processing blocks in the data plane of the device.
+In other words, programmers provide code for processing blocks in data plane instead of compilers automatically allocating code to the required processing blocks.
+
+In this paper, we present a system $\mu$P4 designed using completely opposite philosophy.
+
+
+Micro Switch Architecture ($\mu$SA) for a logical target and $\mu$P4C, a compiler, which allows reuse P4 programs across real target devices with different architectures.
+
+
+
+% $\mu$SA provides a simplified abstraction for packet processing blocks over real targets' architectures.
+$\mu$SA allows define interface to expose code modules as callable P4 packages.
+P4 programmers can reuse of the code by invoking the packages interfaces without knowing implementation details of the code.
+Using $\mu$P4C, programmers can compile real target specific executable by linking all the $\mu$SA based programs, composing them into a single program.
+\begin{itemize}
+ \item Compiler Midend to link all the programmable blocks compose them as dictated by their call location in execution-control of the source program.
+ \item and transform complete CSA specific P4 program to any target architecture (e.g., v1model of BMV2 or PSA)
+\end{itemize}
+
+%  
+% Contribution in this paper,
+% 
+%  P4 programs adhering CSA are translated to other architectures(e.g., v1model, PSA) pertaining to software or hardweare target. 
+%  
+%  we developed backend and blah blah  
+%  
+%  
+%  Techniques to transform parser and deparser architecture blocks of P4 programs into control-blocks comprising match-action tables.
+% Compiler midend to merge packet processing functionality described in other p4 programs.
+
+<<Paper outline para  >> rest of the paper is arranged....

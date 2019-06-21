@@ -1,0 +1,80 @@
+% \section{Use Case}
+Let's consider a simple scenario as shown in Figure~\ref{fig:l3.p4.l2.p4}. A program, l3.p4, parses IPv4 header from packets, performs longest-prefix match, determines the \texttt{nexthop\_id}. decrements the ttl field and, finally, deparse the packet. 
+Another program, l2.p4, further processes the packets and takes the next hop as input argument, parses Ethernet header, matches on the~\texttt{nexthop\_id} and modifies ethernet addresses.
+Finally, it deparses the packet and sends on appropriate port.
+In this example, l3.p4 is not generating a functionally correct packet to forward on wire and l2.p4 can not forward packet without valid \texttt{nexthop\_id}. 
+% However, it can be reused with different layer-2 forwarding mechanism or even with MPLS and create functionally correct packet to forward on wire. 
+However, l2.p4 can be reused with IPv6 based routing or any other custom layer-3 routing.
+Such libraries of fine-grained packet processing functions can enable code reuse and modular control over data plane objects, thereby facilitating incremental development of network functions. 
+
+\begin{figure*}[ht]
+\noindent \begin{minipage}[t]{.48\textwidth}
+\begin{lstlisting}[frame=none]
+// l3.p4
+parser P(packet_in pin, out hdr_t hdrs) {
+  state start {
+    pin.extract(hdrs.eth);
+    transition select(hdrs.eth.ethType){
+       0x0800: parse_ipv4;
+    }
+  }
+  state parse_ipv4 {
+      pin.extract(hdrs.ipv4);
+      transition accept;
+  }
+}
+control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
+  action process(bit<16> nh) {
+    hdrs.ipv4.ttl = hdrs.ipv4 - 1;
+    nexthop_id = nh;// setting out param
+  }
+  table ipv4_lpm_tbl {
+    key = { hdrs.ipv4.dstAddr : lpm } 
+    actions = { process; }
+  }
+  apply {
+    ipv4_lpm_tbl.apply();
+  }
+}
+control D(packet_out po, in hdr_t hdrs) {
+  apply() {
+    po.emit(hdrs.eth);
+\end{lstlisting}
+\end{minipage}
+\hfill\begin{minipage}[t]{.48\textwidth}
+\begin{lstlisting}[frame=none]
+    po.emit(hdrs.ipv4);
+  }
+}
+// l2.p4
+parser P(packet_in pin, out hdr_t hdrs) {
+  state start {
+    pin.extract(hdrs.eth);
+  }
+}
+control Pipe(inout hdr_t hdrs, in bit<16> nexthop_id, inout sm_t sm) {
+  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> out_port) {
+    hdrs.eth.dstAddr = dest_mac;
+    hdrs.eth.srcAddr = src_mac;
+    sm.out_port = out_port;    
+  }
+  table forward_tbl {
+    key = { nexthop_id : exact } 
+    actions = { process; }
+  }
+  apply {
+    forward_tbl.apply();
+  }
+}
+control D(packet_out po, in hdr_t hdrs) {
+  apply() {
+    po.emit(hdrs.eth);
+  }
+}
+\end{lstlisting}
+\end{minipage}
+% \vspace*{-10pt}
+\caption{Fine-grained packet processing modules - l3.p4  and l2.p4}
+\label{fig:l3.p4.l2.p4}
+\end{figure*}
+
