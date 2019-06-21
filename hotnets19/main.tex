@@ -25,15 +25,17 @@
 \setlength{\evensidemargin}{-.25in}
 
 
-\definecolor{mygray}{gray}{0.99}
+\definecolor{mygray}{gray}{1.0}
 \definecolor{commentcolor}{RGB}{0,100,0}
+\definecolor{myk}{rgb}{0.0,0,0.65}
+
 
 \lstdefinelanguage{P4}{
   keywords={in, out, inout, function, return, switch, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply},
-  keywordstyle=\color{blue}\bfseries,
+  keywordstyle=\color{myk}\bfseries,
   keywords=[2]{boolean, string, number, objectid},
   keywordstyle=[2]\color{green}\bfseries,
-  identifierstyle=\color{black},
+  identifierstyle=\color{darkgray}\bfseries,
   sensitive=false,
   comment=[l]{//},
   morecomment=[s]{/*}{*/},
@@ -45,9 +47,10 @@
 
 \lstset{
    language=P4,
+%    numbers=left,
 %    backgroundcolor=\color{mygray},
    extendedchars=true,
-   basicstyle=\small\ttfamily,
+   basicstyle=\small\ttfamily\color{darkgray}\bfseries,
    showstringspaces=false,
    showspaces=false,
    tabsize=2,
