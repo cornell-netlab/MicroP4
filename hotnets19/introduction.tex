@@ -1,16 +1,16 @@
 \section{Introduction}
 % hardware and software together, cool
 Over the last decade, synergistic development of hardware and software systems based on match-action based abstraction has fundamentally changed packet processing in network devices.
-In one hand packet processing chips based on the domain-specific hardware (e.g., RMT \cite{Bosshart:2013:FMF:2486001.2486011}, d-RMT \cite{Chole:2017:DDP:3098822.3098823}) provide a  great flexibility to reconfigure the data plane without modifying hardware of the target device, on the other hand P4 \cite{Bosshart:2014:PPP:2656877.2656890, p4lang} allows to program the re-configurable chips based target devices (e.g., TOFINO \cite{tofino}, FlexPipe etc.,).
+In one hand the domain-specific hardware (e.g., RMT \cite{Bosshart:2013:FMF:2486001.2486011}, d-RMT \cite{Chole:2017:DDP:3098822.3098823}) provide a great flexibility to reconfigure the data plane without modifying hardware of the target device, on the other hand P4 \cite{Bosshart:2014:PPP:2656877.2656890, p4lang} allows to program the data plane of re-configu\-rable target devices (e.g., TOFINO \cite{tofino}, FlexPipe etc.,).
 P4 is designed to describe packet processing logic required in data plane of target devices to realize a network function and expose control plane APIs to configure the data plane objects.
 % Using the APIs, Control plane can configure objects in data plane at run-time or compile time to achieve desired packet processing behavior or modify it.
 
 %  What does it mean to have hardware and software targeted to specific domain.
 % It did not mean we end up devloping mahcine langauge
 Packet processing in data plane is primarily divided in three phases. $(1)$ Parsing headers, $(2)$ Headers and data modifications using match-action processing and $(3)$ Packet reassembly by deparsing.
-The re-configurable hardware based targets provide of programmable packet processing blocks (Parser, match-action tables (MATs) and deparser) to support processing of each phase. 
-P4 comprises of multiple sub-languages and each sub-language is designed to express logic for one or more types of programmable blocks. 
-In addition, target devices may have function specific blocks (e.g., Packet Replication Engine to create copies of packets in the device).
+The re-configurable targets provide of programmable packet processing blocks (Parser, match-action tables (MATs) and deparser) to support processing of each phase. 
+P4 comprises of multiple sub-languages and each sub-language is designed to express logic for one or more types of the programmable blocks. 
+In addition, target devices may have function-specific blocks (e.g., Packet Replication Engine to create copies of packets in the device).
 All the packet processing blocks, programmable and fixed function, may be arranged in different layout in different target devices forming different pipelines and different architecture models (e.g., v1model\cite{v1model.p4}, PSA \cite{psa}) for packet processing.
 P4 allows to express architectures of target devices using a sub-language.
 This synergy between P4 and re-configurable hardware have greatly enhanced data plane programmability. 
@@ -18,7 +18,7 @@ However, the same synergy has created tight coupling between the language and ta
 Therefore, reuse of code across different target devices is extremely difficult.
 
 
-Even for the target devices with the same architecture and pipeline, P4 mandates to write a monolithic data plane program and carefully configure the data plane objects to build an application processing various protocols and performing multiple network functions.
+P4 mandates to write a monolithic data plane program even for the target devices with the same architecture and pipeline.
 For example, \texttt{switch.p4} \cite{switch.p4} has P4 code written to processes different protocol headers and network functions(e.g., l2 switching, l3 routing etc.,). 
 But, the code globally share different types of metadata structures and parsed headers.
 To program a target device only for ethernet switching using switch.p4, it is required to understand complete program and macros used in it to disable extraneous code.
@@ -56,4 +56,3 @@ In summary, we make following contributions.
 \end{itemize}
 
 Outline of the rest of the parer. 
-First, we introduce technical challenges 

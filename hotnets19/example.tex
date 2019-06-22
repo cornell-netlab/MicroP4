@@ -32,17 +32,15 @@ control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
     key = { hdrs.ipv4.dstAddr : lpm } 
     actions = { process; }
   }
-  apply {
-    ipv4_lpm_tbl.apply();
-  }
+  apply { ipv4_lpm_tbl.apply(); }
 }
 control D(packet_out po, in hdr_t hdrs) {
-  apply() {
-    po.emit(hdrs.eth);
+  apply { 
 \end{lstlisting}
 \end{minipage}
 \hfill\begin{minipage}[t]{.48\textwidth}
 \begin{lstlisting}[frame=none]
+    po.emit(hdrs.eth); 
     po.emit(hdrs.ipv4);
   }
 }
@@ -62,14 +60,10 @@ control Pipe(inout hdr_t hdrs, in bit<16> nexthop_id, inout sm_t sm) {
     key = { nexthop_id : exact } 
     actions = { process; }
   }
-  apply {
-    forward_tbl.apply();
-  }
+  apply { forward_tbl.apply(); }
 }
 control D(packet_out po, in hdr_t hdrs) {
-  apply() {
-    po.emit(hdrs.eth);
-  }
+  apply { po.emit(hdrs.eth); }
 }
 \end{lstlisting}
 \end{minipage}

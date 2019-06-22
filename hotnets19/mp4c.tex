@@ -23,29 +23,30 @@ Finally, we discuss an optimization to reduce number of MATs to one.
 
 \subsubsection{Computing Size of Byte Array}
 \label{subsubsection:computing-size-of-byte-array}
-Every~\texttt{extract} method call statement in parser states advances bit index by number of bits equal to the size of the header type of the instance passed as the argument.
-We perform symbolic execution of parser, control and deparser blocks to determine size of byte array buffer by evaluating calls of ~\texttt{extract} method of core library extern~\texttt{packet\_in}, ~\texttt{setValid} and ~\texttt{setInvalid} of P4 header types and~\texttt{emit} method of another core library extern~\texttt{packet\_out}.
+% Every \em{extract} method call statement in parser states advances bit index by number of bits equal to the size of the header type of the instance passed as the argument.
+We perform symbolic execution of parser, control and deparser blocks to determine size of byte array buffer by evaluating call statements of \em{extract} and \em{emit} methods of core library externs \em{packet\_in} and \em{packet\_out}, respectively.
+The symbolic execution also tracks validity of header instances by evaluating \em{setValid} and \em{setInvalid} method calls of P4 header types.
 Symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph and computes total number of bytes extracted on every path.
 We define length $l_{p}(x)$ of a path $x$ from the start to the accept state in the parse graph of program $p$'s parser as total number of bytes extracted.
-And, the input buffer size for program $p$'s parser as $\mathcal{I}(p) = \max_{x}(l_{p}(x))$. 
+And, the input buffer size for program $p$'s parser as $\mathcal{I}(p) = \max_{x}\left\{l_{p}(x)\right\}$. 
 
 
 Programs may increase or decrease size of packets, therefore, considering only parser buffer size is not enough.
-We analyse control and deparser blocks to determine maximum increase and decrease in packet size by the program.
-Initially, we set the validity bit of all the headers instances that could be extracted by the parser. 
-We perform symbolic execution of control blocks to evaluate validity of each header instance on every path of the control flow graph.
-Any header instance not emitted in all the paths of deparser block is considered invalid, because such header instances will not increase size of the packet.
-We compute maximum and minimum number of bytes that can be emitted by program $p$ and denote them as $\mathcal{O}_{m}(p)$ and $\mathcal{O}_{n}(p)$, respectively.
+We perform symbolic execution of control and deparser blocks to determine maximum increase and decrease in packet size by the program.
+We evaluate header instances' setValid and setInvalid method call statements on every path of the control flow graph.
+We define worst case scenarios to estimate increase and decrese of size of packets on the same control path.
+To estimate maximum decrement, we consider that a packet contains all the header instances that are set to valid or invalid on a control path.
+Similarly for maximum increment, we consider that a packet does not contain any header instance that is set to valid or invalid on a control path. 
+We denote increase and decrease in packet size on a path $x$ of control block of program $p$ using $i_{p}(x)$ and $d_{p}(x)$.
+We define them as sum of sizes of all the header instances set valid and invalid on the path, respectively.
+Header instances not emitted in any paths of deparser block by extracted by a parser state decrease packets size. 
+For every path $x$, $d_{p}(x)$ is increamented by the size of such header instances. 
 We define maximum decrease and increase in packet size by program $p$ as $\delta(p)$ and $\Delta(p)$, as shown in (\ref{decrease}) and (\ref{increase}).
+
+
 \begin{align}
-\delta(p)\; =& \; \begin{cases}
-\mathcal{I}(p) - \mathcal{O}_{n}(p), & \text{ if } \mathcal{I}(p) > \mathcal{O}_{n}(p), \\
-0, & \text{ else }
-\end{cases} \label{decrease} \\
-\Delta(p) \; =& \; \begin{cases}
-\mathcal{O}_{m}(p) - \mathcal{I}(p), & \text{ if } \mathcal{O}_{m}(p) > \mathcal{I}(p), \\
-0, & \text{ else } \label{increase}
-\end{cases}
+\delta(p)\; =& \;  \max_{x} \left\{ d_{p}(x) \right\} \label{decrease} \\
+\Delta(p) \; =& \; \max_{x} \left\{ i_{p}(x) \right\} \label{increase}
 \end{align}
 
 To process packets by a sequence of $N$ programs, we define extract length, $\mathcal{E}l_{S}$ and buffer length $\mathcal{B}l_{S}$, as shown in (\ref{extract-length-seq}) and (\ref{buffer-length-seq}).
@@ -81,6 +82,40 @@ Next, we add pop method call with the header size as the argument to remove the 
 We insert~\texttt{setValid} method call statement for the extracted header instances.
 We add an assignment statement to set $visit$ variable associated with the parser state.
 
+\begin{figure*}[!h]
+    \begin{subfigure}[b]{0.3\linewidth}
+        \centering
+        \includegraphics[trim=4 270 596 0, clip,scale=0.4]{parser-transformation-example}
+        \caption{An example P4 Parser}
+        \label{subfig:parser}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.3\linewidth}
+        \centering
+        \includegraphics[trim=4 285 796 0, clip,scale=0.4]{parser-example-se-1}
+        \includegraphics[trim=4 285 796 0, clip,scale=0.4]{parser-example-se-2}
+        \caption{Parser Symbolic Execution}
+        \label{subfig:parser-symbolic-execution}
+    \end{subfigure}
+    \begin{subfigure}[b]{.4\linewidth}
+\begin{lstlisting}[frame=none]
+control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
+  action process(bit<16> nh) {
+    hdrs.ipv4.ttl = hdrs.ipv4 - 1;
+    nexthop_id = nh;// setting out param
+  }
+  table ipv4_lpm_tbl {
+    key = { hdrs.ipv4.dstAddr : lpm } 
+    actions = { process; }
+  }
+  apply { ipv4_lpm_tbl.apply(); }
+}
+\end{lstlisting}
+\caption{Match-Action Control Block}
+\label{subfig:parser-symbolic-execution}
+\end{subfigure}
+\caption{Parser to Control Block Transformation}
+\label{fig:parser-to-control-block-transformation}
+\end{figure*}
 
 For every parser state, we create a match key comprising key-fields from sets of keys. 
 $(1)$ $visit$ variable assocociated with the set of all its ancestors and the state itself and
