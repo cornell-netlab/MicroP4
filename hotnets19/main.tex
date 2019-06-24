@@ -78,10 +78,9 @@
 %%%%%%%%%%%%%  ABSTRACT GOES HERE %%%%%%%%%%%%%%
 \begin{abstract}
 To provide high-performance with programmability, cooperative evolution of domain specific hardware and languages has created an ecosystem of programmable data plane for packet-processing.
-Packet-processing target devices, with programmable parsers and re-configurable match-action tables primitives and P4, a language based on the primitives to program the devices, together have enabled unprecedented level of programmability.
-This ecosystem has exposed architectural details of data plane of the devices along with heterogeneous abstract-machines based on the primitives in the programming model of the devices.
-With this model, it is difficult to reuse code for developing new functions and deploy on other devices.
-Because, P4 programs are device-specific and comprise logic for different abstract-machines.
+Packet-processing target devices, with programmable parsers and re-configurable match-action tables primitives and P4, a language based on the primitives to program the devices, together have enabled unprecedented programmability.
+This ecosystem has exposed architectural details of targets' data planes along with heterogeneous abstract-machines based on the primitives, in the programming model.
+This has led to P4 programs being target-specific and consist of complex abstract-machine, thereby, making it difficult to reuse P4 code for developing new programs and deploying on other targets.
 
 
 In this paper, we propose a design of logical device, MicroP4 ($\mu$P4), that provides higher-level abstractions for data plane for re-config\-urable devices that decouples P4 programs from real target-specific constructs.
@@ -89,8 +88,7 @@ $\mu$P4 allows programmers to express sequential and parallel execution in P4 to
 Specifically, we have designed a switch architecture ($\mu$SA) and a compiler, $\mu$P4C, for the logical target.
 $\mu$SA defines logical constructs and generic interfaces that enable programmers to write real target-independent code libraries and define interface to use them.
 Using $\mu$P4C, programmers can compile $\mu$SA specific P4 code libraries to real target-specific source code or executable.
-We present design of $\mu$P4 along with proof-of-concept implementation that allows to express sequential-execution of multiple programs and generate a real target-specific code.
-
+We present the design of $\mu$P4 along with proof-of-concept implementation that allows to express sequential-execution of multiple programs and generate a real target-specific code.
 
 \end{abstract}
 

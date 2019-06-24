@@ -1,24 +1,24 @@
 \section{Micro-P4 \;($\mu$P4)}
 Re-configurable targets process packets using multiple type of processing blocks and P4 provides multiple sub-languages following heterogenous abstract machines to program the blocks.
-The presence of heterogeneous abstract machines and device-specific constructs is the
+The presence of heterogeneous abstract-machines and device-specific constructs is the
 primary reason for lack of mechanisms for modularity and code reuse.
 Because, it is not possible to define interface to reuse code modules when caller and callee modules can have incompatible abstract machines.
 
 
 $\mu$P4 comprise of an architecture, $\mu$SA, and a compiler, $\mu$P4C for a logical target device. 
 $\mu$SA simplifies abstract machine for P4 data plane programs by exposing minimal number of programmable blocks required to implement.
-It provides abstraction by defining logical externs that allows programmers to express packet processing logic that is outside the scope of current P4 and relies on fixed-function blocks in real targets.
-$\mu$SA defines generic interfaces to enable easy code reuse of fine-grained packet-processing functions and build new functions.
+It provides abstraction by defining logical externs that allows programmers to express packet-processing logic that is outside the scope of current P4 and relies on fixed-function blocks in real targets.
+In $\mu$SA, we define generic interfaces to enable easy code reuse of fine-grained packet-processing functions and build new functions.
 We associate runtime behavior with the generic interface as described in Section \ref{subsection:packet-processing-using-mp4}. 
-$\mu$P4C allows programmer to express \emph{sequential} and \emph{parallel} packet processing of multiple fine-grained functions using instances of their types.
-$\mu$P4C enables composition of packet-processing functions using P4 language itself, unlike Hyper4 and P4Visor which rely on different configuration languages.
-$\mu$P4C translates simplified abstract machine and its logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
+$\mu$P4C allows programmer to express \emph{sequential} and \emph{parallel} execution multiple fine-grained functions.
+Unlike Hyper4 and P4Visor, $\mu$P4C enables composition of packet-processing functions using P4 language itself without relying on different configuration languages.
+It translates simplified abstract machine and its logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
 
 
 \subsection{Packet Processing using $\mu$P4}
 \label{subsection:packet-processing-using-mp4}
 We model every packet-processing function as a black-box micro-switch that processes packet byte-stream, intrinsic metadata and user-defined parameters as shown in Figure \ref{fig:package-runtime-behavior}.
-The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of micro-switches.
+The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of micro-switch programs.
 To realise this model, $\mu$SA defines multiple packet-processing pipelines and each pipeline is associated with one or more generic interface types.
 Each generic interface exposes a set of programmable blocks to implement and allows programmers to specify type parameters for runtime arguments.
 Programmers can implement the interfaces and define new \emph{package} types.
@@ -31,14 +31,37 @@ In control blocks of $\mu$SA pipelines, the package types can be instantiated an
 \end{figure}
 
 
-\subsubsection{Sequential Processing}
-In sequential processing, packets modified by one function are processed by another functions.
+\subsubsection{Sequential Execution}
+In sequential execution, packets modified by one micro-switch program are processed by another micro-switch program.
+
+
+\begin{figure}[ht]
+\begin{lstlisting}[frame=none]
+l3(pkt_in pi, pkt_out po, sm_t s, out bit<16> nh);
+l2(pkt_in pi, pkt_out po, sm_t s, in bit<16> nh);
+
+control (pkt_in pin, pkt_out po, sm_t s) {
+  l3 l3_inst;  l2 l2_inst;  bit<16> next_hop;
+  pkt_in pin_l2;
+  apply {
+    l3.apply(pi, po, s, next_hop);
+    // sets `pin_l2' with `po's bytes, resets `po'
+    po.get_pkt_in(pin_l2);
+    l2.apply(pin_l2, po, s, next_hop);
+  }
+}
+\end{lstlisting}
+\caption{Sequential Execution}
+\label{fig:sequential-execution}
+\end{figure}
+
 $\mu$P4 facilitates sequential processing by treating user-defined packages types similar to control types in existing P4 language.
+
 Programmers can invoke micro-switch modules using its package interface in body of control blocks other micro-switch modules.
 
 
-\subsubsection{Parallel Processing}
-In parallel processing, multiple micro-switch process a copy 
+\subsubsection{Parallel Execution}
+In parallel execution, multiple micro-switch process a copy 
 
 \subsection{Compiling $\mu$P4 programs}
 
