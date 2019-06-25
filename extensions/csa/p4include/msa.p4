@@ -104,6 +104,8 @@ extern msa_packet_buffer<EXTRA_ELE_T> {
     
     void dequeue(msa_packet_in msa_pin, out msa_standard_metadata_t sm,
                  egress_spec es, out EXTRA_ELE_T data); // finalize
+
+    void join();
 }
 
 
