@@ -43,9 +43,8 @@ Figure \ref{fig:sequential-execution} extends the example of fine-grained functi
 l3(pkt_in pi, pkt_out po, sm_t s, out bit<16> nh);
 l2(pkt_in pi, pkt_out po, sm_t s, in bit<16> nh);
 
-control (pkt_in pin, pkt_out po, sm_t s) {
-  l3 l3_inst;  l2 l2_inst;  bit<16> next_hop;
-  pkt_in pin_l2;
+control l2l3(pkt_in pin, pkt_out po, sm_t s) {
+  bit<16> next_hop; pkt_in pin_l2;
   apply {
     l3.apply(pi, po, s, next_hop);
     // sets `pin_l2' with `po's bytes, resets `po'
@@ -64,7 +63,32 @@ control (pkt_in pin, pkt_out po, sm_t s) {
 
 
 \subsubsection{Parallel Execution}
-In parallel execution, multiple micro-switch process a copy 
+In parallel execution of multiple micro-switch programs, each program processes its own copy of a packet.
+Programmers can create a copy of a packet using logical constructs provided in $\mu$SA. 
+
+
+\begin{figure}[ht]
+\begin{lstlisting}[frame=none]
+// interface for traffic mirror function
+mirror (pkt_in pi, pkt_out po, sm_t s);
+l2l3 (pkt_in pin, pkt_out po, sm_t s);
+struct e_t {};
+control (in_buf<e_t> ib, out_buf<e_t> ob) {
+  pkt_in pin, pkt_in pin_m;
+  pkt_out po_m; sm_t sm, sm_m;
+  apply {
+    ib.dequeue(pin, sm);
+    pin_m.copy_from(pin); sm_m = sm; 
+    mirror.apply(pin_m, po_m, sm_m);
+    l2l3.apply(pin, po, sm);
+    ob.enqueue(po, sm);
+    ob.enqueue(po_m, sm_m);
+  }
+}
+\end{lstlisting}
+\caption{Parallel Execution}
+\label{fig:parallel-execution}
+\end{figure}
 
 \subsection{Compiling $\mu$P4 programs}
 
