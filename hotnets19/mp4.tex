@@ -32,24 +32,26 @@ In control blocks of $\mu$SA pipelines, the package types can be instantiated an
 
 
 \subsubsection{Sequential Execution}
+\label{subsubsection:sequential-execution}
 Sequential execution of micro-switch programs follow a single-thread model.
 Only one micro-switch program processes a packet at a time.
 $\mu$P4 allows programmers to invoke micro-switch programs using their interfaces in body of control blocks other micro-switch program.
 Programmers can logical externs defined in $\mu$SA to express sequential processing.
-Figure \ref{fig:sequential-execution} extends the example of fine-grained functions described in \ref{fig:l3.p4.l2.p4}
+Figure \ref{fig:sequential-execution} illustrates reuse of the code shown in Figure \ref{fig:l3.p4.l2.p4} to build a routing function, called emph{l2l3}.
  \begin{figure}[ht]
 \begin{lstlisting}[frame=none]
 // interfaces for l3 and l2
-l3(pkt_in pi, pkt_out po, sm_t s, out bit<16> nh);
-l2(pkt_in pi, pkt_out po, sm_t s, in bit<16> nh);
+l3(pkt_in, pkt_out, sm_t, es_t, out bit<16>);
+l2(pkt_in, pkt_out, sm_t, es_t, in bit<16>);
 
-control l2l3(pkt_in pin, pkt_out po, sm_t s) {
+control l2l3(pkt_in pin, pkt_out po, 
+             sm_t s, es_t e) {
   bit<16> next_hop; pkt_in pin_l2;
   apply {
-    l3.apply(pi, po, s, next_hop);
+    l3.apply(pi, po, s, es, next_hop);
     // sets `pin_l2' with `po's bytes, resets `po'
     po.get_pkt_in(pin_l2); // extern method call
-    l2.apply(pin_l2, po, s, next_hop);
+    l2.apply(pin_l2, po, s, es, next_hop);
   }
 }
 \end{lstlisting}
@@ -57,37 +59,75 @@ control l2l3(pkt_in pin, pkt_out po, sm_t s) {
 \label{fig:sequential-execution}
 \end{figure}
 
-
-
-
-
-
 \subsubsection{Parallel Execution}
+\label{subsubsection:parallel-execution}
 In parallel execution of multiple micro-switch programs, each program processes its own copy of a packet.
-Programmers can create a copy of a packet using logical constructs provided in $\mu$SA. 
-
-
+Programmers can create copies of a packet using logical constructs defined in $\mu$SA.
+Figure \ref{fig:parallel-execution} shows a code snippet of a micro-switch program, called \emph{rm}, performing routing and mirroring.
+It executes micro-programs \emph{l2l3} (Figure \ref{fig:sequential-execution}) and \emph{mirror} (samples traffic) in parallel.
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none]
 // interface for traffic mirror function
-mirror (pkt_in pi, pkt_out po, sm_t s);
-l2l3 (pkt_in pin, pkt_out po, sm_t s);
+mirror (pkt_in, pkt_out, sm_t);
+l2l3 (pkt_in, pkt_out, sm_t);
 struct e_t {};
-control (in_buf<e_t> ib, out_buf<e_t> ob) {
-  pkt_in pin, pkt_in pin_m;
+control rm(in_buf<e_t> ib, out_buf<e_t> ob) {
+  pkt_in pin, pin_m; es_t es_m;
   pkt_out po_m; sm_t sm, sm_m;
   apply {
-    ib.dequeue(pin, sm);
+    ib.dequeue(pin, sm, es);
+    // copies for parallel execution
     pin_m.copy_from(pin); sm_m = sm; 
-    mirror.apply(pin_m, po_m, sm_m);
-    l2l3.apply(pin, po, sm);
-    ob.enqueue(po, sm);
-    ob.enqueue(po_m, sm_m);
+    es_m.copy_from(es)
+    mirror.apply(pin_m, po_m, sm_m, es_m);
+    l2l3.apply(pin, po, sm, es);
+    // synchronize and put in out_buf arg
+    ob.enqueue(po, sm, es);
+    ob.enqueue(po_m, sm_m, es_m);
   }
 }
 \end{lstlisting}
 \caption{Parallel Execution}
 \label{fig:parallel-execution}
+\end{figure}
+
+\subsubsection{Multicast Execution}
+\label{subsubsection:multicast-execution}
+Multicast execution differs from parallel execution in two fundamental aspects.
+$(1)$ Multicast execution allows to program packet replication at runtime.
+$(2)$ Each copy of the replicated packet executes the same code.
+% $\mu$SA defines a logical multicast engine, \texttt{mc\_engine\_t}, as an extern.
+Figure \ref{fig:multicast-execution} shows an example of expressing multicast replication using logical externs defined in $\mu$SA.
+\begin{figure}[ht]
+\begin{lstlisting}[frame=none]
+struct out_t { bit<16> data;}
+control mc(pkt_in pi, sm_t sm, es_t es, 
+        hs_t h, ia_t ia, mc_buf<hs_t, out_t> hb) {
+  mc_engine_t mce;  pkt_inst_id_t id; 
+  out_t  oa;
+  table t{
+    key = {} actions = { mce.set_mc_group; drop; }
+  }
+  table mac{
+    key = { es.get_port(); } 
+    actions = { mac_update; }
+  }
+  apply {
+    id = mce.apply(es); // equivalent to fork in C
+    mac.apply();
+    hb.enqueue(h, sm, es, oa);
+  }
+}
+control dep(pkt_out<o_a> ob, 
+            mc_buf<hs_t, out_arg_t> hb) {
+  hs_t hdrs; out_arg_t oa; pkt_out po;
+  hb.dequeue(hdrs, sm, es, oa);
+  // deparser code 
+  ob.enqueue(po, sm, es, oa);
+}
+\end{lstlisting}
+\caption{Multicast Execution}
+\label{fig:multicast-execution}
 \end{figure}
 
 \subsection{Compiling $\mu$P4 programs}
@@ -99,30 +139,6 @@ control (in_buf<e_t> ib, out_buf<e_t> ob) {
 % In this section, we present a system, $\mu$P4, comprising of an architecture, $\mu$SA for a logical target device and a compiler, $\mu$P4C, to compile $\mu$SA-specific code to real target-specific code.
 
 % In section \ref{section:micros-awitch-architecture}, we explain the design of Micro Switch Architecture for a logical target that reduces number of programmable blocks and introduces logical externs to minimize heterogeneity in abstract model of P4 programs.
-
-
-
-
-
-
-
-% What do we need to provide interface to code modules?
-% 
-% We need runtime behaviour with package. 
-% packet, sm, es, inargs, inout args -> package -> packet, sm, es, out args, inout args
-% P4 extended to 
-% allow Define new Package types
-% runtime behavior with package types
-% 
-% MicroP4 defines package interfaces.
-% 
-% 
-% MicroP4 captures intrinsic metadata dependency of real targets using logical extern (egress\_spec)
-% 
-% MicroP4 defines common abstractions for target specific operations that can not be expressed in P4
-% e.g., multicast
-
-
 
 
 \begin{figure}[!h]
