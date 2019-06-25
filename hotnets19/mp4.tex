@@ -32,11 +32,14 @@ In control blocks of $\mu$SA pipelines, the package types can be instantiated an
 
 
 \subsubsection{Sequential Execution}
-In sequential execution, packets modified by one micro-switch program are processed by another micro-switch program.
-
-
-\begin{figure}[ht]
+Sequential execution of micro-switch programs follow a single-thread model.
+Only one micro-switch program processes a packet at a time.
+$\mu$P4 allows programmers to invoke micro-switch programs using their interfaces in body of control blocks other micro-switch program.
+Programmers can logical externs defined in $\mu$SA to express sequential processing.
+Figure \ref{fig:sequential-execution} extends the example of fine-grained functions described in \ref{fig:l3.p4.l2.p4}
+ \begin{figure}[ht]
 \begin{lstlisting}[frame=none]
+// interfaces for l3 and l2
 l3(pkt_in pi, pkt_out po, sm_t s, out bit<16> nh);
 l2(pkt_in pi, pkt_out po, sm_t s, in bit<16> nh);
 
@@ -46,7 +49,7 @@ control (pkt_in pin, pkt_out po, sm_t s) {
   apply {
     l3.apply(pi, po, s, next_hop);
     // sets `pin_l2' with `po's bytes, resets `po'
-    po.get_pkt_in(pin_l2);
+    po.get_pkt_in(pin_l2); // extern method call
     l2.apply(pin_l2, po, s, next_hop);
   }
 }
@@ -55,9 +58,9 @@ control (pkt_in pin, pkt_out po, sm_t s) {
 \label{fig:sequential-execution}
 \end{figure}
 
-$\mu$P4 facilitates sequential processing by treating user-defined packages types similar to control types in existing P4 language.
 
-Programmers can invoke micro-switch modules using its package interface in body of control blocks other micro-switch modules.
+
+
 
 
 \subsubsection{Parallel Execution}
