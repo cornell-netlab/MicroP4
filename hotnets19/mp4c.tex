@@ -173,20 +173,33 @@ In this section, we describe optimization methods to reduce per state match-acti
  
 
 \subsection{Real-Target Specific Transformation}
-$\mu$P4C compiles micro-switch program with main instance to the target-specific.
 
+\subsubsection{Extracting Parallelism}
 We extract the \emph{Packet-processing Schedule Graph} (PSG) of the micro-switch program to identify code and packet(data) parallelism.
-Each instance of packet\_in, logical buffers, packet\-\_out and micro-switch program represents a node in the graph.
+A node represents an instance of either pkt\_in, logical buffers, pkt\-\_out, micro-switch program intrinsic metadata or collection of input or output arguments.
 \begin{figure}[!h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
-    \label{fig:graph}
     \caption{PSG for the \emph{rm} program (Figure \ref{fig:parallel-execution})}
+    \label{fig:graph}
 \end{figure}
-The enqueue and dequeue method calls represent, respectively, outgoing and incoming edges on the instances of packet\_in and packet\_out.
-The Figure \ref{fig:graph} shows the PSG of the micro-switch program shown in the Figure \ref{fig:parallel-execution}.
-We remove in\_buf node and the edge represented by the dequeue operation.
-We find edge-disjoint paths from packet\_in nodes without any incomig edge.
+The enqueue and dequeue method call are represented, respectively, by outgoing and incoming edges on the instances of packet\_in and packet\_out.
+Every assignment statement is represented by a directed edge from the instance on the right to the left side.
+To identify parallelism originating from packet duplication, we consider a subgraph of PSG, called packet flow graph (PFG).
+PFG contains does not contain nodes representing instances of intrinsic metdata, input and output arguments.
+The Figure \ref{fig:graph} shows the PFG and PSG of the micro-switch program shown in the Figure \ref{fig:parallel-execution}.
+% If the program We remove in\_buf node and the edge represented by the dequeue operation.
+The input(pkt\_in, params with \texttt{in} direction, in\_buf) arguments of the switch-program does not have any incoming edge.
+We begin with computing dominator tree for the nodes representing the copies of pkt\_in input argument.
+Next, we create a subgraph for each dominator tree containing nodes from the tree, incidence edges from the PFG.
+If there is no path between nodes of any two subgraphs, the subgraphs represents code blocks that can should process copies the packet.
+We synthesize metadata variable to track clone session, remove logical buffer method calls and insert each code block in a if
+A path between nodes of subgraphs represents exchange of metadata between code blocks processing copies the same packet.
+It can be facilitated based on capability of target architectures.
+However, if there is loop in PFG compilation fails.
+
+
+\subsubsection{Control Block Constraints}
 
 
 
