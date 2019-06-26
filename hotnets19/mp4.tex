@@ -30,6 +30,16 @@ In control blocks of $\mu$SA pipelines, the package types can be instantiated an
     \caption{Micro P4 Package Runtime Behavior}
 \end{figure}
 
+\begin{figure}[!h]
+\begin{lstlisting}[frame=none]
+// Signature of Runtime Interfaces
+U<I, O, IO>(pkt_in, pkt_out, inout sm_t, es_t, in I, out O, inout IO); 
+M<O>(pkt_in, in sm_t, es_t, out_buf<O>); 
+G<I, O>(in_buf<I>, out_buf<O>); 
+\end{lstlisting}
+\caption{Runtime Interfaces}
+\label{fig:interfaces}
+\end{figure}
 
 \subsubsection{Sequential Execution}
 \label{subsubsection:sequential-execution}

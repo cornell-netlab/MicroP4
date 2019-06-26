@@ -35,32 +35,36 @@ control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
   apply { ipv4_lpm_tbl.apply(); }
 }
 control D(packet_out po, in hdr_t hdrs) {
-  apply { 
+  apply { po.emit(hdrs.eth); po.emit(hdrs.ipv4); }
+}
 \end{lstlisting}
 \end{minipage}
 \hfill\begin{minipage}[t]{.48\textwidth}
 \begin{lstlisting}[frame=none]
-    po.emit(hdrs.eth); 
-    po.emit(hdrs.ipv4);
-  }
-}
 // l2.p4
 parser P(packet_in pin, out hdr_t hdrs) {
   state start {
     pin.extract(hdrs.eth);
   }
 }
-control Pipe(inout hdr_t hdrs, in bit<16> nexthop_id, inout sm_t sm) {
-  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> out_port) {
+control Pipe(inout hdr_t hdrs, inout sm_t sm, 
+             in bit<16> nexthop_id) {
+  action drop () {}           
+  action forward(bit<48> dest_mac, 
+                 bit<48> src_mac, bit<8> port) {
     hdrs.eth.dstAddr = dest_mac;
     hdrs.eth.srcAddr = src_mac;
-    sm.out_port = out_port;    
+    sm.out_port = port;    
   }
   table forward_tbl {
-    key = { nexthop_id : exact } 
-    actions = { process; }
+    key = { nexthop_id : exact; } 
+    actions = { process; drop; }
   }
-  apply { forward_tbl.apply(); }
+  apply {
+    forward_tbl.apply(); 
+    if (sm.deq_qdepth > 100) // rate limiting
+      drop();
+  }
 }
 control D(packet_out po, in hdr_t hdrs) {
   apply { po.emit(hdrs.eth); }

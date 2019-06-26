@@ -171,14 +171,36 @@ The transformation of parser and deparser blocks into match-action control block
 Also, number of entries in the tables are of exponential order of binary variable fields in the tables.
 In this section, we describe optimization methods to reduce per state match-action tables in transformed parser blocks into a single match-action table and eliminate all the binary variables.
  
- 
-
 
 \subsection{Real-Target Specific Transformation}
-The architectures or real target devices specify target-specific externs, pipeline model and constraints in programmable blocks in pipelines.
+$\mu$P4C compiles micro-switch program with main instance to the target-specific.
+
+We extract the \emph{Packet-processing Schedule Graph} (PSG) of the micro-switch program to identify code and packet(data) parallelism.
+Each instance of packet\_in, logical buffers, packet\-\_out and micro-switch program represents a node in the graph.
+\begin{figure}[!h]
+    \centering
+    \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
+    \label{fig:graph}
+    \caption{PSG for the \emph{rm} program (Figure \ref{fig:parallel-execution})}
+\end{figure}
+The enqueue and dequeue method calls represent, respectively, outgoing and incoming edges on the instances of packet\_in and packet\_out.
+The Figure \ref{fig:graph} shows the PSG of the micro-switch program shown in the Figure \ref{fig:parallel-execution}.
+We remove in\_buf node and the edge represented by the dequeue operation.
+We find edge-disjoint paths from packet\_in nodes without any incomig edge.
 
 
 
-\subsubsection{Control Block Pipeline Split}
 
+
+
+
+
+% The architectures of real target devices specify target-specific externs, pipeline model and constraints on programmable blocks in their pipelines.
+% For example, v1model provides recirculate, resubmit and clone to route the packet in pipeline across different processing blocks.
+% It does not allow to set or modify output port in egress control block for the packet the pipeline.
+
+
+% \subsubsection{Execution Schedule}
+% \subsubsection{Intrinsic Metadata Constraints}
+% \subsubsection{Intrinsic Metadata Constraints}
 
