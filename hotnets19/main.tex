@@ -109,11 +109,7 @@ The architecture source file (e.g., v1\-mod\-el\-.p4 \cite{v1model.p4} for simpl
 To program the packet processing pipeline of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture file.
 Therefore, P4 programs are tightly coupled with architecture of the target devices.
 
-
-The architecture description of a target specifies data plane pipeline comprising a set of pro\-gram\-ma\-ble and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
-For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model \cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
-
-\begin{figure}
+\begin{figure}[H]
     \begin{subfigure}[b]{\linewidth}
         \centering
         \includegraphics[trim=2 460 380 0, clip,scale=0.37]{v1model-pipeline.pdf}
@@ -129,6 +125,9 @@ For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data pl
 \caption{Real Target Architectures}
 \label{fig:real-target-architectures}
 \end{figure}
+
+The architecture description of a target specifies data plane pipeline comprising a set of pro\-gram\-ma\-ble and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
+For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model \cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
 
 
 Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.

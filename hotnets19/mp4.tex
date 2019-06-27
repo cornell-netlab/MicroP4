@@ -1,19 +1,19 @@
 \section{Micro-P4 \;($\mu$P4)}
-Re-configurable targets process packets using multiple type of processing blocks and P4 provides multiple sub-languages following heterogenous abstract machines to program the blocks.
-The presence of heterogeneous abstract-machines and device-specific constructs is the
-primary reason for lack of mechanisms for modularity and code reuse.
-Because, it is not possible to define interface to reuse code modules when caller and callee modules can have incompatible abstract machines.
+% Re-configurable targets process packets using multiple type of processing blocks and P4 provides multiple sub-languages following heterogenous abstract machines to program the blocks.
+% The presence of heterogeneous abstract-machines and device-specific constructs is the
+% primary reason for lack of mechanisms for modularity and code reuse.
+% Because, it is not possible to define interface to reuse code modules when caller and callee modules can have incompatible abstract machines.
 
-
-$\mu$P4 comprise of an architecture, $\mu$SA, and a compiler, $\mu$P4C for a logical target device. 
+$\mu$P4 is a logical device providing abstraction for packet-processing pipelines in data planes of real target devices.
+$\mu$P4 comprise of a switch architecture, $\mu$SA, and a compiler, $\mu$P4C for the logical device. 
 $\mu$SA simplifies abstract machine for P4 data plane programs by exposing minimal number of programmable blocks required to implement.
-It provides abstraction by defining logical externs that allows programmers to express packet-processing logic that is outside the scope of current P4 and relies on fixed-function blocks in real targets.
-In $\mu$SA, we define generic interfaces to enable easy code reuse of fine-grained packet-processing functions and build new functions.
+It defines logical externs that allows programmers to express packet-processing logic relying on fixed-function blocks in real targets.
+The generic interfaces defined in $\mu$SA allows to reuse code of fine-grained packet-processing functions on any real target devices.
+% Also, programmers can build new functions using the code.
 We associate runtime behavior with the generic interface as described in Section \ref{subsection:packet-processing-using-mp4}. 
 $\mu$P4C allows programmer to express \emph{sequential} and \emph{parallel} execution multiple fine-grained functions.
 Unlike Hyper4 and P4Visor, $\mu$P4C enables composition of packet-processing functions using P4 language itself without relying on different configuration languages.
 It translates simplified abstract machine and its logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
-
 
 \subsection{Packet Processing using $\mu$P4}
 \label{subsection:packet-processing-using-mp4}
