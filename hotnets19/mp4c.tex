@@ -179,7 +179,7 @@ We extract the \emph{Packet-processing Schedule Graph} (PSG) of the micro-switch
 A node represents an instance of either pkt\_in, logical buffers, pkt\-\_out, micro-switch program intrinsic metadata or collection of input or output arguments.
 \begin{figure}[!h]
     \centering
-    \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
+    \includegraphics[trim=0 370 735 0, clip, scale=0.5]{psg}
     \caption{PSG for the \emph{rm} program (Figure \ref{fig:parallel-execution})}
     \label{fig:graph}
 \end{figure}
@@ -193,27 +193,35 @@ The input(pkt\_in, params with \texttt{in} direction, in\_buf) arguments of the 
 We begin with computing dominator tree for the nodes representing the copies of pkt\_in input argument.
 Next, we create a subgraph for each dominator tree containing nodes from the tree, incidence edges from the PFG.
 If there is no path between nodes of any two subgraphs, the subgraphs represents code blocks that can should process copies the packet.
-We synthesize metadata variable to track clone session, remove logical buffer method calls and insert each code block in a if
 A path between nodes of subgraphs represents exchange of metadata between code blocks processing copies the same packet.
-It can be facilitated based on capability of target architectures.
-However, if there is loop in PFG compilation fails.
+It can be facilitated based on capability of target devices.
+If there is a loop in the PFG, compilation fails.
+
+We briefly explain mechanism to realise parallel processing using v1model architecture for the scenario.
+We synthesize a metadata variable to track cloned copies. 
+The variable is updated after the execution of parallel code block.
+The code block is encapsulated in an \emph{if} statement. 
+It is executed only if the metadata variable matches with a constant value assigned for its execution.
 
 
 \subsubsection{Control Block Constraints}
+$\mu$SA pipelines contain single programmable control block. 
+It provides intrinsic metadata as logical externs (es\_t) and a structure (sm\_t) to use in the control block.
+We map $\mu$SA-specific intrinsic metadata to the ones defined in architectures of real targets.
+We partition the CFG of $\mu$SA pipelines' programmable block into multiple CFGs to enforce accessibility constraints of target's intrinsic metadata in its control block.
+
+Let's consider v1model architecture of simple\_switch target device for an example.
+A two-state finite-state machine is used to capture ingress and egress pipeline blocks'  accessibility constraint on egress port and queueing metadata.
+Each state represents extra conditions to visit CFG nodes in topological order.
+State transition occurs when the graph traversal can not be continued due to absence of nodes without incoming edges.
+In the first state, the graph traversal does not visit nodes representing multicast\_engine's apply or egress\_spec's get\_egress\_port or get\_value methods call statements.
+When the traversal can not progress any further, we create partitions of visited and non-visited nodes.
+In the second state, we do not visit nodes representing egress\_spec's get\_egress\_port methods call statements.
 
 
-
-
-
-
-
-
-% The architectures of real target devices specify target-specific externs, pipeline model and constraints on programmable blocks in their pipelines.
-% For example, v1model provides recirculate, resubmit and clone to route the packet in pipeline across different processing blocks.
-% It does not allow to set or modify output port in egress control block for the packet the pipeline.
-
-
-% \subsubsection{Execution Schedule}
-% \subsubsection{Intrinsic Metadata Constraints}
-% \subsubsection{Intrinsic Metadata Constraints}
-
+There can be multiple edges representing control branches between the partitions.
+We synthesise \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
+The second partition uses the metadata and if condition to resume execution on appropriate control branch.
+Also, partitioned code may access the same local declaration variables.
+These shared local variables along with the \emph{partition} metadata are passed as user-defined metadata between ingress and egress control block.
+We insert recirculate method call at the end of even numbered partitions.
