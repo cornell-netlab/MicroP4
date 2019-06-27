@@ -44,11 +44,12 @@ The current ecosystem of programmable data plane enforces programmers to write c
 Programmers write code for programmable blocks taking into account their location in pipeline rather than compilers automatically allocating code to the appropriate blocks.
 We believe that devices should only expose abstraction for processing blocks and the onus of code allocation to the blocks in pipeline should be on compilers for the devices.
 
-With this philosophy, we present a system, $\mu$P4, designed to enhance packet processing abstraction at target device level and enable code reuse across different targets.
+With this ideology, we design microarchitecture, $\mu$P4, to provide abstractions for 
+data planes of real targets and enable code reuse across different targets.
 $\mu$P4 consists of two components, Micro Switch Architecture ($\mu$SA) for a logical micro-switch target and a compiler, $\mu$P4C, for the logical target. 
-$\mu$SA exposes simplified data plane pipelines and abstracts away fixed function blocks by providing logical constructs.
-$\mu$SA allows programmers to define interface for code modules for easy reuse and write P4 code libraries.
-Using $\mu$P4C, programmers can compile $\mu$SA specific code and independently developed libraries to a real target-specific single executable program or source.
+$\mu$SA exposes simplified data plane pipelines and abstracts away fixed-function blocks by defining logical constructs.
+$\mu$SA allows programmers to define interface for code modules for easy reuse and write packet-processing function libraries in P4.
+Using $\mu$P4C, programmers can compile $\mu$SA specific code and libraries to a real target-specific single executable program.
 In summary, we make following contributions.
 \begin{itemize}
 \item \textbf{Micro-Switch Architecture:} We introduce abstraction for fixed-function blocks and mechanisms to translate the abstractions into real target-specific functions using the compiler.

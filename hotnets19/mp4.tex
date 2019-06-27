@@ -8,16 +8,23 @@ $\mu$P4 is a logical device providing abstraction for packet-processing pipeline
 $\mu$P4 comprise of a switch architecture, $\mu$SA, and a compiler, $\mu$P4C for the logical device. 
 $\mu$SA simplifies abstract machine for P4 data plane programs by exposing minimal number of programmable blocks required to implement.
 It defines logical externs that allows programmers to express packet-processing logic relying on fixed-function blocks in real targets.
-The generic interfaces defined in $\mu$SA allows to reuse code of fine-grained packet-processing functions on any real target devices.
+The generic interfaces defined in $\mu$SA allow to reuse code of fine-grained packet-processing functions on any real target devices.
 % Also, programmers can build new functions using the code.
-We associate runtime behavior with the generic interface as described in Section \ref{subsection:packet-processing-using-mp4}. 
-$\mu$P4C allows programmer to express \emph{sequential} and \emph{parallel} execution multiple fine-grained functions.
+Using the generic interfaces along with logical externs, programmers can express \emph{sequential}, \emph{parallel} and \emph{multicast} exection of packet-processing functions to build new programs.
+
 Unlike Hyper4 and P4Visor, $\mu$P4C enables composition of packet-processing functions using P4 language itself without relying on different configuration languages.
+We associate runtime behavior with P4 \emph{package} type 
+
+\hs{claim minimal modification in current P4 language. only adding package apply.}
 It translates simplified abstract machine and its logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
 
 \subsection{Packet Processing using $\mu$P4}
 \label{subsection:packet-processing-using-mp4}
-We model every packet-processing function as a black-box micro-switch that processes packet byte-stream, intrinsic metadata and user-defined parameters as shown in Figure \ref{fig:package-runtime-behavior}.
+
+We associate runtime behavior with the generic interface as described in Section \ref{subsection:packet-processing-using-mp4}.
+
+
+We model every packet-processing function as a black-box micro-switch that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters, as shown in Figure \ref{fig:package-runtime-behavior}.
 The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of micro-switch programs.
 To realise this model, $\mu$SA defines multiple packet-processing pipelines and each pipeline is associated with one or more generic interface types.
 Each generic interface exposes a set of programmable blocks to implement and allows programmers to specify type parameters for runtime arguments.
@@ -26,8 +33,8 @@ In control blocks of $\mu$SA pipelines, the package types can be instantiated an
 \begin{figure}[!h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
-    \label{fig:package-runtime-behavior}
     \caption{Micro P4 Package Runtime Behavior}
+    \label{fig:package-runtime-behavior}
 \end{figure}
 
 \begin{figure}[!h]
@@ -40,6 +47,27 @@ G<I, O>(in_buf<I>, out_buf<O>);
 \caption{Runtime Interfaces}
 \label{fig:interfaces}
 \end{figure}
+
+
+\subsection{Compiling $\mu$P4 Programs}
+
+\begin{figure}[!h]
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=0 435 665 0, clip,scale=0.55]{mp4c-frontend}
+        \caption{Library Program Compilation}
+        \label{subfig:compiling-modules}
+    \end{subfigure}
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=0 407 628 0, clip,scale=0.55]{mp4c-compiler}
+        \caption{Composition and Translation of Main Instance}
+        \label{subfig:composition-translation-of-main-instance}
+    \end{subfigure}
+\caption{Compiling $\mu$SA programs}
+\label{fig:compiling-msa-programs}
+\end{figure}
+
 
 \subsubsection{Sequential Execution}
 \label{subsubsection:sequential-execution}
@@ -140,21 +168,4 @@ control dep(pkt_out<o_a> ob,
 \label{fig:multicast-execution}
 \end{figure}
 
-\subsection{Compiling $\mu$P4 Programs}
 
-\begin{figure}[!h]
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[trim=0 435 665 0, clip,scale=0.55]{mp4c-frontend}
-        \caption{Library Program Compilation}
-        \label{subfig:compiling-modules}
-    \end{subfigure}
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[trim=0 407 628 0, clip,scale=0.55]{mp4c-compiler}
-        \caption{Composition and Translation of Main Instance}
-        \label{subfig:composition-translation-of-main-instance}
-    \end{subfigure}
-\caption{Compiling $\mu$SA programs}
-\label{fig:compiling-msa-programs}
-\end{figure}
