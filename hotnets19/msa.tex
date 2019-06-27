@@ -46,7 +46,16 @@ Orchestration pipeline interface has only a control block, orchestration pipe.
 Programmers can implement imperative control flow using intrinsic metadata of $\mu$SA and runtime parameters to the package types.
 In addition of existing language features, it allows programmers to instantiate package types and invoke them in the body( \emph{apply}) of the control block.
 
-
+\begin{figure}[!h]
+\begin{lstlisting}[frame=none]
+// Signature of Runtime Interfaces
+U<I, O, IO>(pkt_in, pkt_out, inout sm_t, es_t, in I, out O, inout IO); 
+M<O>(pkt_in, in sm_t, es_t, out_buf<O>); 
+G<I, O>(in_buf<I>, out_buf<O>); 
+\end{lstlisting}
+\caption{Runtime Interfaces}
+\label{fig:interfaces}
+\end{figure}
 
 % \begin{figure*}
 % \noindent \begin{minipage}[t]{\linewidth}

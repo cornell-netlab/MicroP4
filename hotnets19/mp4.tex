@@ -1,4 +1,4 @@
-\section{Micro-P4 \;($\mu$P4)}
+\section{Overview Micro-P4 \;($\mu$P4)}
 % Re-configurable targets process packets using multiple type of processing blocks and P4 provides multiple sub-languages following heterogenous abstract machines to program the blocks.
 % The presence of heterogeneous abstract-machines and device-specific constructs is the
 % primary reason for lack of mechanisms for modularity and code reuse.
@@ -9,44 +9,36 @@ $\mu$P4 comprise of a switch architecture, $\mu$SA, and a compiler, $\mu$P4C for
 $\mu$SA simplifies abstract machine for P4 data plane programs by exposing minimal number of programmable blocks required to implement.
 It defines logical externs that allows programmers to express packet-processing logic relying on fixed-function blocks in real targets.
 The generic interfaces defined in $\mu$SA allow to reuse code of fine-grained packet-processing functions on any real target devices.
+We associate runtime behavior with the interfaces.
+$\mu$P4C allows programmer to define, instantiated and invoke them package types using \texttt{apply} method calls.
 % Also, programmers can build new functions using the code.
 Using the generic interfaces along with logical externs, programmers can express \emph{sequential}, \emph{parallel} and \emph{multicast} exection of packet-processing functions to build new programs.
-
-Unlike Hyper4 and P4Visor, $\mu$P4C enables composition of packet-processing functions using P4 language itself without relying on different configuration languages.
-We associate runtime behavior with P4 \emph{package} type 
-
-\hs{claim minimal modification in current P4 language. only adding package apply.}
+$\mu$P4C enables composition of packet-processing functions using P4 language itself \hs{in related work}\emph{without relying on different configuration languages like Hyper4 and P4Visor}.
 It translates simplified abstract machine and its logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
+In this section, we introduce packet-processing model of $\mu$P4, generic interfaces and operation concepts.
 
 \subsection{Packet Processing using $\mu$P4}
 \label{subsection:packet-processing-using-mp4}
-
-We associate runtime behavior with the generic interface as described in Section \ref{subsection:packet-processing-using-mp4}.
-
-
 We model every packet-processing function as a black-box micro-switch that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters, as shown in Figure \ref{fig:package-runtime-behavior}.
 The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of micro-switch programs.
-To realise this model, $\mu$SA defines multiple packet-processing pipelines and each pipeline is associated with one or more generic interface types.
-Each generic interface exposes a set of programmable blocks to implement and allows programmers to specify type parameters for runtime arguments.
-Programmers can implement the interfaces and define new \emph{package} types.
-In control blocks of $\mu$SA pipelines, the package types can be instantiated and invoked by supplying arguments for the defined runtime parameters. 
-\begin{figure}[!h]
+We augment micro-switch programs with input and output buffer queues.
+Each element in the queue contains a packet byte-stream, intrinsic metadata associated with it and arguments.
+In this model, the micro-switch program fetches an element from the input buffer to process at every execution step.
+As a result of the processing, the program may generate one or more elements.
+We enqueue them in output buffer queue.
+\begin{figure}[h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
     \caption{Micro P4 Package Runtime Behavior}
     \label{fig:package-runtime-behavior}
 \end{figure}
 
-\begin{figure}[!h]
-\begin{lstlisting}[frame=none]
-// Signature of Runtime Interfaces
-U<I, O, IO>(pkt_in, pkt_out, inout sm_t, es_t, in I, out O, inout IO); 
-M<O>(pkt_in, in sm_t, es_t, out_buf<O>); 
-G<I, O>(in_buf<I>, out_buf<O>); 
-\end{lstlisting}
-\caption{Runtime Interfaces}
-\label{fig:interfaces}
-\end{figure}
+To realise this model, $\mu$SA defines multiple packet-pro\-cessing pipelines and each pipeline is associated with one or more generic interface types.
+Each generic interface declares a set of programmable blocks to implement based on the associated pipeline model.
+The interfaces allows programmers to specify user-defined types for the runtime parameters.
+Programmers can implement the interfaces and define new \emph{package} types.
+In control blocks of $\mu$SA pipelines, the package types can be instantiated and invoked by supplying arguments for the defined runtime parameters. 
+% Packet-processing function need to expose concreate interface t 
 
 
 \subsection{Compiling $\mu$P4 Programs}
