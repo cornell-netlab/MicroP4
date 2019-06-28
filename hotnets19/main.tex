@@ -180,7 +180,7 @@ control D(packet_out po, in hdr_t hdrs) {
   apply { po.emit(hdrs.eth); po.emit(hdrs.ipv4); }
 }
 \end{lstlisting}
-\end{minipage}
+\end{minipage}\vline
 \hfill\begin{minipage}[t]{.48\textwidth}
 \begin{lstlisting}[frame=none]
 // l2.p4
@@ -262,56 +262,55 @@ This paper makes the following contributions.
 Although much work remains, we believe that $\mu$ SA represents a
 promising first step toward enabling modular data plane programs.
 
-\section{Challenges}
-P4 is developed to specify data plane functionality of software or hardware targets (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,) devices.
-Target device manufacturer provides an architecture description of data plane along with a P4 compiler for the device.
-The architecture source file (e.g., v1\-mod\-el\-.p4 \cite{v1model.p4} for simple\_switch) contains declaration of a set of pro\-gram\-ma\-ble blocks, their data plane interfaces and the target specific metadata (called intrinsic metadata) and extern functions.
-To program the packet processing pipeline of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture file.
-Therefore, P4 programs are tightly coupled with architecture of the target devices.
+% \section{Challenges}
+% P4 is developed to specify data plane functionality of software or hardware targets (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,) devices.
+% Target device manufacturer provides an architecture description of data plane along with a P4 compiler for the device.
+% The architecture source file (e.g., v1\-mod\-el\-.p4 \cite{v1model.p4} for simple\_switch) contains declaration of a set of pro\-gram\-ma\-ble blocks, their data plane interfaces and the target specific metadata (called intrinsic metadata) and extern functions.
+% To program the packet processing pipeline of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture file.
+% Therefore, P4 programs are tightly coupled with architecture of the target devices.
 
-\begin{figure}[H]
-    \begin{subfigure}[b]{\linewidth}
-        \centering
-        \includegraphics[trim=2 460 380 0, clip,scale=0.37]{v1model-pipeline.pdf}
-        \caption{simple\_switch v1 Model}
-        \label{subfig:v1model}
-    \end{subfigure}
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
-        \caption{PSA Model}
-        \label{subfig:psa-model}
-    \end{subfigure}
-\caption{Real Target Architectures}
-\label{fig:real-target-architectures}
-\end{figure}
-
-The architecture description of a target specifies data plane pipeline comprising a set of pro\-gram\-ma\-ble and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
-For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model \cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
-
-
-Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
-Control blocks are expressed using a sub-language modelling imperative control flow.
-Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
-Packet processing logic in P4 programs are sectioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
-Therefore, a control block can not instantiate and execute parser blocks. Similarly, deparser block can not invoke and execute parser blocks.  
-Consider the example in Figure \ref{fig:l3.p4.l2.p4}, parser ``P'' of l2.p4 can not be executed at the end of deparser control block ``D'' of l3.p4.
+% \begin{figure}[H]
+%     \begin{subfigure}[b]{\linewidth}
+%         \centering
+%         \includegraphics[trim=2 460 380 0, clip,scale=0.37]{v1model-pipeline.pdf}
+%         \caption{simple\_switch v1 Model}
+%         \label{subfig:v1model}
+%     \end{subfigure}
+%     \begin{subfigure}{\linewidth}
+%         \centering
+%         \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
+%         \caption{PSA Model}
+%         \label{subfig:psa-model}
+%     \end{subfigure}
+% \caption{Real Target Architectures}
+% \label{fig:real-target-architectures}
+% \end{figure}
+% The architecture description of a target specifies data plane pipeline comprising a set of pro\-gram\-ma\-ble and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
+% For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model \cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
 
 
-Moreover, architectures models expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and  \cite{psa}
-In turn, adding different abstract-machine to program packet-path and data flow across the blocks and further increasing heterogeneity in the model of a data plane program.
-<<For example, resubmit or recirculate calls are like event trigger.. effects happen after the block>>
-
-Finally, the existing architecture models expose target-spe\-cific constraints to programmers.
-E.g., output port can not be changed in egress control block, scope of some intrinsic metadata limited to specific programmable blocks, etc.,  
-Programmers need implement execution logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
+% Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
+% Control blocks are expressed using a sub-language modelling imperative control flow.
+% Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
+% Packet processing logic in P4 programs are sectioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
+% Therefore, a control block can not instantiate and execute parser blocks. Similarly, deparser block can not invoke and execute parser blocks.  
+% Consider the example in Figure \ref{fig:l3.p4.l2.p4}, parser ``P'' of l2.p4 can not be executed at the end of deparser control block ``D'' of l3.p4.
+% 
+% 
+% Moreover, architectures models expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and  \cite{psa}
+% In turn, adding different abstract-machine to program packet-path and data flow across the blocks and further increasing heterogeneity in the model of a data plane program.
+% <<For example, resubmit or recirculate calls are like event trigger.. effects happen after the block>>
+% 
+% Finally, the existing architecture models expose target-spe\-cific constraints to programmers.
+% E.g., output port can not be changed in egress control block, scope of some intrinsic metadata limited to specific programmable blocks, etc.,  
+% Programmers need implement execution logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
 
 
 % P4 programmers need to implement homogeneous blocks (e.g., ingress and egress control) satisfying different accessibility constraints on intrinsic metadata exposed by the architecture. 
 
-The absence of a uniform abstract machine for packet processing and presence of target-specific constraints have made extremely difficult to enable modularity.
-Because, modularity requires mechanisms to develop independent code modules and interface to reuse them without requiring to know their implementation detail.
-Also, existing compilers and architecture specifications do not provide simplified and common abstractions for packet processing blocks in data plane to facilitate target agnostic reuse of data plane programs.
+% The absence of a uniform abstract machine for packet processing and presence of target-specific constraints have made extremely difficult to enable modularity.
+% Because, modularity requires mechanisms to develop independent code modules and interface to reuse them without requiring to know their implementation detail.
+% Also, existing compilers and architecture specifications do not provide simplified and common abstractions for packet processing blocks in data plane to facilitate target agnostic reuse of data plane programs.
 
 
 % In section \ref{section:micros-awitch-architecture}, we explain the design of Micro Switch Architecture for a logical target that reduces number of programmable blocks and introduces logical externs to minimize heterogeneity in abstract model of P4 programs.
@@ -377,13 +376,13 @@ Next, we describe compilation procedure that facilitates reuse of user-defined p
 
 \subsection*{Compiling $\mu$P4 Programs}
 $\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
-If a program does not contain main instance, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:compiling-modules}).
+If a program does not contain main instance, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{fig:compiling-msa-programs}).
 It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
 % $\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
 % The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
 \begin{figure}
     \centering
-    \includegraphics[trim=4 350 633 4, clip,scale=0.45]{mp4c-compiler}
+    \includegraphics[trim=2 400 565 2, clip,scale=0.5]{mp4c-compiler}
     \caption{Compiling $\mu$SA programs}
 \label{fig:compiling-msa-programs}
 \end{figure}
@@ -417,10 +416,11 @@ First, we describe logical pipelines of $\mu$P4. Then, we introduce $\mu$SA's ex
 \label{subsection:pipelines}
 $\mu$SA has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
 $\mu$SA provides a set of logical externs which can be instantiated and used within control blocks of the $\mu$SA pipelines.
-% Micro pipeline comprises of Parser, Micro-Pipe control and Deparser programmable blocks.
+Micro pipeline comprises of Parser, Micro-Pipe control and Deparser programmable blocks.
+$\mu$SA does not allow conditional statements in deparser blocks.
 % Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution-control is transferred to micro-pipe control block.
 % Depending on use of logical externs in implementation, packet may not complete the processing of the control block.
-If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
+% If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
 \begin{figure}
     \centering
     \begin{subfigure}{0.59\linewidth}
@@ -442,7 +442,7 @@ If the execution-control reaches till the end of the control block, packet is pr
 Orchestration pipeline only has a control block, orchestration pipe.
 Programmers can implement imperative control flow using intrinsic metadata of $\mu$SA and runtime parameters to the package types.
 
-Figure \ref{fig:interfaces} shows signature of type-parameterised interfaces declared in $\mu$SA.
+Figure \ref{fig:interfaces} shows signature of type-parameterized interfaces declared in $\mu$SA.
 Unicast (U) and Multicast (M) interface can be implemented using Micro pipeline.
 General (G) interface allows to implement Orchestration pipeline.
 In Figure \ref{fig:interfaces}, \texttt{pkt\_in} and \texttt{pkt\_out} represent packet, \texttt{sm\_t} and \texttt{es\_t} represent intrinsic metadata.
@@ -549,12 +549,10 @@ $\mu$P4 allows programmer to create copies of packets, intrinsic metadata and ar
 Figure \ref{fig:parallel-execution} shows a program, called \texttt{rm}, executing \texttt{l2l3} (Figure \ref{fig:sequential-execution}) and \texttt{mirror} (traffic sampler) in parallel.
 % Programmers can use assignment statements to create copies of standard intrinsic metadata (msa\_sm\_t) and use \emph{copy\_from} functions in \emph{msa\_packet\_in} and \emph{egress\_spec} to create copies of the packet and intrinsic metadata.
 $\mu$SA declares buffer externs \texttt{in\_buf} and \texttt{out\_buf} with \texttt{dequeue} and \texttt{enqueue} methods, respectively.
-
-
 The buffers can only be instantiated in the control block of orchestration pipeline.
-Its functions can be used only in apply body of the control block.
+Also, its functions can be used only in apply body of the control block.
 % The output of the multiple programs generated by processing the same packet can be enqueued in the logical buffer.
-Multiple dequeue calls would result in weighted traffic split.
+Multiple dequeue calls would result in weighted split.
 % /*
 % extern msa_packet_buffer<ET> {
 %   msa_packet_buffer();
@@ -579,16 +577,15 @@ Multiple dequeue calls would result in weighted traffic split.
 % \end{figure}
 % In parallel execution of multiple micro-switch programs, each program processes its own copy of a packet.
 % Programmers can create copies of a packet using logical constructs defined in $\mu$SA.
-.
+
+% extern out_buf<O> {
+%   void enqueue(pkt_out, in sm_t, es_t, in O); 
+% }
+% extern in_buf<I> {
+%   void dequeue(pkt_in, out sm_t, es_t, out I); 
+% }.
 \begin{figure}
 \begin{lstlisting}[frame=none]
-extern out_buf<O> {
-  void enqueue(pkt_out, in sm_t, es_t, in O); 
-}
-extern in_buf<I> {
-  void dequeue(pkt_in, out sm_t, es_t, out I); 
-}
-
 // interface for traffic mirror function
 mirror (pkt_in, pkt_out, sm_t);
 l2l3 (pkt_in, pkt_out, sm_t); struct e_t {};
@@ -600,9 +597,9 @@ control rm(in_buf<e_t> ib, out_buf<e_t> ob) {
     // copies for parallel execution
     pin_m.copy_from(pin); sm_m = sm; 
     es_m.copy_from(es)
-    mirror.apply(pin_m, po_m, sm_m, es_m);
     l2l3.apply(pin, po, sm, es);
-    // synchronize and put in out_buf arg
+    mirror.apply(pin_m, po_m, sm_m, es_m);
+    // stores the results in out_buf
     ob.enqueue(po, sm, es);
     ob.enqueue(po_m, sm_m, es_m);
   }
@@ -675,48 +672,43 @@ extern msa_multicast_engine {
 \section{$\mu$P4C Compiler}
 \label{section-mp4c-compiler}
 
-\subsection{Parser Block Transformation}
+\subsection{(De)Parser Block Transformation}
 \label{subsection:parser-block-transformation}
-P4 parser blocks describe parse graphs as state machines.
-Real target devices contain programmable parser module that can be programmed using parse graphs.
-From the design of programmable parser~\cite{6665172}, we make following observations.
-Programmable parsers are implemented using buffer, state machine logic, Ternary Content-Addressable Memories (TCAM) and Action RAM. 
-TCAM matches values of current state, fields or variables to identify next state. 
-Based on match, headers are copied from bit stream and current state is modified.
+
+% P4 parser blocks describe parse graphs as state machines.
+% Real target devices contain programmable parser module that can be programmed using parse graphs.
+% From the design of programmable parser~\cite{6665172}, we make following observations.
+% Programmable parsers are implemented using buffer, state machine logic, Ternary Content-Addressable Memories (TCAM) and Action RAM. 
+% TCAM matches values of current state, fields or variables to identify next state. 
+% Based on match, headers are copied from bit stream and current state is modified.
 Programmable parsers essentially perform repeated match and action.
-Also, we note that network packets are of finite length, hence they can be parsed in a finite number of ways.
+% Also, we note that network packets are of finite length, hence they can be parsed in a finite number of ways.
 Successful parsing of a packet is essentially finding a match for a finite number of bytes from finite set of values.
-However, we need to extract all the bytes that might be required to perform match-actions from packets' bit streams.
+However, we need to extract all the bytes that might be required to perform match-actions from packets' byte-streams.
 
-
-We compute number of bytes required to extract in section~\ref{subsubsection:computing-size-of-byte-array}, followed by an approach to convert parser without loops and variable length headers, called \textit{simple parsers}, into a series of match-action tables.
-Next, we explain loops unrolling and variable length headers removal techniques transforming every parser into a simple parser.
-Finally, we discuss an optimization to reduce number of MATs to one.
-
-
-\subsubsection{Computing Size of Byte Array}
-\label{subsubsection:computing-size-of-byte-array}
+% \subsubsection{Computing Size of Byte Array}
+% \label{subsubsection:computing-size-of-byte-array}
 % Every \emph{extract} method call statement in parser states advances bit index by number of bits equal to the size of the header type of the instance passed as the argument.
-We perform symbolic execution of parser, control and deparser blocks to determine size of byte array buffer by evaluating call statements of \emph{extract} and \emph{emit} methods of core library externs \emph{packet\_in} and \emph{packet\_out}, respectively.
-The symbolic execution also tracks validity of header instances by evaluating \emph{setValid} and \emph{setInvalid} method calls of P4 header types.
-Symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph and computes total number of bytes extracted on every path.
+\textbf{Byte Array Size Computation:} 
+We perform symbolic execution of parser, control and deparser blocks to determine size of byte array buffer by evaluating call statements of \texttt{extract} and \texttt{emit} methods of core library externs. 
+% \emph{packet\_in} and \emph{packet\_out}, respectively.
+The symbolic execution tracks validity of header instances by evaluating \emph{setValid} and \emph{setInvalid} method calls of P4 header types.
+% Symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph and computes total number of bytes extracted on every path.
 We define length $l_{p}(x)$ of a path $x$ from the start to the accept state in the parse graph of program $p$'s parser as total number of bytes extracted.
 And, the input buffer size for program $p$'s parser as $\mathcal{I}(p) = \max_{x}\left\{l_{p}(x)\right\}$. 
 
 
 Programs may increase or decrease size of packets, therefore, considering only parser buffer size is not enough.
 We perform symbolic execution of control and deparser blocks to determine maximum increase and decrease in packet size by the program.
-We evaluate header instances' setValid and setInvalid method call statements on every path of the control flow graph.
-We define worst case scenarios to estimate increase and decrese of size of packets on the same control path.
-To estimate maximum decrement, we consider that a packet contains all the header instances that are set to valid or invalid on a control path.
-Similarly for maximum increment, we consider that a packet does not contain any header instance that is set to valid or invalid on a control path. 
-We denote increase and decrease in packet size on a path $x$ of control block of program $p$ using $i_{p}(x)$ and $d_{p}(x)$.
+We evaluate header instances' setValid and setInvalid method call statements on every path of the control block's CFG.
+% We define worst case scenarios to estimate increase and decrese of size of packets on the same control path.
+% To estimate maximum decrement and increment, we consider that a packet contains all the header instances that are set to valid or invalid on a path in CFG.
+% Similarly for maximum increment, we consider that a packet does not contain any header instance that is set to valid or invalid on a control path. 
+We denote increase and decrease in packet size on a path $x$ in the CFG of control block of program $p$ using $i_{p}(x)$ and $d_{p}(x)$.
 We define them as sum of sizes of all the header instances set valid and invalid on the path, respectively.
-Header instances not emitted in any paths of deparser block by extracted by a parser state decrease packets size. 
-For every path $x$, $d_{p}(x)$ is increamented by the size of such header instances. 
+Header instances not emitted in any path of deparser but extracted by the parser decrease packets' size. 
+% For every path $x$, $d_{p}(x)$ is increamented by the size of such header instances. 
 We define maximum decrease and increase in packet size by program $p$ as $\delta(p)$ and $\Delta(p)$, as shown in (\ref{decrease}) and (\ref{increase}).
-
-
 \begin{align}
 \delta(p)\; =& \;  \max_{x} \left\{ d_{p}(x) \right\} \label{decrease} \\
 \Delta(p) \; =& \; \max_{x} \left\{ i_{p}(x) \right\} \label{increase}
@@ -725,131 +717,124 @@ We define maximum decrease and increase in packet size by program $p$ as $\delta
 To process packets by a sequence of $N$ programs, we define extract length, $\mathcal{E}l_{S}$ and buffer length $\mathcal{B}l_{S}$, as shown in (\ref{extract-length-seq}) and (\ref{buffer-length-seq}).
 $\mathcal{E}l_{S}$ denotes the maximum number of bytes that may be extracted as cumulative effect of deparsers and parsers of all the program in a sequence.
 $\mathcal{B}l_{S}$ denotes the maximum number of bytes that may be emitted as cumulative effect of the deparsers of all the programs in a sequence.
-Similarly, we define extract length, $\mathcal{E}l_{P}$ and buffer length $\mathcal{B}l_{P}$, as shown in (\ref{extract-length-par}) and (\ref{buffer-length-par}), to process packets by $N$ programs in parallel.
+We also compute extract and buffer length to process packets by $N$ programs in parallel.
+% We also compute extract length, $\mathcal{E}l_{P}$ and buffer length $\mathcal{B}l_{P}$, as shown in (\ref{extract-length-par}) and (\ref{buffer-length-par}), to process packets by $N$ programs in parallel.
 \begin{align}
 \mathcal{E}l_{S} \; =& \; \max_{i} \left\{ \left( \sum_{j=0}^{j<i} \delta(j) \right)+ \mathcal{I}(i) \right\},&\;\;\;i  \in [0,N] \label{extract-length-seq} \\
-\mathcal{B}l_{S} \; =& \; \left( \sum_{i=0}^{N} \Delta(i) \right)+ \mathcal{E}l_{S} & \label{buffer-length-seq} \\
-\mathcal{E}l_{P} \; =& \; \max_{i} \left\{ \mathcal{I}(i) \right\},&\;\;\;i  \in [0,N] \label{extract-length-par} \\
-\mathcal{B}l_{P} \; =& \; \max_{i} \left\{ \mathcal{I}(i) + \Delta(i) \right\},&\;\;\;i  \in [0,N]  \label{buffer-length-par}
+\mathcal{B}l_{S} \; =& \; \left( \sum_{i=0}^{N} \Delta(i) \right)+ \mathcal{E}l_{S} & \label{buffer-length-seq}
+% \mathcal{E}l_{P} \; =& \; \max_{i} \left\{ \mathcal{I}(i) \right\},&\;\;\;i  \in [0,N] \label{extract-length-par} \\
+% \mathcal{B}l_{P} \; =& \; \max_{i} \left\{ \mathcal{I}(i) + \Delta(i) \right\},&\;\;\;i  \in [0,N]  \label{buffer-length-par}
 \end{align}
 
 
-\subsubsection{Simple Parser to MATs}
-\label{subsubsection:simple-parser-to-mats}
-% We create action stage using parserStatements and match stage using ~\texttt{transitionStatement}.
-Every path enumerated by symbolic execution of a parser consists of evaluated instances of the parser states.
-A parser state can be a part of multiple paths, thereby having multiple instances.
-% Every evaluated instance of a state provides a set of extracted (valid) header instances and their start bit indices corresponding to the state and the path.
-P4 parser states consist of ~\emph{parser-Statements}  and \emph{transition\-Statement}.
-The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
-The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
-Therefore, we perform Forward Substitution on select expressions in evaluated instances of states
-% (https://dl.acm.org/citation.cfm?id=7904)
-on each path and eliminate such data dependency.
+\textbf{Parser to match-action Table:} 
+We perform Forward Substitution \cite{Padua:1986:ACO:7902.7904} on the paths enumerated by symbolic execution of parser.
+Figure \ref{subfig:parser-symbolic-execution} shows paths generated by symbolic execution of parser with four states in Figure \ref{subfig:parser}.
+We synthesize match-key using union of all the select expression in the evaluates states.
+For each evaluated path, we create actions to copy bytes from appropriate location of byte buffer to header instances, as shown in Figure \ref{subfig:parser-mat}.
+Each action pops total number of copied bytes from the byte array.
+% The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
+% The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
+% Therefore, we perform Forward Substitution on select expressions in evaluated instances of states
+% % (https://dl.acm.org/citation.cfm?id=7904)
+% on each path and eliminate such data dependency.
 
-We synthesise local binary variables, called \emph{visit},  for each parser state to track the state transition of the parser's FSM.
-For every evaluated instance of a parser state, we synthesise an action comprising its parser\-Statements and replace extract method call statements to assignment statements.
-The assignment statements copies bytes from the buffer array to header instances' fields according to their sizes.
-Next, we add pop method call with the header size as the argument to remove the header from the byte array.
-We insert setValid method call statement for the extracted header instances.
-We add an assignment statement to set visit variable associated with the parser state.
+% We synthesise local binary variables, called \emph{visit},  for each parser state to track the state transition of the parser's FSM.
+% For every evaluated instance of a parser state, we synthesise an action comprising its parser\-Statements and replace extract method call statements to assignment statements.
+% The assignment statements copies bytes from the buffer array to header instances' fields according to their sizes.
+% Next, we add pop method call with the header size as the argument to remove the header from the byte array.
+% We insert setValid method call statement for the extracted header instances.
+% We add an assignment statement to set visit variable associated with the parser state.
 
 \begin{figure*}[!h]
-    \begin{subfigure}[b]{0.3\linewidth}
+    \begin{subfigure}[b]{0.25\linewidth}
         \centering
-        \includegraphics[trim=4 270 596 0, clip,scale=0.4]{parser-transformation-example}
+        \includegraphics[trim=4 270 596 0, clip,scale=0.37]{parser-transformation-example}
         \caption{An example P4 Parser}
         \label{subfig:parser}
     \end{subfigure}
-    \begin{subfigure}[b]{0.3\linewidth}
+    \begin{subfigure}[b]{0.28\linewidth}
         \centering
-        \includegraphics[trim=4 285 796 0, clip,scale=0.4]{parser-example-se-1}
-        \includegraphics[trim=4 285 796 0, clip,scale=0.4]{parser-example-se-2}
+        \includegraphics[trim=0 285 790 0, clip,scale=0.37]{parser-example-se-1}
+        \includegraphics[trim=0 285 790 0, clip,scale=0.37]{parser-example-se-2}
         \caption{Parser Symbolic Execution}
         \label{subfig:parser-symbolic-execution}
     \end{subfigure}
-    \begin{subfigure}[b]{.4\linewidth}
+    \begin{subfigure}[b]{.45\linewidth}
 \begin{lstlisting}[frame=none]
-control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
-  action process(bit<16> nh) {
-    hdrs.ipv4.ttl = hdrs.ipv4 - 1;
-    nexthop_id = nh;// setting out param
-  }
-  table ipv4_lpm_tbl {
-    key = { hdrs.ipv4.dstAddr : lpm } 
-    actions = { process; }
-  }
-  apply { ipv4_lpm_tbl.apply(); }
+key = { b[12]++b[13]:exact; b[20]:ternary; b[23]:ternary; meta.data1: ternary; meta.data2: ternary;}
+actions = {
+  cp_eth_ipv4_tcp;
+  cp_eth_ipv6_tcp;
+}
+const entries = {
+  (0x0800,_,0x6, _, 0xFF) :cp_eth_ipv4_tcp();
+  (0x86DD,0x6,_, 0xFF, _) :cp_eth_ipv4_tcp();
 }
 \end{lstlisting}
 \caption{Match-Action Control Block}
-\label{subfig:parser-symbolic-execution}
+\label{subfig:parser-mat}
 \end{subfigure}
 \caption{Parser to Control Block Transformation}
 \label{fig:parser-to-control-block-transformation}
 \end{figure*}
 
-For every parser state, we create a match key comprising key-fields from sets of keys. 
-$(1)$ $visit$ variable assocociated with the set of all its ancestors and the state itself and
-$(2)$ union of select expression of all of its evaluated instances.
-In most cases, the union of select expression would have a single key-field, unless forward substitution has produced different expressions in the state's evaluated instances.
-
-The \emph{start} being a special state has only one evaluated instance.
-We create an action, called \emph{start\_action}, from the only instance of the start state.
-Next, we visit parser states in topological order. 
-We create match key for the current parser state as described above.
-The match-key entries are created using keysetExpression and all possible paths represented to the state encoded using visit bit vector.
-For each match key entry, we use appropriate action synthesised by next state's evaluated instance.
-
-The apply body of the control block consists of an action call invalidating all the header instances, followed by the start\_action call and apply calls to the MATs created for parser states in topological order.
-
-
-
-\subsubsection{Variable Length Headers and Loops Elimination}
-\label{variable-length-headers-loops-and-elimination}
-The two-argument extract method is replaced with a synthesised sub-parser with three arguments.
-First to arguments are the same as two-argument extract method and the third arguments is maximum size of variable field.
-The start state of the sub-parser contains a transition\-Statement with a select\-Expression.
-The sub-parser contains a state for each possible value of variable field size that extracts constant number of bits using single argument extract method and transits to accept state.
-The select\-Expression of the start state uses the variable field size parameter(the second parameter) to match on and transit to the corresponding next state.
+% For every parser state, we create a match key comprising key-fields from sets of keys. 
+% $(1)$ $visit$ variable assocociated with the set of all its ancestors and the state itself and
+% $(2)$ union of select expression of all of its evaluated instances.
+% In most cases, the union of select expression would have a single key-field, unless forward substitution has produced different expressions in the state's evaluated instances.
+% 
+% The \emph{start} being a special state has only one evaluated instance.
+% We create an action, called \emph{start\_action}, from the only instance of the start state.
+% Next, we visit parser states in topological order. 
+% We create match key for the current parser state as described above.
+% The match-key entries are created using keysetExpression and all possible paths represented to the state encoded using visit bit vector.
+% For each match key entry, we use appropriate action synthesised by next state's evaluated instance.
+% 
+% The apply body of the control block consists of an action call invalidating all the header instances, followed by the start\_action call and apply calls to the MATs created for parser states in topological order.
 
 
-
-
-\subsection{Deparser Block Transformation}
-\label{subsection:deparser-block-transformation}
-Recall that deparser blocks are specialized control blocks having packet\_out extern as one of the arguments.
-The extern's emit method inserts bits on packets' bit-stream, if the header instance provided in the argument is valid, else no operation is performed.
-We precisely perform the same operation on byte array buffer, but first we create a match-action table to push fixed number of bytes on the byte array buffer.
-Recall that the program's parser transformation pops the total number of extracted bytes from the array buffer.
-If the program's parser extracts less than $\mathcal{E}l$ for a particular packet, there are valid data on byte array.
-
-The key of the table are created using valid bit of each header instance.
-The table contains entries enumerating all possible combination of validity of the headers and action corresponding to each match key value to push the number of bytes equals to sum of lengths of all valid headers.
-
-
-The deparser block may contain P4 language constructs like \emph{if-else} and \emph{switch} statements in addition of emit method call statements.
-Therefore, deparser block may have multiple execution paths emitting the same header instances. 
-We derive a directed-acyclic-graph, called \emph{emit graph}, with each node representing a emit call from the control flow graph of the deparser control block.
-We synthesise a match-action table for every emit method call in deparser blocks.
-Similar to one bit $visit$ variable for parser states, we create one bit variable, \emph{emit}, for each node in the emit graph.
-The match key for the match-action table for an emit node comprises valid bit of the header instances passed as argument to its ancestors.
-In addition, the match key includes $emit$ variables associated with the ancestors.
-The idea behind introducing $emit$ variable is to record execution of previous emit calls in the control path and copy header instance  of emit call at appropriate location in the byte array buffer.
+% 
+% \subsubsection{Variable Length Headers and Loops Elimination}
+% \label{variable-length-headers-loops-and-elimination}
+% The two-argument extract method is replaced with a synthesised sub-parser with three arguments.
+% First to arguments are the same as two-argument extract method and the third arguments is maximum size of variable field.
+% The start state of the sub-parser contains a transition\-Statement with a select\-Expression.
+% The sub-parser contains a state for each possible value of variable field size that extracts constant number of bits using single argument extract method and transits to accept state.
+% The select\-Expression of the start state uses the variable field size parameter(the second parameter) to match on and transit to the corresponding next state.
 
 
 
-\subsection{(De)parser Control Block Optimization}
-The transformation of parser and deparser blocks into match-action control blocks induces huge cost in terms of number of binary variables in data plane and multiple match-action tables.
-Also, number of entries in the tables are of exponential order of binary variable fields in the tables.
-In this section, we describe optimization methods to reduce per state match-action tables in transformed parser blocks into a single match-action table and eliminate all the binary variables.
- 
+
+% \subsection{Deparser Block Transformation}
+% \label{subsection:deparser-block-transformation}
+\textbf{Dearser to match-action Table:} 
+$\mu$SA deparser blocks are specialized control blocks having pkt\_out extern as one of the arguments.
+The extern's emit appends header instances to packet byte-stream based on the validity.
+If the header instance in the argument is valid, packet byte-stream is appended else no operation takes place.
+We precisely perform the same operation on byte array buffer.
+% Recall that the program's parser transformation pops the total number of extracted bytes from the array buffer.
+% If the program's parser extracts less than $\mathcal{E}l$ for a particular packet, there are valid data on byte array.
+First, we derive the sequence of emit of method call statements to find emit order of header instances.
+The key of the table is created using valid bit of each header instance in the arguments of the emit calls.
+The table contains entries enumerating all possible combination of validity of the headers.
+For each key value, we create actions to push the number of bytes equals to sum of lengths of all valid headers.
+Each action copies valid header instances to calculated offsets on the byte array.
+
+% The deparser block may contain P4 language constructs like \emph{if-else} and \emph{switch} statements in addition of emit method call statements.
+% Therefore, deparser block may have multiple execution paths emitting the same header instances. 
+% We derive a DAG, called \emph{emit graph}, with each node representing a emit call from the CFG of the deparser control block.
+% We synthesize a match-action table for every emit method call.
+% We create one bit variable, \texttt{emit}, for each node in the emit graph.
+% The match key for the match-action table for an emit node comprises valid bit of the header instances passed as argument to its ancestors.
+% In addition, the match key includes $emit$ variables associated with the ancestors.
+% The idea behind introducing $emit$ variable is to record execution of previous emit calls in the control path and copy header instance  of emit call at appropriate location in the byte array buffer.
+
 
 \subsection{Real-Target Specific Transformation}
-
-\subsubsection{Extracting Parallelism}
-We extract the \emph{Packet-processing Schedule Graph} (PSG) of the micro-switch program to identify code and packet(data) parallelism.
-A node represents an instance of either pkt\_in, logical buffers, pkt\-\_out, micro-switch program intrinsic metadata or collection of input or output arguments.
+\subsubsection{Packet-Processing Schedule}
+We extract the \emph{Packet-processing Schedule Graph} (PSG) of the micro-switch program to identify code and packet(data) separation.
+A node in PSG represents an instance of either pkt\_in, logical buffers, pkt\-\_out, micro-switch program intrinsic metadata or collection of input or output arguments.
 \begin{figure}[!h]
     \centering
     \includegraphics[trim=0 370 735 0, clip, scale=0.5]{psg}
@@ -865,40 +850,46 @@ The Figure \ref{fig:graph} shows the PFG and PSG of the micro-switch program sho
 The input(pkt\_in, params with \texttt{in} direction, in\_buf) arguments of the switch-program does not have any incoming edge.
 We begin with computing dominator tree for the nodes representing the copies of pkt\_in input argument.
 Next, we create a subgraph for each dominator tree containing nodes from the tree, incidence edges from the PFG.
-If there is no path between nodes of any two subgraphs, the subgraphs represents code blocks that can should process copies the packet.
-A path between nodes of subgraphs represents exchange of metadata between code blocks processing copies the same packet.
-It can be facilitated based on capability of target devices.
-If there is a loop in the PFG, compilation fails.
+If there is no path between nodes of any two subgraphs, the subgraphs represents code blocks that process copies of the same packets.
+If there is a path, compilation fails.
+We realize packet duplication using primitives provided by architectures of target devices.
+% A path between nodes of subgraphs represents exchange of metadata between code blocks processing copies the same packet.
+% It can be facilitated based on capability of target devices.
 
-We briefly explain mechanism to realise parallel processing using v1model architecture for the scenario.
-We synthesize a metadata variable to track cloned copies. 
-The variable is updated after the execution of parallel code block.
-The code block is encapsulated in an \emph{if} statement. 
-It is executed only if the metadata variable matches with a constant value assigned for its execution.
+
+% We briefly explain mechanism to realise parallel processing using v1model architecture for the scenario.
+% We synthesize a metadata variable to track cloned copies. 
+% The variable is updated after the execution of parallel code block.
+% The code block is encapsulated in an \emph{if} statement. 
+% It is executed only if the metadata variable matches with a constant value assigned for its execution.
 
 
 \subsubsection{Control Block Constraints}
 $\mu$SA pipelines contain single programmable control block. 
 It provides intrinsic metadata as logical externs (es\_t) and a structure (sm\_t) to use in the control block.
-We map $\mu$SA-specific intrinsic metadata to the ones defined in architectures of real targets.
-We partition the CFG of $\mu$SA pipelines' programmable block into multiple CFGs to enforce accessibility constraints of target's intrinsic metadata in its control block.
+We map $\mu$SA-specific intrinsic metadata to the ones defined in architectures of targets device.
+% We partition the CFG of $\mu$SA pipelines' programmable block into multiple CFGs to enforce accessibility constraints of target's intrinsic metadata in its control block.
 
 Let's consider v1model architecture of simple\_switch target device for an example.
-A two-state finite-state machine is used to capture ingress and egress pipeline blocks'  accessibility constraint on egress port and queueing metadata.
-Each state represents extra conditions to visit CFG nodes in topological order.
+A two-state finite-state machine is used to capture ingress and egress pipeline blocks' dependency between egress port and queueing metadata.
+Each state represents assertions to be verified on visit of CFG nodes in topological order.
 State transition occurs when the graph traversal can not be continued due to absence of nodes without incoming edges.
-In the first state, the graph traversal does not visit nodes representing multicast\_engine's apply or egress\_spec's get\_egress\_port or get\_value methods call statements.
+In the first state, the graph traversal does not further explore nodes representing multicast\_engine's apply or egress\_spec's get\_egress\_port or get\_value methods call statements.
 When the traversal can not progress any further, we create partitions of visited and non-visited nodes.
-In the second state, we do not visit nodes representing egress\_spec's get\_egress\_port methods call statements.
+In the second state, the graph traversal does not further explore nodes representing egress\_spec's get\_egress\_port methods call statements.
 
 
 There can be multiple edges representing control branches between the partitions.
-We synthesise \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
-The second partition uses the metadata and if condition to resume execution on appropriate control branch.
+We synthesis \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
+The second partition uses the metadata and condition on their values to resume execution on appropriate control branch.
 Also, partitioned code may access the same local declaration variables.
 These shared local variables along with the \emph{partition} metadata are passed as user-defined metadata between ingress and egress control block.
-We insert recirculate method call at the end of even numbered partitions.
+We insert recirculate method call at the end of even numbered partitions to route packet through the code allocated in the ingress egress blocks.
 
+\subsection{(De)parser Control Block Optimization}
+The transformation of parser and deparser blocks into match-action control blocks induces huge cost in terms of number of binary variables in data plane and multiple match-action tables.
+Also, number of entries in the tables are of exponential order of binary variable fields in the tables.
+In this section, we describe optimization methods to reduce per state match-action tables in transformed parser blocks into a single match-action table and eliminate all the binary variables.
 
 \section*{Acknowledgments}
 
