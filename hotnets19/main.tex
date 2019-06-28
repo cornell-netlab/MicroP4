@@ -376,29 +376,19 @@ Next, we describe compilation procedure that facilitates reuse of user-defined p
 
 
 \subsection*{Compiling $\mu$P4 Programs}
-$\mu$P4C provides well-known mechanism, compile and link, to generate executable programs.
-If a micro-switch program does not contain main instance, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:compiling-modules}).
-It also generates target independent control-plane APIs, P4Runtime \cite{p4runtime} files.
+$\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
+If a program does not contain main instance, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:compiling-modules}).
+It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
 % $\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
 % The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
 \begin{figure}
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[trim=0 435 665 0, clip,scale=0.5]{mp4c-frontend}
-        \caption{Library Generation}
-        \label{subfig:compiling-modules}
-    \end{subfigure}
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[trim=0 407 628 0, clip,scale=0.5]{mp4c-compiler}
-        \caption{Linking Libraries and Generating Executable}
-        \label{subfig:composition-translation-of-main-instance}
-    \end{subfigure}
-\caption{Compiling $\mu$SA programs}
+    \centering
+    \includegraphics[trim=4 350 633 4, clip,scale=0.45]{mp4c-compiler}
+    \caption{Compiling $\mu$SA programs}
 \label{fig:compiling-msa-programs}
 \end{figure}
-Programmers can include files (.p4h) containing definitions of types (e.g., struct types of in and out parameters) used in runtime interfaces of packages in libraries.
-$\mu$P4C compiler can generate either source P4 code for the specified architecture or executable with architecture-specific CP APIs.
+Programmers can include files containing definitions of types (e.g., struct types of in and out parameters) used in runtime interfaces of packages in libraries.
+$\mu$P4C compiler generates either source P4 code for the specified architecture or executable with architecture-specific CP APIs.
 
 \hs{next we describe msa and mp4c...}
 
