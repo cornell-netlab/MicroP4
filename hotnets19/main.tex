@@ -348,7 +348,7 @@ $\mu$P4C enables composition of packet-processing functions using P4 language it
 It translates simplified abstract machine and its logical externs into real target-specific heterogeneous packet-processing blocks, features and constraints.
 In this section, we introduce packet-processing model of $\mu$P4, generic interfaces and operation concepts.
 
-\subsection{Packet Processing using $\mu$P4}
+\subsection*{Packet Processing Model}
 \label{subsection:packet-processing-using-mp4}
 We model every packet-processing function as a black-box micro-switch that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters, as shown in Figure \ref{fig:package-runtime-behavior}.
 The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of micro-switch programs.
@@ -360,35 +360,105 @@ We enqueue them in output buffer queue.
 \begin{figure}[h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
-    \caption{Micro P4 Package Runtime Behavior}
+    \caption{Runtime Behavior of Package in $\mu$P4}
     \label{fig:package-runtime-behavior}
 \end{figure}
 
 To realise this model, $\mu$SA defines multiple packet-pro\-cessing pipelines and each pipeline is associated with one or more generic interface types.
 Each generic interface declares a set of programmable blocks to implement based on the associated pipeline model.
-The interfaces allows programmers to specify user-defined types for the runtime parameters.
-Programmers can implement the interfaces and define new \emph{package} types.
-In control blocks of $\mu$SA pipelines, the package types can be instantiated and invoked by supplying arguments for the defined runtime parameters. 
-% Packet-processing function need to expose concreate interface t 
+The interfaces allow programmers to specify user-defined types for the runtime parameters.
+Programmers can implement the interfaces to define new \texttt{package} types.
+This user-defined package types can be instantiated and invoked in control blocks of $\mu$SA pipelines.
+Programmers have to declare package types, defined in other code libraries, with their concrete runtime interfaces to use in the current program.
+Next, we describe compilation procedure that facilitates reuse of user-defined package types.
 
 
-\subsection{Compiling $\mu$P4 Programs}
-
+\subsection*{Compiling $\mu$P4 Programs}
+$\mu$P4C well-known compilation phases, compile and link, to generate executable programs.
+If a micro-switch program does not contain main instance, $\mu$P4C compiles it to an Intermediate Representation (IR) in json format (\ref{subfig:compiling-modules}) to generate a library.
+It also generates target independent control-plane APIs, P4Runtime \cite{p4runtime} files.
+$\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
+The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
 \begin{figure}[!h]
     \begin{subfigure}{\linewidth}
         \centering
         \includegraphics[trim=0 435 665 0, clip,scale=0.55]{mp4c-frontend}
-        \caption{Library Program Compilation}
+        \caption{Library Generation}
         \label{subfig:compiling-modules}
     \end{subfigure}
     \begin{subfigure}{\linewidth}
         \centering
         \includegraphics[trim=0 407 628 0, clip,scale=0.55]{mp4c-compiler}
-        \caption{Composition and Translation of Main Instance}
+        \caption{Linking Libraries and Generating Executable}
         \label{subfig:composition-translation-of-main-instance}
     \end{subfigure}
 \caption{Compiling $\mu$SA programs}
 \label{fig:compiling-msa-programs}
+\end{figure}
+Programmers can include files (*p4h) defining types (e.g., struct types of in and out parameters) used in runtime interfaces of packages in libraries.
+$\mu$P4C compiler can generate either source P4 code for the specified architecture or executable with architecture-specific CP APIs.
+
+\hs{next we describe msa and mp4c...}
+
+
+
+\section{Micro-Switch Architecture}
+\label{section:micros-awitch-architecture}
+$\mu$SA allows programmers write fine-grained packet processing code and define interface to reuse the code using its pipelines.
+
+$\mu$SA provides multiple types of logical pipelines.
+For each pipeline type, it exposes an interface type comprising a set of programmable blocks.
+Programmers can define a P4 \emph{package} type by implementing all the programmable blocks of a interface type.
+In the same source file, programmers can provide multiple implementations of the same interface type to define multiple package types.
+$\mu$SA pipelines do not have fixed-function blocks, instead it provides a set of logical externs which can be instantiated and used within control blocks of the $\mu$SA pipelines.
+This design choice reduces heterogeneity in abstract model of data plane programs.
+
+$\mu$SA defines various architecture specific structures and externs that allow programmers to express sequential and parallel composition of fine-grained packet processing functions.
+It defines standard intrinsic metadata as \emph{msa\_sm\_t} as a struct type.
+The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
+Some fields are not mutable, however $\mu$SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
+Sections \ref{subsection:pipelines} and \ref{subsection:logical-externs} describe pipelines and logical externs, respectively.
+
+
+
+\subsection{Pipelines}
+\label{subsection:pipelines}
+$\mu$SA has two types pipeline, Micro and Orchestration.
+Figure \ref{fig:msa-pipelines} shows programmable blocks of two types.
+Micro pipeline interface comprises of parser, Micro-Pipe control and Deparser programmable blocks.
+Every incoming packet is parsed and validated by the parser, if parser terminates in \emph{accept} parse state, then execution-control is transferred to micro-pipe control block.
+Depending on use of logical externs in implementation, packet may not complete the processing of the control block.
+If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
+\begin{figure}[!ht]
+    \begin{subfigure}{0.45\linewidth}
+        \centering
+        \includegraphics[trim=0 482 692 0, clip,scale=0.45]{msa-pipeline}
+        \caption{Micro}
+        \label{subfig:micro}
+    \end{subfigure}
+    \begin{subfigure}{0.45\linewidth}
+        \centering
+        \includegraphics[trim=0 480 805 0,clip,scale=0.45]{micro-orchestration-pipeline}
+        \caption{Orchestration}
+        \label{subfig:orchestration}
+    \end{subfigure}
+\caption{$\mu$SA Pipelines}
+\label{fig:msa-pipelines}
+\end{figure}
+
+Orchestration pipeline interface has only a control block, orchestration pipe.
+Programmers can implement imperative control flow using intrinsic metadata of $\mu$SA and runtime parameters to the package types.
+In addition of existing language features, it allows programmers to instantiate package types and invoke them in the body( \emph{apply}) of the control block.
+
+\begin{figure}[!h]
+\begin{lstlisting}[frame=none]
+// Signature of Runtime Interfaces
+U<I, O, IO>(pkt_in, pkt_out, inout sm_t, es_t, in I, out O, inout IO); 
+M<O>(pkt_in, in sm_t, es_t, out_buf<O>); 
+G<I, O>(in_buf<I>, out_buf<O>); 
+\end{lstlisting}
+\caption{Runtime Interfaces}
+\label{fig:interfaces}
 \end{figure}
 
 
@@ -490,66 +560,6 @@ control dep(pkt_out<o_a> ob,
 \caption{Multicast Execution}
 \label{fig:multicast-execution}
 \end{figure}
-
-\section{Micro-Switch Architecture}
-\label{section:micros-awitch-architecture}
-$\mu$SA allows programmers write fine-grained packet processing code and define interface to reuse the code using its pipelines.
-
-$\mu$SA provides multiple types of logical pipelines.
-For each pipeline type, it exposes an interface type comprising a set of programmable blocks.
-Programmers can define a P4 \emph{package} type by implementing all the programmable blocks of a interface type.
-In the same source file, programmers can provide multiple implementations of the same interface type to define multiple package types.
-$\mu$SA pipelines do not have fixed-function blocks, instead it provides a set of logical externs which can be instantiated and used within control blocks of the $\mu$SA pipelines.
-This design choice reduces heterogeneity in abstract model of data plane programs.
-
-$\mu$SA defines various architecture specific structures and externs that allow programmers to express sequential and parallel composition of fine-grained packet processing functions.
-It defines standard intrinsic metadata as \emph{msa\_sm\_t} as a struct type.
-The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
-Some fields are not mutable, however $\mu$SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
-Sections \ref{subsection:pipelines} and \ref{subsection:logical-externs} describe pipelines and logical externs, respectively.
-
-
-
-\subsection{Pipelines}
-\label{subsection:pipelines}
-$\mu$SA has two types pipeline, Micro and Orchestration.
-Figure \ref{fig:msa-pipelines} shows programmable blocks of two types.
-Micro pipeline interface comprises of parser, Micro-Pipe control and Deparser programmable blocks.
-Every incoming packet is parsed and validated by the parser, if parser terminates in \emph{accept} parse state, then execution-control is transferred to micro-pipe control block.
-Depending on use of logical externs in implementation, packet may not complete the processing of the control block.
-If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
-\begin{figure}[!ht]
-    \begin{subfigure}{0.45\linewidth}
-        \centering
-        \includegraphics[trim=0 482 692 0, clip,scale=0.45]{msa-pipeline}
-        \caption{Micro}
-        \label{subfig:micro}
-    \end{subfigure}
-    \begin{subfigure}{0.45\linewidth}
-        \centering
-        \includegraphics[trim=0 480 805 0,clip,scale=0.45]{micro-orchestration-pipeline}
-        \caption{Orchestration}
-        \label{subfig:orchestration}
-    \end{subfigure}
-\caption{$\mu$SA Pipelines}
-\label{fig:msa-pipelines}
-\end{figure}
-
-Orchestration pipeline interface has only a control block, orchestration pipe.
-Programmers can implement imperative control flow using intrinsic metadata of $\mu$SA and runtime parameters to the package types.
-In addition of existing language features, it allows programmers to instantiate package types and invoke them in the body( \emph{apply}) of the control block.
-
-\begin{figure}[!h]
-\begin{lstlisting}[frame=none]
-// Signature of Runtime Interfaces
-U<I, O, IO>(pkt_in, pkt_out, inout sm_t, es_t, in I, out O, inout IO); 
-M<O>(pkt_in, in sm_t, es_t, out_buf<O>); 
-G<I, O>(in_buf<I>, out_buf<O>); 
-\end{lstlisting}
-\caption{Runtime Interfaces}
-\label{fig:interfaces}
-\end{figure}
-
 % \begin{figure*}
 % \noindent \begin{minipage}[t]{\linewidth}
 % \begin{lstlisting}[frame=none]
