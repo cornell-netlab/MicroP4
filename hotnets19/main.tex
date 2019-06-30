@@ -852,10 +852,9 @@ We begin with computing dominator tree for the nodes representing the copies of 
 Next, we create a subgraph for each dominator tree containing nodes from the tree, incidence edges from the PFG.
 If there is no path between nodes of any two subgraphs, the subgraphs represents code blocks that process copies of the same packets.
 If there is a path, compilation fails.
-We realize packet duplication using primitives provided by architectures of target devices.
 % A path between nodes of subgraphs represents exchange of metadata between code blocks processing copies the same packet.
 % It can be facilitated based on capability of target devices.
-
+We realize packet duplication using primitives provided by architectures of target devices.
 
 % We briefly explain mechanism to realise parallel processing using v1model architecture for the scenario.
 % We synthesize a metadata variable to track cloned copies. 
