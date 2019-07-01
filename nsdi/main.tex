@@ -604,7 +604,7 @@ parser P(extractor ex, pkt p, out hdr_t h, inout bit<16> meta) {
   }
 }
 control Pipe(pkt p, inout hdr_t h, inout sm_t sm, es_t es, inout bit<16> meta) {
-  bit<16> l3_oa;  l3 l3_inst;
+  bit<16> nexthop_id;  l3 l3_inst;
   action drop () {}           
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstAddr = dmac;
@@ -616,7 +616,7 @@ control Pipe(pkt p, inout hdr_t h, inout sm_t sm, es_t es, inout bit<16> meta) {
     actions = { process; drop; }
   }
   apply {
-    l3_inst.apply(p, sm, es, l3_oa, meta);
+    l3_inst.apply(p, sm, es, nexthop_id, meta);
     forward_tbl.apply(); 
     if (sm.deq_qdepth > 100) // limit
       drop();
@@ -633,7 +633,8 @@ control D(emitter em, pkt p, in hdr_t h) {
 \end{figure*}
 
 \subsubsection{Packet Buffer}
-
+We maintain two byte arrays.
+One contains maximum number of bytes requried to process 
 
 
 %-------------------------------------------------------------------------------
