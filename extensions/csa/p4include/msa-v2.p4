@@ -59,19 +59,19 @@ extern extractor {
 }
 
 extern in_buf<I> {
-  dequeue(pkt p, out sm_t sm, es_t es, out IN in_param);
+  dequeue(pkt p, out sm_t sm, es_t es, out I in_param);
 }
 
 extern out_buf<O> {
-  enqueue(pkt p, in sm_t sm, es_t es, in O oa);
+  enqueue(pkt p, in sm_t sm, es_t es, in O out_param);
 }
 
 extern mc_in_buf<H, I> {
-  dequeue(pkt p, out H hdrs, out sm_t sm, es_t es, out IN in_param);
+  dequeue(pkt p, out H hdrs, out sm_t sm, es_t es, out I in_param);
 }
 
 extern mc_out_buf<H, O> {
-  enqueue(pkt p, in H hdrs, in sm_t sm, es_t es, in O o);
+  enqueue(pkt p, in H hdrs, in sm_t sm, es_t es, in O out_param);
 }
 
 action msa_no_action(){}
@@ -117,26 +117,26 @@ extern multicast_engine {
 
 }
 
-cpackage  Unicast<H, M, IN, OUT, INOUT>(pkt p, inout sm_t sm, es_t es,
-                                        in IN in_param, out OUT o, 
-                                        inout IO inout_param) {
-  parser micro_parser(extractor ex, pkt p, out H hdrs, inout M meta, inout sm_t sm, es_t es,  in IN in_param, inout IO inout_param);
+cpackage  Unicast<H, M, I, O, IO>(pkt p, inout sm_t sm, es_t es, in I in_param, 
+                                  out O out_param, inout IO inout_param) {
+  parser micro_parser(extractor ex, pkt p, out H hdrs, inout M meta, inout sm_t sm, in I in_param, inout IO inout_param);
 
-  control micro_control(pkt p, inout H hdrs, inout M n, inout sm_t sm, es_t es,
-                        in IN in_param, out OUT out_param, inout IO inout_param);
+  control micro_control(pkt p, inout H hdrs, inout M m, inout sm_t sm, es_t es, in I in_param, out O out_param, inout IO inout_param);
 
   control micro_deparser(emitter em, pkt p, in H hdrs);
 }
 
-Multicast<H, M, IN, OUT>(pkt p, in sm_t sm, es_t es, in IN in_param, 
-                         out_buf<OUT> ob) {
-  parser micro_parser(extractor ex, pkt p, out H hdrs, inout M meta, in IN in_param, inout sm_t sm, es_t es);
-  control micro_control(pkt p, inout H hdrs, inout M meta, inout IN in_param, inout sm_t sm, es_t es, mc_out_buf<H,OUT> mob);
-  control micro_deparser(emitter em, out_buf<OUT> ob, mc_in_buf<H,OUT> mib);
+Multicast<H, M, I, O>(pkt p, in sm_t sm, es_t es, in I in_param, out_buf<O> ob) {
+
+  parser micro_parser(extractor ex, pkt p, out H hdrs, inout M meta, in I in_param, inout sm_t sm);
+
+  control micro_control(pkt p, inout H hdrs, inout M meta, inout sm_t sm, es_t es, inout I in_param, mc_out_buf<H,O> mob);
+
+  control micro_deparser(emitter em, out_buf<O> ob, mc_in_buf<H,O> mib);
 }
 
-Orchestration<IN, OUT>(in_buf<IN>, out_buf<OUT>) {
-  control orch_control(pkt p, inout sm_t sm, es_t es, in IN in_param, out_buf<OUT> ob);
+Orchestration<I, O>(in_buf<I>, out_buf<O>) {
+  control orch_control(pkt p, inout sm_t sm, es_t es, in I in_param, out_buf<O> ob);
 }
 
 
