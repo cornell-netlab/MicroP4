@@ -42,12 +42,22 @@ cpackage ecn : implements Unicast<ecn_hdr_t, ecn_meta_t, empty_t, bit<16>, bit<1
 
   control unicast_control(pkt p, inout ecn_hdr_t hdr, inout ecn_meta_t m, inout sm_t sm, 
                           es_t es, in empty_t ia, out empty_t oa, inout empty_t ioa) {
+
+    swtrace_inout_t swarg;
+    swtrace swtrace_inst;
+    empty_t ia;
+    empty_t oa;
     apply {
+      swarg.ipv4_ihl = hdr.ipv4.ihl;
+      swarg.ipv4_total_len = hdr.ipv4.totalLen;
+
+
       if (hdr.ipv4.ecn == 1 || hdr.ipv4.ecn == 2) {
         if (standard_metadata.enq_qdepth >= ECN_THRESHOLD){
           hdr.ipv4.ecn = 3;
         }
       }
+      swtrace_inst.apply(p, sm, es, ia, oa, swarg);
     }
   }
 
