@@ -33,6 +33,9 @@ cpackage router : implements Unicast<hdr_t, meta_t, empty_t, empty_t, empty_t> {
                           es_t es, in empty_t ia, out empty_t oa, inout empty_t ioa) {
     
     bit<16> nexthop_id;  
+    empty_t ia;
+    empty_t oa;
+    empty_t ioa;
     l3 l3_inst;
     ecn ecn_inst;
     action drop () {}           
@@ -46,10 +49,10 @@ cpackage router : implements Unicast<hdr_t, meta_t, empty_t, empty_t, empty_t> {
       actions = { process; drop; }
     }
     apply {
-      l3_inst.apply(p, sm, es, nexthop_id, h.eth.ethType);
+      l3_inst.apply(p, sm, es, ia, nexthop_id, h.eth.ethType);
      
       forward_tbl.apply(); 
-      ecn_inst.apply();
+      ecn_inst.apply(p, sm, es, ia, oa, ioa);
 
     }
   }

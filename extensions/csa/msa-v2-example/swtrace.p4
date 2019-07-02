@@ -1,7 +1,6 @@
 #include"msa-v2.p4"
 #include"common.p4"
 
-
 const bit<5>  IPV4_OPTION_MRI = 31;
 
 header swt_ipv4_option_t {
@@ -20,19 +19,25 @@ header switch_t {
   qdepth_t    qdepth;
 }
 
-struct swtrace_meta_t {
+struct swtrace_hdr_t {
   swt_ipv4_option_t ipv4_option;
   swt_mri_t mri;
   switch_t[9] swtraces;
+}
+
+
+struct swtrace_meta_t {
+  bit<16> remaining;
+  bit<16> count;
 }
 
 cpackage swtrace : implements Unicast<swtrace_hdr_t, swtrace_meta_t, empty_t, 
                                       empty_t, empty_t> {
 
   parser unicast_parser(extractor ex, pkt p, out swtrace_hdr_t hdr, inout swtrace_meta_t meta,
-                        in empty_t ia, inout empty_t ioa) { //inout arg
+                        in empty_t ia, inout swtrace_inout_t ioa) { //inout arg
 
-    state parse_ipv4_option {
+    state start {
       packet.extract(hdr.ipv4_option);
       transition select(hdr.ipv4_option.option) {
         IPV4_OPTION_MRI: parse_mri;
@@ -42,8 +47,8 @@ cpackage swtrace : implements Unicast<swtrace_hdr_t, swtrace_meta_t, empty_t,
 
     state parse_mri {
       packet.extract(hdr.mri);
-      meta.parser_metadata.remaining = hdr.mri.count;
-      transition select(meta.parser_metadata.remaining) {
+      meta.remaining = hdr.mri.count;
+      transition select(meta.remaining) {
         0 : accept;
         default: parse_swtrace;
       }
@@ -51,8 +56,8 @@ cpackage swtrace : implements Unicast<swtrace_hdr_t, swtrace_meta_t, empty_t,
 
     state parse_swtrace {
       packet.extract(hdr.swtraces.next);
-      meta.parser_metadata.remaining = meta.parser_metadata.remaining  - 1;
-      transition select(meta.parser_metadata.remaining) {
+      meta.remaining = meta.remaining  - 1;
+      transition select(meta.remaining) {
         0 : accept;
         default: parse_swtrace;
       }
@@ -62,7 +67,7 @@ cpackage swtrace : implements Unicast<swtrace_hdr_t, swtrace_meta_t, empty_t,
 
   control unicast_control(pkt p, inout swtrace_hdr_t hdr, inout swtrace_meta_t m, 
                           inout sm_t sm, es_t es, in empty_t e, out empty_t oa, 
-                          inout empty_t ioa) {
+                          inout swtrace_inout_t ioa) {
 
     action add_swtrace(switchID_t swid) { 
       hdr.mri.count = hdr.mri.count + 1;
@@ -75,9 +80,9 @@ cpackage swtrace : implements Unicast<swtrace_hdr_t, swtrace_meta_t, empty_t,
       hdr.swtraces[0].swid = swid;
       hdr.swtraces[0].qdepth = es.get_value(DEQ_QDEPTH);
  
-      hdr.ipv4.ihl = hdr.ipv4.ihl + 2;
+      ioa.ipv4_ihl = ioa.ipv4_ihl + 2;
       hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8; 
-      hdr.ipv4.totalLen = hdr.ipv4.totalLen + 8;
+      ioa.ipv4_total_len = ioa.ipv4_total_len + 8;
     }
 
     table swtrace {
@@ -96,7 +101,9 @@ cpackage swtrace : implements Unicast<swtrace_hdr_t, swtrace_meta_t, empty_t,
 
   control unicast_deparser(emitter em, pkt p, in swtrace_hdr_t h) {
     apply { 
-      em.emit(p, h.ipv4); 
+      em.emit(p, h.ipv4_option); 
+      em.emit(p, h.mri); 
+      em.emit(p, h.swtraces); 
     }
   }
 }
