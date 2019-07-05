@@ -348,10 +348,12 @@ First, we describe logical pipelines of $\mu$P4. Then, we introduce $\mu$SA's ex
 $\mu$SA has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
 $\mu$SA provides a set of logical externs which can be instantiated and used within control blocks of the $\mu$SA pipelines.
 Micro pipeline comprises of Parser, Micro-Pipe control and Deparser programmable blocks.
-$\mu$SA does not allow conditional statements in deparser blocks.
-% Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution-control is transferred to micro-pipe control block.
-% Depending on use of logical externs in implementation, packet may not complete the processing of the control block.
-% If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
+$\mu$SA does not allow conditional statements in deparser blocks of its pipelines.
+
+Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution-control is transferred to micro-pipe control block.
+Depending on the use of logical externs in the control block, the packet may not complete the processing of the control block.
+If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
+
 \begin{figure}[H]
     \centering
     \begin{subfigure}{0.59\linewidth}
@@ -382,8 +384,7 @@ In Figure \ref{fig:interfaces}, \texttt{pkt\_in} and \texttt{pkt\_out} represent
 \begin{figure}[H]
 \begin{lstlisting}[frame=none]
 // Interfaces with apply method
-Unicast<I, O, IO>(pkt, inout sm_t, es_t, 
-    in I, out O, inout IO);
+Unicast<I, O, IO>(pkt, inout sm_t, es_t, in I, out O, inout IO);
 Orchestration<I, O>(in_buf<I>, out_buf<O>);
 // Interface with fork method
 Multicast<I, O>(pkt, in sm_t, es_t, in I, out_buf<O>);
@@ -396,10 +397,11 @@ Multicast<I, O>(pkt, in sm_t, es_t, in I, out_buf<O>);
 \begin{lstlisting}[frame=none]
 extern pkt {
   // byte array representation
+  byte[] packet;
+  unsigned length;
 }
 extern emitter {
   void emit (pkt, in hdr);
-  dettach(pkt);
 }
 extern extractor {
   void extractor(pkt, out hdr);
@@ -419,10 +421,10 @@ extern out_buf<O> {
   enqueue(pkt, in sm_t, es_t, in O);
 }
 extern mc_in_buf<H, I> {
-  dequeue(pkt, out H, out sm_t, es_t es, out I);
+  dequeue(pkt, out H, out sm_t, es_t, out I);
 }
 extern mc_out_buf<H, O> {
-  enqueue(pkt, in H, in sm_t, es_t es, in O);
+  enqueue(pkt, in H, in sm_t, es_t, in O);
 }
 \end{lstlisting}
 \caption{Buffer Representation}
@@ -454,11 +456,11 @@ Unicast<H, M, I, O, IO>
   (pkt, inout sm_t, es_t, in I, out O, inout IO) // runtime params
   (p<H, M, I, O, IO>, c<H, M, I, O, IO>, d<H, M>); // compile-time params
 
-
 // Multicast
-parser p<H, M, I>(extractor, pkt, H, M, I, sm_t, es_t);
-control c<H, M, I, O)>(pkt, H, M, I, sm_t, es_t, mc_out_buf<H,O>);
-control d<H, O> (emitter, out_buf<O>, mc_in_buf<H,O>);
+Unicast<H, M, I, O, IO> 
+  parser p<H, M, I>(extractor, pkt, H, M, I, sm_t, es_t);
+  control c<H, M, I, O)>(pkt, H, M, I, sm_t, es_t, mc_out_buf<H,O>);
+  control d<H, O>(emitter, out_buf<O>, mc_in_buf<H,O>);
 
 // Orchestration
 control c<I, O)>(pkt, sm_t, es_t, in I, out_buf<O>);
@@ -468,13 +470,36 @@ control c<I, O)>(pkt, sm_t, es_t, in I, out_buf<O>);
 \label{fig:programmable-blocks-for-interfaces}
 \end{figure}
 
+\begin{figure}[H]
+\begin{minipage}[c]{\linewidth}
+\begin{lstlisting}[frame=none]
+enum meta_t {
+  INGRESS_TIMESTAMP,
+  EGRESS_TIMESTAMP
+}
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}[c]{\linewidth}
+\begin{lstlisting}[frame=none]
+extern es_t {
+  void set_egress_port(in bit<8>);
+  bit<8> get_egress_port();
+  bit<32> get_value(in meta_t ft);
+  void copy_from(es_t es);
+}
+\end{lstlisting}
+\end{minipage}
+\caption{Extern to Capture Data-Dependency(Egress\_Spec)}
+\label{fig:msa-egress-spec-extern}
+\end{figure}
+
 \subsubsection{Multicast Execution}
 \label{subsubsection:multicast-execution}
 Multicast execution differs from parallel execution in two fundamental aspects.
 $(1)$ Multicast execution allows to program packet replication at runtime.
 $(2)$ Each copy of the replicated packet executes the same code.
 % $\mu$SA defines a logical multicast engine, \texttt{mc\_engine\_t}, as an extern.
-Figure \ref{fig:multicast-execution} shows an example of expressing multicast replication using logical externs defined in $\mu$SA.
+% Figure \ref{fig:multicast-execution} shows an example of expressing multicast replication using logical externs defined in $\mu$SA.
 
 
 
@@ -528,28 +553,7 @@ These timestamps required to compute queuing latency can be measured only after 
 The timestamps can be accessed only after the egress port is finalized.
 $\mu$SA captures such constraints as using stateful extern objects capturing data-dependency.
 % To support such special features, the architectures of real target devices expose intrinsic metadata  that depends on operations on other intrinsic metadata.
-\begin{figure}[H]
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[frame=none]
-enum meta_t {
-  INGRESS_TIMESTAMP,
-  EGRESS_TIMESTAMP
-}
-\end{lstlisting}
-\end{minipage}
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[frame=none]
-extern es_t {
-  void set_egress_port(in bit<8>);
-  bit<8> get_egress_port();
-  bit<32> get_value(in meta_t ft);
-  void copy_from(es_t es);
-}
-\end{lstlisting}
-\end{minipage}
-\caption{Extern to Capture Data-Dependency(Egress\_Spec)}
-\label{fig:msa-egress-spec-extern}
-\end{figure}
+
 $\mu$SA declares \texttt{es\_t} as an extern object (Figure \ref{fig:msa-egress-spec-extern}).
 It declares methods to manipulate and access interdependent device-specific information.
 $\mu$P4C uses their occurrences to transform the code to multi-control pipelines of real target architectures.
@@ -560,7 +564,7 @@ $\mu$P4C uses their occurrences to transform the code to multi-control pipelines
 
 \subsubsection{Packet Externs}
 
-\begin{figure*}[!ht]
+\begin{figure*}[H]
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
 // l3 runtime interface
@@ -632,9 +636,68 @@ control D(emitter em, pkt p, in hdr_t h) {
 \label{fig:modular-routing}
 \end{figure*}
 
-\subsubsection{Packet Buffer}
-We maintain two byte arrays.
-One contains maximum number of bytes requried to process 
+\section{Compiler}
+$\mu$P4C extracts a constant number, called \emph{extract-length}, of bytes from packets to a header stack, called \emph{byte-stack}, of one-byte headers.
+Programs may increase or decrease size of packets, therefore, considering only extract-length byte-stack size is not enough.
+Therefore, we symbolically execute parser, control and deparser blocks to estimate the extract-length and the size of byte-stack to process packets.
+
+
+\subsection{Extract Length and Byte-Stack Size}
+\label{subsection:wxtract-length and Byte-Stack Size}
+% We symbolically execute parser, control and deparser blocks to estimate the extract-length and the size of byte-stack to process packets.
+The symbolic execution recursively evaluates extract-length and byte-stack size of every callee program in every control path of the CFG of the caller's control block.
+The symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph.
+For every path, it computes total number of bytes extracted by \texttt{extract} method call statements.
+The \texttt{extract} method call statements on a path are evaluated by increasing the number of extracted bytes by size of the header instance specified in the argument.
+We define length of path $x$, $lp_{a}(x)$,  as total number of bytes extracted from the start to the accept state in the parse graph of program $a$'s parser.
+And, the extract-length for program $a$'s parser is defined as longest path in its parse graph, as shown in (\ref{extract-length-parser}).
+Programs extract-lengths also depend on the callees in their control-blocks.
+For program $a$'s control block, we define extract length of control path $x$, $lc_{a}(x)$,  as maximum number of bytes required to process all the callees in the path.
+The extract-length for program $a$'s control block is defined as longest path in the CFG (\ref{extract-length-control}).
+Program $a$'s extract-length, $\mathcal{E}l(a)$, is sum of extract-lengths of its parser and control block.
+It is necessary to discuss increase and decrease in packet size, before we explain our approach to estimate extract-length for a control path ($lc_{a}(x)$) and byte-stack size for a program.
+\begin{align}
+E_{p}(a)\; =& \; \max_{x}\left\{lp_{a}(x)\right\} \label{extract-length-parser} \\
+E_{c}(a)\; =& \; \max_{x}\left\{lc_{a}(x)\right\} \label{extract-length-control} \\
+\mathcal{E}l(a)\; =& \; E_{p}(a) + E_{c}(a) \label{extract-length-program}
+\end{align}
+
+
+
+To estimate maximum decrease, we consider that a packet contains all the header instances that are set to valid or invalid on the control path.
+For maximum increase, we consider that a packet does not contain any header instance that is set to valid or invalid on the control path. 
+We evaluate header instances' \texttt{setValid} and \texttt{setInvalid} method call statements on every path of the control block.
+We denote increase and decrease in packet size on path $x$ in the CFG of control block of program $a$ using $i_{a}(x)$ and $d_{a}(x)$, respectively.
+Similarly, $\Delta(a)$ and $\delta(a)$ denote maximum increase and decrease in packet size by program $a$.
+$i_{a}(x)$, as defined in (\ref{increase-path}), is the sum of $(1)$ sizes of all the header instances for which the control path has \texttt{setValid} methods call statements and $(2)$ maximum increase in packet size by all every callee program $cp$ on the path.
+Similarly, $d_{a}(x)$ is computed as show in (\ref{decrease-path}).
+% $d_{p}(x)$ is the sum of $(1)$ sizes of all the header instances for which control path \texttt{setInvalid} methods call statements and $(2)$ maximum decrease in packet size by all every callee program $cp$ on the path as shown in \ref{decrease-path}.
+\begin{align}
+i_{a}(x)\; =& \; \sum_{H.setValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \Delta(cp) \label{increase-path} \\
+d_{a}(x)\; =& \; \sum_{H.setInValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \delta(cp) \label{decrease-path}
+\end{align}
+The header instances which are not emitted by the deparser but extracted by the parser of the program decrease packets' size. 
+$d_{p}(x)$ is incremented by the size of such header instances for every path $x$.
+We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size by program $a$ as shown in (\ref{increase}) and (\ref{decrease}), respectively.
+\begin{align}
+\Delta(a)\; =& \; \max_{x} \left\{ i_{a}(x) \right\} \label{increase} \\
+\delta(a)\; =& \; \max_{x} \left\{ d_{a}(x) \right\} \label{decrease}
+\end{align}
+
+% Callee programs may parse and deparse packets, thereby, increase or decrease size of packets.
+% Caller programs must extract sufficient number of bytes to process callees' parsers. Also, Callers must have byte-stack size large enough to process their own deparsers along with callees'.
+
+Now, we define extract-length ($lc_{a}(x)$) for control path $x$ of program $a$'s control block as a function of extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet size ($\delta(cp)$) of callee programs on the path.
+Let's assume that control path $x$ invokes N number of callee programs in increasing order of their numbers. 
+Program $i$ may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th program ($E_{p}(i+1)$).
+Therefore, we take into account every program's parser extract-length along with of maximum decrease in packet size by its predecessors to compute $lc_{a}(x)$, as shown in \ref{extract-length-control-path}.
+Finally, we define byte-stack size of program $a$, $\mathcal{B}s_{a}$ (\ref{byte-stack-size-program}), as the sum of its extract-length and maximum increase in packet size.
+
+\begin{align}
+lc_{a}(x) \; =& \; \max_{p} \left\{ \left( \sum_{i=0}^{i<p} \delta(i) \right)+ \mathcal{E}l(p) \right\},&p \in [0,N] \label{extract-length-control-path} \\
+\mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-program}
+\end{align}
+
 
 
 %-------------------------------------------------------------------------------
