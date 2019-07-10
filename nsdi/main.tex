@@ -65,7 +65,7 @@
 \usepackage{filecontents}
 
 \lstdefinelanguage{P4}{
-  keywords={in, out, struct, inout, function, return, switch, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply},
+  keywords={in, out, struct, inout, function, return, switch, exact, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply},
   keywordstyle=\color{myk}\bfseries,
   keywords=[2]{boolean, string, number, objectid},
   keywordstyle=[2]\color{green}\bfseries,
@@ -637,23 +637,23 @@ control D(emitter em, pkt p, in hdr_t h) {
 \end{figure*}
 
 \section{Compiler}
-$\mu$P4C transforms parsers and deparsers in the program to match-action control blocks.
-It synthesizes a parser to extract a constant number, called \emph{extract-length}, of bytes from packets to a header stack, called \emph{byte-stack}, of one-byte headers.
-Programs may increase or decrease size of packets, therefore, the size of byte-stack can be higher than extract-length.
-$\mu$P4C creates a deparser to emit all valid one-byte headers from the byte-stack.
-We perform compile-time analysis of parser, control and deparser blocks to estimate the extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:wxtract-length and Byte-Stack Size}. 
+$\mu$P4C transforms parsers and deparsers of the main and callee programs to match-action control blocks.
+It synthesizes a parser and a deparser for the main program.
+The parser accepts every packet with length greater than minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
+For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
+Programs may increase or decrease size of packets, therefore, the size of byte-stack can be greater than extract-length.
+The synthesized deparser emit all valid one-byte headers from the byte-stack.
+We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:wxtract-length and Byte-Stack Size}. 
 
 
 $\mu$P4C treats the byte-stack as a packet to execute transformed parsers and deparsers of callee programs in the match-action stages of the target's pipeline.
 For each callee program, $\mu$P4C creates metadata variables,called \texttt{field-variables} for the header fields used in the program's control block.
 The header fields are substituted with the metadata variables in control blocks of the program.
 $\mu$P4C discards types and instances of the headers of each callee program.
-$\mu$P4C synthesises a single bit validity metadata variable for each header instance to record its presence in the packet.
+$\mu$P4C synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
+\texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related valid metadata variable.
 Execution of parsers in match-action stages copy values from the appropriate locations in the byte-stack to the variables.
-It also updates validity metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
-
-
-
+It also updates valid metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
 
 
 
@@ -701,7 +701,7 @@ We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size b
 % Callee programs may parse and deparse packets, thereby, increase or decrease size of packets.
 % Caller programs must extract sufficient number of bytes to process callees' parsers. Also, Callers must have byte-stack size large enough to process their own deparsers along with callees'.
 
-Now, we define extract-length ($lc_{a}(x)$) of control path $x$ in the CFG of program $a$'s control block as a function of extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet size ($\delta(cp)$) of callee programs on the path.
+Now, we define extract-length ($lc_{a}(x)$) of control path $x$ in the CFG of program $a$'s control block as a function of extract-length ($\mathcal{E}l(cp)$) of and maximum decrease in packet size ($\delta(cp)$) by the callee programs in the path.
 Let's assume that control path $x$ invokes N number of callee programs in increasing order of their numbers. 
 Program $i$ may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th program ($E_{p}(i+1)$).
 Therefore, we take into account every program's parser extract-length along with of maximum decrease in packet size by its predecessors to compute $lc_{a}(x)$, as shown in (\ref{extract-length-control-path}).
@@ -713,48 +713,8 @@ lc_{a}(x) \; =& \; \max_{p} \left\{ \left( \sum_{i=0}^{i<p} \delta(i) \right)+ \
 \end{align}
 
 
-
-
-
 \subsection{Parser To Match-Action Table:}
 \label{subsection:parser-to-match-action-table}
-% P4 parser blocks describe parse graphs as state machines.
-% Real target devices contain programmable parser module that can be programmed using parse graphs.
-% From the design of programmable parser \cite{6665172}, we make following observations.
-Programmable parsers \cite{6665172} are implemented as finite state machines using buffer, Ternary Content-Addressable Memories (TCAM) and Action RAM. 
-TCAM matches values of current state, fields or variables to identify next state.
-Based on the match, headers are copied from byte stream followed by current state update.
-Programmable parsers essentially perform repeated match-action operations.
-% Network packets are of finite length, hence they can be parsed in a finite number of ways.
-Successful parsing of a packet is essentially finding a match for a finite number of bytes from a finite set of values.
-Every path enumerated by symbolic execution identifies possible byte locations to match for extracting a set of headers instances.
-We leverage match capability of TCAM in match-action stages to match simultaneously all possible byte locations pertaining to every path from start to the accept state.
-The action associated with the matched entry copies values from the appropriate locations in the byte-stack to local metadata synthesized for used header fields. 
-
-We describe transformation of parser to match-action control block using the example shown in figure \ref{subfig:parser}.
-The parser has four states to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14, 20, 40 and 20 bytes, respectively.
-In general, we consider that parser state may use any metadata or variable to transit to next state. 
-As an example, \emph{tcp} state transits to the accept state based on value (0xFF) of \texttt{var\_y} variable which is updated by either \emph{ipv4} or \emph{ipv6} states.
-The symbolic execution of the parser computes two possibles path from the start state to the accept state.
-It also computes byte locations for header (e.g., eth.ethType, ipv6.nexthdr, ipv4.protocol) fields used in select expressions of states in the path.
-If the select expression depends on local variables, it performs Forward Substitution \cite{Padua:1986:ACO:7902.7904} on every path to eliminate data dependency.
-Figure \ref{subfig:parser-symbolic-execution} shows paths generated by symbolic execution with forward substitution.
-We synthesize match-key using union of the select expressions in all the states on every path.
-For each path, we create an action (e.g., \texttt{cp\_eth\_ipv4\_tcp} in Figure \ref{subfig:parser-mat}) to copy values from the byte-stack to field-variables and to presence of the headers in validity metadata variables.
-
-% The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
-% The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
-% Therefore, we perform Forward Substitution on select expressions in evaluated instances of states
-% % (https://dl.acm.org/citation.cfm?id=7904)
-% on each path and eliminate such data dependency.
-
-% We synthesise local binary variables, called \emph{visit},  for each parser state to track the state transition of the parser's FSM.
-% For every evaluated instance of a parser state, we synthesise an action comprising its parser\-Statements and replace extract method call statements to assignment statements.
-% The assignment statements copies bytes from the buffer array to header instances' fields according to their sizes.
-% Next, we add pop method call with the header size as the argument to remove the header from the byte array.
-% We insert setValid method call statement for the extracted header instances.
-% We add an assignment statement to set visit variable associated with the parser state.
-
 \begin{figure*}
     \begin{subfigure}[b]{0.25\linewidth}
         \centering
@@ -772,15 +732,16 @@ For each path, we create an action (e.g., \texttt{cp\_eth\_ipv4\_tcp} in Figure 
     \begin{subfigure}[b]{.47\linewidth}
     \centering
     \begin{lstlisting}[frame=none]
-key = { b[12]++b[13]:exact; b[20]:ternary; 
-        b[23]:ternary; meta.data1:ternary; 
-        meta.data2:ternary;}
-actions = { 
-  cp_eth_ipv4_tcp; cp_eth_ipv6_tcp; }
+key = { b[12]++b[13]:exact; // rest Ternary
+  b[20]; b[23]; meta.data1; meta.data2;
+  b[53].isValid(); b[73].isValid();}
+actions = { cp_eth_ipv4_tcp;
+  cp_eth_ipv6_tcp; set_parser_error;}
 const entries = {
-  (x0800,_,x6, _, xFF):cp_eth_ipv4_tcp();
-  (x86DD,x6,_, xFF, _):cp_eth_ipv6_tcp();
+  (x0800,_,x6,_,xFF,1,_):cp_eth_ipv4_tcp();
+  (x86DD,x6,_,xFF,_,_,1):cp_eth_ipv6_tcp();
 }
+default_action : set_parser_error();
 \end{lstlisting}
 \vspace*{-10pt}
 \caption{Match-Action Control Block}
@@ -790,9 +751,95 @@ const entries = {
 \label{fig:parser-to-control-block-transformation}
 \end{figure*}
 
+% P4 parser blocks describe parse graphs as state machines.
+% Real target devices contain programmable parser module that can be programmed using parse graphs.
+% From the design of programmable parser \cite{6665172}, we make following observations.
+Programmable parsers \cite{6665172} are implemented as finite state machines using buffer, Ternary Content-Addressable Memories (TCAM) and Action RAM. 
+TCAM matches values of current state, fields or variables to identify next state.
+Based on the match, headers are copied from byte stream followed by current state update.
+Programmable parsers essentially perform repeated match-action operations.
+% Network packets are of finite length, hence they can be parsed in a finite number of ways.
+Successful parsing of a packet is essentially finding a match for a finite number of bytes from a finite set of values.
+Every path enumerated by symbolic execution identifies possible byte locations to match for extracting a set of headers instances.
+We leverage match capability of TCAM in match-action stages to match simultaneously all possible byte locations pertaining to every path from start to the accept state.
+The action associated with the matched entry copies values from the appropriate locations in the byte-stack to local metadata synthesized for used header fields. 
+
+We describe transformation of parser to match-action control block using the example shown in figure \ref{subfig:parser}.
+The parser has four states to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14, 20, 40 and 20 bytes, respectively.
+In general, we consider that parser state may use any metadata or variable to transit to next state. 
+As an example, \emph{tcp} state transits to the accept state based on value (0xFF) of \texttt{var\_y} variable which is updated by either \emph{ipv4} or \emph{ipv6} states.
+The symbolic execution of the parser computes two possibles paths from the start state to the accept state.
+It also computes byte locations for header (e.g., eth.ethType, ipv6.nexthdr, ipv4.protocol) fields used in select expressions of states in the path.
+If the select expression depends on local variables, it performs Forward Substitution \cite{Padua:1986:ACO:7902.7904} on every path to eliminate data dependency.
+Figure \ref{subfig:parser-symbolic-execution} shows evaluated parser states and two paths generated by symbolic execution with forward substitution.
+Every extract method-call statement is transformed into assignments from the byte-stack to field-variables associated with the header instance passed as an argument to the method-call.
+In addition, valid metadata variable pertaining to the header instance is set.
+We synthesize match-key using union of the select expressions in all the states on every path.
+The match-key also comprises valid bit flag of the last byte extracted on every path to consider packet-length in the byte-stack.
+For each path, we synthesize an action (e.g., \texttt{cp\_eth\_ipv4\_tcp} in Figure \ref{subfig:parser-mat}) comprising assignment statements in all the states on the path.
+We create a match-action entry for every path using case values in select expressions and the action synthesized for the path.
+For example, in the first entry shown in Figure \ref{subfig:parser-mat}, x0800, x6, xFF are match-values for the first, third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp headers.
+The second and the forth keys can have any values, hence they are matched with don't care values.
+
+
+
+
+% The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
+% The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
+% Therefore, we perform Forward Substitution on select expressions in evaluated instances of states
+% % (https://dl.acm.org/citation.cfm?id=7904)
+% on each path and eliminate such data dependency.
+
+% We synthesise local binary variables, called \emph{visit},  for each parser state to track the state transition of the parser's FSM.
+% For every evaluated instance of a parser state, we synthesise an action comprising its parser\-Statements and replace extract method call statements to assignment statements.
+% The assignment statements copies bytes from the buffer array to header instances' fields according to their sizes.
+% Next, we add pop method call with the header size as the argument to remove the header from the byte array.
+% We insert setValid method call statement for the extracted header instances.
+% We add an assignment statement to set visit variable associated with the parser state.
+
+\subsubsection*{Header Stacks}
+
+\subsubsection*{Variable Length Headers}
 
 \subsection{Deparser To Match-Action Table:}
 \label{subsection:deparser-to-match-action-table}
+The deparser blocks of $\mu$SA's pipelines are the control blocks with emitter as one of the parameters.
+$\mu$P4C replaces emit method-call statements of emitter extern with match-action table to transform deparser into normal match-action control blocks.
+The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
+The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
+In case of increase in packet size, byte-stack is always large enough to hold new headers.
+If a deparser decreases the packet size, subsequent parsers may set \texttt{packet\_too\_short} error only if 
+packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main program.
+
+The symbolic execution of deparser derives the emit order of header instances in the block.
+The match key comprises valid metadata variables associated with each header instance in the program.
+For every possible combination of valid headers, we synthesize series of byte operations as an action to copy field-variables to and move data in byte-stack.
+
+
+% $\mu$SA deparser blocks are specialized control blocks having pkt\_out extern as one of the arguments.
+% The extern's emit appends header instances to packet byte-stream based on the validity.
+% If the header instance in the argument is valid, packet byte-stream is appended else no operation takes place.
+% We precisely perform the same operation on byte array buffer.
+% Recall that the program's parser transformation pops the total number of extracted bytes from the array buffer.
+% If the program's parser extracts less than $\mathcal{E}l$ for a particular packet, there are valid data on byte array.
+% First, we derive the sequence of emit of method call statements to find emit order of header instances.
+% The key of the table is created using valid bit of each header instance in the arguments of the emit calls.
+% The table contains entries enumerating all possible combination of validity of the headers.
+% For each key value, we create actions to push the number of bytes equals to sum of lengths of all valid headers.
+
+
+% The deparser block may contain P4 language constructs like \emph{if-else} and \emph{switch} statements in addition of emit method call statements.
+% Therefore, deparser block may have multiple execution paths emitting the same header instances. 
+% We derive a DAG, called \emph{emit graph}, with each node representing a emit call from the CFG of the deparser control block.
+% We synthesize a match-action table for every emit method call.
+% We create one bit variable, \texttt{emit}, for each node in the emit graph.
+% The match key for the match-action table for an emit node comprises valid bit of the header instances passed as argument to its ancestors.
+% In addition, the match key includes $emit$ variables associated with the ancestors.
+% The idea behind introducing $emit$ variable is to record execution of previous emit calls in the control path and copy header instance  of emit call at appropriate location in the byte array buffer.
+
+
+
+
 
 %-------------------------------------------------------------------------------
 \section*{Acknowledgments}
