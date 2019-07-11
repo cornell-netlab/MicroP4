@@ -77,44 +77,42 @@ extern mc_out_buf<H, O> {
 action msa_no_action(){}
 
 extern multicast_engine {
-    msa_multicast_engine();
-    
-    void set_multicast_group(GroupId_t gid);
+  msa_multicast_engine();
+  
+  void set_multicast_group(GroupId_t gid);
 
-    // Analogous to fork system call, only difference is original (parent
-    // process) cease to exist.
-    // Retuens packet instance id and appropriate egress_spec will be have
-    // port_id set by the CP for the PacketInstanceId_t value.
-    // All other declaration and arguments (local variable declarations, headers,
-    // metadata etc.,) in the scope will be available after this call.
-    //
-    // This function is available only in apply body of control blocks.
-    // Need to think more, if it should be allowed in Action body.
-    /*
-     * Potential misuse of above function:
-     * not using es in successive statements. but using some es1 or es passed in
-     * arguments.
-     * Compiler should raise warning and if programmer persist, it essentially 
-     * means overriding configuration of control plane.
-     *
-     */
-    PacketInstanceId_t apply(egress_spec es);
+  // Analogous to fork system call, only difference is original (parent
+  // process) cease to exist.
+  // Retuens packet instance id and appropriate egress_spec will be have
+  // port_id set by the CP for the PacketInstanceId_t value.
+  // All other declaration and arguments (local variable declarations, headers,
+  // metadata etc.,) in the scope will be available after this call.
+  //
+  // This function is available only in apply body of control blocks.
+  // Need to think more, if it should be allowed in Action body.
+  /*
+   * Potential misuse of above function:
+   * not using es in successive statements. but using some es1 or es passed in
+   * arguments.
+   * Compiler should raise warning and if programmer persist, it essentially 
+   * means overriding configuration of control plane.
+   *
+   */
+  PacketInstanceId_t apply(egress_spec es);
 
-    set_buf(out_buf<O>);
-    apply(pkt, out sm_t, es_t, out O);
+  set_buf(out_buf<O>);
+  apply(pkt, out sm_t, es_t, out O);
 
-    // In future, a shim will translate between architecture specific CP APIs
-    /*
-    @ControlPlaneAPI
-    {
-        entry_handle add_group (GroupId_t gid);
-        void         delete_group (GroupId_t gid);
-        void         add_group_entry   (GroupId_t gid, PacketInstanceId_t, PortId_t);
-        void         delete_group_entry (GroupId_t gid, PacketInstanceId_t, PortId_t);
-    }
-    */
-
-
+  // In future, a shim will translate between architecture specific CP APIs
+  /*
+  @ControlPlaneAPI
+  {
+      entry_handle add_group (GroupId_t gid);
+      void         delete_group (GroupId_t gid);
+      void         add_group_entry   (GroupId_t gid, PacketInstanceId_t, PortId_t);
+      void         delete_group_entry (GroupId_t gid, PacketInstanceId_t, PortId_t);
+  }
+  */
 }
 
 cpackage  Unicast<H, M, I, O, IO>(pkt p, inout sm_t sm, es_t es, in I in_param, 

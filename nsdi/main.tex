@@ -690,7 +690,7 @@ Similarly, $d_{a}(x)$ is computed as show in (\ref{decrease-path}).
 i_{a}(x)\; =& \; \sum_{H.setValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \Delta(cp) \label{increase-path} \\
 d_{a}(x)\; =& \; \sum_{H.setInValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \delta(cp) \label{decrease-path}
 \end{align}
-The header instances which are not emitted by the deparser but extracted by the parser of the program decrease packets' size. 
+The header instances which are not emitted by the deparser but extracted by the parser of a program decrease packets' size. 
 $d_{p}(x)$ is incremented by the size of such header instances for every path $x$.
 We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size by program $a$ as shown in (\ref{increase}) and (\ref{decrease}), respectively.
 \begin{align}
@@ -701,10 +701,20 @@ We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size b
 % Callee programs may parse and deparse packets, thereby, increase or decrease size of packets.
 % Caller programs must extract sufficient number of bytes to process callees' parsers. Also, Callers must have byte-stack size large enough to process their own deparsers along with callees'.
 
-Now, we define extract-length ($lc_{a}(x)$) of control path $x$ in the CFG of program $a$'s control block as a function of extract-length ($\mathcal{E}l(cp)$) of and maximum decrease in packet size ($\delta(cp)$) by the callee programs in the path.
+Now, we define extract-length ($lc_{a}(x)$) of control path $x$ in the CFG of program $a$'s control block as a function of the callees' extract-length ($\mathcal{E}l(cp)$) of and maximum decrease in packet size ($\delta(cp)$).
 Let's assume that control path $x$ invokes N number of callee programs in increasing order of their numbers. 
-Program $i$ may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th program ($E_{p}(i+1)$).
-Therefore, we take into account every program's parser extract-length along with of maximum decrease in packet size by its predecessors to compute $lc_{a}(x)$, as shown in (\ref{extract-length-control-path}).
+The $i$the callee may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th callee program ($E_{p}(i+1)$).
+Figure \ref{fig:sequential-callees} shows the execution scenario of two callee programs invoked in the same control path in CFG of caller's control blcok.
+A control path of the first callee removes the mpls header from the packet, thereby, decreasing the packet size by four bytes.
+The subsequent callee extracts eth, IPv6 and IPv4 headers from the packet.
+Therefore, $\mu$P4C parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee program.
+\begin{figure}
+    \centering
+    \includegraphics[trim=0 405 487 0, clip,scale=0.45]{sequential-callees}
+    \caption{Multiple Callees in a control path}
+    \label{fig:sequential-callees}
+\end{figure}
+Therefore, we take into account extract-length of every callee program's parser along maximum decrease in packet size by the callee's predecessors in the control path to compute $lc_{a}(x)$, as shown in (\ref{extract-length-control-path}).
 Finally, we define byte-stack size of program $a$, $\mathcal{B}s_{a}$ (\ref{byte-stack-size-program}), as the sum of its extract-length and maximum increase in packet size.
 
 \begin{align}
@@ -812,30 +822,11 @@ If a deparser decreases the packet size, subsequent parsers may set \texttt{pack
 packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main program.
 
 The symbolic execution of deparser derives the emit order of header instances in the block.
+Using the size of header instances and the emit order, offsets in byte-stack are computed to copy back field-variables and to insert new header fields.
 The match key comprises valid metadata variables associated with each header instance in the program.
 For every possible combination of valid headers, we synthesize series of byte operations as an action to copy field-variables to and move data in byte-stack.
 
 
-% $\mu$SA deparser blocks are specialized control blocks having pkt\_out extern as one of the arguments.
-% The extern's emit appends header instances to packet byte-stream based on the validity.
-% If the header instance in the argument is valid, packet byte-stream is appended else no operation takes place.
-% We precisely perform the same operation on byte array buffer.
-% Recall that the program's parser transformation pops the total number of extracted bytes from the array buffer.
-% If the program's parser extracts less than $\mathcal{E}l$ for a particular packet, there are valid data on byte array.
-% First, we derive the sequence of emit of method call statements to find emit order of header instances.
-% The key of the table is created using valid bit of each header instance in the arguments of the emit calls.
-% The table contains entries enumerating all possible combination of validity of the headers.
-% For each key value, we create actions to push the number of bytes equals to sum of lengths of all valid headers.
-
-
-% The deparser block may contain P4 language constructs like \emph{if-else} and \emph{switch} statements in addition of emit method call statements.
-% Therefore, deparser block may have multiple execution paths emitting the same header instances. 
-% We derive a DAG, called \emph{emit graph}, with each node representing a emit call from the CFG of the deparser control block.
-% We synthesize a match-action table for every emit method call.
-% We create one bit variable, \texttt{emit}, for each node in the emit graph.
-% The match key for the match-action table for an emit node comprises valid bit of the header instances passed as argument to its ancestors.
-% In addition, the match key includes $emit$ variables associated with the ancestors.
-% The idea behind introducing $emit$ variable is to record execution of previous emit calls in the control path and copy header instance  of emit call at appropriate location in the byte array buffer.
 
 
 
