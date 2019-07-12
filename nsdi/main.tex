@@ -563,8 +563,7 @@ $\mu$P4C uses their occurrences to transform the code to multi-control pipelines
 
 
 \subsubsection{Packet Externs}
-
-\begin{figure*}[H]
+\begin{figure*}
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
 // l3 runtime interface
@@ -690,7 +689,7 @@ Similarly, $d_{a}(x)$ is computed as show in (\ref{decrease-path}).
 i_{a}(x)\; =& \; \sum_{H.setValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \Delta(cp) \label{increase-path} \\
 d_{a}(x)\; =& \; \sum_{H.setInValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \delta(cp) \label{decrease-path}
 \end{align}
-The header instances which are not emitted by the deparser but extracted by the parser of a program decrease packets' size. 
+The header instances which are not emitted by the deparser but extracted by the parser of a program decrease their packet's size. 
 $d_{p}(x)$ is incremented by the size of such header instances for every path $x$.
 We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size by program $a$ as shown in (\ref{increase}) and (\ref{decrease}), respectively.
 \begin{align}
@@ -704,23 +703,23 @@ We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size b
 Now, we define extract-length ($lc_{a}(x)$) of control path $x$ in the CFG of program $a$'s control block as a function of the callees' extract-length ($\mathcal{E}l(cp)$) of and maximum decrease in packet size ($\delta(cp)$).
 Let's assume that control path $x$ invokes N number of callee programs in increasing order of their numbers. 
 The $i$the callee may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th callee program ($E_{p}(i+1)$).
-Figure \ref{fig:sequential-callees} shows the execution scenario of two callee programs invoked in the same control path in CFG of caller's control blcok.
+Figure \ref{fig:sequential-callees} shows the execution scenario of two callee programs invoked in the same control path in the CFG of caller's control blcok.
 A control path of the first callee removes the mpls header from the packet, thereby, decreasing the packet size by four bytes.
 The subsequent callee extracts eth, IPv6 and IPv4 headers from the packet.
-Therefore, $\mu$P4C parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee program.
+$\mu$P4C parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ the logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee program.
 \begin{figure}
     \centering
-    \includegraphics[trim=0 405 487 0, clip,scale=0.45]{sequential-callees}
+    \includegraphics[trim=0 396 487 0, clip,scale=0.5]{sequential-callees}
     \caption{Multiple Callees in a control path}
     \label{fig:sequential-callees}
 \end{figure}
 Therefore, we take into account extract-length of every callee program's parser along maximum decrease in packet size by the callee's predecessors in the control path to compute $lc_{a}(x)$, as shown in (\ref{extract-length-control-path}).
-Finally, we define byte-stack size of program $a$, $\mathcal{B}s_{a}$ (\ref{byte-stack-size-program}), as the sum of its extract-length and maximum increase in packet size.
-
 \begin{align}
 lc_{a}(x) \; =& \; \max_{p} \left\{ \left( \sum_{i=0}^{i<p} \delta(i) \right)+ \mathcal{E}l(p) \right\},&p \in [0,N] \label{extract-length-control-path} \\
 \mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-program}
 \end{align}
+Finally, we define byte-stack size of program $a$, $\mathcal{B}s_{a}$ (\ref{byte-stack-size-program}), as the sum of its extract-length and maximum increase in packet size.
+For the example shown in Figure \ref{fig:sequential-callees}, the byte-stack size of the caller is 98, 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
 
 
 \subsection{Parser To Match-Action Table:}
@@ -821,10 +820,15 @@ In case of increase in packet size, byte-stack is always large enough to hold ne
 If a deparser decreases the packet size, subsequent parsers may set \texttt{packet\_too\_short} error only if 
 packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main program.
 
-The symbolic execution of deparser derives the emit order of header instances in the block.
-Using the size of header instances and the emit order, offsets in byte-stack are computed to copy back field-variables and to insert new header fields.
+The symbolic execution of a deparser derives the emit order of header instances in the block.
+Using the size of header instances and the emit order, we compute offsets in byte-stack to copy back field-variables and to insert new header fields.
 The match key comprises valid metadata variables associated with each header instance in the program.
-For every possible combination of valid headers, we synthesize series of byte operations as an action to copy field-variables to and move data in byte-stack.
+For every possible combination of valid headers, we synthesize a series of operations on byte-stack as an action to copy field-variables and to move data in byte-stack.
+The control block of callee1 shown in Figure \ref{fig:sequential-callees} invalidates the mpls header from packets if the execution follows a particular control path.
+Recall that, the parser synthesized by $\mu$P4C extracts 78 bytes in the stack.
+If mpls header is invalidated, the following 60 bytes should be moved up by the offset of 4 in the stack.
+The synthesized action performs in-place copy of these 60 bytes. It also invalidates the last 4 bytes.
+
 
 
 
