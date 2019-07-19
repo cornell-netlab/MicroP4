@@ -493,76 +493,7 @@ extern es_t {
 \label{fig:msa-egress-spec-extern}
 \end{figure}
 
-\subsubsection{Multicast Execution}
-\label{subsubsection:multicast-execution}
-Multicast execution differs from parallel execution in two fundamental aspects.
-$(1)$ Multicast execution allows to program packet replication at runtime.
-$(2)$ Each copy of the replicated packet executes the same code.
-% $\mu$SA defines a logical multicast engine, \texttt{mc\_engine\_t}, as an extern.
-% Figure \ref{fig:multicast-execution} shows an example of expressing multicast replication using logical externs defined in $\mu$SA.
 
-
-
-\subsubsection{Multicast Extern}
-$\mu$SA's multicast extern (Figure \ref{fig:msa-multicast-extern}) can be instantiated in the control blocks of its pipelines.
-The \emph{set\_multicast\_group} can be used to assign replication group to the packet. 
-The \emph{apply} function is allowed to use only in \emph{apply} body control blocks. 
-It is analogous to \emph{fork} system call in C except that processing of original packet terminates at the apply call.
-It returns instance id of the replica and populates the es\_t instance with the port id set by the control plane.
-$\mu$P4C translates this extern to multicast mechanism defined in architectures of real targets.
-% We assume these architectures would have sufficient fields to program their replication engine, so that a combination of the fields can be used as packet instance id.
-
-
-% \begin{figure}[H]
-% \begin{lstlisting}
-% struct out_t { bit<16> data;}
-% control mc(pkt_in pi, sm_t sm, es_t es, 
-%         hs_t h, ia_t ia, mc_buf<hs_t, out_t> hb) {
-%   mc_engine mce;  pkt_inst_id_t id; 
-%   out_t  oa;
-%   table t{
-%     key = {} actions = { mce.set_mc_group; drop; }
-%   }
-%   table mac{
-%     key = { es.get_port(); } 
-%     actions = { mac_update; }
-%   }
-%   apply {
-%     id = mce.apply(es); // equivalent to fork in C
-%     mac.apply();
-%     hb.enqueue(h, sm, es, oa);
-%   }
-% }
-% control dep(pkt_out<o_a> ob, 
-%             mc_buf<hs_t, out_arg_t> hb) {
-%   hs_t hdrs; out_arg_t oa; pkt_out po;
-%   hb.dequeue(hdrs, sm, es, oa);
-%   // deparser code 
-%   ob.enqueue(po, sm, es, oa);
-% }
-% \end{lstlisting}
-% \caption{Multicast Execution}
-% \label{fig:multicast-execution}
-% \end{figure}
-
-\subsection{Logical Externs and Examples}
-
-\subsubsection{Egress Specifications}
-Many packet-processing devices allow to measure every packet's queuing latency through the device.
-These timestamps required to compute queuing latency can be measured only after the packet's egress port is finalized.
-The timestamps can be accessed only after the egress port is finalized.
-$\mu$SA captures such constraints as using stateful extern objects capturing data-dependency.
-% To support such special features, the architectures of real target devices expose intrinsic metadata  that depends on operations on other intrinsic metadata.
-
-$\mu$SA declares \texttt{es\_t} as an extern object (Figure \ref{fig:msa-egress-spec-extern}).
-It declares methods to manipulate and access interdependent device-specific information.
-$\mu$P4C uses their occurrences to transform the code to multi-control pipelines of real target architectures.
-
-% $\mu$P4C allows repeated usage of the extern's functions in the single control block of $\mu$SA pipelines.
-% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution-control path, $\mu$P4C raises a compile-time error.
-
-
-\subsubsection{Packet Externs}
 \begin{figure*}
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
@@ -630,34 +561,123 @@ control D(emitter em, pkt p, in hdr_t h) {
 }
 \end{lstlisting}
 \end{minipage}
-% \vspace*{-10pt}
 \caption{Rewriting Example in Figure \ref{fig:l3.p4.l2.p4} using $\mu$ SA}
 \label{fig:modular-routing}
 \end{figure*}
 
+
+
+\begin{figure}
+\begin{lstlisting}[frame=none]
+// interface for traffic mirror function
+mirror (pkt, inout sm_t, es_t);
+router (pkt, inout sm_t, es_t); struct e_t {};
+control rm(pkt p, inout sm_t sm, es_t es, out_buf<e_t> ob) {
+  pkt pm, pin_m; es_t es_m;
+  sm_t sm, sm_m;
+  apply {
+    pm.copy_from(p); sm_m = sm; 
+    es_m.copy_from(es)
+    router.apply(p, sm, es);
+    mirror.apply(pm, sm_m, es_m);
+    // stores the results in out_buf
+    ob.enqueue(po, sm, es);
+    ob.enqueue(po_m, sm_m, es_m);
+  }
+}
+\end{lstlisting}
+\caption{Parallel Execution}
+\label{fig:parallel-execution}
+\end{figure}
+
+
+% \subsubsection{Multicast Extern}
+% $\mu$SA's multicast extern (Figure \ref{fig:msa-multicast-extern}) can be instantiated in the control blocks of its pipelines.
+% The \emph{set\_multicast\_group} can be used to assign replication group to the packet. 
+% The \emph{apply} function is allowed to use only in \emph{apply} body control blocks. 
+% It is analogous to \emph{fork} system call in C except that processing of original packet terminates at the apply call.
+% It returns instance id of the replica and populates the es\_t instance with the port id set by the control plane.
+% $\mu$P4C translates this extern to multicast mechanism defined in architectures of real targets.
+% We assume these architectures would have sufficient fields to program their replication engine, so that a combination of the fields can be used as packet instance id.
+
+
+% \begin{figure}[H]
+% \begin{lstlisting}
+% struct out_t { bit<16> data;}
+% control mc(pkt_in pi, sm_t sm, es_t es, 
+%         hs_t h, ia_t ia, mc_buf<hs_t, out_t> hb) {
+%   mc_engine mce;  pkt_inst_id_t id; 
+%   out_t  oa;
+%   table t{
+%     key = {} actions = { mce.set_mc_group; drop; }
+%   }
+%   table mac{
+%     key = { es.get_port(); } 
+%     actions = { mac_update; }
+%   }
+%   apply {
+%     id = mce.apply(es); // equivalent to fork in C
+%     mac.apply();
+%     hb.enqueue(h, sm, es, oa);
+%   }
+% }
+% control dep(pkt_out<o_a> ob, 
+%             mc_buf<hs_t, out_arg_t> hb) {
+%   hs_t hdrs; out_arg_t oa; pkt_out po;
+%   hb.dequeue(hdrs, sm, es, oa);
+%   // deparser code 
+%   ob.enqueue(po, sm, es, oa);
+% }
+% \end{lstlisting}
+% \caption{Multicast Execution}
+% \label{fig:multicast-execution}
+% \end{figure}
+
+\subsubsection{Egress Specifications}
+Many packet-processing devices allow to measure every packet's queuing latency through the device.
+These timestamps required to compute queuing latency can be measured only after the packet's egress port is finalized.
+The timestamps can be accessed only after the egress port is finalized.
+$\mu$SA captures such constraints as using stateful extern objects capturing data-dependency.
+% To support such special features, the architectures of real target devices expose intrinsic metadata  that depends on operations on other intrinsic metadata.
+
+$\mu$SA declares \texttt{es\_t} as an extern object (Figure \ref{fig:msa-egress-spec-extern}).
+It declares methods to manipulate and access interdependent device-specific information.
+$\mu$P4C uses their occurrences to transform the code to multi-control pipelines of real target architectures.
+
+% $\mu$P4C allows repeated usage of the extern's functions in the single control block of $\mu$SA pipelines.
+% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution-control path, $\mu$P4C raises a compile-time error.
+
+
+
+
+
 \section{Compiler}
-$\mu$P4C transforms parsers and deparsers of the main and callee programs to match-action control blocks.
-It synthesizes a parser and a deparser for the main program.
-The parser accepts every packet with length greater than minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
+$\mu$P4C transforms parsers and deparsers of the main and callee programs into match-action control blocks.
+It synthesizes new parser and deparser for the main program.
+The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
 For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
 Programs may increase or decrease size of packets, therefore, the size of byte-stack can be greater than extract-length.
-The synthesized deparser emit all valid one-byte headers from the byte-stack.
-We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:wxtract-length and Byte-Stack Size}. 
+The synthesized deparser emits all valid one-byte headers from the byte-stack.
 
 
-$\mu$P4C treats the byte-stack as a packet to execute transformed parsers and deparsers of callee programs in the match-action stages of the target's pipeline.
-For each callee program, $\mu$P4C creates metadata variables,called \texttt{field-variables} for the header fields used in the program's control block.
+
+
+We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
+$\mu$P4C treats byte-stack as a packet and executes transformed parsers and deparsers in the match-action stages of the target's pipeline.
+For each program, $\mu$P4C creates metadata variables,called \texttt{field-variables} for the header fields used in the program's control block.
 The header fields are substituted with the metadata variables in control blocks of the program.
-$\mu$P4C discards types and instances of the headers of each callee program.
+$\mu$P4C discards types and instances of the headers of each program.
 $\mu$P4C synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
-\texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related valid metadata variable.
+\texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related \emph{valid} metadata variable.
 Execution of parsers in match-action stages copy values from the appropriate locations in the byte-stack to the variables.
 It also updates valid metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
 
 
+\hs{TODO: define Simple parser as a parser without stacks and variable-length header. \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
+
 
 \subsection{Extract Length and Byte-Stack Size}
-\label{subsection:wxtract-length and Byte-Stack Size}
+\label{subsection:extract-length-and-byte-stack-size}
 The symbolic execution recursively evaluates extract-length and byte-stack size of every callee program in every control path in the CFG of the caller's control block.
 The symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph.
 For every path, it computes total number of bytes extracted by \texttt{extract} method call statements.
@@ -724,7 +744,7 @@ Finally, we define byte-stack size of a program $a$, $\mathcal{B}s_{a}$ (\ref{by
 For the example shown in Figure \ref{fig:sequential-callees}, the byte-stack size of the caller is 98, 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
 
 
-\subsection{Parser To Match-Action Table:}
+\subsection{Parser To Match-Action Table}
 \label{subsection:parser-to-match-action-table}
 \begin{figure*}
     \begin{subfigure}[b]{0.25\linewidth}
@@ -808,14 +828,66 @@ The second and the forth keys can have any values, hence they are matched with d
 % We insert setValid method call statement for the extracted header instances.
 % We add an assignment statement to set visit variable associated with the parser state.
 
-\subsubsection*{Header Stacks}
+\subsection{Transformation To Simple Parser}
+% \subsection{Header Stacks \& Variable-Length Headers}
+\label{subsection:header-stacks-variable-length-headers}
+$\mu$P4 allows to use of header stacks with their size known at compile-time. 
+$\mu$P4C replaces every header stack instance with multiple instances of the header type. 
+It symbolically evaluates operations on the header stack instances and transforms them into appropriate built-in method calls of the instances.
+P4 provides various sets of computations to use in parser and control blocks.
+In parser blocks, programmers can use \texttt{next} and \texttt{last} operations to iterate through the stack.
+These operations along with \texttt{lastIndex} can be used to write loops in parsers to extract instances in header stack.
+$\mu$P4C unrolls such loops by replicating the parse states in them.
+Loop unrolling replaces relative referencing operations, \texttt{next} and \texttt{last}, with appropriate header instances in the state replicas.
+P4 provides \texttt{push\_front} and \texttt{pop\_front} operations on stack instances to manipulate elements on top and bottom of the stack.
+$\mu$P4C transforms push\_front and pop\_front operations into series of assignments and built-in method calls of header instances.
+For example, assume that \texttt{hs} is a header stack instance of size 3. 
+$\mu$P4C synthesize hs0, hs1, hs2 header instances to replace hs.
+\texttt{hs\_inst.push\_front(1)} is replaced with \texttt{hs2 = hs1}, \texttt{hs1 = hs0} and \texttt{hs0.setInvalid()}.
 
-\subsubsection*{Variable Length Headers}
+
+$\mu$P4 allows programmers to define variable-length header types, however it imposes a constraint that their variable-length fields must contain integer number of bytes at runtime.
+% $\mu$P4C splits header type containing fixed and variable-length fields into multiple types, where each type contains either fixed-length fields or the variable-length field.
+$\mu$P4C transforms every parser state with two-argument extract method call, used to extract variable-length header, into a sub-parser.
+It splits the header type of the instance in the first argument into multiple types, where each type contains either fixed-length fields or the variable-length field.
+Every state in the sub-parser extracts a fixed-number of bytes from the packet bit stream.
+The sub-parser contains a state having the second argument (variableFieldSize) as the expression in its select statement.
+The select statement has case-list enumerating all possible values up to specified maximum size of the variable-length field.
+For each select case, the sub-parser transits to a state extracting a fixed number of bytes in the variable-length field.
+For example, if variable-length field has maximum size of 40 bytes, $\mu$P4C creates 40 states extracting different number of bytes.
+The explosion of number of states would only increase number of entries in the transformed match-action table of the parser.
+
+
+
+
+
+% \begin{figure}[H]
+% \begin{minipage}[c]{0.45\linewidth}
+% \begin{lstlisting}[frame=none]
+% header_t[3] hs;
+% 
+% hs.push_front(1);
+% \end{lstlisting}
+% \end{minipage}
+% \begin{minipage}[c]{0.45\linewidth}
+% \begin{lstlisting}[frame=none]
+% header_t hs0, hs1, hs2;
+% 
+% hs2 = hs1;
+% hs1 = hs0;
+% hs0.setInvalid()
+% \end{lstlisting}
+% \end{minipage}
+% \caption{Extern to }
+% \label{fig:}
+% \end{figure}
+
+
 
 \subsection{Deparser To Match-Action Table:}
 \label{subsection:deparser-to-match-action-table}
 The deparser blocks of $\mu$SA's pipelines are the control blocks with emitter as one of the parameters.
-$\mu$P4C replaces emit method-call statements of emitter extern with match-action table to transform deparser into normal match-action control blocks.
+$\mu$P4C replaces the emitter instance's emit method-call statements with match-action table to transform deparser into normal match-action control blocks.
 The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
 The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
 In case of increase in packet size, byte-stack is always large enough to hold new headers.
@@ -832,7 +904,59 @@ If the execution follows control path invalidating mpls header, 60 bytes followi
 The synthesized action performs in-place copy of these 60 bytes. It invalidates the last 4 bytes.
 If the control block execution sets ipv4 header instance to valid, bytes after the ipv6 header are pushed down by the offset of 20 to insert ipv4 header instance.
 
+\subsection{Real-Target Specific Transformation}
+\subsubsection{Packet-Processing Schedule}
+We extract the \emph{Packet-processing Schedule Graph} (PSG) of the micro-switch program to identify code and packet(data) separation.
+A node in PSG represents an instance of either pkt\_in, logical buffers, pkt\-\_out, micro-switch program intrinsic metadata or collection of input or output arguments.
+\begin{figure}[!h]
+    \centering
+    \includegraphics[trim=0 370 735 0, clip, scale=0.5]{psg}
+    \caption{PSG for the \emph{rm} program (Figure \ref{fig:parallel-execution})}
+    \label{fig:graph}
+\end{figure}
+The enqueue and dequeue method call are represented, respectively, by outgoing and incoming edges on the instances of packet\_in and packet\_out.
+Every assignment statement is represented by a directed edge from the instance on the right to the left side.
+To identify parallelism originating from packet duplication, we consider a subgraph of PSG, called packet flow graph (PFG).
+PFG contains does not contain nodes representing instances of intrinsic metdata, input and output arguments.
+The Figure \ref{fig:graph} shows the PFG and PSG of the micro-switch program shown in the Figure \ref{fig:parallel-execution}.
+% If the program We remove in\_buf node and the edge represented by the dequeue operation.
+The input(pkt\_in, params with \texttt{in} direction, in\_buf) arguments of the switch-program does not have any incoming edge.
+We begin with computing dominator tree for the nodes representing the copies of pkt\_in input argument.
+Next, we create a subgraph for each dominator tree containing nodes from the tree, incidence edges from the PFG.
+If there is no path between nodes of any two subgraphs, the subgraphs represents code blocks that process copies of the same packets.
+If there is a path, compilation fails.
+% A path between nodes of subgraphs represents exchange of metadata between code blocks processing copies the same packet.
+% It can be facilitated based on capability of target devices.
+We realize packet duplication using primitives provided by architectures of target devices.
 
+% We briefly explain mechanism to realise parallel processing using v1model architecture for the scenario.
+% We synthesize a metadata variable to track cloned copies. 
+% The variable is updated after the execution of parallel code block.
+% The code block is encapsulated in an \emph{if} statement. 
+% It is executed only if the metadata variable matches with a constant value assigned for its execution.
+
+
+\subsubsection{Control Block Constraints}
+$\mu$SA pipelines contain single programmable control block. 
+It provides intrinsic metadata as logical externs (es\_t) and a structure (sm\_t) to use in the control block.
+We map $\mu$SA-specific intrinsic metadata to the ones defined in architectures of targets device.
+% We partition the CFG of $\mu$SA pipelines' programmable block into multiple CFGs to enforce accessibility constraints of target's intrinsic metadata in its control block.
+
+Let's consider v1model architecture of simple\_switch target device for an example.
+A two-state finite-state machine is used to capture ingress and egress pipeline blocks' dependency between egress port and queueing metadata.
+Each state represents assertions to be verified on visit of CFG nodes in topological order.
+State transition occurs when the graph traversal can not be continued due to absence of nodes without incoming edges.
+In the first state, the graph traversal does not further explore nodes representing multicast\_engine's apply or egress\_spec's get\_egress\_port or get\_value methods call statements.
+When the traversal can not progress any further, we create partitions of visited and non-visited nodes.
+In the second state, the graph traversal does not further explore nodes representing egress\_spec's get\_egress\_port methods call statements.
+
+
+There can be multiple edges representing control branches between the partitions.
+We synthesis \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
+The second partition uses the metadata and condition on their values to resume execution on appropriate control branch.
+Also, partitioned code may access the same local declaration variables.
+These shared local variables along with the \emph{partition} metadata are passed as user-defined metadata between ingress and egress control block.
+We insert recirculate method call at the end of even numbered partitions to route packet through the code allocated in the ingress egress blocks.
 
 %-------------------------------------------------------------------------------
 \section*{Acknowledgments}
