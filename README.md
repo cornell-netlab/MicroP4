@@ -1,7 +1,7 @@
 # MicroP4
 
 architecture file is here:
-https://github.com/cornell-netlab/p4-composition/blob/master/extensions/csa/p4include/csa.p4
+../extensions/csa/p4include/csa.p4
 
 
 ./p4c-csa  -o ../extensions/csa/testdata/explicit-specialization/l2.json ../extensions/csa/testdata/explicit-specialization/l2.p4
