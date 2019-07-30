@@ -1,3 +1,7 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
 #include "csaExternSubstituter.h"
 
 namespace CSA {

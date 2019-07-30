@@ -1,3 +1,8 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
 #include <fstream>
 #include "extensions/csa/switch/parseInput.h"
 #include "ir/json_loader.h"

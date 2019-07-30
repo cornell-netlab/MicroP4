@@ -1,3 +1,8 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
 #include "mergeDeclarations.h"
 
 namespace CSA {

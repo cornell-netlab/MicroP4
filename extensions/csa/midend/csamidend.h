@@ -1,3 +1,8 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
 #ifndef EXTENSIONS_CSA_SWITCH_CSAMIDEND_H_
 #define EXTENSIONS_CSA_SWITCH_CSAMIDEND_H_
 

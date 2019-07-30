@@ -1,3 +1,8 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
 #include "frontends/p4/fromv1.0/v1model.h"
 #include "frontends/p4/coreLibrary.h"
 #include "toV1Model.h"

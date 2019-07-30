@@ -1,3 +1,8 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
 #include <math.h>
 
 #include "slicePipeControl.h"

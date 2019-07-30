@@ -1,7 +1,8 @@
 /*
- * Hardik Soni (hardik.soni@cornell.edu)
- *
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
  */
+
 #ifndef _CSA_P4_
 #define _CSA_P4_
 

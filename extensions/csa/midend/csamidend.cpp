@@ -1,3 +1,8 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
