@@ -97,6 +97,7 @@
 \definecolor{myk}{rgb}{0.0,0,0.65}
 
 \newcommand{\hs}[1]{{\color{blue}{HS:#1}}}
+\newcommand{\hse}[1]{{\color{blue}{#1}}}
 
 % %-------------------------------------------------------------------------------
 % \begin{filecontents}{\jobname.bib}
@@ -312,8 +313,10 @@ This paper makes the following contributions.
 \item We introduce $\mu$ SA, a new P4 architecture designed to enable
   fine-grained composition of program snippets.
 \item We develop techniques for compiling $\mu$SA programs to the
-  standard PISA model, including merging programs composed together in
-  parallel or in sequence onto a single PISA pipeline.
+  standard PISA model, including merging programs composed together 
+  \hse{and scheduling them onto a single PISA pipeline}.
+%   including merging programs composed together in
+%   parallel or in sequence onto a single PISA pipeline.
 \end{itemize}
 
 Although much work remains, we believe that $\mu$ SA represents a
@@ -322,7 +325,9 @@ promising first step toward enabling modular data plane programs.
 \section{Micro-Switch Architecture}
 \label{section:micros-awitch-architecture}
 The design goals behind $\mu$SA are $(1)$ provide logical abstraction for data plane pipelines without compromising expressiveness and packet-processing features, $(2)$ declare generic interfaces to allow easy code reuse and enable modularity.
-First, we describe logical pipelines of $\mu$P4. Then, we introduce $\mu$SA's externs and generic interfaces along with example usages.
+
+
+% First, we describe logical pipelines of $\mu$P4. Then, we introduce $\mu$SA's externs and generic interfaces along with example usages.
 
 % This design choice reduces heterogeneity in abstract model of data plane programs.
 % For each pipeline type, it exposes an interface type comprising a set of programmable blocks.
@@ -538,7 +543,7 @@ parser P(extractor ex, pkt p, out hdr_t h, inout bit<16> meta) {
   }
 }
 control Pipe(pkt p, inout hdr_t h, inout sm_t sm, es_t es, inout bit<16> meta) {
-  bit<16> nexthop_id;  l3 l3_inst;
+  bit<16> nh_id;  l3 l3_inst;
   action drop () {}           
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstAddr = dmac;
@@ -546,11 +551,11 @@ control Pipe(pkt p, inout hdr_t h, inout sm_t sm, es_t es, inout bit<16> meta) {
     sm.out_port = port;    
   }
   table forward_tbl {
-    key = { nexthop_id : exact; } 
-    actions = { process; drop; }
+    key = { nh_id : exact; } 
+    actions = { forward; drop; }
   }
   apply {
-    l3_inst.apply(p, sm, es, nexthop_id, meta);
+    l3_inst.apply(p, sm, es, nh_id, meta);
     forward_tbl.apply(); 
     if (sm.deq_qdepth > 100) // limit
       drop();
@@ -562,7 +567,7 @@ control D(emitter em, pkt p, in hdr_t h) {
 \end{lstlisting}
 \end{minipage}
 \caption{Rewriting Example in Figure \ref{fig:l3.p4.l2.p4} using $\mu$ SA}
-\label{fig:modular-routing}
+\label{fig:modular-router}
 \end{figure*}
 
 
@@ -570,10 +575,11 @@ control D(emitter em, pkt p, in hdr_t h) {
 \begin{figure}
 \begin{lstlisting}[frame=none]
 // interface for traffic mirror function
-mirror (pkt, inout sm_t, es_t);
-router (pkt, inout sm_t, es_t); struct e_t {};
+mirror(pkt, inout sm_t, es_t);
+router(pkt, inout sm_t, es_t);
+struct e_t {};
 control rm(pkt p, inout sm_t sm, es_t es, out_buf<e_t> ob) {
-  pkt pm, pin_m; es_t es_m;
+  pkt pm; es_t es_m;
   sm_t sm, sm_m;
   apply {
     pm.copy_from(p); sm_m = sm; 
@@ -581,13 +587,13 @@ control rm(pkt p, inout sm_t sm, es_t es, out_buf<e_t> ob) {
     router.apply(p, sm, es);
     mirror.apply(pm, sm_m, es_m);
     // stores the results in out_buf
-    ob.enqueue(po, sm, es);
-    ob.enqueue(po_m, sm_m, es_m);
+    ob.enqueue(p, sm, es);
+    ob.enqueue(pm, sm_m, es_m);
   }
 }
 \end{lstlisting}
-\caption{Parallel Execution}
-\label{fig:parallel-execution}
+\caption{Multi-Packet Processing}
+\label{fig:multi-packet-processing}
 \end{figure}
 
 
@@ -904,36 +910,30 @@ If the execution follows control path invalidating mpls header, 60 bytes followi
 The synthesized action performs in-place copy of these 60 bytes. It invalidates the last 4 bytes.
 If the control block execution sets ipv4 header instance to valid, bytes after the ipv6 header are pushed down by the offset of 20 to insert ipv4 header instance.
 
-\subsection{Real-Target Specific Transformation}
-\subsubsection{Packet-Processing Schedule}
-We extract the \emph{Packet-processing Schedule Graph} (PSG) of the micro-switch program to identify code and packet(data) separation.
-A node in PSG represents an instance of either pkt\_in, logical buffers, pkt\-\_out, micro-switch program intrinsic metadata or collection of input or output arguments.
-\begin{figure}[!h]
-    \centering
-    \includegraphics[trim=0 370 735 0, clip, scale=0.5]{psg}
-    \caption{PSG for the \emph{rm} program (Figure \ref{fig:parallel-execution})}
-    \label{fig:graph}
-\end{figure}
-The enqueue and dequeue method call are represented, respectively, by outgoing and incoming edges on the instances of packet\_in and packet\_out.
-Every assignment statement is represented by a directed edge from the instance on the right to the left side.
-To identify parallelism originating from packet duplication, we consider a subgraph of PSG, called packet flow graph (PFG).
-PFG contains does not contain nodes representing instances of intrinsic metdata, input and output arguments.
-The Figure \ref{fig:graph} shows the PFG and PSG of the micro-switch program shown in the Figure \ref{fig:parallel-execution}.
-% If the program We remove in\_buf node and the edge represented by the dequeue operation.
-The input(pkt\_in, params with \texttt{in} direction, in\_buf) arguments of the switch-program does not have any incoming edge.
-We begin with computing dominator tree for the nodes representing the copies of pkt\_in input argument.
-Next, we create a subgraph for each dominator tree containing nodes from the tree, incidence edges from the PFG.
-If there is no path between nodes of any two subgraphs, the subgraphs represents code blocks that process copies of the same packets.
-If there is a path, compilation fails.
-% A path between nodes of subgraphs represents exchange of metadata between code blocks processing copies the same packet.
-% It can be facilitated based on capability of target devices.
-We realize packet duplication using primitives provided by architectures of target devices.
 
-% We briefly explain mechanism to realise parallel processing using v1model architecture for the scenario.
-% We synthesize a metadata variable to track cloned copies. 
-% The variable is updated after the execution of parallel code block.
-% The code block is encapsulated in an \emph{if} statement. 
-% It is executed only if the metadata variable matches with a constant value assigned for its execution.
+
+\subsection{Real-Target Specific Transformation}
+$\mu$P4C transforms the programs described using $\mu$P4's data plane abstractions into a given real target specific ones.
+$\mu$SA defines logical pipelines and externs to provide abstraction for data plane pipelines.
+As a part of data plane abstractions, $\mu$SA allows to describe single and multiple packet processing in control blocks of its orchestration pipelines.
+Programmers can create multiple copies of packets in the control blocks using \texttt{copy\_from} methods of $\mu$SA externs  to describe multi-packet processing.
+$\mu$P4C's transformations create copies of packet using externs provided by the architectures of the specified target.
+$\mu$P4C realizes multi-packet processing by identifying a sub-CFG, called a \emph{thread}, for every copy of a packet.
+% Existing target devices can not process multiple packets by the same thread at the same time.
+Then, it prepares Packet-Processing Schedule(PPS) of the threads in the program and maps them to packet-processing blocks of the target's architecture.
+Some target architectures may impose constraint that PPSs must be serializable.
+If $\mu$P4C fails to find a serial PPS for such targets, it raises a compilation error. 
+
+
+\subsubsection{Packet-Processing Schedule}
+We derive a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} from the control block of every orchestration pipeline's interface.
+$\mu$P4C performs a series of transformations on PDG to identify packet-processing threads for every instance of packet.
+It first converts PDGs into Static Single Assignment(SSA) form to synthesize packet instances for every value computed in the program.
+
+
+
+
+\cite{Weiser:1981:PS:800078.802557}
 
 
 \subsubsection{Control Block Constraints}

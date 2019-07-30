@@ -1,3 +1,9 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
+
 struct empty_t { }
 
 struct swtrace_inout_t {

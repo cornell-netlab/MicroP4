@@ -1,3 +1,8 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
 #include "parserConverter.h"
 #include "ir/ir.h"
 #include "frontends/p4/coreLibrary.h"
