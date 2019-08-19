@@ -65,7 +65,7 @@
 \usepackage{filecontents}
 
 \lstdefinelanguage{P4}{
-  keywords={in, out, struct, inout, function, return, switch, exact, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply},
+  keywords={in, out, struct, inout, function, return, switch, exact, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply, true, false},
   keywordstyle=\color{myk}\bfseries,
   keywords=[2]{boolean, string, number, objectid},
   keywordstyle=[2]\color{green}\bfseries,
@@ -324,10 +324,9 @@ promising first step toward enabling modular data plane programs.
 
 \section{Micro-Switch Architecture}
 \label{section:micros-awitch-architecture}
-The design goals behind $\mu$SA are $(1)$ provide logical abstraction for data plane pipelines without compromising expressiveness and packet-processing features, $(2)$ declare generic interfaces to allow easy code reuse and enable modularity.
-
-
-% First, we describe logical pipelines of $\mu$P4. Then, we introduce $\mu$SA's externs and generic interfaces along with example usages.
+The design rationale behind $\mu$SA is to provide generic interfaces to allow easy code reuse and enable modularity by providing logical abstraction for data plane pipelines without compromising expressiveness and packet-processing features.
+First, we describe logical pipelines of $\mu$P4. 
+Then, we introduce $\mu$SA's externs and generic interfaces \hse{along with example usages}.
 
 % This design choice reduces heterogeneity in abstract model of data plane programs.
 % For each pipeline type, it exposes an interface type comprising a set of programmable blocks.
@@ -352,7 +351,7 @@ The design goals behind $\mu$SA are $(1)$ provide logical abstraction for data p
 \label{subsection:pipelines}
 $\mu$SA has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
 $\mu$SA provides a set of logical externs which can be instantiated and used within control blocks of the $\mu$SA pipelines.
-Micro pipeline comprises of Parser, Micro-Pipe control and Deparser programmable blocks.
+Micro pipeline comprises of a Parser, a Micro-Pipe control and a Deparser block.
 $\mu$SA does not allow conditional statements in deparser blocks of its pipelines.
 
 Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution-control is transferred to micro-pipe control block.
@@ -380,11 +379,11 @@ If the execution-control reaches till the end of the control block, packet is pr
 Orchestration pipeline only has a control block, orchestration pipe.
 Programmers can implement imperative control flow using intrinsic metadata of $\mu$SA and runtime parameters to the package types.
 
-Figure \ref{fig:interfaces} shows signature of type-parameterized interfaces declared in $\mu$SA.
-Unicast (U) and Multicast (M) interface can be implemented using Micro pipeline.
-General (G) interface allows to implement Orchestration pipeline.
-In Figure \ref{fig:interfaces}, \texttt{pkt\_in} and \texttt{pkt\_out} represent packet, \texttt{sm\_t} and \texttt{es\_t} represent intrinsic metadata.
-\texttt{in\_buf} and \texttt{out\_buf} externs represent input and output buffer of $\mu$P4 packet-processing model (Figure \ref{fig:mp4-packet-processing-model})
+% Figure \ref{fig:interfaces} shows signature of type-parameterized interfaces declared in $\mu$SA.
+% Unicast (U) and Multicast (M) interface can be implemented using Micro pipeline.
+% General (G) interface allows to implement Orchestration pipeline.
+% In Figure \ref{fig:interfaces}, \texttt{pkt\_in} and \texttt{pkt\_out} represent packet, \texttt{sm\_t} and \texttt{es\_t} represent intrinsic metadata.
+% \texttt{in\_buf} and \texttt{out\_buf} externs represent input and output buffer of $\mu$P4 packet-processing model (Figure \ref{fig:mp4-packet-processing-model})
 % \vspace{-7pt}
 \begin{figure}[H]
 \begin{lstlisting}[frame=none]
@@ -420,16 +419,18 @@ extern extractor {
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none]
 extern in_buf<I> {
+  // used by architecture only
   dequeue(pkt, out sm_t, es_t, out I);
 }
 extern out_buf<O> {
   enqueue(pkt, in sm_t, es_t, in O);
+  void to_in_buf(in_buf<O>);
+  void merge(out_buf<O>);
 }
-extern mc_in_buf<H, I> {
-  dequeue(pkt, out H, out sm_t, es_t, out I);
-}
-extern mc_out_buf<H, O> {
+
+extern mc_buf<H, O> {
   enqueue(pkt, in H, in sm_t, es_t, in O);
+  dequeue(pkt, out H, out sm_t, es_t, out O);
 }
 \end{lstlisting}
 \caption{Buffer Representation}
@@ -462,10 +463,10 @@ Unicast<H, M, I, O, IO>
   (p<H, M, I, O, IO>, c<H, M, I, O, IO>, d<H, M>); // compile-time params
 
 // Multicast
-Unicast<H, M, I, O, IO> 
+Multicast<H, M, I, O, IO> 
   parser p<H, M, I>(extractor, pkt, H, M, I, sm_t, es_t);
-  control c<H, M, I, O)>(pkt, H, M, I, sm_t, es_t, mc_out_buf<H,O>);
-  control d<H, O>(emitter, out_buf<O>, mc_in_buf<H,O>);
+  control c<H, M, I, O)>(pkt, H, M, I, sm_t, es_t, mc_buf<H,O>);
+  control d<H, M>(emitter, pkt, H);
 
 // Orchestration
 control c<I, O)>(pkt, sm_t, es_t, in I, out_buf<O>);
@@ -572,25 +573,55 @@ control D(emitter em, pkt p, in hdr_t h) {
 
 
 
+% \begin{figure}
+% \begin{lstlisting}[frame=none]
+% // interface for traffic mirror function
+% mirror(pkt, inout sm_t, es_t);
+% router(pkt, inout sm_t, es_t);
+% struct e_t {};
+% control rm(pkt p, inout sm_t sm, es_t es, out_buf<e_t> ob) {
+%   pkt pm;  es_t es_m;  sm_t sm, sm_m;
+%   apply {
+%     pm.copy_from(p); sm_m = sm; 
+%     es_m.copy_from(es)
+%     router.apply(p, sm, es);
+%     mirror.apply(pm, sm_m, es_m);
+%     // stores the results in out_buf
+%     ob.enqueue(p, sm, es);
+%     ob.enqueue(pm, sm_m, es_m);
+%   }
+% }
+% \end{lstlisting}
+% \caption{Multi-Packet Processing}
+% \label{fig:multi-packet-processing}
+% \end{figure}
+
+
 \begin{figure}
 \begin{lstlisting}[frame=none]
-// interface for traffic mirror function
-mirror(pkt, inout sm_t, es_t);
-router(pkt, inout sm_t, es_t);
-struct e_t {};
-control rm(pkt p, inout sm_t sm, es_t es, out_buf<e_t> ob) {
-  pkt pm; es_t es_m;
-  sm_t sm, sm_m;
-  apply {
-    pm.copy_from(p); sm_m = sm; 
-    es_m.copy_from(es)
-    router.apply(p, sm, es);
-    mirror.apply(pm, sm_m, es_m);
-    // stores the results in out_buf
-    ob.enqueue(p, sm, es);
-    ob.enqueue(pm, sm_m, es_m);
-  }
-}
+struct e_t {};  struct h_t { ... };
+prog(pkt, inout sm_t, es_t, out h_t);
+test(pkt, inout sm_t, es_t, out h_t);
+log(pkt, inout sm_t, es_t, in h_t, in h_t);
+control validate(pkt p, inout sm_t sm, es_t es, out_buf<e_t> ob) {
+        pkt pt, pm;  es_t est, esm;  
+        sm_t smt, smm; h_t hp, ht;
+slice#  apply {
+  1  c1   pm.copy_from(p); smm = sm; 
+  1       esm.copy_from(es);
+  3  c3   pt.copy_from(p); smt = sm; 
+  3       est.copy_from(es);
+ 2,1      prog.apply(p, sm, es, hp); 
+ 3,1      test.apply(pt, smt, est, ht); 
+  1       if (hp != ht) {
+  1         log.apply(pm, smm, esm, hp, ht);
+  1         ob.enqueue(pm, smm, esm);
+  1       }
+  3       smt.drop = true;
+  2       ob.enqueue(p, sm, es);
+  3       ob.enqueue(pt, smt, est);
+        }
+     }
 \end{lstlisting}
 \caption{Multi-Packet Processing}
 \label{fig:multi-packet-processing}
@@ -670,7 +701,7 @@ The synthesized deparser emits all valid one-byte headers from the byte-stack.
 
 We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
 $\mu$P4C treats byte-stack as a packet and executes transformed parsers and deparsers in the match-action stages of the target's pipeline.
-For each program, $\mu$P4C creates metadata variables,called \texttt{field-variables} for the header fields used in the program's control block.
+For each program, $\mu$P4C creates metadata variables, called \texttt{field-variables} for the header fields used in the program's control block.
 The header fields are substituted with the metadata variables in control blocks of the program.
 $\mu$P4C discards types and instances of the headers of each program.
 $\mu$P4C synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
@@ -863,10 +894,6 @@ For each select case, the sub-parser transits to a state extracting a fixed numb
 For example, if variable-length field has maximum size of 40 bytes, $\mu$P4C creates 40 states extracting different number of bytes.
 The explosion of number of states would only increase number of entries in the transformed match-action table of the parser.
 
-
-
-
-
 % \begin{figure}[H]
 % \begin{minipage}[c]{0.45\linewidth}
 % \begin{lstlisting}[frame=none]
@@ -897,8 +924,7 @@ $\mu$P4C replaces the emitter instance's emit method-call statements with match-
 The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
 The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
 In case of increase in packet size, byte-stack is always large enough to hold new headers.
-If a deparser decreases the packet size, subsequent parsers may set \texttt{packet\_too\_short} error only if 
-packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main program.
+If a deparser decreases the packet size, subsequent parsers may set \texttt{packet\_too\_short} error only if packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main program.
 
 The symbolic execution of a deparser derives the emit order of header instances in the block.
 Using the size of header instances and the emit order, we compute offsets in byte-stack to copy back field-variables and to insert new header fields.
@@ -915,48 +941,101 @@ If the control block execution sets ipv4 header instance to valid, bytes after t
 \subsection{Real-Target Specific Transformation}
 $\mu$P4C transforms the programs described using $\mu$P4's data plane abstractions into a given real target specific ones.
 $\mu$SA defines logical pipelines and externs to provide abstraction for data plane pipelines.
-As a part of data plane abstractions, $\mu$SA allows to describe single and multiple packet processing in control blocks of its orchestration pipelines.
-Programmers can create multiple copies of packets in the control blocks using \texttt{copy\_from} methods of $\mu$SA externs  to describe multi-packet processing.
-$\mu$P4C's transformations create copies of packet using externs provided by the architectures of the specified target.
-$\mu$P4C realizes multi-packet processing by identifying a sub-CFG, called a \emph{thread}, for every copy of a packet.
+As a part of data plane abstractions, $\mu$SA allows to describe multiple packet processing in control blocks of its orchestration pipelines.
+Programmers can create multiple copies of packets in the control blocks using \texttt{copy\_from} methods of $\mu$SA externs to describe multi-packet processing.
+$\mu$P4C's transformations create copies of packet using externs provided by the architecture of the specified target.
+$\mu$P4C realizes multi-packet processing by identifying a packet-processing sub-graph, called a \emph{thread}, for every definition of a \texttt{pkt} instance.
 % Existing target devices can not process multiple packets by the same thread at the same time.
-Then, it prepares Packet-Processing Schedule(PPS) of the threads in the program and maps them to packet-processing blocks of the target's architecture.
+Then, it prepares \emph{Packet-Processing Schedule} (PPS) of the threads in the program and maps it to packet-processing blocks of the target's architecture.
 Some target architectures may impose constraint that PPSs must be serializable.
 If $\mu$P4C fails to find a serial PPS for such targets, it raises a compilation error. 
 
 
 \subsubsection{Packet-Processing Schedule}
-We derive a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} from the control block of every orchestration pipeline's interface.
-$\mu$P4C performs a series of transformations on PDG to identify packet-processing threads for every instance of packet.
-It first converts PDGs into Static Single Assignment(SSA) form to synthesize packet instances for every value computed in the program.
+$\mu$P4C extracts packet-processing threads from the control block of orchestration pipeline's interface while maintaining control and data dependencies.
+To this end, it constructs a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} and performs a series of transformations.
+
+$\mu$P4C treats parameter of orchestration control block or every \texttt{copy\_from} method call statement of \texttt{pkt} instance as its definition, because they initialize the instance.
+We note that \texttt{pkt} instance argument in \texttt{copy\_from} method calls is only used or read.
+Moreover, all other method call statements having \texttt{pkt} instances as arguments access (read and modify) the instances, such call statements are not considered as their definition statements.
+
+
+We define \emph{access ranges} of a \texttt{pkt} instance's definition as span of program statements until the next definition of the instance in reached on every possible path in the PFG.
+We merge overlapping access ranges of multiple definitions of the same \texttt{pkt} instance.
+Non overlapping access ranges of the same instance are renamed to create one-to-one mapping between an instance and its access range.
+Inspired from \emph{program slice} defined in \cite{Weiser:1981:PS:800078.802557}, we define \emph{packet slice} based on access ranges of \texttt{pkt} instances' definitions.
+A packet slice of a \texttt{pkt} instance is an executable subset of PDG, which consists of all the program statements affecting the instance's value in overlapping access ranges of its definitions.
+Packet slices can have multiple entry and exist points.
+A set of definition statements of \emph{pkt} instance with overlapping access ranges is considered as a slicing criteria for a given packet instance.
+We compute packet slices from the PDG of control block using a method similar to one described in \cite{Ferrante:1987:PDG:24039.24041}.
+Specifically, we perform a graph traversal in reverse direction of edges from every statement at exit points in the access ranges until definition statements in the criteria set are reached.
+The graph traversal continues until all possible definitions of every variable used in visited statement are reached.
+If any variable or extern instance is involved in anti-dependency, it is resolved by introducing new variable and renaming.
+An example program shown in Figure \ref{fig:multi-packet-processing} is sliced with respect to definitions of three instances \texttt{pm}, \texttt{p} and \texttt{pt}.
+
+
+Packet slices of different instances may have common program statements due to control and data dependence.
+Therefore, a packet slice may have method call statements processing different \emph{pkt} instances than one's definition statements used in slicing criteria.
+For the program shown in Figure \ref{fig:multi-packet-processing}, slice 1 pertaining to instance \texttt{pm} shares program statements with slices 2 and 3 related to \texttt{p} and \texttt{pt}, respectively.
+We create a packet-processing thread per instance by excluding such method call statements from every packet slice but maintain dependence among them by creating inter-thread dependence.
+All the common program statements not accessing \texttt{pkt} instances are also excluded from threads.
+We term such statements \emph{cps} nodes and maintain their control and data dependencies with the thread nodes.
+We associate every thread with an identifier, \emph{thread-id}, and a set of group-ids, called \emph{clone-group}.
+Every thread-id identifies a thread based on unique \texttt{pkt} instance processed by it.
+Every group-id identifies set of threads that may process copies of the same packet instance.
+In presence, of conditional statements like if-else and switch, a thread may process a copy of a packet from multiple possible clone groups.
+
+% and clone-group identifies every possible \texttt{pkt} instances from which the thread's packet instance could be initialized.
+
+
+We transform PDG to PPS graph by coalescing all the nodes in a thread to a single node while maintaining their control and data dependencies with cps and other thread nodes.
+We synthesise a variable to transform every control dependency among thread nodes to a data dependency.
+The thread, which is depended on, sets the variable with a constant value and the other thread uses the variable in predicate of new if-conditional statement to continue processing on the control path.
+If a PPS has a directed cycle involving thread nodes, PPS is not serializable.
+If the real target does not have capability to process multiple copy of a packet at the same time, 
+$\mu$P4C raises error and lists program statements involved in cycles.
+However, a PPS can have cycles involving maximum one thread node and common program statements represented by cps nodes.
+To decide execution thread for cps nodes, we compute strongly connected components of PPS graph.
+In each component, there can be exactly one thread node and one or more cps nodes.
+We further transform PPS into a directed acyclic graph by contracting each component into a single node.
+PPS can still have cps nodes not part of any strongly connected component, such nodes can be executed as a part of any thread with which they have dependence.
+We schedule such cps nodes while mapping the thread nodes to packet-processing blocks of target architecture.
 
 
 
+% Every \texttt{apply} method call statement of \texttt{Multicast} or \texttt{Orchestration} type package gets transformed to a thread node in PPS.
+% \texttt{enqueue}, \texttt{merge} and \texttt{to\_in\_buf} method call statements of \texttt{out\_buf} extern's instances capture dependence among such threads nodes in PPS.
 
-\cite{Weiser:1981:PS:800078.802557}
 
 
-\subsubsection{Control Block Constraints}
-$\mu$SA pipelines contain single programmable control block. 
-It provides intrinsic metadata as logical externs (es\_t) and a structure (sm\_t) to use in the control block.
-We map $\mu$SA-specific intrinsic metadata to the ones defined in architectures of targets device.
-% We partition the CFG of $\mu$SA pipelines' programmable block into multiple CFGs to enforce accessibility constraints of target's intrinsic metadata in its control block.
+\subsubsection{Mapping to Target Architecture}
+$\mu$P4C visits PPS nodes in topological order to map thread and cps nodes on target architecture.
+Also, standard metadata (\texttt{sm\_t}) instances and logical extern instances (\texttt{es\_t} and \texttt{mc\_engine}) used in the program are translated into intrinsic metadata and extern provided by the target architecture.
+$\mu$P4C partitions the sub-program represented by each thread node in multiple packet-processing block according to pipeline model of the target architecture.
+
 
 Let's consider v1model architecture of simple\_switch target device for an example.
-A two-state finite-state machine is used to capture ingress and egress pipeline blocks' dependency between egress port and queueing metadata.
-Each state represents assertions to be verified on visit of CFG nodes in topological order.
+We create a two-state, named ingress and egress, finite-state machine to capture restriction on usage of egress-spec, egress-port and queueing metadata in ingress and egress blocks.
+Each state represents a set of assertions to be verified on program statements while visiting them in topological order.
 State transition occurs when the graph traversal can not be continued due to absence of nodes without incoming edges.
-In the first state, the graph traversal does not further explore nodes representing multicast\_engine's apply or egress\_spec's get\_egress\_port or get\_value methods call statements.
-When the traversal can not progress any further, we create partitions of visited and non-visited nodes.
-In the second state, the graph traversal does not further explore nodes representing egress\_spec's get\_egress\_port methods call statements.
-
+In the ingress state, the graph traversal asserts that every visited statement is not $1$ a call of apply method of \texttt{mc\_engine}  and $2$ \texttt{get\_value method} methods of \texttt{egress\_spec}.
+When the traversal can not progress any further state transition happens and we split the thread PDG into two PDGs of visited and non-visited nodes.
+In the egress state, the graph traversal asserts every that visited statement is not a method call of \texttt{get\_egress\_port}.
 
 There can be multiple edges representing control branches between the partitions.
 We synthesis \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
 The second partition uses the metadata and condition on their values to resume execution on appropriate control branch.
 Also, partitioned code may access the same local declaration variables.
 These shared local variables along with the \emph{partition} metadata are passed as user-defined metadata between ingress and egress control block.
-We insert recirculate method call at the end of even numbered partitions to route packet through the code allocated in the ingress egress blocks.
+
+We synthesis per packet user metadata to store thread-id.
+A packet is processed by a thread only if the corresponding thread-id is set in the metadata. 
+We enforce this condition by instrumenting thread code with an if-conditional statement.
+At the end of each thread, next thread-id is set.  
+
+
+
+
 
 %-------------------------------------------------------------------------------
 \section*{Acknowledgments}
