@@ -437,79 +437,82 @@ The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, the
 
 
 \subsubsection{Correlated Intrinsic Metadata}
-$\mu$SA models correlated intrinsic metadata using stateful logical externs.
+$\mu$P4 maintains logical intrinsic metadata. 
+For every real target device, $\mu$P4C maintains mapping of its logical intrinsic metadata with the metadata of real target.
+Many intrinsic per-packet metadata provided by architectures of real target devices are correlated.
 For example, many real target devices allow to measure every packet's queuing latency through the device.
 The timestamps required to compute queuing latency can be measured only after the packet's out port is finalized and packet is enqueued in appropriate queue.
-$\mu$SA captures such constraints using stateful extern objects capturing dependency among correlated intrinsic metadata.
-$\mu$SA declares \texttt{es\_t} as an extern object.
+$\mu$SA models correlated intrinsic metadata using stateful logical externs.
+$\mu$SA captures dependency among correlated intrinsic metadata using stateful extern objects.
+$\mu$SA declares \texttt{es\_t} extern object with methods to access 
 The \texttt{es\_t} extern object contains methods to manipulate and access interdependent intrinsic metadata.
 For example, \texttt{set\_out\_port} and \texttt{get\_out\_port} allows to set and get output port for the packet.
 In addition, $\mu$SA declares an enumerator, called \texttt{meta\_t}.
 Each value in the enumerator associated with a immutable intrinsic metadata populated by only target for every packet (e.g., \texttt{IN\_TIMESTAMP}, \texttt{OUT\_TIMESTAMP} etc).
-The \texttt{es\_t} extern declares a two-arguments method, \texttt{get\_value}.
+The \texttt{es\_t} extern declares a two-parameters method, \texttt{get\_value}, that allows to read values populated by the target.
+The first parameter with \texttt{in} direction is of \texttt{meta\_t} type indicating a particular metadata field.
+The second parameter with \texttt{out} direction provides value of the field.
 
 % $\mu$P4C allows repeated usage of the extern's functions in the single control block of $\mu$SA pipelines.
 % If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution-control path, $\mu$P4C raises a compile-time error.
 \begin{figure*}
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
-// l3 runtime interface
-l3(pkt, inout sm_t, es_t, out bit<16>, inout bit<16>);
-// ipv4.p4
-parser P(extractor ex, pkt p, out l3_hdr_t hdr, inout bit<16> type) { //inout arg
+// ipv6.p4
+header ipv6_h { ... }; 
+struct ipv6_ht { ipv6_h ip };
+parser P(extractor ex, pkt p, out ipv6_ht h) {
   state start {
-    transition select(type){
-      0x0800: parse_ipv4;
-    }
-  }
-  state parse_ipv4 {
-    ex.extract(p, hdr.ipv4);
-    transition accept;
+    ex.extract(p, h.ip); transition accept;
   }
 }
-control Pipe(pkt p, inout l3_hdr_t hdr, out bit<16> nexthop, inout sm_t sm, es_t es) { // nexthop out arg
+control Pipe(pkt p, inout sm_t sm, es_t es, inout ipv6_ht h, out bit<16> nexthop) {
   action process(bit<16> nh) {
-    ph.ipv4.ttl = hdr.ipv4 - 1;
+    h.ip.ttl = h.ip.ttl - 1;
     nexthop = nh;// setting out param
   }
-  table ipv4_lpm_tbl {
-    key = { hdr.ipv4.dstAddr : lpm } 
+  table ipv6_lpm_tbl {
+    key = { h.ip.dstAddr : lpm } 
     actions = { process; }
   }
-  apply { ipv4_lpm_tbl.apply(); }
+  apply { ipv6_lpm_tbl.apply(); }
 }
-control D(emitter em, pkt p, in l3_hdr_t h) {
-  apply { em.emit(p, h.ipv4); }
+control D(emitter em, pkt p, in ipv6_ht h) {
+  apply { em.emit(p, h.ip); }
 }
+// runtime interfaces of programs
+ipv6(pkt, inout sm_t sm, es_t es, out bit<16> nexthop);
+ipv4(pkt, inout sm_t sm, es_t es, out bit<16> nexthop);
+mpls(pkt, inout sm_t sm, es_t es);
 \end{lstlisting}
 \end{minipage}\hspace{-4pt}\vline
 \hfill\begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
 // router.p4
-parser P(extractor ex, pkt p, out hdr_t h, inout bit<16> meta) {
+parser P(extractor ex, pkt p, out hdr_t h) {
   state start {
-    ex.extract(p, h.eth);
-    meta = h.eth.ethType;    
-    transition accept;
+    ex.extract(p, h.eth); transition accept;
   }
 }
-control Pipe(pkt p, inout hdr_t h, inout sm_t sm, es_t es, inout bit<16> meta) {
-  bit<16> nh_id;  l3 l3_inst;
+control Pipe(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
+  bit<16> nh_id;  
+  ipv4 ipv4_i; ipv4 ipv6_i; mpls mpls_i;
   action drop () {}           
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
-    h.eth.dstAddr = dmac;
-    h.eth.srcAddr = smac;
-    sm.out_port = port;    
+    h.eth.dstMac = dmac; h.eth.srcMac = smac;
+    es.set_out_port(port);
   }
   table forward_tbl {
     key = { nh_id : exact; } 
     actions = { forward; drop; }
   }
   apply {
-    l3_inst.apply(p, sm, es, nh_id, meta);
+    switch (h.eth.etherType) {
+      0x0800 : ipv4_i.apply(p, sm, es, nh_id);
+      0x86DD : ipv6_i.apply(p, sm, es, nh_id);
+      0x8847 : mpls_i.apply(p, sm, es);
+    }
     forward_tbl.apply(); 
-    if (sm.deq_qdepth > 100) // limit
-      drop();
   }
 }
 control D(emitter em, pkt p, in hdr_t h) {
