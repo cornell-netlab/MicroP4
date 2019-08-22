@@ -60,6 +60,8 @@
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{listings, multicol}
+\usepackage{appendix}
+
 
 % inlined bib file
 \usepackage{filecontents}
@@ -182,10 +184,12 @@ programs and architectures, which makes it difficult to write programs
 in a compositional manner or reuse common code fragments in different
 programs.
 
+\hse{TODO: }
+
 For example, \texttt{switch.p4}~\cite{switch.p4} handles several dozen
 different protocols and functions (e.g., L2 switching, L3 routing,
 tunneling, etc.,). But the code is written against a global collection
-of q metadata and parsed headers. To use the code in
+of metadata and parsed headers. To use the code in 
 \texttt{switch.p4} to implement an Ethernet switch, it would be
 necessary to detangle the L2-specific functionality from the
 extraneous code in the rest of the program. Without a detailed
@@ -193,14 +197,14 @@ understanding of the overall structure of the top-level program, it is
 difficult or impossible to reuse code fragments at finer granularity.
 
 % \section{Use Case}
-Consider a simple scenario, as shown in Figure~\ref{fig:l3.p4.l2.p4}.
-The first program, \texttt{l3.p4}, parses the IPv4 header, uses
+Consider a simple scenario with two code fragments, as shown in Figure~\ref{fig:ipv4.p4.l2.p4}.
+The first code fragment, \texttt{ipv4.p4}, parses the IPv4 header, uses
 longest-prefix matching to determine the next hop, decrements the
 \texttt{ttl} field and, finally, deparses the packet. The second
-program, \texttt{l2.p4}, parses the Ethernet header, and modifies the
+snippet, \texttt{l2.p4}, parses the Ethernet header, and modifies the
 ethernet addresses using the next hop, which is supplied as an
 argument, and finally deparses the packet. Note that neither
-\texttt{l3.p4} nor \texttt{l2.p4} is a complete packet-processing
+\texttt{ipv4.p4} nor \texttt{l2.p4} is a complete packet-processing
 program: the former does not generate a functionally correct packets,
 while the latter is parameterized on the next hop and so does not
 specify forwarding behavior. However, we could combine \texttt{l2.p4}
@@ -210,50 +214,47 @@ valid program.
 \begin{figure*}[!ht]
 \noindent \begin{minipage}[t]{.48\textwidth}
 \begin{lstlisting}[frame=none]
-// l3.p4
+// ipv4.p4
 struct meta_t { bit<16> type; }
-parser P(packet_in pin, out hdr_t hdrs, inout meta_t m) {
+parser P(packet_in pin, out hdr_t ph, inout meta_t m) {
   state start {
-    transition select(m.type){
-       0x0800: parse_ipv4;
+    transition select(m.type) {
+      0x0800: parse_ipv4; 
     }
   }
-  state parse_ipv4 {
-      pin.extract(hdrs.ipv4);
-      transition accept;
+  state parse_ipv4 { 
+    pin.extract(ph.ipv4); 
+    transition accept; 
   }
 }
-control Pipe(inout hdr_t hdrs, out bit<16> nexthop_id, inout sm_t sm) {
+control Pipe(inout hdr_t ph, out bit<16> nexthop_id, inout sm_t sm) {
   action process(bit<16> nh) {
-    hdrs.ipv4.ttl = hdrs.ipv4 - 1;
+    ph.ipv4.ttl = ph.ipv4 - 1;
     nexthop_id = nh;// setting out param
   }
   table ipv4_lpm_tbl {
-    key = { hdrs.ipv4.dstAddr : lpm } 
+    key = { ph.ipv4.dstAddr : lpm } 
     actions = { process; }
   }
   apply { ipv4_lpm_tbl.apply(); }
-}
-control D(packet_out po, in hdr_t hdrs) {
-  apply { po.emit(hdrs.ipv4); }
 }
 \end{lstlisting}
 \end{minipage}\vline
 \hfill\begin{minipage}[t]{.48\textwidth}
 \begin{lstlisting}[frame=none]
-// l2.p4
-parser P(packet_in pin, out hdr_t hdrs) {
-  state start {
-    pin.extract(hdrs.eth);
-  }
+control D(packet_out po, in hdr_t ph) {
+  apply { po.emit(ph.ipv4); }
 }
-control Pipe(inout hdr_t hdrs, inout sm_t sm, 
+// l2.p4
+parser P(packet_in pin, out hdr_t ph) {
+  state start { pin.extract(ph.eth); }
+}
+control Pipe(inout hdr_t ph, inout sm_t sm, 
              in bit<16> nexthop_id) {
   action drop () {}           
-  action forward(bit<48> dest_mac, 
-                 bit<48> src_mac, bit<8> port) {
-    hdrs.eth.dstAddr = dest_mac;
-    hdrs.eth.srcAddr = src_mac;
+  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
+    ph.eth.dstMac = dest_mac;
+    ph.eth.srcMac = src_mac;
     sm.out_port = port;    
   }
   table forward_tbl {
@@ -262,18 +263,16 @@ control Pipe(inout hdr_t hdrs, inout sm_t sm,
   }
   apply {
     forward_tbl.apply(); 
-    if (sm.deq_qdepth > 100) // rate limiting
-      drop();
   }
 }
-control D(packet_out po, in hdr_t hdrs) {
-  apply { po.emit(hdrs.eth); }
+control D(packet_out po, in hdr_t ph) {
+  apply { po.emit(ph.eth); }
 }
 \end{lstlisting}
 \end{minipage}
 % \vspace*{-10pt}
-\caption{Example: \texttt{l3.p4} and \texttt{l2.p4}.}
-\label{fig:l3.p4.l2.p4}
+\caption{Example: \texttt{ipv4.p4} and \texttt{l2.p4}.}
+\label{fig:ipv4.p4.l2.p4}
 \end{figure*}
 
 
@@ -322,43 +321,54 @@ This paper makes the following contributions.
 Although much work remains, we believe that $\mu$ SA represents a
 promising first step toward enabling modular data plane programs.
 
-\section{Micro-Switch Architecture}
-\label{section:micros-awitch-architecture}
-The design rationale behind $\mu$SA is to provide generic interfaces to allow easy code reuse and enable modularity by providing logical abstraction for data plane pipelines without compromising expressiveness and packet-processing features.
-First, we describe logical pipelines of $\mu$P4. 
-Then, we introduce $\mu$SA's externs and generic interfaces \hse{along with example usages}.
 
-% This design choice reduces heterogeneity in abstract model of data plane programs.
-% For each pipeline type, it exposes an interface type comprising a set of programmable blocks.
-% Programmers can define a P4 \emph{package} type by implementing all the programmable blocks of a interface type.
-% In the same source file, programmers can provide multiple implementations of the same interface type to define multiple package types.
-% $\mu$SA defines various architecture specific structures and externs that allow programmers to express sequential and parallel composition of fine-grained packet processing functions.
+\section{Examples}
 
-% It defines standard intrinsic metadata as \emph{msa\_sm\_t} as a struct type.
-% The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
+\hse{TODO:  SRv6, routing, ingress-egress NAT}
+% \subsection*{Compiling $\mu$P4 Programs}
+% $\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
+% If a program does not contain a package instance named main, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{fig:compiling-msa-programs}).
+% It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
+% % $\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
+% % The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
+% \begin{figure}
+%     \centering
+%     \includegraphics[trim=2 400 565 2, clip,scale=0.5]{mp4c-compiler}
+%     \caption{Compiling $\mu$SA programs}
+% \label{fig:compiling-msa-programs}
+% \end{figure}
+% Programmers can include files containing definitions of types (e.g., struct types of in and out parameters) used in runtime interfaces of packages in libraries.
+% $\mu$P4C compiler generates either source P4 code for the specified architecture or executable with architecture-specific CP APIs.
 
-% Some fields are not mutable, however $\mu$SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
-% Sections \ref{subsection:pipelines} and \ref{subsection:logical-externs} describe pipelines and logical externs, respectively.
 
+\section{Micro Switch Architecture}
+\label{section:micro-switch-architecture}
+$\mu$P4 is designed to provides logical abstraction for data plane pipelines to enable code reuse across different real target devices without compromising expressiveness and packet-processing features.
+We consider $\mu$P4 as a logical target device with an abstract packet-processing model.
+We model every $\mu$P4-program as a black-box, micro-switch, that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
+The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of the programs.
+$\mu$P4 executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
 \begin{figure}
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
-    \caption{$\mu$P4 Packet Processing model}
+    \caption{Packet-Processing model of $\mu$P4 programs}
     \label{fig:mp4-packet-processing-model}
 \end{figure}
+$\mu$P4 fetches an element form a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
+Every element of the buffers comprises a packet bit-stream, intrinsic metadata (e.g., ingress\_port, egress\_port, packet\_length etc., ) and input arguments or output arguments associated with the packet.
+Using this notion of program execution, we define program interfaces and packet-processing pipelines for $\mu$P4 as a port of its data plane architecture, $\mu$SA.
+In addition, $\mu$SA defines a set of logical externs providing various packet-processing constructs available in fixed-function blocks (e.g., packet duplication) of real-target devices' pipelines.
 
-\subsection{Pipelines}
+
+\subsection{Pipelines and Interfaces}
 \label{subsection:pipelines}
 $\mu$SA has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
-$\mu$SA provides a set of logical externs which can be instantiated and used within control blocks of the $\mu$SA pipelines.
-Micro pipeline comprises of a Parser, a Micro-Pipe control and a Deparser block.
+% $\mu$SA's logical externs can be instantiated and used within control blocks of the $\mu$SA pipelines.
+Micro pipeline comprises of a Parser, a Micro control and a Deparser block.
 $\mu$SA does not allow conditional statements in deparser blocks of its pipelines.
-
-Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution-control is transferred to micro-pipe control block.
-Depending on the use of logical externs in the control block, the packet may not complete the processing of the control block.
-If the execution-control reaches till the end of the control block, packet is processed by the deparser block.
-
-\begin{figure}[H]
+For each pipeline type, it exposes one or more interface types.
+Each interface type comprises of a set of declarations for programmable blocks and runtime signature.
+\begin{figure}
     \centering
     \begin{subfigure}{0.59\linewidth}
         \centering
@@ -375,137 +385,77 @@ If the execution-control reaches till the end of the control block, packet is pr
 \caption{$\mu$SA Pipelines}
 \label{fig:msa-pipelines}
 \end{figure}
-% \vspace{-3pt}
-Orchestration pipeline only has a control block, orchestration pipe.
-Programmers can implement imperative control flow using intrinsic metadata of $\mu$SA and runtime parameters to the package types.
+Programmers can provide implementations of the interface types to create user-defined P4 package types.
+To implement an interface type, programmers need to implement all the programmable blocks of the interface type.
+Programmers can instantiate variable of user-defined package types and invoke the instances using \texttt{apply} built-in method similar to control blocks.
+Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution-control is transferred to micro control block.
+If the execution-control reaches till the end of the micro control block, packet is processed by the deparser block.
+Orchestration pipeline has only a control block, named orchestration.
 
-% Figure \ref{fig:interfaces} shows signature of type-parameterized interfaces declared in $\mu$SA.
-% Unicast (U) and Multicast (M) interface can be implemented using Micro pipeline.
-% General (G) interface allows to implement Orchestration pipeline.
-% In Figure \ref{fig:interfaces}, \texttt{pkt\_in} and \texttt{pkt\_out} represent packet, \texttt{sm\_t} and \texttt{es\_t} represent intrinsic metadata.
-% \texttt{in\_buf} and \texttt{out\_buf} externs represent input and output buffer of $\mu$P4 packet-processing model (Figure \ref{fig:mp4-packet-processing-model})
-% \vspace{-7pt}
-\begin{figure}[H]
+$\mu$SA declares thress interface types, Unicast, Multicast and Orchestration.
 \begin{lstlisting}[frame=none]
-// Interfaces with apply method
-Unicast<I, O, IO>(pkt, inout sm_t, es_t, in I, out O, inout IO);
-Orchestration<I, O>(in_buf<I>, out_buf<O>);
-// Interface with fork method
-Multicast<I, O>(pkt, in sm_t, es_t, in I, out_buf<O>);
+Unicast<H,M,I,O,IO>
+  (pkt p, inout sm_t sm, es_t es, in I i_param, out O o_param, inout IO io_param) // Runtime Params
+  (Par<H,M,I,O> p, Con<H,M,I,O,IO> c, Dep<H> d); // Programmable Blocks
+Multicast<H,M,I,O>
+  (pkt p, in sm_t sm, es_t es, in I i_param, out_buf<O> ob)
+  (Par<H,M,I> p, Con<H,M,I,O> c, Dep<H> d); 
+Orchestration<I,O>
+  (in_buf<I> ib, out_buf<O> ob)
+  (Con<I,O> c);
 \end{lstlisting}
-\caption{Runtime Interfaces}
-\label{fig:interfaces}
-\end{figure}
+Programmers can implement programmable blocks declared for Micro pipeline to create custom package types having runtime signature same as unicast or multicast interface.
+Similarly, Orchestration interface is associated with Orchestration pipeline.
+The \texttt{pkt} is an extern type representing packet. 
+The \texttt{sm\_t} is struct type containing intrinsic metadata (e.g., pkt\_in\_port, pkt\_length etc.,).
+The \texttt{es\_t} extern represent intrinsic metadata related to output port of the packet in the pipeline along with queuing related metadata.
+\texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of $\mu$P4 packet-processing model (Figure \ref{fig:mp4-packet-processing-model})
+Next, we give overview of logical externs defined in $\mu$SA along with their example usage.
 
-\begin{figure}[ht]
+% It defines standard intrinsic metadata as \emph{sm\_t} as a struct type.
+% The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
+
+% Some fields are not mutable, however $\mu$SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
+
+\subsection{Logical Externs}
+\label{subsection:logical-externs}
+\subsubsection{Packet Extern}
+$\mu$P4 does not make use of packet extern defined in P4 core library.
+Instead, it models packets using an extern object, \texttt{pkt}, declared in $\mu$SA.
+% as shown in Figure \ref{fig:pkt-externs}.
+The \texttt{pkt} extern can be instantiated only inside the control block of the orchestration pipeline.
+$\mu$P4 mandates to initialize programmer-declared \texttt{pkt} instances in the control block using other instances.
+The \texttt{pkt} extern object contains \texttt{copy\_from} having a parameter of its own type as shown in code snippet below.
 \begin{lstlisting}[frame=none]
 extern pkt {
-  // byte array representation
-  byte[] packet;
-  unsigned length;
-}
-extern emitter {
-  void emit (pkt, in hdr);
-}
-extern extractor {
-  void extractor(pkt, out hdr);
-  /// T may be an arbitrary fixed-size type.
-  T lookahead<T>();
+  void copy_from(pkt pkt_arg_inst);
 }
 \end{lstlisting}
-\caption{Packet Representation}
-\label{fig:pkt-externs}
-\end{figure}
-\begin{figure}[ht]
-\begin{lstlisting}[frame=none]
-extern in_buf<I> {
-  // used by architecture only
-  dequeue(pkt, out sm_t, es_t, out I);
-}
-extern out_buf<O> {
-  enqueue(pkt, in sm_t, es_t, in O);
-  void to_in_buf(in_buf<O>);
-  void merge(out_buf<O>);
-}
-
-extern mc_buf<H, O> {
-  enqueue(pkt, in H, in sm_t, es_t, in O);
-  dequeue(pkt, out H, out sm_t, es_t, out O);
-}
-\end{lstlisting}
-\caption{Buffer Representation}
-\label{fig:pkt-buf}
-\end{figure}
-\begin{figure}[ht]
-\begin{lstlisting}[frame=none]
-// This can only be used in control block of multicast interface
-extern mc_engine {
-  mc_engine();
-  void set_mc_group(GroupId_t gid);
-  apply(es_t, out PacketInstanceId_t);
-  
-  set_buf(out_buf<O>);
-  apply(pkt, out sm_t, es_t, out O);  
-}
-\end{lstlisting}
-\caption{Multicast Extern}
-\label{fig:msa-multicast-extern}
-\end{figure}
-\begin{figure}[H]
-\begin{lstlisting}[frame=none]
-// Unicast
-parser p<H, M, I, O, IO>(extractor, pkt, H, M, I, O, IO, sm_t, es_t);
-control c<H, M, I, O, IO>(pkt, H, M, I, O, IO, sm_t, es_t);
-control d<H, M>(emitter, pkt, H);
-
-Unicast<H, M, I, O, IO>
-  (pkt, inout sm_t, es_t, in I, out O, inout IO) // runtime params
-  (p<H, M, I, O, IO>, c<H, M, I, O, IO>, d<H, M>); // compile-time params
-
-// Multicast
-Multicast<H, M, I, O, IO> 
-  parser p<H, M, I>(extractor, pkt, H, M, I, sm_t, es_t);
-  control c<H, M, I, O)>(pkt, H, M, I, sm_t, es_t, mc_buf<H,O>);
-  control d<H, M>(emitter, pkt, H);
-
-// Orchestration
-control c<I, O)>(pkt, sm_t, es_t, in I, out_buf<O>);
-    
-\end{lstlisting}
-\caption{Programmable Blocks for Interfaces}
-\label{fig:programmable-blocks-for-interfaces}
-\end{figure}
-
-\begin{figure}[H]
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[frame=none]
-enum meta_t {
-  INGRESS_TIMESTAMP,
-  EGRESS_TIMESTAMP
-}
-\end{lstlisting}
-\end{minipage}
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[frame=none]
-extern es_t {
-  void set_egress_port(in bit<8>);
-  bit<8> get_egress_port();
-  bit<32> get_value(in meta_t ft);
-  void copy_from(es_t es);
-}
-\end{lstlisting}
-\end{minipage}
-\caption{Extern to Capture Data-Dependency(Egress\_Spec)}
-\label{fig:msa-egress-spec-extern}
-\end{figure}
+The \texttt{copy\_from} method initializes its calling instance with content of \texttt{pkt\_arg\_inst} without modifying it.
+$\mu$SA provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
+The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, their instances are provided by the architecture as parameters in parser and deparser declarations of Micro pipeline programmable blocks. 
 
 
+\subsubsection{Correlated Intrinsic Metadata}
+$\mu$SA models correlated intrinsic metadata using stateful logical externs.
+For example, many real target devices allow to measure every packet's queuing latency through the device.
+The timestamps required to compute queuing latency can be measured only after the packet's out port is finalized and packet is enqueued in appropriate queue.
+$\mu$SA captures such constraints using stateful extern objects capturing dependency among correlated intrinsic metadata.
+$\mu$SA declares \texttt{es\_t} as an extern object.
+The \texttt{es\_t} extern object contains methods to manipulate and access interdependent intrinsic metadata.
+For example, \texttt{set\_out\_port} and \texttt{get\_out\_port} allows to set and get output port for the packet.
+In addition, $\mu$SA declares an enumerator, called \texttt{meta\_t}.
+Each value in the enumerator associated with a immutable intrinsic metadata populated by only target for every packet (e.g., \texttt{IN\_TIMESTAMP}, \texttt{OUT\_TIMESTAMP} etc).
+The \texttt{es\_t} extern declares a two-arguments method, \texttt{get\_value}.
+
+% $\mu$P4C allows repeated usage of the extern's functions in the single control block of $\mu$SA pipelines.
+% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution-control path, $\mu$P4C raises a compile-time error.
 \begin{figure*}
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
 // l3 runtime interface
 l3(pkt, inout sm_t, es_t, out bit<16>, inout bit<16>);
-// l3.p4
+// ipv4.p4
 parser P(extractor ex, pkt p, out l3_hdr_t hdr, inout bit<16> type) { //inout arg
   state start {
     transition select(type){
@@ -519,7 +469,7 @@ parser P(extractor ex, pkt p, out l3_hdr_t hdr, inout bit<16> type) { //inout ar
 }
 control Pipe(pkt p, inout l3_hdr_t hdr, out bit<16> nexthop, inout sm_t sm, es_t es) { // nexthop out arg
   action process(bit<16> nh) {
-    hdrs.ipv4.ttl = hdr.ipv4 - 1;
+    ph.ipv4.ttl = hdr.ipv4 - 1;
     nexthop = nh;// setting out param
   }
   table ipv4_lpm_tbl {
@@ -567,7 +517,7 @@ control D(emitter em, pkt p, in hdr_t h) {
 }
 \end{lstlisting}
 \end{minipage}
-\caption{Rewriting Example in Figure \ref{fig:l3.p4.l2.p4} using $\mu$ SA}
+\caption{Rewriting Example in Figure \ref{fig:ipv4.p4.l2.p4} using $\mu$ SA}
 \label{fig:modular-router}
 \end{figure*}
 
@@ -660,8 +610,8 @@ slice#  apply {
 % }
 % control dep(pkt_out<o_a> ob, 
 %             mc_buf<hs_t, out_arg_t> hb) {
-%   hs_t hdrs; out_arg_t oa; pkt_out po;
-%   hb.dequeue(hdrs, sm, es, oa);
+%   hs_t ph; out_arg_t oa; pkt_out po;
+%   hb.dequeue(ph, sm, es, oa);
 %   // deparser code 
 %   ob.enqueue(po, sm, es, oa);
 % }
@@ -670,19 +620,7 @@ slice#  apply {
 % \label{fig:multicast-execution}
 % \end{figure}
 
-\subsubsection{Egress Specifications}
-Many packet-processing devices allow to measure every packet's queuing latency through the device.
-These timestamps required to compute queuing latency can be measured only after the packet's egress port is finalized.
-The timestamps can be accessed only after the egress port is finalized.
-$\mu$SA captures such constraints as using stateful extern objects capturing data-dependency.
-% To support such special features, the architectures of real target devices expose intrinsic metadata  that depends on operations on other intrinsic metadata.
 
-$\mu$SA declares \texttt{es\_t} as an extern object (Figure \ref{fig:msa-egress-spec-extern}).
-It declares methods to manipulate and access interdependent device-specific information.
-$\mu$P4C uses their occurrences to transform the code to multi-control pipelines of real target architectures.
-
-% $\mu$P4C allows repeated usage of the extern's functions in the single control block of $\mu$SA pipelines.
-% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution-control path, $\mu$P4C raises a compile-time error.
 
 
 
@@ -1015,7 +953,7 @@ $\mu$P4C partitions the sub-program represented by each thread node in multiple 
 
 
 Let's consider v1model architecture of simple\_switch target device for an example.
-We create a two-state, named ingress and egress, finite-state machine to capture restriction on usage of egress-spec, egress-port and queueing metadata in ingress and egress blocks.
+We create a two-state, named ingress and egress, finite-state machine to capture restriction on usage of egress-spec, egress-port and queuing metadata in ingress and egress blocks.
 Each state represents a set of assertions to be verified on program statements while visiting them in topological order.
 State transition occurs when the graph traversal can not be continued due to absence of nodes without incoming edges.
 In the ingress state, the graph traversal asserts that every visited statement is not $1$ a call of apply method of \texttt{mc\_engine}  and $2$ \texttt{get\_value method} methods of \texttt{egress\_spec}.
@@ -1023,15 +961,15 @@ When the traversal can not progress any further state transition happens and we 
 In the egress state, the graph traversal asserts every that visited statement is not a method call of \texttt{get\_egress\_port}.
 
 There can be multiple edges representing control branches between the partitions.
-We synthesis \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
+We synthesize \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
 The second partition uses the metadata and condition on their values to resume execution on appropriate control branch.
 Also, partitioned code may access the same local declaration variables.
 These shared local variables along with the \emph{partition} metadata are passed as user-defined metadata between ingress and egress control block.
 
-We synthesis per packet user metadata to store thread-id.
+We synthesize per packet user metadata to store thread-id.
 A packet is processed by a thread only if the corresponding thread-id is set in the metadata. 
 We enforce this condition by instrumenting thread code with an if-conditional statement.
-At the end of each thread, next thread-id is set.  
+At the end of each thread, next thread-id is set.
 
 
 
@@ -1057,6 +995,110 @@ section.
 %-------------------------------------------------------------------------------
 \bibliographystyle{plain}
 \bibliography{main}
+
+
+\appendix
+\section{Micro Switch Architecture}
+\begin{figure}
+\begin{lstlisting}[frame=none]
+extern pkt {
+  // byte array representation
+  byte[] packet;
+  unsigned length;
+  void copy_from(pkt p);
+}
+extern emitter {
+  void emit<H>(pkt p, in H hdr);
+}
+extern extractor {
+  void extract<H>(pkt p, out H hdr);
+  void extract<H>(pkt p, out H hdr, in bit<32> size);
+  /// H may be an arbitrary fixed-size type.
+  H lookahead<H>();
+}
+\end{lstlisting}
+\caption{Packet Representation}
+\label{fig:pkt-externs}
+\end{figure}
+\begin{figure}
+
+\begin{lstlisting}[frame=none]
+enum meta_t {
+  INGRESS_TIMESTAMP,
+  EGRESS_TIMESTAMP
+}
+extern es_t {
+  void set_out_port(in bit<8>);
+  bit<8> get_out_port();
+  bit<32> get_value(in meta_t ft);
+  void copy_from(es_t es);
+}
+\end{lstlisting}
+\caption{\texttt{es\_t} extern}
+\label{fig:msa-egress-spec-extern}
+\end{figure}
+\begin{figure}
+\begin{lstlisting}[frame=none]
+extern in_buf<I> {
+  // used by architecture only
+  dequeue(pkt, out sm_t, es_t, out I);
+}
+extern out_buf<O> {
+  enqueue(pkt p, in sm_t sm, es_t es, in O out_args);
+  void to_in_buf(in_buf<O>);
+  void merge(out_buf<O>);
+}
+
+extern mc_buf<H, O> {
+  enqueue(pkt, in H, in sm_t, es_t, in O);
+  dequeue(pkt, out H, out sm_t, es_t, out O);
+}
+\end{lstlisting}
+\caption{Buffer Representation}
+\label{fig:pkt-buf}
+\end{figure}
+
+\begin{figure}
+\begin{lstlisting}[frame=none]
+// This can only be used in control block of multicast interface
+extern mc_engine {
+  mc_engine();
+  void set_mc_group(GroupId_t gid);
+  apply(es_t, out PacketInstanceId_t);
+  
+  set_buf(out_buf<O>);
+  apply(pkt, out sm_t, es_t, out O);  
+}
+\end{lstlisting}
+\caption{Multicast Extern}
+\label{fig:msa-multicast-extern}
+\end{figure}
+
+
+\begin{figure}
+\begin{lstlisting}[frame=none]
+// Unicast
+Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, in I in_param, out O out_param, inout IO inout_param) {
+  parser u_parser(extractor ex, pkt p, out H hdr, inout M meta, inout sm_t sm, in I in_param, inout IO inout_param);
+  control u_control(pkt p, inout H hdr, inout M m, inout sm_t sm, es_t es, in I in_param, out O out_param, inout IO inout_param);
+  control u_deparser(emitter em, pkt p, in H hdr);                             
+}
+
+// Multicast
+Multicast<H,M,I,O>(pkt p, in sm_t sm, es_t es, in I in_param, out_buf<O> ob) {
+  parser m_parser(extractor ex, pkt p, out H hdr, inout M meta, in I in_param, inout sm_t sm);
+  control m_control(pkt p, inout H hdr, inout M meta, inout sm_t sm, es_t es, inout I in_param, mc_buf<H,O> mob);
+  control m_deparser(emitter em, pkt p, in H hdr);
+}
+
+package Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {                         
+  control o_control(pkt p, inout sm_t sm, es_t es, in I in_param, out_buf<O> ob);
+}
+    
+\end{lstlisting}
+\caption{Programmable Blocks for Interfaces}
+\label{fig:programmable-blocks-for-interfaces}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
