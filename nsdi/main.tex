@@ -197,7 +197,8 @@ understanding of the overall structure of the top-level program, it is
 difficult or impossible to reuse code fragments at finer granularity.
 
 % \section{Use Case}
-Consider a simple scenario with two code fragments, as shown in Figure~\ref{fig:ipv4.p4.l2.p4}.
+% Consider a simple scenario with two code fragments, as shown in Figure~\ref{fig:ipv4.p4.l2.p4}.
+
 The first code fragment, \texttt{ipv4.p4}, parses the IPv4 header, uses
 longest-prefix matching to determine the next hop, decrements the
 \texttt{ttl} field and, finally, deparses the packet. The second
@@ -211,69 +212,69 @@ specify forwarding behavior. However, we could combine \texttt{l2.p4}
 with any other routing scheme (e.g., IPv6, MPLS, etc.) to obtain a
 valid program. 
 
-\begin{figure*}[!ht]
-\noindent \begin{minipage}[t]{.48\textwidth}
-\begin{lstlisting}[frame=none]
-// ipv4.p4
-struct meta_t { bit<16> type; }
-parser P(packet_in pin, out hdr_t ph, inout meta_t m) {
-  state start {
-    transition select(m.type) {
-      0x0800: parse_ipv4; 
-    }
-  }
-  state parse_ipv4 { 
-    pin.extract(ph.ipv4); 
-    transition accept; 
-  }
-}
-control Pipe(inout hdr_t ph, out bit<16> nexthop_id, inout sm_t sm) {
-  action process(bit<16> nh) {
-    ph.ipv4.ttl = ph.ipv4 - 1;
-    nexthop_id = nh;// setting out param
-  }
-  table ipv4_lpm_tbl {
-    key = { ph.ipv4.dstAddr : lpm } 
-    actions = { process; }
-  }
-  apply { ipv4_lpm_tbl.apply(); }
-}
-\end{lstlisting}
-\end{minipage}\vline
-\hfill\begin{minipage}[t]{.48\textwidth}
-\begin{lstlisting}[frame=none]
-control D(packet_out po, in hdr_t ph) {
-  apply { po.emit(ph.ipv4); }
-}
-// l2.p4
-parser P(packet_in pin, out hdr_t ph) {
-  state start { pin.extract(ph.eth); }
-}
-control Pipe(inout hdr_t ph, inout sm_t sm, 
-             in bit<16> nexthop_id) {
-  action drop () {}           
-  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
-    ph.eth.dstMac = dest_mac;
-    ph.eth.srcMac = src_mac;
-    sm.out_port = port;    
-  }
-  table forward_tbl {
-    key = { nexthop_id : exact; } 
-    actions = { process; drop; }
-  }
-  apply {
-    forward_tbl.apply(); 
-  }
-}
-control D(packet_out po, in hdr_t ph) {
-  apply { po.emit(ph.eth); }
-}
-\end{lstlisting}
-\end{minipage}
-% \vspace*{-10pt}
-\caption{Example: \texttt{ipv4.p4} and \texttt{l2.p4}.}
-\label{fig:ipv4.p4.l2.p4}
-\end{figure*}
+% \begin{figure*}[!ht]
+% \noindent \begin{minipage}[t]{.48\textwidth}
+% \begin{lstlisting}[frame=none]
+% // ipv4.p4
+% struct meta_t { bit<16> type; }
+% parser P(packet_in pin, out hdr_t ph, inout meta_t m) {
+%   state start {
+%     transition select(m.type) {
+%       0x0800: parse_ipv4; 
+%     }
+%   }
+%   state parse_ipv4 { 
+%     pin.extract(ph.ipv4); 
+%     transition accept; 
+%   }
+% }
+% control Pipe(inout hdr_t ph, out bit<16> nexthop_id, inout sm_t sm) {
+%   action process(bit<16> nh) {
+%     ph.ipv4.ttl = ph.ipv4 - 1;
+%     nexthop_id = nh;// setting out param
+%   }
+%   table ipv4_lpm_tbl {
+%     key = { ph.ipv4.dstAddr : lpm } 
+%     actions = { process; }
+%   }
+%   apply { ipv4_lpm_tbl.apply(); }
+% }
+% \end{lstlisting}
+% \end{minipage}\vline
+% \hfill\begin{minipage}[t]{.48\textwidth}
+% \begin{lstlisting}[frame=none]
+% control D(packet_out po, in hdr_t ph) {
+%   apply { po.emit(ph.ipv4); }
+% }
+% // l2.p4
+% parser P(packet_in pin, out hdr_t ph) {
+%   state start { pin.extract(ph.eth); }
+% }
+% control Pipe(inout hdr_t ph, inout sm_t sm, 
+%              in bit<16> nexthop_id) {
+%   action drop () {}           
+%   action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
+%     ph.eth.dstMac = dest_mac;
+%     ph.eth.srcMac = src_mac;
+%     sm.out_port = port;    
+%   }
+%   table forward_tbl {
+%     key = { nexthop_id : exact; } 
+%     actions = { process; drop; }
+%   }
+%   apply {
+%     forward_tbl.apply(); 
+%   }
+% }
+% control D(packet_out po, in hdr_t ph) {
+%   apply { po.emit(ph.eth); }
+% }
+% \end{lstlisting}
+% \end{minipage}
+% % \vspace*{-10pt}
+% \caption{Example: \texttt{ipv4.p4} and \texttt{l2.p4}.}
+% \label{fig:ipv4.p4.l2.p4}
+% \end{figure*}
 
 
 %% The current ecosystem of programmable data plane enforces programmers
@@ -466,9 +467,9 @@ parser P(extractor ex, pkt p, out ipv6_ht h) {
     ex.extract(p, h.ip); transition accept;
   }
 }
-control Pipe(pkt p, inout sm_t sm, es_t es, inout ipv6_ht h, out bit<16> nexthop) {
+control C(pkt p, inout ipv6_ht h, inout sm_t sm, es_t es, out bit<16> nexthop) {
   action process(bit<16> nh) {
-    h.ip.ttl = h.ip.ttl - 1;
+    h.ip.hopLimit = h.ip.hopLimit - 1;
     nexthop = nh;// setting out param
   }
   table ipv6_lpm_tbl {
@@ -480,23 +481,23 @@ control Pipe(pkt p, inout sm_t sm, es_t es, inout ipv6_ht h, out bit<16> nexthop
 control D(emitter em, pkt p, in ipv6_ht h) {
   apply { em.emit(p, h.ip); }
 }
-// runtime interfaces of programs
-ipv6(pkt, inout sm_t sm, es_t es, out bit<16> nexthop);
-ipv4(pkt, inout sm_t sm, es_t es, out bit<16> nexthop);
-mpls(pkt, inout sm_t sm, es_t es);
+// router.p4
+// runtime interfaces of callee programs
+ipv6(pkt p, inout sm_t sm, es_t es, out bit<16> nexthop);
+ipv4(pkt p, inout sm_t sm, es_t es, out bit<16> nexthop);
+mpls(pkt p, inout sm_t sm, es_t es);
 \end{lstlisting}
 \end{minipage}\hspace{-4pt}\vline
 \hfill\begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
-// router.p4
 parser P(extractor ex, pkt p, out hdr_t h) {
   state start {
     ex.extract(p, h.eth); transition accept;
   }
 }
-control Pipe(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
-  bit<16> nh_id;  
-  ipv4 ipv4_i; ipv4 ipv6_i; mpls mpls_i;
+control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
+  bit<16> nh_id;
+  ipv4() ipv4_i; ipv6() ipv6_i; mpls() mpls_i;
   action drop () {}           
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstMac = dmac; h.eth.srcMac = smac;
@@ -520,11 +521,86 @@ control D(emitter em, pkt p, in hdr_t h) {
 }
 \end{lstlisting}
 \end{minipage}
-\caption{Rewriting Example in Figure \ref{fig:ipv4.p4.l2.p4} using $\mu$ SA}
+\caption{Modular Router using $\mu$ SA}
 \label{fig:modular-router}
 \end{figure*}
 
+\begin{figure}
+\begin{subfigure}[b]{\linewidth}
+ \begin{lstlisting}[frame=none]
+// srv6.p4
+header ext_routing_h { ... }; 
+header srh_h { ... }; header ipv6_h { ... }; 
+struct srv_ht { 
+  ipv6_h ipv6; ext_routing_h er; srh_h sr;
+};
+parser P(extractor e, pkt p, out srv_ht h) {
+  state start {
+    e.extract(p, h.ipv6);
+    transition select (h.ipv6.nextHdr) {
+      0x2B : parse_routing_hdr; }
+  }
+  state parse_routing_hdr { ... }
+  state parse_srh { ... }
+}
+control C(pkt p, inout srv_ht h, inout sm_t sm, es_t es) {
+  apply { // copy appropriate segment address from h.sr to h.ipv6.destAddr}
+}
+control D(emitter em, pkt p, in srv_ht h) {
+  apply { 
+    em.emit(p, h.ipv6);
+    em.emit(p, h.er); em.emit(p, h.sr);
+  }
+}
+\end{lstlisting}
+\caption{Source Routing Header Processing}
+\end{subfigure}
+\begin{subfigure}[b]{\linewidth}
+ \begin{lstlisting}[frame=none]
+apply {
+  switch (h.eth.etherType) {
+    0x86DD :  { 
+      srv6_i.apply(p, sm, es);
+      ipv6_i.apply(p, sm, es, nh_id);
+    }
+  }
+  forward_tbl.apply(); 
+}
+\end{lstlisting}
+\caption{Extending Modular Router}
+\end{subfigure}
+\label{fig:multi-packe}
+\end{figure}
 
+
+\begin{figure}[H]
+\begin{lstlisting}[frame=none]
+struct out_t { /* empty */ }
+control mc(pkt p, hdr_t h, sm_t s, es_t e, mc_buf<hdr_t, out_t> hb) {
+  mc_engine mce;  PktInstId_t id; 
+  out_t  oa;
+  action replicate(GroupId_t gid) {
+    mce.set_mc_group(gid);
+  }
+  table MulticastRouting{
+    key = { h.ipv4.dstAddr : exact; } 
+    actions = { replicate; }
+  }
+  table mac{
+    key = { es.get_port() : exact; } 
+    actions = { mac_update; }
+  }
+  apply {
+    MulticastRouting.apply();
+    mce.apply(es, id);//similar to fork in C
+    mac.apply();
+    hb.enqueue(h, sm, es, oa);
+  }
+}
+\end{lstlisting}
+\caption{Multicast Execution}
+\label{fig:multicast-execution}
+\end{figure}
 
 % \begin{figure}
 % \begin{lstlisting}[frame=none]
@@ -551,7 +627,7 @@ control D(emitter em, pkt p, in hdr_t h) {
 
 
 \begin{figure}
-\begin{lstlisting}[frame=none]
+ \begin{lstlisting}[frame=none]
 struct e_t {};  struct h_t { ... };
 prog(pkt, inout sm_t, es_t, out h_t);
 test(pkt, inout sm_t, es_t, out h_t);
