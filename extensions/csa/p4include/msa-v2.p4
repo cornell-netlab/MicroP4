@@ -9,7 +9,7 @@
 #include <core.p4>
 
 typedef   bit<8>    PortId_t;
-typedef   bit<16>   PacketInstanceId_t;
+typedef   bit<16>   PktInstId_t;
 typedef   bit<16>   GroupId_t;
 const   PortId_t    PORT_CPU = 255;
 const   PortId_t    PORT_RECIRCULATE = 254;
@@ -97,7 +97,7 @@ extern multicast_engine {
   // Analogous to fork system call, only difference is original (parent
   // process) cease to exist.
   // Retuens packet instance id and appropriate egress_spec will be have
-  // port_id set by the CP for the PacketInstanceId_t value.
+  // port_id set by the CP for the PktInstId_t value.
   // All other declaration and arguments (local variable declarations, headers,
   // metadata etc.,) in the scope will be available after this call.
   //
@@ -111,10 +111,10 @@ extern multicast_engine {
    * means overriding configuration of control plane.
    *
    */
-  PacketInstanceId_t apply(egress_spec es);
+  void apply(egress_spec es, out PktInstId_t id);
 
   set_buf(out_buf<O>);
-  apply(pkt, out sm_t, es_t, out O);
+  void apply(pkt, out sm_t, es_t, out O);
 
   // In future, a shim will translate between architecture specific CP APIs
   /*
@@ -122,8 +122,8 @@ extern multicast_engine {
   {
       entry_handle add_group (GroupId_t gid);
       void         delete_group (GroupId_t gid);
-      void         add_group_entry   (GroupId_t gid, PacketInstanceId_t, PortId_t);
-      void         delete_group_entry (GroupId_t gid, PacketInstanceId_t, PortId_t);
+      void         add_group_entry   (GroupId_t gid, PktInstId_t, PortId_t);
+      void         delete_group_entry (GroupId_t gid, PktInstId_t, PortId_t);
   }
   */
 }
