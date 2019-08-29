@@ -150,9 +150,22 @@ Second Institution
 
 %-------------------------------------------------------------------------------
 \begin{abstract}
-%-------------------------------------------------------------------------------
-Your abstract text goes here. Just a few facts. Whet our appetites.
-Not more than 200 words, if possible, and preferably closer to 150.
+Domain-specific languages such as P4 enable flexible and efficient
+packet-processing using primitives such as programmable parsers and
+re-configurable match-action tables. However, the P4 ecosystem exposes
+details of the underlying architecture, which ties programs to
+specific architectures and makes it difficult to write composeable
+libraries of code that can be reused across many different programs.
+
+To address this challenge, we present the design and implementation of
+a logical target, MicroP4 ($\mu$P4), that decouples P4 programs from
+architecture-specific constructs and naturally supports composition.
+We present the design of the $\mu$P4 architecture ($\mu$SA), which
+abstracts away from hardware-level details without sacrificing
+expressiveness. Using realistic examples, we show how $\mu$P4 enables
+modular programming, and we present a prototype implementation of the
+$\mu$P4C compiler that generates code for lower-level architectures
+such as PISA, which is implemented by the Bmv2 software switch.
 \end{abstract}
 
 
@@ -172,27 +185,26 @@ abstractions such as parsers and match-action tables.
 In order to support different kinds of targets (e.g., software
 switches, ASICs, FPGAs, etc.), P4 allows programmable and
 fixed-function blocks to be arranged into different layouts as
-specified by an architecture declaration. For example, the Protocol
-Independent Switch Architecture
-(PISA)~\cite{psa} models a switch with a
+specified by an architecture declaration. For example, the Portable Switch Architecture
+(PSA)~\cite{psa} models a switch with a
 programmable parser, programmable ingress pipeline, fixed-function
 scheduler and queues, programmable egress pipeline, and programmable
-deparser (Figure \ref{fig:psa-model}). 
-PISA programs supply P4 code for each programmable block.
+deparser (Figure \ref{subfig:psa-model}). 
+PSA programs supply P4 code for each programmable block.
 P4 also allows to specify target-specific features and data as a part of the target's architecture declaration.
-PISA programs can use features and data specific to the architecture in the code for programmable block.
+PSA programs can use features and data specific to the architecture in the code for programmable block.
 While this design allows the language to flexibly accommodate a
 wide range of targets, it also creates a tight coupling between
 programs and architectures, which makes it difficult to write programs
 in a compositional manner or reuse common code fragments in different
 programs.
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
-    \caption{PSA Model}
-    \label{fig:psa-model}
-\end{figure}
+% \begin{figure}[h]
+%     \centering
+%     \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
+%     \caption{PSA Model}
+%     \label{fig:psa-model}
+% \end{figure}
 For example, \texttt{switch.p4}~\cite{switch.p4} handles several dozen
 different protocols and functions (e.g., L2 switching, L3 routing,
 tunneling, etc.,). But the code is written against a global collection
@@ -279,7 +291,6 @@ control D(packet_out po, in hdr_t ph) {
 \label{fig:ipv4.p4}
 \end{figure}
 
-
 %% The current ecosystem of programmable data plane enforces programmers
 %% to write code amenable to the target device's data plane architecture
 %% and pipeline. Programmers write code for programmable blocks taking
@@ -327,64 +338,71 @@ This paper makes the following contributions.
 
 
 
-% \subsection*{Compiling $\mu$P4 Programs}
-% $\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
-% If a program does not contain a package instance named main, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{fig:compiling-msa-programs}).
-% It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4run-time} files.
-% % $\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
-% % The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
-% \begin{figure}
-%     \centering
-%     \includegraphics[trim=2 400 565 2, clip,scale=0.5]{mp4c-compiler}
-%     \caption{Compiling $\mu$ SA programs}
-% \label{fig:compiling-msa-programs}
-% \end{figure}
-% Programmers can include files containing definitions of types (e.g., struct types of in and out parameters) used in run-time interfaces of packages in libraries.
-% $\mu$P4C compiler generates either source P4 code for the specified architecture or executable with architecture-specific CP APIs.
+
 
 \section{Data Plane Programming using P4}
+In this section, we study the ecosystem and workflow of data plane programming using P4 to understand challenges involved in enabling reuse of packet-processing code libraries.
+P4 is developed to specify data plane functionality of software or hardware target devices (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).
+To support data plane programming of variety of target devices, the ecosystem expects manufacturers to provide a framework to program the target devices.
+The framework includes an architecture definition in P4 and compiler for the target.
+The architecture description (e.g., v1model.p4 \cite{v1model.p4} for simple\_switch) of a target specifies data plane pipeline comprising a set of programmable and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
+For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model \cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
+To program the packet processing pipeline of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture.
+This makes P4 programs tightly coupled with the architecture of the target devices.
 
-% P4 is developed to specify data plane functionality of software or hardware targets (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,) devices.
-% Target device manufacturer provides an architecture description of data plane along with a P4 compiler for the device.
-% The architecture source file (e.g., v1\-mod\-el\-.p4 \cite{v1model.p4} for simple\_switch) contains declaration of a set of pro\-gram\-ma\-ble blocks, their data plane interfaces and the target specific metadata (called intrinsic metadata) and extern functions.
-% To program the packet processing pipeline of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture file.
-% Therefore, P4 programs are tightly coupled with architecture of the target devices.
+\begin{figure}[h]
+    \begin{subfigure}[b]{\linewidth}
+        \centering
+        \includegraphics[trim=2 460 380 0, clip,scale=0.37]{v1model-pipeline.pdf}
+        \caption{simple\_switch v1 data plane model}
+        \label{subfig:v1model}
+    \end{subfigure}
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
+        \caption{PSA data plane Model}
+        \label{subfig:psa-model}
+    \end{subfigure}
+\caption{Real Target Architectures}
+\label{fig:real-target-architectures}
+\end{figure}
 
-% \begin{figure}[H]
-%     \begin{subfigure}[b]{\linewidth}
-%         \centering
-%         \includegraphics[trim=2 460 380 0, clip,scale=0.37]{v1model-pipeline.pdf}
-%         \caption{simple\_switch v1 Model}
-%         \label{subfig:v1model}
-%     \end{subfigure}
-%     \begin{subfigure}{\linewidth}
-%         \centering
-%         \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
-%         \caption{PSA Model}
-%         \label{subfig:psa-model}
-%     \end{subfigure}
-% \caption{Real Target Architectures}
-% \label{fig:real-target-architectures}
-% \end{figure}
-% The architecture description of a target specifies data plane pipeline comprising a set of pro\-gram\-ma\-ble and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
-% For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model \cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
+Heterogeneity in programmable blocks within an architecture makes reuse of code libraries for the same device extremely difficult.
+Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
+Control blocks are expressed using a sub-language modelling imperative control flow.
+Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
+Packet processing logic in P4 programs are partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
+Therefore, a control block can not instantiate and execute parser blocks. Similarly, deparser block can not invoke and execute parser blocks.
+Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} \ref{fig:ipv4.p4}
 
 
-% Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
-% Control blocks are expressed using a sub-language modelling imperative control flow.
-% Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
-% Packet processing logic in P4 programs are sectioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
-% Therefore, a control block can not instantiate and execute parser blocks. Similarly, deparser block can not invoke and execute parser blocks.  
-% Consider the example in Figure \ref{fig:l3.p4.l2.p4}, parser ``P'' of l2.p4 can not be executed at the end of deparser control block ``D'' of l3.p4.
-% 
-% 
-% Moreover, architectures models expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and  \cite{psa}
+Moreover, architectures expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and \cite{psa}.
+In turn, increasing complexity in packet-processing architecture model of the architecture.
 % In turn, adding different abstract-machine to program packet-path and data flow across the blocks and further increasing heterogeneity in the model of a data plane program.
-% <<For example, resubmit or recirculate calls are like event trigger.. effects happen after the block>>
-% 
-% Finally, the existing architecture models expose target-spe\-cific constraints to programmers.
-% E.g., output port can not be changed in egress control block, scope of some intrinsic metadata limited to specific programmable blocks, etc.,  
-% Programmers need implement execution logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
+<<For example, resubmit or recirculate calls are like event trigger.. effects happen after the block>>
+
+Finally, the existing architecture models expose target-specific constraints to programmers.
+E.g., output port can not be changed in egress control block, scope of some intrinsic metadata limited to specific programmable blocks, etc.,  
+Programmers implement packet-processing logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
+
+\hse{TODO: smooth end}
+
+\section{$\mu$P4}
+\hse{TODO: overview }
+\subsection*{Compiling $\mu$P4 Programs}
+$\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
+If a program does not contain a package instance named main, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{fig:compiling-msa-programs}).
+It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4run-time} files.
+% $\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
+% The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
+\begin{figure}[h]
+    \centering
+    \includegraphics[trim=2 400 565 2, clip,scale=0.5]{mp4c-compiler}
+    \caption{Compiling $\mu$ SA programs}
+\label{fig:compiling-msa-programs}
+\end{figure}
+Programmers can include files containing definitions of types (e.g., struct types of in and out parameters) used in run-time interfaces of packages in libraries.
+$\mu$P4C compiler generates either source P4 code for the specified architecture or executable with architecture-specific CP APIs.
 
 \section{Micro Switch Architecture}
 \label{section:micro-switch-architecture}
@@ -393,7 +411,7 @@ We consider $\mu$P4 as a logical target device with an abstract packet-processin
 We model every $\mu$P4-program as a black-box, micro-switch, that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
 The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of the programs.
 $\mu$P4 executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
-\begin{figure}
+\begin{figure}[h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
     \caption{Packet-Processing model of $\mu$P4 programs}
@@ -437,7 +455,7 @@ Every incoming packet is parsed and validated by the parser, if parser terminate
 If the execution-control reaches till the end of the micro control block, packet is processed by the deparser block.
 Orchestration pipeline has only a control block, named orchestration.
 
-$\mu$ SA declares thress interface types, Unicast, Multicast and Orchestration.
+
 \begin{lstlisting}[frame=none]
 Unicast<H,M,I,O,IO>
   (pkt p, inout sm_t sm, es_t es, in I i_param, out O o_param, inout IO io_param) // Runtime Params
@@ -449,6 +467,7 @@ Orchestration<I,O>
   (in_buf<I> ib, out_buf<O> ob)
   (Con<I,O> c);
 \end{lstlisting}
+$\mu$ SA declares thress interface types, Unicast, Multicast and Orchestration.
 Programmers can implement programmable blocks declared for Micro pipeline to create custom package types having run-time signature same as unicast or multicast interface.
 Similarly, Orchestration interface is associated with Orchestration pipeline.
 The \texttt{pkt} is an extern type representing packet. 
@@ -635,7 +654,7 @@ $\mu$P4 allows to use \texttt{set\_mc\_group} and the two-argument \texttt{apply
 The \texttt{mc\_engine} has two more methods, \texttt{set\_buf} and four-arguments \texttt{apply}, to facilitate invocation of user-defined packages with multicast interface in orchestration pipeline.
 We describe their usage with logical buffer externs in Section \ref{subsubsection:logical-buffer-extern}.
 
-\begin{figure}
+\begin{figure}[!h]
 \begin{lstlisting}[frame=none]
 struct out_t { /* empty */ }
 control mc(pkt p, hdr_t h, sm_t s, es_t e, mc_buf<hdr_t, out_t> hb) {
@@ -675,7 +694,7 @@ In addition, the extern provides \texttt{to\_in\_buf} to move the elements of th
 An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
 
 
-\begin{figure}
+\begin{figure}[!h]
  \begin{lstlisting}[frame=none]
 struct e_t {};  struct h_t { ... };
 prog(pkt, inout sm_t, es_t, out h_t);
@@ -802,7 +821,7 @@ For the example shown in Figure \ref{fig:sequential-callees}, the byte-stack siz
 
 \subsection{Parser To Match-Action Table}
 \label{subsection:parser-to-match-action-table}
-\begin{figure*}
+\begin{figure*}[!ht]
     \begin{subfigure}[b]{0.25\linewidth}
         \centering
         \includegraphics[trim=4 270 596 0, clip,scale=0.37]{parser-transformation-example}    
@@ -1081,7 +1100,7 @@ section.
 \appendix
 \section{Declarations in $\mu$ SA}
 \label{appendix:section:micro-switch-architecture}
-\begin{figure}
+\begin{figure}[h]
 \begin{lstlisting}[frame=none]
 extern pkt {
   // byte array representation
@@ -1103,7 +1122,7 @@ extern extractor {
 \label{fig:pkt-externs}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
 \begin{lstlisting}[frame=none]
 enum meta_t {
   INGRESS_TIMESTAMP,
@@ -1120,7 +1139,7 @@ extern es_t {
 \label{fig:msa-egress-spec-extern}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
 \begin{lstlisting}[frame=none]
 extern in_buf<I> {
   // used by architecture only
@@ -1131,7 +1150,6 @@ extern out_buf<O> {
   void to_in_buf(in_buf<O>);
   void merge(out_buf<O>);
 }
-
 extern mc_buf<H, O> {
   enqueue(pkt, in H, in sm_t, es_t, in O);
 }
@@ -1141,7 +1159,7 @@ extern mc_buf<H, O> {
 \end{figure}
 % dequeue(pkt, out H, out sm_t, es_t, out O);
 
-\begin{figure}
+\begin{figure}[h]
 \begin{lstlisting}[frame=none]
 // This can only be used in control block of multicast interface
 extern mc_engine {
@@ -1158,7 +1176,7 @@ extern mc_engine {
 \end{figure}
 
 
-\begin{figure}
+\begin{figure}[h]
 \begin{lstlisting}[frame=none]
 // Unicast
 Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, in I in_param, out O out_param, inout IO inout_param) {
@@ -1181,6 +1199,8 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 \caption{Programmable Blocks for Interfaces}
 \label{fig:programmable-blocks-for-interfaces}
 \end{figure}
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
