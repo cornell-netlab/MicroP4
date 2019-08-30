@@ -229,7 +229,7 @@ specify forwarding behavior. However, we could use \texttt{l2}
 with any other routing scheme (e.g., IPv6, MPLS, etc.) to obtain a
 valid program.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{lstlisting}[frame=none]
 // l2
 parser P(packet_in pin, out hdr_t ph) {
@@ -257,7 +257,7 @@ control D(packet_out po, in hdr_t ph) {
 \label{fig:l2.p4}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{lstlisting}[frame=none]
 // ipv4
 struct meta_t { bit<16> type; }
@@ -342,15 +342,17 @@ This paper makes the following contributions.
 
 \section{Data Plane Programming using P4}
 In this section, we study the ecosystem and workflow of data plane programming using P4 to understand challenges involved in enabling reuse of packet-processing code libraries.
-P4 is developed to specify data plane functionality of software or hardware target devices (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).
-To support data plane programming of variety of target devices, the ecosystem expects manufacturers to provide a framework to program the target devices.
-The framework includes an architecture definition in P4 and compiler for the target.
-The architecture description (e.g., v1model.p4 \cite{v1model.p4} for simple\_switch) of a target specifies data plane pipeline comprising a set of programmable and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
-For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in v1model \cite{simple_switch.md} and Portable Switch Architecture (PSA) \cite{psa}, respectively.
-To program the packet processing pipeline of a device, P4 programmers provide implementation of the declared programmable blocks in its architecture.
-This makes P4 programs tightly coupled with the architecture of the target devices.
 
-\begin{figure}[h]
+P4 is developed to specify data plane functionality of software or hardware target devices (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).
+To support variety of target devices, the ecosystem expects manufacturers to provide a framework to program the target devices using P4.
+The framework includes an architecture definition written in P4 and a P4 compiler for the target.
+The architecture (e.g., v1model.p4 \cite{v1model.p4} for simple\_switch) of a target specifies data plane pipeline model comprising a set of programmable and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
+For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in PSA \cite{psa} and v1model \cite{simple_switch.md}, respectively.
+
+P4 programmers provide P4 code for the programmable blocks in the pipeline model described in the architecture of the target device.
+This makes P4 programs tightly coupled with the data plane model of the target devices. 
+Therefore, making them impossible to reuse on target devices with different models. 
+\begin{figure}[ht]
     \begin{subfigure}[b]{\linewidth}
         \centering
         \includegraphics[trim=2 460 380 0, clip,scale=0.37]{v1model-pipeline.pdf}
@@ -367,35 +369,36 @@ This makes P4 programs tightly coupled with the architecture of the target devic
 \label{fig:real-target-architectures}
 \end{figure}
 
-Heterogeneity in programmable blocks within an architecture makes reuse of code libraries for the same device extremely difficult.
-Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
+Moreover, architectures expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and \cite{psa}.
+This increases complexity in data plane model and coupling between P4 programs with the architecture.
+P4 code with such architecture-specific functions can not be reused on devices with different architectures.
+% In turn, adding different abstract-machine to program packet-path and data flow across the blocks and further increasing heterogeneity in the model of a data plane program.
+% \hse{TODO:For example, resubmit or recirculate calls are like event trigger.. effects happen after the block}
+
+
+Even for the same target, heterogeneous packet-processing blocks and hardware-level details in the architecture pose more challenges to reuse code for incremental development.
+Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
 Control blocks are expressed using a sub-language modelling imperative control flow.
 Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
-Packet processing logic in P4 programs are partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
-Therefore, a control block can not instantiate and execute parser blocks. Similarly, deparser block can not invoke and execute parser blocks.
-Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} \ref{fig:ipv4.p4}
+Packet processing logic in P4 programs is partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
+Incompatibility among abstract-machines, the absence of homogeneous one and fragmented execution flow in data plane hinders the natural reuse of packet-processing code.
+Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} Figure \ref{fig:ipv4.p4}.
 
-
-Moreover, architectures expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and \cite{psa}.
-In turn, increasing complexity in packet-processing architecture model of the architecture.
-% In turn, adding different abstract-machine to program packet-path and data flow across the blocks and further increasing heterogeneity in the model of a data plane program.
-<<For example, resubmit or recirculate calls are like event trigger.. effects happen after the block>>
-
-Finally, the existing architecture models expose target-specific constraints to programmers.
-E.g., output port can not be changed in egress control block, scope of some intrinsic metadata limited to specific programmable blocks, etc.,  
+Finally, architectures expose hardware-level constraints of their targets to programmers.
+For example, $(1)$ output port can not be changed in a given programmable block, $(2)$ scope of some intrinsic metadata limited to specific programmable blocks, etc..
 Programmers implement packet-processing logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
 
-\hse{TODO: smooth end}
+\hse{In summary, }
 
 \section{$\mu$P4}
 \hse{TODO: overview }
 \subsection*{Compiling $\mu$P4 Programs}
 $\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
 If a program does not contain a package instance named main, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{fig:compiling-msa-programs}).
-It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4run-time} files.
+It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
 % $\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
 % The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
-\begin{figure}[h]
+\begin{figure}[ht]
     \centering
     \includegraphics[trim=2 400 565 2, clip,scale=0.5]{mp4c-compiler}
     \caption{Compiling $\mu$ SA programs}
@@ -431,7 +434,7 @@ Micro pipeline comprises of a Parser, a Micro control and a Deparser block.
 $\mu$ SA does not allow conditional statements in deparser blocks of its pipelines.
 For each pipeline type, it exposes one or more interface types.
 Each interface type comprises of a set of declarations for programmable blocks and run-time signature.
-\begin{figure}
+\begin{figure}[ht]
     \centering
     \begin{subfigure}{0.59\linewidth}
         \centering
@@ -480,7 +483,7 @@ Next, we give overview of logical externs defined in $\mu$ SA along with their e
 % The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
 
 % Some fields are not mutable, however $\mu$ SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
-\begin{figure*}[!ht]
+\begin{figure*}[ht]
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none]
 // ipv6.p4
@@ -591,7 +594,7 @@ The second parameter with \texttt{out} direction provides value of the field.
 % If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution-control path, $\mu$P4C raises a compile-time error.
 
 
-\begin{figure}[!ht]
+\begin{figure}[!h]
 \begin{subfigure}[b]{\linewidth}
  \begin{lstlisting}[frame=none]
 // srv6.p4
