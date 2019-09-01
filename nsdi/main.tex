@@ -341,7 +341,7 @@ This paper makes the following contributions.
 
 
 \section{Data Plane Programming using P4}
-In this section, we study the ecosystem and workflow of data plane programming using P4 to understand challenges involved in enabling reuse of packet-processing code libraries.
+In this section, we briefly explain the ecosystem of data plane programming using P4 to understand challenges involved in enabling reuse of packet-processing code libraries.
 
 P4 is developed to specify data plane functionality of software or hardware target devices (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).
 To support variety of target devices, the ecosystem expects manufacturers to provide a framework to program the target devices using P4.
@@ -349,8 +349,8 @@ The framework includes an architecture definition written in P4 and a P4 compile
 The architecture (e.g., v1model.p4 \cite{v1model.p4} for simple\_switch) of a target specifies data plane pipeline model comprising a set of programmable and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
 For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in PSA \cite{psa} and v1model \cite{simple_switch.md}, respectively.
 
-P4 programmers provide P4 code for the programmable blocks in the pipeline model described in the architecture of the target device.
-This makes P4 programs tightly coupled with the data plane model of the target devices. 
+Programmers provide P4 code for the programmable blocks in the pipeline model described in the architecture of the target device.
+Though this approach allows to support different types of target devices, but it makes P4 programs tightly coupled with the data plane model of the target devices. 
 Therefore, making them impossible to reuse on target devices with different models. 
 \begin{figure}[ht]
     \begin{subfigure}[b]{\linewidth}
@@ -372,9 +372,7 @@ Therefore, making them impossible to reuse on target devices with different mode
 Moreover, architectures expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and \cite{psa}.
 This increases complexity in data plane model and coupling between P4 programs with the architecture.
 P4 code with such architecture-specific functions can not be reused on devices with different architectures.
-% In turn, adding different abstract-machine to program packet-path and data flow across the blocks and further increasing heterogeneity in the model of a data plane program.
 % \hse{TODO:For example, resubmit or recirculate calls are like event trigger.. effects happen after the block}
-
 
 Even for the same target, heterogeneous packet-processing blocks and hardware-level details in the architecture pose more challenges to reuse code for incremental development.
 Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
@@ -388,11 +386,15 @@ Finally, architectures expose hardware-level constraints of their targets to pro
 For example, $(1)$ output port can not be changed in a given programmable block, $(2)$ scope of some intrinsic metadata limited to specific programmable blocks, etc..
 Programmers implement packet-processing logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
 
-\hse{In summary, }
+Essentially, current ecosystem not only creates tight coupling between architectures and programs but also delegates responsibility of P4 code allocation to appropriate packet-processing unit to programmers.
 
-\section{$\mu$P4}
+To enable easy reuse of code, it is mandatory $(1)$ to have higher level of abstraction for data plane pipeline in architectures and $(2)$ to unify abstract-machines for various packet-processing phase.
+
+
+\section{MicroP4}
+
 \hse{TODO: overview }
-\subsection*{Compiling $\mu$P4 Programs}
+\subsection*{Compiling MicroP4 Programs}
 $\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
 If a program does not contain a package instance named main, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{fig:compiling-msa-programs}).
 It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
@@ -400,7 +402,8 @@ It also generates architecture-independent control-plane APIs, P4Runtime \cite{p
 % The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
 \begin{figure}[ht]
     \centering
-    \includegraphics[trim=2 400 565 2, clip,scale=0.5]{mp4c-compiler}
+    \includegraphics[trim=10 440 666 0, clip,scale=0.5]{mp4c-frontend.pdf}
+    \includegraphics[trim=3 440 640 0, clip,scale=0.5]{mp4c-compiler}
     \caption{Compiling $\mu$ SA programs}
 \label{fig:compiling-msa-programs}
 \end{figure}
@@ -727,6 +730,28 @@ control validate(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
 \label{fig:multi-packet-processing}
 \end{figure}
 
+
+\begin{figure}[!h]
+\begin{lstlisting}[frame=none]
+struct e_t {};
+sflow(pkt, inout sm_t, es_t);
+control con(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
+  pkt ps;  es_t es;  sm_t ss;
+  in_buf<e_t> ib;
+  apply {
+    ps.copy_from(p);
+    es.copy_from(e); ss = s;
+    sflow.apply(ps, ss, es); 
+    ob.enqueue(ps, ss, es);
+    ob.enqueue(p, s, e);
+    ob.to_in_buf(ib);
+    router.apply(ib, ob);
+  }
+}
+\end{lstlisting}
+\caption{Multi-Packet Processing II}
+\label{fig:multi-packet-processing-II}
+\end{figure}
 
 
 \section{Compiler}
