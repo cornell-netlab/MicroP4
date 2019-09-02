@@ -374,58 +374,79 @@ This increases complexity in data plane model and coupling between P4 programs w
 P4 code with such architecture-specific functions can not be reused on devices with different architectures.
 % \hse{TODO:For example, resubmit or recirculate calls are like event trigger.. effects happen after the block}
 
-Even for the same target, heterogeneous packet-processing blocks and hardware-level details in the architecture pose more challenges to reuse code for incremental development.
+Even for the same target, heterogeneous packet-processing blocks and hardware-level details in the architecture pose more challenges to reuse code for modular programming.
 Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
 Control blocks are expressed using a sub-language modelling imperative control flow.
 Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
 Packet processing logic in P4 programs is partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
-Incompatibility among abstract-machines, the absence of homogeneous one and fragmented execution flow in data plane hinders the natural reuse of packet-processing code.
+Incompatibility among abstract-machines, the absence of homogeneous one and fragmented execution flow in data plane hinders development of code modules with interfaces to reuse P4 code.
+% the natural reuse of packet-processing code.
 Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} Figure \ref{fig:ipv4.p4}.
 
 Finally, architectures expose hardware-level constraints of their targets to programmers.
 For example, $(1)$ output port can not be changed in a given programmable block, $(2)$ scope of some intrinsic metadata limited to specific programmable blocks, etc..
 Programmers implement packet-processing logic conforming to constraints, architecture model and semantics of actions and extern functions of the target device.
 
-Essentially, current ecosystem not only creates tight coupling between architectures and programs but also delegates responsibility of P4 code allocation to appropriate packet-processing unit to programmers.
+% Essentially, current ecosystem not only creates tight coupling between architectures and programs but also delegates responsibility of code allocation to programmers.
 
-To enable easy reuse of code, it is mandatory $(1)$ to have higher level of abstraction for data plane pipeline in architectures and $(2)$ to unify abstract-machines for various packet-processing phase.
+In summary, there are two main challenges for easy reuse of code with existing data plane programming ecosystem.
+$(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P4 code from target devices and $(2)$ Absence of homogeneous abstract-machines or mechanism for seamless transition across heterogeneous abstract-machines involved in various packet-processing phases.
 
 
 \section{MicroP4}
-
-\hse{TODO: overview }
-\subsection*{Compiling MicroP4 Programs}
-$\mu$P4C provides well-known mechanism, compile and link, to generate executable code.
-If a program does not contain a package instance named main, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{fig:compiling-msa-programs}).
-It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
-% $\mu$P4C's front-end generates P4Runtime files containing only APIs for match-action tables in the program.
-% The front-end of $\mu$P4C resolves used-package types with their declarations or definitions.
-\begin{figure}[ht]
-    \centering
-    \includegraphics[trim=10 440 666 0, clip,scale=0.5]{mp4c-frontend.pdf}
-    \includegraphics[trim=3 440 640 0, clip,scale=0.5]{mp4c-compiler}
-    \caption{Compiling $\mu$ SA programs}
-\label{fig:compiling-msa-programs}
-\end{figure}
-Programmers can include files containing definitions of types (e.g., struct types of in and out parameters) used in run-time interfaces of packages in libraries.
-$\mu$P4C compiler generates either source P4 code for the specified architecture or executable with architecture-specific CP APIs.
-
-\section{Micro Switch Architecture}
-\label{section:micro-switch-architecture}
-$\mu$P4 is designed to provides logical abstraction for data plane pipelines to enable code reuse across different real target devices without compromising expressiveness and packet-processing features.
-We consider $\mu$P4 as a logical target device with an abstract packet-processing model.
-We model every $\mu$P4-program as a black-box, micro-switch, that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
-The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of the programs.
+$\mu$P4 is a logical and intermediate target with an abstract packet-processing model.
+It is designed to provide a higher-level logical abstraction for data plane pipelines to enable code reuse agnostic of architectures of target devices without compromising expressiveness and packet-processing features.
+Also, it allows to write P4 code modules implementing fine-grained packet-processing functionality, to define interfaces and to hide implementation, enabling modular programming.
+$\mu$P4 models every program as a black-box, \emph{Micro-Switch} ($\mu$s), that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
+The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of $\mu$-programs.
 $\mu$P4 executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
 \begin{figure}[h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
-    \caption{Packet-Processing model of $\mu$P4 programs}
+    \caption{Packet-Processing model of $\mu$s-programs}
     \label{fig:mp4-packet-processing-model}
 \end{figure}
-$\mu$P4 fetches an element form a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
+$\mu$P4 fetches an element from a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
 Every element of the buffers comprises a packet bit-stream, intrinsic metadata (e.g., ingress\_port, egress\_port, packet\_length etc., ) and input arguments or output arguments associated with the packet.
-Using this notion of program execution, we define program interfaces and packet-processing pipelines for $\mu$P4 as a port of its data plane architecture, $\mu$ SA.
+
+
+We define a Micro-Switch Architecture ($\mu$ SA) that defines data plane model with multiple logical pipelines to develop $\mu$s-programs.
+$\mu$ SA declares intrinsic metadata and logical externs to facilitate all the packet-processing features that are normally supported by the architectures of real targets.
+Using constructs declared in $\mu$ SA, programmers can write modules containing one or more $\mu$s-programs.
+Each $\mu$s-program is associated with a generic run-time interface declared in $\mu$ SA.
+The run-time interfaces enable easy reuse and hide implementation detail of the $\mu$s-programs, facilitating modular and incremental development.
+
+We design and develop MicroP4 Compiler ($\mu$P4C) to compile $\mu$s-programs.
+Programmer can use $\mu$P4C to $(1)$ Create compiled libraries of $\mu$s-programs along with their control plane APIs, $(2)$ Link all the $\mu$s-programs used in the $\mu$s-program of main instance and transform the program for a specified architecture of a real-target.
+If the given source file does not contain an instance named, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
+It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
+If the source file contains \emph{main} instance, it links all the supplied libraries and transforms the $\mu$s-program of main instance for a given architecture (Figure \ref{subfig:compilation-to-target-architecture}).
+\begin{figure}[h]
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=10 440 666 0, clip,scale=0.5]{mp4c-frontend.pdf}
+         \caption{Module Compilation}
+         \label{subfig:module-compilation}
+    \end{subfigure}
+    \begin{subfigure}{\linewidth}
+        \centering
+        \includegraphics[trim=3 440 640 0, clip,scale=0.5]{mp4c-compiler}
+        \caption{Compilation to a Target Architecture}
+        \label{subfig:compilation-to-target-architecture}
+    \end{subfigure}
+    \caption{Compiling $\mu$s-programs}
+\end{figure}
+Programmers can include files containing definitions of types (e.g., struct types of in and out parameters) used in run-time interfaces of $\mu$s-program in libraries.
+$\mu$P4C compiler generates either source P4 code for the specified architecture or an executable with architecture-specific CP APIs.
+
+
+$\mu$P4C homogenizes ... \hse{CONT}
+
+
+
+\section{Micro Switch Architecture}
+\label{section:micro-switch-architecture}
+Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define program interfaces and packet-processing pipelines for $\mu$P4 as a part of its data plane architecture, $\mu$ SA.
 In addition, $\mu$ SA defines a set of logical externs providing various packet-processing constructs available in fixed-function blocks (e.g., packet duplication) of real-target devices' pipelines.
 
 
