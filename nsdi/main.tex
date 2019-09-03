@@ -378,7 +378,7 @@ Even for the same target, heterogeneous packet-processing blocks and hardware-le
 Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
 Control blocks are expressed using a sub-language modelling imperative control flow.
 Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
-Packet processing logic in P4 programs is partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
+Packet-processing logic in P4 programs is partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
 Incompatibility among abstract-machines, the absence of homogeneous one and fragmented execution flow in data plane hinders development of code modules with interfaces to reuse P4 code.
 % the natural reuse of packet-processing code.
 Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} Figure \ref{fig:ipv4.p4}.
@@ -410,13 +410,16 @@ $\mu$P4 fetches an element from a logical input buffer queue, executes the progr
 Every element of the buffers comprises a packet bit-stream, intrinsic metadata (e.g., ingress\_port, egress\_port, packet\_length etc., ) and input arguments or output arguments associated with the packet.
 
 
-We define a Micro-Switch Architecture ($\mu$ SA) that defines data plane model with multiple logical pipelines to develop $\mu$s-programs.
-$\mu$ SA declares intrinsic metadata and logical externs to facilitate all the packet-processing features that are normally supported by the architectures of real targets.
+We design a Micro-Switch Architecture ($\mu$ SA) that defines data plane model with multiple logical pipelines to develop $\mu$s-programs.
+$\mu$ SA data plane pipelines comprise of only programmable packet-processing blocks, parser, match-action control blocks and deparser. 
+It declares intrinsic metadata and logical externs to facilitate all the packet-processing features, e.g., multicast, cloning, not part of P4 language but supported by architectures of real-targets. 
+Programmers can use the logical externs in $\mu$ SA pipelines to use such packet-processing features.
 Using constructs declared in $\mu$ SA, programmers can write modules containing one or more $\mu$s-programs.
-Each $\mu$s-program is associated with a generic run-time interface declared in $\mu$ SA.
+Each $\mu$s-program specializes a generic run-time interface declared in $\mu$ SA.
 The run-time interfaces enable easy reuse and hide implementation detail of the $\mu$s-programs, facilitating modular and incremental development.
+Using logical data plane model of $\mu$ SA, programmers can develop modular P4 code which is specific to $\mu$ SA.
+We design and develop MicroP4 Compiler ($\mu$P4C) to compile and transform $\mu$s-program for architectures of real target devices, making $\mu$s-program agnostic of architectures of real-targets.
 
-We design and develop MicroP4 Compiler ($\mu$P4C) to compile $\mu$s-programs.
 Programmer can use $\mu$P4C to $(1)$ Create compiled libraries of $\mu$s-programs along with their control plane APIs, $(2)$ Link all the $\mu$s-programs used in the $\mu$s-program of main instance and transform the program for a specified architecture of a real-target.
 If the given source file does not contain an instance named, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
 It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
@@ -436,11 +439,17 @@ If the source file contains \emph{main} instance, it links all the supplied libr
     \end{subfigure}
     \caption{Compiling $\mu$s-programs}
 \end{figure}
-Programmers can include files containing definitions of types (e.g., struct types of in and out parameters) used in run-time interfaces of $\mu$s-program in libraries.
+Programmers can include files containing definitions of data types (e.g., struct types of in and out parameters) used in run-time interfaces of $\mu$s-program in libraries.
 $\mu$P4C compiler generates either source P4 code for the specified architecture or an executable with architecture-specific CP APIs.
 
 
-$\mu$P4C homogenizes ... \hse{CONT}
+$\mu$P4C homogenizes abstract-machines of programmable blocks (parser, match-action control blocks, deparser) declared for $\mu$ SA pipeline.
+Programmers can use sub-languages of P4 to program parser and control blocks to describe $\mu$s-programs, $\mu$P4C transforms parser and deparser blocks into match-action control blocks.
+This transformation unifies the abstract-machines for packet-processing allowing seamless transfer of execution control across $\mu$s-programs.
+$\mu$P4C perform static analysis to estimate possible packet sizes required to process all the transformed $\mu$s-programs in match-action control blocks of target architecture's pipeline.
+$\mu$P4C synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
+Next, $\mu$P4C translates intrinsic metadata and logical externs into the target architecture-specific constructs.
+It allocates and schedules code of transformed $\mu$s-programs to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
 
 
 
@@ -494,7 +503,7 @@ Orchestration<I,O>
   (in_buf<I> ib, out_buf<O> ob)
   (Con<I,O> c);
 \end{lstlisting}
-$\mu$ SA declares thress interface types, Unicast, Multicast and Orchestration.
+$\mu$ SA declares threes interface types, Unicast, Multicast and Orchestration.
 Programmers can implement programmable blocks declared for Micro pipeline to create custom package types having run-time signature same as unicast or multicast interface.
 Similarly, Orchestration interface is associated with Orchestration pipeline.
 The \texttt{pkt} is an extern type representing packet. 
@@ -782,8 +791,6 @@ The synthesized parser accepts every packet with length greater than the minimum
 For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
 Programs may increase or decrease size of packets, therefore, the size of byte-stack can be greater than extract-length.
 The synthesized deparser emits all valid one-byte headers from the byte-stack.
-
-
 
 
 We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
