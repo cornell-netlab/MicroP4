@@ -238,7 +238,7 @@ parser P(packet_in pin, out hdr_t ph) {
   state start { pin.extract(ph.eth); }
 }
 control Pipe(inout hdr_t ph, inout sm_t sm, 
-             in bit<16> nexthop_id) {
+             in bit<16> nh_id_id) {
   action drop () {}           
   action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
     ph.eth.dstMac = dest_mac;
@@ -246,7 +246,7 @@ control Pipe(inout hdr_t ph, inout sm_t sm,
     sm.out_port = port;    
   }
   table forward_tbl {
-    key = { nexthop_id : exact; } 
+    key = { nh_id_id : exact; } 
     actions = { process; drop; }
   }
   apply { forward_tbl.apply(); }
@@ -274,10 +274,10 @@ parser P(packet_in pin, out hdr_t ph, inout meta_t m) {
     transition accept; 
   }
 }
-control Pipe(inout hdr_t ph, out bit<16> nexthop_id, inout sm_t sm) {
+control Pipe(inout hdr_t ph, out bit<16> nh_id_id, inout sm_t sm) {
   action process(bit<16> nh) {
     ph.ipv4.ttl = ph.ipv4 - 1;
-    nexthop_id = nh;// setting out param
+    nh_id_id = nh;// setting out param
   }
   table ipv4_lpm_tbl {
     key = { ph.ipv4.dstAddr : lpm } 
@@ -453,7 +453,7 @@ $\mu$P4C synthesizes P4 code for parser and deparer blocks of target architectur
 Next, $\mu$P4C translates intrinsic metadata and logical externs into the target architecture-specific constructs.
 It allocates and schedules code of transformed $\mu$s-programs to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
 
-
+\hse{TODO: mention P4 language extension: about user define packages, $\mu$s-program is a package type}
 
 \section{Micro Switch Architecture}
 \label{section:micro-switch-architecture}
@@ -575,7 +575,7 @@ Orchestration<I,O>
   (in_buf<I> ib, out_buf<O> ob)
   (Con<I,O> c);
 \end{lstlisting}
-$\mu$ SA declares threes interface types, Unicast, Multicast and Orchestration.
+$\mu$ SA declares threes interface types, \texttt{Unicast}, \texttt{Multicast} and \texttt{Orchestration}.
 Programmers can implement programmable blocks declared for Micro pipeline to create custom package types having run-time signature same as unicast or multicast interface.
 Similarly, Orchestration interface is associated with Orchestration pipeline.
 Figure \ref{fig:micro-switch-architecture} shows declarations of types used in the interfaces.
@@ -589,75 +589,7 @@ Next, we give overview of logical externs defined in $\mu$ SA along with their e
 % The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
 
 % Some fields are not mutable, however $\mu$ SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
-\begin{figure*}[ht]
-\noindent \begin{minipage}[t]{.50\textwidth}
-\begin{lstlisting}[frame=none, escapechar=!]
-// ipv6.p4
-header ipv6_h { ... }; 
-struct ipv6_ht { ipv6_h ip };
-parser P(extractor ex, pkt p, out ipv6_ht h) {
-  state start {
-    ex.extract(p, h.ip); transition accept;
-  }
-}
-control C(pkt p, inout ipv6_ht h, inout sm_t sm, es_t es, out bit<16> nexthop) {
-  action process(bit<16> nh) {
-    h.ip.hopLimit = h.ip.hopLimit - 1;
-    nexthop = nh;// setting out param
-  }
-  table ipv6_lpm_tbl {
-    key = { h.ip.dstAddr : lpm } 
-    actions = { process; }
-  }
-  apply { ipv6_lpm_tbl.apply(); }
-}
-control D(emitter em, pkt p, in ipv6_ht h) {
-  apply { em.emit(p, h.ip); }
-}
-// router.p4
-// run-time interfaces of callee programs
-!\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, out bit<16> nexthop);
-!\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
-    out bit<16> nexthop);
-!\colorbox{mygray}{mpls}!(pkt p, inout sm_t sm, es_t es);
-\end{lstlisting}
-\end{minipage}\hspace{-4pt}\vline
-\hfill\begin{minipage}[t]{.50\textwidth}
-\begin{lstlisting}[frame=none, escapechar=!]
-parser P(extractor ex, pkt p, out hdr_t h) {
-  state start {
-    ex.extract(p, h.eth); transition accept;
-  }
-}
-control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
-  bit<16> nh_id;
-  !\colorbox{mygray}{ipv4() ipv4\_i; ipv6() ipv6\_i; mpls() mpls\_i;}!
-  action drop () {}           
-  action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
-    h.eth.dstMac = dmac; h.eth.srcMac = smac;
-    es.set_out_port(port);
-  }
-  table forward_tbl {
-    key = { nh_id : exact; } 
-    actions = { forward; drop; }
-  }
-  apply {
-    switch (h.eth.etherType) {
-      0x0800:!\colorbox{mygray}{ipv4\_i.apply(p, sm, es, nh\_id);}!
-      0x86DD:!\colorbox{mygray}{ipv6\_i.apply(p, sm, es, nh\_id);}!
-      0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
-    }
-    forward_tbl.apply(); 
-  }
-}
-control D(emitter em, pkt p, in hdr_t h) {
-  apply { em.emit(p, h.eth); }
-}
-\end{lstlisting}
-\end{minipage}
-\caption{Modular Router using $\mu$ SA}
-\label{fig:modular-router}
-\end{figure*}
+
 
 \subsection{Logical Externs}
 \label{subsection:logical-externs}
@@ -692,6 +624,84 @@ The second parameter with \texttt{out} direction provides value of the field.
 % If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution control path, $\mu$P4C raises a compile-time error.
 
 
+
+\begin{figure*}[!ht]
+\noindent \begin{minipage}[t]{.50\textwidth}
+\begin{lstlisting}[frame=none, escapechar=!]
+/* ipv6.p4 */
+header ipv6_h { ... }; 
+struct ipv6_ht { ipv6_h ip };
+parser P(extractor ex, pkt p, out ipv6_ht h) {
+  state start {
+    ex.extract(p, h.ip); transition accept;
+  }
+}
+control C(pkt p, inout ipv6_ht h, inout sm_t sm, es_t es, out bit<16> nh_id) {
+  action process(bit<16> nh) {
+    h.ip.hopLimit = h.ip.hopLimit - 1;
+    nh_id = nh;// setting out param
+  }
+  table ipv6_lpm_tbl {
+    key = { h.ip.dstAddr : lpm }
+    actions = { process; }
+  }
+  apply { ipv6_lpm_tbl.apply(); }
+}
+control D(emitter em, pkt p, in ipv6_ht h) {
+  apply { em.emit(p, h.ip); }
+}!{\subcaption[]{ipv6 $\mu$s-program}\label{subfig:ipv6}}!
+/* router.p4 */
+// Declarations of !{\color{commentcolor}{$\mu$s-programs}}!
+!\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, 
+    out bit<16> nh_id);
+!\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
+    out bit<16> nh_id);
+\end{lstlisting}% !\colorbox{mygray}{mpls}!(pkt p, inout sm_t sm, es_t es);
+\end{minipage}\hspace{-4pt}\vline
+\hfill\begin{minipage}[t]{.50\textwidth}
+\begin{lstlisting}[frame=none, escapechar=!]
+parser P(extractor ex, pkt p, out hdr_t h) {
+  state start {
+    ex.extract(p, h.eth); transition accept;
+  }
+}
+control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
+  !\colorbox{mygray}{bit<16> nh\_id; ipv4() ipv4\_i; ipv6() ipv6\_i;}!
+  action drop () {}           
+  action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
+    h.eth.dstMac = dmac; h.eth.srcMac = smac;
+    es.set_out_port(port);
+  }
+  table forward_tbl {
+    key = { nh_id : exact; } 
+    actions = { forward; drop; }
+  }
+  apply {
+    switch (h.eth.etherType) {
+      0x0800:!\colorbox{mygray}{ipv4\_i.apply(p, sm, es, nh\_id);}!
+      0x86DD:!\colorbox{mygray}{ipv6\_i.apply(p, sm, es, nh\_id);}!
+    }
+    forward_tbl.apply(); 
+  }
+}
+control D(emitter em, pkt p, in hdr_t h) {
+  apply { em.emit(p, h.eth); }
+}
+Router(P, C, D) main;
+\end{lstlisting}
+% 0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
+\subcaption[]{Router's main $\mu$s-program}\label{subfig:router-main}
+\end{minipage}
+\caption[]{Modular Router using $\mu$ SA \footnotemark}
+\label{fig:modular-router}
+\end{figure*}
+\footnotetext{The unused parameters in parser, control blocks and run-time signature of interface are skipped.}
+
+\subsubsection*{Example $\mu$s-programs}
+Figure \ref{fig:modular-router} shows a possible way to write modular data plane program for a router using interfaces and externs declared in $\mu$ SA.
+The code snippet in (Figure \ref{subfig:ipv6}) defines \texttt{ipv6} as a package by implementing blocks of the \texttt{Unicast} interface.\footnotemark[\value{footnote}]
+The \texttt{Router} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes appropriate layer-3 module(e.g., \texttt{ipv4 ipv6, mpls}) based on \texttt{etherType} in the header, shown in highlighted code.
+The layer-3 modules are invoked by supplying partial packet (without ethernet header) along with intrinsic metadata and other data (\texttt{nh\_id}) as arguments.
 \begin{figure}[!h]
 \begin{subfigure}[b]{\linewidth}
  \begin{lstlisting}[frame=none]
@@ -711,7 +721,7 @@ parser P(extractor e, pkt p, out srv_ht h) {
   state parse_srh { ... }
 }
 control C(pkt p, inout srv_ht h, inout sm_t sm, es_t es) {
-  apply { // copy appropriate segment address from h.sr to h.ipv6.destAddr}
+  apply { // copy next segment address from h.sr to h.ipv6.destAddr}
 }
 control D(emitter em, pkt p, in srv_ht h) {
   apply { 
@@ -720,13 +730,14 @@ control D(emitter em, pkt p, in srv_ht h) {
   }
 }
 \end{lstlisting}
-\caption{Source Routing Header Processing}
+\caption{srv6 $\mu$s-program to support IPv6 SRH}
+\label{subfig:srv6}
 \end{subfigure}
 \begin{subfigure}[b]{\linewidth}
  \begin{lstlisting}[frame=none, escapechar=!]
 apply {
   switch (h.eth.etherType) {
-    0x86DD :  { 
+    0x86DD : { 
       !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}!
       ipv6_i.apply(p, sm, es, nh_id);
     }
@@ -735,34 +746,52 @@ apply {
 }
 \end{lstlisting}
 \caption{Extending Modular Router}
+\label{subfig:extending-modular-router}
 \end{subfigure}
-\label{fig:multi-packe}
 \caption{Incremental Development}
+\label{fig:incremental-development}
 \end{figure}
+In the \texttt{Router} program, we can easily add support for yet another routing mechanism, SRv6, by independently developing a $\mu$s-program (Figure \ref{subfig:srv6}) processing IPv6 Segment Routing Header (SRH).
+Figure \ref{subfig:extending-modular-router} shows a portion of code from modular router (Figure \ref{subfig:router-main}) to integrate \texttt{srv6} program.
+We note that support for \texttt{srv6} is added without modifying $\mu$s-program of any other routing scheme.
+
 
 \subsubsection{Multicast Extern}
 \label{subsubsection:multicast-extern}
-$\mu$P4 allows programmers to configure packet replication at run-time using multicast extern.
-$\mu$ SA declares \texttt{mc\_engine} as an extern object with a set of methods.
-The \texttt{mc\_engine} can be instantiated inside control blocks of $\mu$P4 pipelines.
+$\mu$P4 allows programmers to configure packet replication at run-time using a multicast extern , \texttt{mc\_engine}, declared in $\mu$ SA.
+The \texttt{mc\_engine} can be instantiated inside control blocks of Micro pipelines implementing\texttt{Multicast} interface (Figure \ref{fig:multicast-example}).
+The control block of \texttt{Multicast} interface provides \texttt{mc\_buf} as one of the parameters to store copies of parsed headers, unparsed packet, intrinsic metadata and argument data related to the packet.
 Programmers can use \texttt{set\_mc\_group} method in actions or apply blocks to set a replication group for the packet.
-% Creating an instance of \texttt{mc\_engine} and using \texttt{set\_mc\_group} method only configure the instance of multicast engine.
-To create copies of the packet, programmers can use the two-arguments \texttt{apply} method which is analogous to fork system call in C. 
-The first argument provides an instance of \texttt{es\_t} with out port for the replica of the packet already set.
+To create copies of the packet, programmers can invoke the two-arguments \texttt{apply} method which is analogous to fork system call in C. 
+The first argument provides an instance of \texttt{es\_t} with out port already set for the replica of the packet.
 The second argument having \texttt{out} direction provides packet instance id to identify the replica.
 All the reachable program statements from the method call statement are executed by every replica.
-$\mu$P4 allows to use \texttt{set\_mc\_group} and the two-argument \texttt{apply} methods in control block of only Micro pipeline.
-The \texttt{mc\_engine} has two more methods, \texttt{set\_buf} and four-arguments \texttt{apply}, to facilitate invocation of user-defined packages with multicast interface in orchestration pipeline.
-We describe their usage with logical buffer externs in Section \ref{subsubsection:logical-buffer-extern}.
 
-\begin{figure}[!h]
-\begin{lstlisting}[frame=none]
+The \texttt{mc\_engine} has two more methods, \texttt{set\_buf} and four-arguments \texttt{apply}, to facilitate invocation of callees with multicast interface.
+For example, had \texttt{ipv4} and \texttt{ipv6} implemented using multicast interface, the \texttt{forward} table in the \texttt{Router} $\mu$s-program have to be applied on all the copies of partial packet.
+The caller (\texttt{Router}) can cascade multicast processing on partial packets.
+It can $(1)$ store the partial copies, generated by the callee, into an instance of \texttt{mc\_engine} using \texttt{set\_buf} and $(2)$ invoke the apply method to process each copy using subsequent statments). 
+
+\subsubsection{Logical Buffer Extern}
+\label{subsubsection:logical-buffer-extern}
+$\mu$ SA declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
+Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
+The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device $\mu$P4. 
+However, programmers can instantiate the extern and use its instances to pass as arguments to callee $\mu$s-programs.
+The \texttt{out\_buf} extern has methods, \texttt{enqueue} and \texttt{merge}, to store packets processed by callees.
+In addition, the extern provides \texttt{to\_in\_buf} to move the elements of the caller instance to the instance of \texttt{in\_buf} provided in the argument.
+The\texttt{mc\_buf} extern allows to store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
+An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
+\hse{TODO: text for Figure \ref{fig:multi-packet-processing} or \ref{fig:multi-packet-processing-II}}
+
+\begin{figure}[h]
+\begin{lstlisting}[frame=none, escapechar=!]
 struct out_t { /* empty */ }
-control mc(pkt p, hdr_t h, sm_t s, es_t e, mc_buf<hdr_t, out_t> hb) {
-  mc_engine mce;  PktInstId_t id; 
+control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
+  !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
   out_t  oa;
   action replicate(GroupId_t gid) {
-    mce.set_mc_group(gid);
+    !\colorbox{mygray}{mce.set\_mc\_group(gid);}!
   }
   table MulticastRouting{
     key = { h.ipv4.dstAddr : exact; } 
@@ -774,26 +803,15 @@ control mc(pkt p, hdr_t h, sm_t s, es_t e, mc_buf<hdr_t, out_t> hb) {
   }
   apply {
     MulticastRouting.apply();
-    mce.apply(es, id);//similar to fork in C
+    !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
     mac.apply();
     hb.enqueue(h, sm, es, oa);
   }
 }
 \end{lstlisting}
-\caption{Multicast Execution}
-\label{fig:multicast-execution}
+\caption{Multicast Example}
+\label{fig:multicast-example}
 \end{figure}
-
-\subsubsection{Logical Buffer Extern}
-\label{subsubsection:logical-buffer-extern}
-$\mu$ SA contains declarations of three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}, to facilitate programming using packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}.
-Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
-The \texttt{in\_buf} extern has \texttt{dequeue} method that is only used by architecture. 
-However, programmers can instantiate the extern and use its instances to pass as arguments to callee programs.
-The \texttt{out\_buf} extern has methods, \texttt{enqueue} and \texttt{merge}, to store packets processed by callees.
-In addition, the extern provides \texttt{to\_in\_buf} to move the elements of the caller instance to the instance of \texttt{in\_buf} provided in the argument.
-An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
-
 
 \begin{figure}[!h]
  \begin{lstlisting}[frame=none]
@@ -823,10 +841,7 @@ control validate(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
 \end{lstlisting}
 \caption{Multi-Packet Processing}
 \label{fig:multi-packet-processing}
-\end{figure}
 
-
-\begin{figure}[!h]
 \begin{lstlisting}[frame=none]
 struct e_t {};
 sflow(pkt, inout sm_t, es_t);
@@ -854,7 +869,7 @@ $\mu$P4C transforms parsers and deparsers of the main and callee programs into m
 It synthesizes new parser and deparser for the main program.
 The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
 For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
-Programs may increase or decrease size of packets, therefore, the size of byte-stack can be greater than extract-length.
+Programs may increase or decrease size of packets, therefore, the estimated size of byte-stack can be greater than extract-length.
 The synthesized deparser emits all valid one-byte headers from the byte-stack.
 
 
@@ -925,7 +940,7 @@ There are two control paths in the control block of callee1. One invalidates mpl
 A control path of the first callee removes the mpls header from the packet, thereby, decreasing the packet size by four bytes.
 The subsequent callee extracts eth, IPv6 and IPv4 headers from the packet.
 $\mu$P4C parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ the logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee program.
-\begin{figure}
+\begin{figure}[!h]
     \centering
     \includegraphics[trim=0 396 487 0, clip,scale=0.5]{sequential-callees}
     \caption{Multiple Callees in a control path}
