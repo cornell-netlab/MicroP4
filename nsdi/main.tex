@@ -396,7 +396,7 @@ $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P
 
 
 \section{MicroP4}
-$\mu$P4 is a logical and intermediate target with an abstract packet-processing model.
+$\mu$P4 is an intermediate logical target with an abstract packet-processing model.
 It is designed to provide a higher-level logical abstraction for data plane pipelines to enable code reuse agnostic of architectures of target devices without compromising expressiveness and packet-processing features.
 Also, it allows to write P4 code modules implementing fine-grained packet-processing functionality, to define interfaces and to hide implementation, enabling modular programming.
 $\mu$P4 models every program as a black-box, \emph{Micro-Switch} ($\mu$s), that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
@@ -413,14 +413,16 @@ Every element of the buffers comprises a packet bit-stream, intrinsic metadata (
 
 
 We design a Micro-Switch Architecture ($\mu$ SA) that defines data plane model with multiple logical pipelines to develop $\mu$s-programs.
+Each logical pipeline is associated with an interface declared in the architecture.
+Every interface specifies generic run-time parameters and declares programmable blocks required to be implemented for a pipeline.
 $\mu$ SA data plane pipelines comprise of only programmable packet-processing blocks, parser, match-action control blocks and deparser. 
-It declares intrinsic metadata and logical externs to facilitate all the packet-processing features, e.g., multicast, cloning, not part of P4 language but supported by architectures of real-targets. 
+In addition, $\mu$ SA declares intrinsic metadata and logical externs to facilitate all the packet-processing features, e.g., multicast, cloning, that are not part of P4 language but supported by architectures of real-targets. 
 Programmers can use the logical externs in $\mu$ SA pipelines to use such packet-processing features.
 Using constructs declared in $\mu$ SA, programmers can write modules containing one or more $\mu$s-programs.
-Each $\mu$s-program specializes a generic run-time interface declared in $\mu$ SA.
+Each $\mu$s-program specializes a generic interface.
 The run-time interfaces enable easy reuse and hide implementation detail of the $\mu$s-programs, facilitating modular and incremental development.
 Using logical data plane model of $\mu$ SA, programmers can develop modular P4 code which is specific to $\mu$ SA.
-We design and develop MicroP4 Compiler ($\mu$P4C) to compile and transform $\mu$s-program for architectures of real target devices, making $\mu$s-program agnostic of architectures of real-targets.
+We design and develop MicroP4 Compiler ($\mu$P4C) to compile and transform $\mu$s-program for architectures of real target devices, making $\mu$s-programs agnostic of architectures of real-targets.
 
 Programmer can use $\mu$P4C to $(1)$ Create compiled libraries of $\mu$s-programs along with their control plane APIs, $(2)$ Link all the $\mu$s-programs used in the $\mu$s-program of main instance and transform the program for a specified architecture of a real-target.
 If the given source file does not contain an instance named, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
@@ -445,15 +447,22 @@ Programmers can include files containing definitions of data types (e.g., struct
 $\mu$P4C compiler generates either source P4 code for the specified architecture or an executable with architecture-specific CP APIs.
 
 
-$\mu$P4C homogenizes abstract-machines of programmable blocks (parser, match-action control blocks, deparser) declared for $\mu$ SA pipeline.
-Programmers can use sub-languages of P4 to program parser and control blocks to describe $\mu$s-programs, $\mu$P4C transforms parser and deparser blocks into match-action control blocks.
+To write a $\mu$s-program, programmers need to define a custom P4 \texttt{package} type by implementing an interface for a logical pipeline.
+$\mu$P4C extends current P4 language and allows programmers to define \texttt{package} types, declare their instances and invoke them using the built-in \texttt{apply} method.
+This allows to hide implementation of package types and reuse them using run-time parameters of their interfaces.
+
+
+Programmers can use sub-languages of P4 for parser and control blocks to implement interfaces.
+$\mu$P4C.
+$\mu$P4C homogenizes abstract-machines of programmable blocks by transforming parser and deparser blocks into match-action control blocks.
 This transformation unifies the abstract-machines for packet-processing allowing seamless transfer of execution control across $\mu$s-programs.
+
+
 $\mu$P4C perform static analysis to estimate possible packet sizes required to process all the transformed $\mu$s-programs in match-action control blocks of target architecture's pipeline.
 $\mu$P4C synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
 Next, $\mu$P4C translates intrinsic metadata and logical externs into the target architecture-specific constructs.
 It allocates and schedules code of transformed $\mu$s-programs to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
 
-\hse{TODO: mention P4 language extension: about user define packages, $\mu$s-program is a package type}
 
 \section{Micro Switch Architecture}
 \label{section:micro-switch-architecture}
@@ -487,7 +496,9 @@ Each interface type comprises of a set of declarations for programmable blocks a
 \end{figure}
 Programmers can provide implementations of the interface types to create user-defined P4 package types.
 To implement an interface type, programmers need to implement all the programmable blocks of the interface type.
-Programmers can instantiate variable of user-defined package types and invoke the instances using \texttt{apply} built-in method similar to control blocks.
+Programmers can instantiate variable of user-defined package types and invoke the instances using built-in  \texttt{apply} method similar to control blocks.
+The \texttt{apply} method of package instance can be called by supplying arguments for run-time parameters of the interface implemented by the package type.
+
 Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution control is transferred to micro control block.
 If the execution control reaches till the end of the micro control block, packet is processed by the deparser block.
 Orchestration pipeline has only a control block, named orchestration.
@@ -567,13 +578,13 @@ extern void recirculate();
 \begin{lstlisting}[frame=none]
 Unicast<H,M,I,O,IO>
   (pkt p, inout sm_t sm, es_t es, in I i_param, out O o_param, inout IO io_param) // Runtime Params
-  (Par<H,M,I,O> p, Con<H,M,I,O,IO> c, Dep<H> d); // Programmable Blocks
+  {Par<H,M,I,O> p, Con<H,M,I,O,IO> c, Dep<H> d}; // Programmable Blocks
 Multicast<H,M,I,O>
   (pkt p, in sm_t sm, es_t es, in I i_param, out_buf<O> ob)
-  (Par<H,M,I> p, Con<H,M,I,O> c, Dep<H> d); 
+  {Par<H,M,I> p, Con<H,M,I,O> c, Dep<H> d}; 
 Orchestration<I,O>
   (in_buf<I> ib, out_buf<O> ob)
-  (Con<I,O> c);
+  {Con<I,O> c};
 \end{lstlisting}
 $\mu$ SA declares threes interface types, \texttt{Unicast}, \texttt{Multicast} and \texttt{Orchestration}.
 Programmers can implement programmable blocks declared for Micro pipeline to create custom package types having run-time signature same as unicast or multicast interface.
@@ -865,9 +876,9 @@ control con(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
 \end{figure}
 
 
-\section{Compiler}
-$\mu$P4C transforms parsers and deparsers of the main and callee programs into match-action control blocks.
-It synthesizes new parser and deparser for the main program.
+\section{MicroP4 Compiler}
+$\mu$P4C transforms parsers and deparsers of the main and callee package types into match-action control blocks.
+It synthesizes new parser and deparser for the main package.
 The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
 For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
 Programs may increase or decrease size of packets, therefore, the estimated size of byte-stack can be greater than extract-length.
@@ -875,84 +886,89 @@ The synthesized deparser emits all valid one-byte headers from the byte-stack.
 
 
 We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
-$\mu$P4C treats byte-stack as a packet and executes transformed parsers and deparsers in the match-action stages of the target's pipeline.
+$\mu$P4C executes transformed parsers and deparsers in the match-action stages using the byte-stack.
 For each program, $\mu$P4C creates metadata variables, called \texttt{field-variables} for the header fields used in the program's control block.
 The header fields are substituted with the metadata variables in control blocks of the program.
-$\mu$P4C discards types and instances of the headers of each program.
+$\mu$P4C discards types and instances of the headers of each package.
 $\mu$P4C synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
 \texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related \emph{valid} metadata variable.
 Execution of parsers in match-action stages copy values from the appropriate locations in the byte-stack to the variables.
 It also updates valid metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
 
 
-\hs{TODO: define Simple parser as a parser without stacks and variable-length header. \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
+\hs{TODO: say Simple parser is a parser without stacks and variable-length header. 
+Section \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. Section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
 
 
 \subsection{Extract Length and Byte-Stack Size}
 \label{subsection:extract-length-and-byte-stack-size}
-The symbolic execution recursively evaluates extract-length and byte-stack size of every callee program in every control path in the CFG of the caller's control block.
+As $\mu$P4 allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
+$\mu$P4C performs symbolic execution to evaluates extract-length and byte-stack size of every callee package in every control path in the CFG of the caller's control block.
+
+
 The symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph.
 For every path, it computes total number of bytes extracted by \texttt{extract} method call statements.
 The \texttt{extract} method call statements on a path are evaluated by increasing the number of extracted bytes by size of the header instance specified in the argument.
-We define the length of a path $x$ in the parse graph a program $a$'s parser, $lp_{a}(x)$, as total number of bytes extracted from the start to the accept state.
-And, the extract-length of a program $a$'s parser is defined as the longest path in its parse graph, as shown in (\ref{extract-length-parser}).
-Programs' extract-lengths also depend on the callees in their control blocks.
-For a program $a$'s control block, we define the extract-length, $lc_{a}(x)$, of a control path $x$ in the CFG of the control block as the maximum number of bytes required to process all the callees in the path.
-The extract-length of the program $a$'s control block is defined as longest path in the CFG (\ref{extract-length-control}).
-A program $a$'s extract-length, $\mathcal{E}l(a)$, is sum of extract-lengths of its parser and control block.
-It is necessary to discuss increase and decrease in packet size, before we explain our approach to estimate extract-length of a control path ($lc_{a}(x)$) and byte-stack size for a program.
+We define the length of a path $x$ in the parse graph a package $a$'s parser, $lp_{a}(x)$, as total number of bytes extracted from the start to the accept state.
+And, the extract-length of a package $a$'s parser is defined as the longest path in its parse graph, as shown in (\ref{extract-length-parser}).
+Programs' extract-lengths also depend on their callees in their control blocks.
+For a package $a$'s control block, we define the extract-length, $lc_{a}(x)$, of a control path $x$ as the maximum number of bytes required to process all the callees in the path.
+The extract-length of the package $a$'s control block is defined as longest path in the CFG (\ref{extract-length-control}).
 \begin{align}
 E_{p}(a)\; =& \; \max_{x}\left\{lp_{a}(x)\right\} \label{extract-length-parser} \\
 E_{c}(a)\; =& \; \max_{x}\left\{lc_{a}(x)\right\} \label{extract-length-control} \\
 \mathcal{E}l(a)\; =& \; E_{p}(a) + E_{c}(a) \label{extract-length-program}
 \end{align}
+A package $a$'s extract-length, $\mathcal{E}l(a)$, is sum of extract-lengths of its parser and control block.
+It is necessary to discuss increase and decrease in packet size, before we explain our approach to estimate extract-length of a control path ($lc_{a}(x)$) and byte-stack size for a package.
 
 
 
-To estimate maximum decrease, we consider that a packet contains all the header instances that are set to valid or invalid on the control path.
-For maximum increase, we consider that a packet does not contain any header instance that is set to valid or invalid on the control path. 
+To estimate maximum decrease on a control path, we consider that a packet contains all the header instances which are set to valid or invalid on the path.
+The rationale behind considering this scenario is, if a packet already has a header instance, setting it to valid will not impact size. However, setting it to invalid will decrease the packet size.
+Similarly for maximum increase, we consider that a packet does not contain any header instance that is set to valid or invalid on the path. 
 We evaluate header instances' \texttt{setValid} and \texttt{setInvalid} method call statements on every path in the CFG of the control block.
-We denote increase and decrease in packet size on a path $x$ in the CFG of control block of a program $a$ using $i_{a}(x)$ and $d_{a}(x)$, respectively.
-Similarly, $\Delta(a)$ and $\delta(a)$ denote maximum increase and decrease in packet size by a program $a$.
-$i_{a}(x)$, as defined in (\ref{increase-path}), is the sum of $(1)$ sizes of all the header instances for which the control path has \texttt{setValid} methods call statements and $(2)$ maximum increase in packet size by all every callee program $cp$ on the path.
+We denote increase and decrease in packet size on a path $x$ in the CFG of control block of a package $a$ using $i_{a}(x)$ and $d_{a}(x)$, respectively.
+Similarly, $\Delta(a)$ and $\delta(a)$ denote maximum increase and decrease in packet size by a package $a$.
+$i_{a}(x)$, as defined in (\ref{increase-path}), is the sum of $(1)$ sizes of all the header instances for which the control path has \texttt{setValid} methods call statements and $(2)$ maximum increase in packet size by every callee package $cp$ on the path.
 Similarly, $d_{a}(x)$ is computed as show in (\ref{decrease-path}).
 % $d_{p}(x)$ is the sum of $(1)$ sizes of all the header instances for which control path \texttt{setInvalid} methods call statements and $(2)$ maximum decrease in packet size by all every callee program $cp$ on the path as shown in \ref{decrease-path}.
 \begin{align}
 i_{a}(x)\; =& \; \sum_{H.setValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \Delta(cp) \label{increase-path} \\
 d_{a}(x)\; =& \; \sum_{H.setInValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \delta(cp) \label{decrease-path}
 \end{align}
-The header instances which are not emitted by the deparser but extracted by the parser of a program decrease their packet's size. 
+The header instances which are not emitted by the deparser but extracted by the parser of a package decrease their packet's size. 
 $d_{p}(x)$ is incremented by the size of such header instances for every path $x$.
-We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size by a program $a$ as shown in (\ref{increase}) and (\ref{decrease}), respectively.
+We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size by a package $a$ as shown in (\ref{increase}) and (\ref{decrease}), respectively.
 \begin{align}
 \Delta(a)\; =& \; \max_{x} \left\{ i_{a}(x) \right\} \label{increase} \\
 \delta(a)\; =& \; \max_{x} \left\{ d_{a}(x) \right\} \label{decrease}
 \end{align}
 
-% Callee programs may parse and deparse packets, thereby, increase or decrease size of packets.
-% Caller programs must extract sufficient number of bytes to process callees' parsers. Also, Callers must have byte-stack size large enough to process their own deparsers along with callees'.
+% Callee packages may parse and deparse packets, thereby, increase or decrease size of packets.
+% Caller packages must extract sufficient number of bytes to process callees' parsers. Also, Callers must have byte-stack size large enough to process their own deparsers along with callees'.
 
-Now, we define the extract-length ($lc_{a}(x)$) of a control path $x$ in the CFG of program a $a$'s control block as a function of the callees' extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet size ($\delta(cp)$).
-Let's assume that a control path $x$ invokes N number of callee programs in increasing order of their numbers. 
-The $i$the callee may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th callee program ($E_{p}(i+1)$).
-Figure \ref{fig:sequential-callees} shows the execution scenario of two callee programs invoked in the same control path in the CFG of a caller's control block.
+Now, we define the extract-length ($lc_{a}(x)$) of a control path $x$ in the CFG of package a $a$'s control block as a function of the callees' extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet size ($\delta(cp)$).
+Let's assume that a control path $x$ invokes N number of callee packages in increasing order of their numbers. 
+The $i$the callee may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th callee package ($E_{p}(i+1)$).
+Figure \ref{fig:sequential-callees} shows the execution scenario of two callee packages invoked in the same control path in the CFG of a caller's control block.
 The ipv6 and ipv4 states in the parsers of callee1 and callee2 transit to the accept state.
 There are two control paths in the control block of callee1. One invalidates mpls header instance and another sets a new header (ipv4) to valid.
 A control path of the first callee removes the mpls header from the packet, thereby, decreasing the packet size by four bytes.
 The subsequent callee extracts eth, IPv6 and IPv4 headers from the packet.
-$\mu$P4C parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ the logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee program.
+$\mu$P4C parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ the logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee package.
 \begin{figure}[!h]
     \centering
     \includegraphics[trim=0 396 487 0, clip,scale=0.5]{sequential-callees}
     \caption{Multiple Callees in a control path}
     \label{fig:sequential-callees}
 \end{figure}
-Therefore, we take into account extract-length of every callee program's parser along with maximum decrease in packet size by the callee's predecessors in the control path $x$ to compute $lc_{a}(x)$, as shown in (\ref{extract-length-control-path}).
+Therefore, we take into account extract-length of every callee package's parser along with maximum decrease in packet size by the callee's predecessors in the control path $x$ to compute $lc_{a}(x)$, as shown in (\ref{extract-length-control-path}).
 \begin{align}
 lc_{a}(x) \; =& \; \max_{p} \left\{ \left( \sum_{i=0}^{i<p} \delta(i) \right)+ \mathcal{E}l(p) \right\},&p \in [0,N] \label{extract-length-control-path} \\
-\mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-program}
+\mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-package}
 \end{align}
-Finally, we define byte-stack size of a program $a$, $\mathcal{B}s_{a}$ (\ref{byte-stack-size-program}), as the sum of its extract-length and maximum increase in packet size.
+Finally, we define byte-stack size of a package $a$, $\mathcal{B}s_{a}$ (\ref{byte-stack-size-package}), as the sum of its extract-length and maximum increase in packet size.
 For the example shown in Figure \ref{fig:sequential-callees}, the byte-stack size of the caller is 98, 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
 
 
@@ -1099,11 +1115,11 @@ $\mu$P4C replaces the emitter instance's emit method-call statements with match-
 The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
 The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
 In case of increase in packet size, byte-stack is always large enough to hold new headers.
-If a deparser decreases the packet size, subsequent parsers may set \texttt{packet\_too\_short} error only if packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main program.
+If a deparser decreases the packet size, subsequent parsers may set \texttt{packet\_too\_short} error only if packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main package.
 
 The symbolic execution of a deparser derives the emit order of header instances in the block.
 Using the size of header instances and the emit order, we compute offsets in byte-stack to copy back field-variables and to insert new header fields.
-The match key comprises valid metadata variables associated with each header instance in the program.
+The match key comprises valid metadata variables associated with each header instance in the package.
 For every possible combination of valid headers, we synthesize a series of operations on byte-stack as an action to copy field-variables and to move data in byte-stack.
 The control block of callee1 shown in Figure \ref{fig:sequential-callees} invalidates the mpls header from packets if the execution follows a particular control path.
 Recall that, the parser synthesized by $\mu$P4C extracts 78 bytes in the stack.
@@ -1111,10 +1127,10 @@ If the execution follows control path invalidating mpls header, 60 bytes followi
 The synthesized action performs in-place copy of these 60 bytes. It invalidates the last 4 bytes.
 If the control block execution sets ipv4 header instance to valid, bytes after the ipv6 header are pushed down by the offset of 20 to insert ipv4 header instance.
 
-
+\hse{CONTinue refinement pass}
 
 \subsection{Real-Target Specific Transformation}
-$\mu$P4C transforms the programs described using $\mu$P4's data plane abstractions into a given real target specific ones.
+$\mu$P4C transforms the packages described using $\mu$P4's data plane abstractions into a given real target specific ones.
 $\mu$ SA defines logical pipelines and externs to provide abstraction for data plane pipelines.
 As a part of data plane abstractions, $\mu$ SA allows to describe multiple packet processing in control blocks of its orchestration pipelines.
 Programmers can create multiple copies of packets in the control blocks using \texttt{copy\_from} methods of $\mu$ SA externs to describe multi-packet processing.
@@ -1188,7 +1204,6 @@ $\mu$P4C visits PPS nodes in topological order to map thread and cps nodes on ta
 Also, standard metadata (\texttt{sm\_t}) instances and logical extern instances (\texttt{es\_t} and \texttt{mc\_engine}) used in the program are translated into intrinsic metadata and extern provided by the target architecture.
 $\mu$P4C partitions the sub-program represented by each thread node in multiple packet-processing block according to pipeline model of the target architecture.
 
-
 Let's consider v1model architecture of simple\_switch target device for an example.
 We create a two-state, named ingress and egress, finite-state machine to capture restriction on usage of egress-spec, egress-port and queuing metadata in ingress and egress blocks.
 Each state represents a set of assertions to be verified on program statements while visiting them in topological order.
@@ -1209,6 +1224,8 @@ We enforce this condition by instrumenting thread code with an if-conditional st
 At the end of each thread, next thread-id is set.
 
 \hse{TODO: may be a diagram for 5.5}
+
+\subsection{Implementation}
 
 \section{Hardware Resource Consumption}
 
@@ -1383,7 +1400,7 @@ section.
 % \end{figure}
 
 
-\begin{figure}[h]
+\begin{figure*}[h]
 \begin{lstlisting}[frame=none]
 // Unicast
 Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, in I in_param, out O out_param, inout IO inout_param) {
@@ -1405,7 +1422,7 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 \end{lstlisting}
 \caption{Programmable Blocks for Interfaces}
 \label{fig:programmable-blocks-for-interfaces}
-\end{figure}
+\end{figure*}
 
 
 
