@@ -780,7 +780,8 @@ The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the
 However, programmers can instantiate the extern and use its instances to pass as arguments to callee $\mu$s-programs.
 The \texttt{out\_buf} extern has methods, \texttt{enqueue} and \texttt{merge}, to store packets processed by callees.
 In addition, the extern provides \texttt{to\_in\_buf} to move the elements of the caller instance to the instance of \texttt{in\_buf} provided in the argument.
-The\texttt{mc\_buf} extern allows to store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
+The \texttt{mc\_buf} extern allows to store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
+It is designed to  be used along with \texttt{mc\_engine} to express multicast packet-processing, where as \texttt{in\_buf} and \texttt{out\_buf} are facilitates packet-processing model of $\mu$P4.
 An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
 \hse{TODO: text for Figure \ref{fig:multi-packet-processing} or \ref{fig:multi-packet-processing-II}}
 
@@ -1207,17 +1208,16 @@ A packet is processed by a thread only if the corresponding thread-id is set in 
 We enforce this condition by instrumenting thread code with an if-conditional statement.
 At the end of each thread, next thread-id is set.
 
+\hse{TODO: may be a diagram for 5.5}
 
+\section{Hardware Resource Consumption}
 
-
+\section{Conclusion}
 
 %-------------------------------------------------------------------------------
 \section*{Acknowledgments}
 %-------------------------------------------------------------------------------
 
-The USENIX latex style is old and very tired, which is why
-there's no \textbackslash{}acks command for you to use when
-acknowledging. Sorry.
 
 %-------------------------------------------------------------------------------
 \section*{Availability}
