@@ -1,54 +1,3 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Template for USENIX papers.
-%
-% History:
-%
-% - TEMPLATE for Usenix papers, specifically to meet requirements of
-%   USENIX '05. originally a template for producing IEEE-format
-%   articles using LaTeX. written by Matthew Ward, CS Department,
-%   Worcester Polytechnic Institute. adapted by David Beazley for his
-%   excellent SWIG paper in Proceedings, Tcl 96. turned into a
-%   smartass generic template by De Clarke, with thanks to both the
-%   above pioneers. Use at your own risk. Complaints to /dev/null.
-%   Make it two column with no page numbering, default is 10 point.
-%
-% - Munged by Fred Douglis <douglis@research.att.com> 10/97 to
-%   separate the .sty file from the LaTeX source template, so that
-%   people can more easily include the .sty file into an existing
-%   document. Also changed to more closely follow the style guidelines
-%   as represented by the Word sample file.
-%
-% - Note that since 2010, USENIX does not require endnotes. If you
-%   want foot of page notes, don't include the endnotes package in the
-%   usepackage command, below.
-% - This version uses the latex2e styles, not the very ancient 2.09
-%   stuff.
-%
-% - Updated July 2018: Text block size changed from 6.5" to 7"
-%
-% - Updated Dec 2018 for ATC'19:
-%
-%   * Revised text to pass HotCRP's auto-formatting check, with
-%     hotcrp.settings.submission_form.body_font_size=10pt, and
-%     hotcrp.settings.submission_form.line_height=12pt
-%
-%   * Switched from \endnote-s to \footnote-s to match Usenix's policy.
-%
-%   * \section* => \begin{abstract} ... \end{abstract}
-%
-%   * Make template self-contained in terms of bibtex entires, to allow
-%     this file to be compiled. (And changing refs style to 'plain'.)
-%
-%   * Make template self-contained in terms of figures, to
-%     allow this file to be compiled. 
-%
-%   * Added packages for hyperref, embedding fonts, and improving
-%     appearance.
-%   
-%   * Removed outdated text.
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix2019_v3}
 
@@ -62,10 +11,7 @@
 \usepackage{float}
 \usepackage{listings, multicol}
 \usepackage{appendix}
-
-
-% inlined bib file
-\usepackage{filecontents}
+\usepackage{xspace}
 
 \lstdefinelanguage{P4}{
   keywords={in, out, struct, inout, function, return, switch, exact, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply, true, false},
@@ -103,37 +49,18 @@
 \newcommand{\hs}[1]{{\color{blue}{HS:#1}}}
 \newcommand{\hse}[1]{{\color{blue}{#1}}}
 
-% %-------------------------------------------------------------------------------
-% \begin{filecontents}{\jobname.bib}
-% %-------------------------------------------------------------------------------
-% @Book{arpachiDusseau18:osbook,
-%   author =       {Arpaci-Dusseau, Remzi H. and Arpaci-Dusseau Andrea C.},
-%   title =        {Operating Systems: Three Easy Pieces},
-%   publisher =    {Arpaci-Dusseau Books, LLC},
-%   year =         2015,
-%   edition =      {1.00},
-%   note =         {\url{http://pages.cs.wisc.edu/~remzi/OSTEP/}}
-% }
-% @InProceedings{waldspurger02,
-%   author =       {Waldspurger, Carl A.},
-%   title =        {Memory resource management in {VMware ESX} server},
-%   booktitle =    {USENIX Symposium on Operating System Design and
-%                   Implementation (OSDI)},
-%   year =         2002,
-%   pages =        {181--194},
-%   note =         {\url{https://www.usenix.org/legacy/event/osdi02/tech/waldspurger/waldspurger.pdf}}}
-% \end{filecontents}
-% 
-%-------------------------------------------------------------------------------
+% Define custom macros
+\newcommand{\ulang}{$\mu$P4\xspace}
+\newcommand{\uarch}{$\mu$SA\xspace}
+\newcommand{\ucomp}{$\mu$P4C\xspace}
+
 \begin{document}
-%-------------------------------------------------------------------------------
 
 %don't want date printed
 \date{}
 
 % make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf Formatting Submissions for a USENIX Conference:\\
-  An (Incomplete) Example}
+\title{\Large \bf \ulang: Towards Compositional Dataplane Programming}
 
 %for single author (just remove % characters)
 \author{
@@ -160,20 +87,19 @@ specific architectures and makes it difficult to write composeable
 libraries of code that can be reused across many different programs.
 
 To address this challenge, we present the design and implementation of
-a logical target, MicroP4 ($\mu$P4), that decouples P4 programs from
+a logical target, MicroP4 (\ulang), that decouples P4 programs from
 architecture-specific constructs and naturally supports composition.
-We present the design of the $\mu$P4 architecture ($\mu$SA), which
+We present the design of the \ulang architecture (\uarch), which
 abstracts away from hardware-level details without sacrificing
-expressiveness. Using realistic examples, we show how $\mu$P4 enables
+expressiveness. Using realistic examples, we show how \ulang enables
 modular programming, and we present a prototype implementation of the
-$\mu$P4C compiler that generates code for lower-level architectures
+\ucomp compiler that generates code for lower-level architectures
 such as PISA, which is implemented by the Bmv2 software switch.
 \end{abstract}
 
 
 \section{Introduction}
 
-% hardware and software together, cool
 Over the last decade, the synergistic development of packet-processing
 hardware and software has fundamentally changed how networks are built
 and operated. Hardware platforms such as
@@ -187,18 +113,19 @@ abstractions such as parsers and match-action tables.
 In order to support different kinds of targets (e.g., software
 switches, ASICs, FPGAs, etc.), P4 allows programmable and
 fixed-function blocks to be arranged into different layouts as
-specified by an architecture declaration. For example, the Portable Switch Architecture
-(PSA)~\cite{psa} models a switch with a
+specified by an architecture declaration. For example, the Portable
+Switch Architecture (PSA)~\cite{psa} models a switch with a
 programmable parser, programmable ingress pipeline, fixed-function
 scheduler and queues, programmable egress pipeline, and programmable
-deparser (Figure \ref{subfig:psa-model}). 
-PSA programs supply P4 code for each programmable block.
-P4 also allows to specify target-specific features and data as a part of the target's architecture declaration.
-PSA programs can use features and data specific to the architecture in the code for programmable block.
-While this design allows the language to flexibly accommodate a
-wide range of targets, it also creates a tight coupling between
-programs and architectures, which makes it difficult to write programs
-in a compositional manner or reuse common code fragments in different
+deparser (Figure \ref{subfig:psa-model}).  PSA programs supply P4 code
+for each programmable block.  P4 also allows to specify
+target-specific features and data as a part of the target's
+architecture declaration.  PSA programs can use features and data
+specific to the architecture in the code for programmable block.
+While this design allows the language to flexibly accommodate a wide
+range of targets, it also creates a tight coupling between programs
+and architectures, which makes it difficult to write programs in a
+compositional manner or reuse common code fragments in different
 programs.
 
 % \begin{figure}[h]
@@ -210,26 +137,26 @@ programs.
 For example, \texttt{switch.p4}~\cite{switch.p4} handles several dozen
 different protocols and functions (e.g., L2 switching, L3 routing,
 tunneling, etc.,). But the code is written against a global collection
-of metadata and parsed headers. To use the code in 
-\texttt{switch.p4} to implement an Ethernet switch, it would be
-necessary to detangle the L2-specific functionality from the
-extraneous code in the rest of the program. Without a detailed
-understanding of the overall structure of the top-level program, it is
-difficult or impossible to reuse code fragments at finer granularity.
+of metadata and parsed headers. To use the code in \texttt{switch.p4}
+to implement an Ethernet switch, it would be necessary to detangle the
+L2-specific functionality from the extraneous code in the rest of the
+program. Without a detailed understanding of the overall structure of
+the top-level program, it is difficult or impossible to reuse code
+fragments at finer granularity.
 
-Consider a simple scenario with two code fragments, as shown in Figures \ref{fig:l2.p4} and \ref{fig:ipv4.p4}.
-The first code fragment, \texttt{l2}, parses the ethernet header, and modifies the
+Consider a simple scenario with two code fragments, as shown in
+Figures \ref{fig:l2.p4} and \ref{fig:ipv4.p4}.  The first code
+fragment, \texttt{l2}, parses the ethernet header, and modifies the
 ethernet addresses using the next hop, which is supplied as an
-argument, and finally deparses the packet. 
-The second code fragment, \texttt{ipv4}, parses the IPv4 header, uses
-longest-prefix matching to determine the next hop, decrements the
-\texttt{ttl} field and, finally, deparses the packet.
-Note that neither \texttt{ipv4} nor \texttt{l2} is a complete packet-processing
-program: the former does not generate a functionally correct packets,
-while the latter is parameterized on the next hop and so does not
-specify forwarding behavior. However, we could use \texttt{l2}
-with any other routing scheme (e.g., IPv6, MPLS, etc.) to obtain a
-valid program.
+argument, and finally deparses the packet.  The second code fragment,
+\texttt{ipv4}, parses the IPv4 header, uses longest-prefix matching to
+determine the next hop, decrements the \texttt{ttl} field and,
+finally, deparses the packet.  Note that neither \texttt{ipv4} nor
+\texttt{l2} is a complete packet-processing program: the former does
+not generate a functionally correct packets, while the latter is
+parameterized on the next hop and so does not specify forwarding
+behavior. However, we could use \texttt{l2} with any other routing
+scheme (e.g., IPv6, MPLS, etc.) to obtain a valid program.
 
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none]
@@ -314,28 +241,27 @@ modules, and facilitating inter-module communication. To write truly
 modular P4 programs, a fundamentally different approach is needed.
 
 To this end, this paper presents the design and (prototype)
-implementation of $\mu$P4, a new architecture that provides
+implementation of \ulang, a new architecture that provides
 fine-grained abstractions for constructing data plane programs.
-$\mu$P4 consists of two components, Micro Switch Architecture
-($\mu$ SA), which distills packet processing to its essence, and
-abstracts away from device-specific structure, and a compiler,
-$\mu$P4C, that maps one or more $\mu$ SA programs to a standard PISA
-pipeline. 
+\ulang consists of two components, Micro Switch Architecture (\uarch),
+which distills packet processing to its essence, and abstracts away
+from device-specific structure, and a compiler, \ucomp, that maps one
+or more \uarch programs to a standard PISA pipeline.
 
 This paper makes the following contributions.
 \begin{itemize}
 \item We motivate the need for modular data plane programming using a
   series of realistic examples.
-\item We introduce $\mu$ SA, a new P4 architecture designed to enable
+\item We introduce \uarch, a new P4 architecture designed to enable
   fine-grained composition of program snippets.
-\item We develop techniques for compiling $\mu$ SA programs to the
+\item We develop techniques for compiling \uarch programs to the
   standard PISA model, including merging programs composed together 
   \hse{and scheduling them onto a single PISA pipeline}.
 %   including merging programs composed together in
 %   parallel or in sequence onto a single PISA pipeline.
 \end{itemize}
 
-% Although much work remains, we believe that $\mu$ SA represents a
+% Although much work remains, we believe that \uarch represents a
 % promising first step toward enabling modular data plane programs.
 
 
@@ -396,36 +322,36 @@ $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P
 
 
 \section{MicroP4}
-$\mu$P4 is an intermediate logical target with an abstract packet-processing model.
+\ulang is an intermediate logical target with an abstract packet-processing model.
 It is designed to provide a higher-level logical abstraction for data plane pipelines to enable code reuse agnostic of architectures of target devices without compromising expressiveness and packet-processing features.
 Also, it allows to write P4 code modules implementing fine-grained packet-processing functionality, to define interfaces and to hide implementation, enabling modular programming.
-$\mu$P4 models every program as a black-box, \emph{Micro-Switch} ($\mu$s), that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
+\ulang models every program as a black-box, \emph{Micro-Switch} ($\mu$s), that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
 The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of $\mu$-programs.
-$\mu$P4 executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
+\ulang executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
 \begin{figure}[h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
     \caption{Packet-Processing model of $\mu$s-programs}
     \label{fig:mp4-packet-processing-model}
 \end{figure}
-$\mu$P4 fetches an element from a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
+\ulang fetches an element from a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
 Every element of the buffers comprises a packet bit-stream, intrinsic metadata (e.g., ingress\_port, egress\_port, packet\_length etc., ) and input arguments or output arguments associated with the packet.
 
 
-We design a Micro-Switch Architecture ($\mu$ SA) that defines data plane model with multiple logical pipelines to develop $\mu$s-programs.
+We design a Micro-Switch Architecture (\uarch) that defines data plane model with multiple logical pipelines to develop $\mu$s-programs.
 Each logical pipeline is associated with an interface declared in the architecture.
 Every interface specifies generic run-time parameters and declares programmable blocks required to be implemented for a pipeline.
-$\mu$ SA data plane pipelines comprise of only programmable packet-processing blocks, parser, match-action control blocks and deparser. 
-In addition, $\mu$ SA declares intrinsic metadata and logical externs to facilitate all the packet-processing features, e.g., multicast, cloning, that are not part of P4 language but supported by architectures of real-targets. 
-Programmers can use the logical externs in $\mu$ SA pipelines to use such packet-processing features.
-Using constructs declared in $\mu$ SA, programmers can write modules containing one or more $\mu$s-programs.
+\uarch data plane pipelines comprise of only programmable packet-processing blocks, parser, match-action control blocks and deparser. 
+In addition, \uarch declares intrinsic metadata and logical externs to facilitate all the packet-processing features, e.g., multicast, cloning, that are not part of P4 language but supported by architectures of real-targets. 
+Programmers can use the logical externs in \uarch pipelines to use such packet-processing features.
+Using constructs declared in \uarch, programmers can write modules containing one or more $\mu$s-programs.
 Each $\mu$s-program specializes a generic interface.
 The run-time interfaces enable easy reuse and hide implementation detail of the $\mu$s-programs, facilitating modular and incremental development.
-Using logical data plane model of $\mu$ SA, programmers can develop modular P4 code which is specific to $\mu$ SA.
-We design and develop MicroP4 Compiler ($\mu$P4C) to compile and transform $\mu$s-program for architectures of real target devices, making $\mu$s-programs agnostic of architectures of real-targets.
+Using logical data plane model of \uarch, programmers can develop modular P4 code which is specific to \uarch.
+We design and develop MicroP4 Compiler (\ucomp) to compile and transform $\mu$s-program for architectures of real target devices, making $\mu$s-programs agnostic of architectures of real-targets.
 
-Programmer can use $\mu$P4C to $(1)$ Create compiled libraries of $\mu$s-programs along with their control plane APIs, $(2)$ Link all the $\mu$s-programs used in the $\mu$s-program of main instance and transform the program for a specified architecture of a real-target.
-If the given source file does not contain an instance named, $\mu$P4C generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
+Programmer can use \ucomp to $(1)$ Create compiled libraries of $\mu$s-programs along with their control plane APIs, $(2)$ Link all the $\mu$s-programs used in the $\mu$s-program of main instance and transform the program for a specified architecture of a real-target.
+If the given source file does not contain an instance named, \ucomp generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
 It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
 If the source file contains \emph{main} instance, it links all the supplied libraries and transforms the $\mu$s-program of main instance for a given architecture (Figure \ref{subfig:compilation-to-target-architecture}).
 \begin{figure}[h]
@@ -444,37 +370,37 @@ If the source file contains \emph{main} instance, it links all the supplied libr
     \caption{Compiling $\mu$s-programs}
 \end{figure}
 Programmers can include files containing definitions of data types (e.g., struct types of in and out parameters) used in run-time interfaces of $\mu$s-program in libraries.
-$\mu$P4C compiler generates either source P4 code for the specified architecture or an executable with architecture-specific CP APIs.
+\ucomp compiler generates either source P4 code for the specified architecture or an executable with architecture-specific CP APIs.
 
 
 To write a $\mu$s-program, programmers need to define a custom P4 \texttt{package} type by implementing an interface for a logical pipeline.
-$\mu$P4C extends current P4 language and allows programmers to define \texttt{package} types, declare their instances and invoke them using the built-in \texttt{apply} method.
+\ucomp extends current P4 language and allows programmers to define \texttt{package} types, declare their instances and invoke them using the built-in \texttt{apply} method.
 This allows to hide implementation of package types and reuse them using run-time parameters of their interfaces.
 
 
 Programmers can use sub-languages of P4 for parser and control blocks to implement interfaces.
-$\mu$P4C.
-$\mu$P4C homogenizes abstract-machines of programmable blocks by transforming parser and deparser blocks into match-action control blocks.
+\ucomp.
+\ucomp homogenizes abstract-machines of programmable blocks by transforming parser and deparser blocks into match-action control blocks.
 This transformation unifies the abstract-machines for packet-processing allowing seamless transfer of execution control across $\mu$s-programs.
 
 
-$\mu$P4C perform static analysis to estimate possible packet sizes required to process all the transformed $\mu$s-programs in match-action control blocks of target architecture's pipeline.
-$\mu$P4C synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
-Next, $\mu$P4C translates intrinsic metadata and logical externs into the target architecture-specific constructs.
+\ucomp perform static analysis to estimate possible packet sizes required to process all the transformed $\mu$s-programs in match-action control blocks of target architecture's pipeline.
+\ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
+Next, \ucomp translates intrinsic metadata and logical externs into the target architecture-specific constructs.
 It allocates and schedules code of transformed $\mu$s-programs to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
 
 
 \section{Micro Switch Architecture}
 \label{section:micro-switch-architecture}
-Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define $\mu$s-program interfaces and packet-processing pipelines for $\mu$P4 as a part of its data plane architecture, $\mu$ SA.
-In addition, $\mu$ SA defines a set of logical externs providing various packet-processing constructs available in fixed-function blocks (e.g., packet duplication) of pipelines models of real-target architectures.
+Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define $\mu$s-program interfaces and packet-processing pipelines for \ulang as a part of its data plane architecture, \uarch.
+In addition, \uarch defines a set of logical externs providing various packet-processing constructs available in fixed-function blocks (e.g., packet duplication) of pipelines models of real-target architectures.
 
 \subsection{Pipelines and Interfaces}
 \label{subsection:pipelines}
-$\mu$ SA has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
-% $\mu$ SA's logical externs can be instantiated and used within control blocks of the $\mu$ SA pipelines.
+\uarch has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
+% \uarch's logical externs can be instantiated and used within control blocks of the \uarch pipelines.
 Micro pipeline comprises of a Parser, a Micro control and a Deparser block.
-$\mu$ SA does not allow conditional statements in deparser blocks of its pipelines.
+\uarch does not allow conditional statements in deparser blocks of its pipelines.
 For each pipeline type, it exposes one or more interface types.
 Each interface type comprises of a set of declarations for programmable blocks and run-time signature.
 \begin{figure}[ht]
@@ -491,7 +417,7 @@ Each interface type comprises of a set of declarations for programmable blocks a
         \caption{Orchestration}
 %         \label{subfig:orchestration}
     \end{subfigure}
-\caption{$\mu$ SA Pipelines}
+\caption{\uarch Pipelines}
 \label{fig:msa-pipelines}
 \end{figure}
 Programmers can provide implementations of the interface types to create user-defined P4 package types.
@@ -586,53 +512,53 @@ Orchestration<I,O>
   (in_buf<I> ib, out_buf<O> ob)
   {Con<I,O> c};
 \end{lstlisting}
-$\mu$ SA declares threes interface types, \texttt{Unicast}, \texttt{Multicast} and \texttt{Orchestration}.
+\uarch declares threes interface types, \texttt{Unicast}, \texttt{Multicast} and \texttt{Orchestration}.
 Programmers can implement programmable blocks declared for Micro pipeline to create custom package types having run-time signature same as unicast or multicast interface.
 Similarly, Orchestration interface is associated with Orchestration pipeline.
 Figure \ref{fig:micro-switch-architecture} shows declarations of types used in the interfaces.
 The \texttt{pkt} is an extern type representing packet. 
 The \texttt{sm\_t} is struct type containing intrinsic metadata (e.g., in\_port, pkt\_len etc.,).
 The \texttt{es\_t} extern represent intrinsic metadata related to output port of the packet in the pipeline along with queuing related metadata.
-\texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of $\mu$P4 packet-processing model (Figure \ref{fig:mp4-packet-processing-model}).
-Next, we give overview of logical externs defined in $\mu$ SA along with their example usage.
+\texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of \ulang packet-processing model (Figure \ref{fig:mp4-packet-processing-model}).
+Next, we give overview of logical externs defined in \uarch along with their example usage.
 
 % It defines standard intrinsic metadata as \emph{sm\_t} as a struct type.
 % The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
 
-% Some fields are not mutable, however $\mu$ SA allows to declare instances of the struct and perform assignment operation between two instances to create copies.
+% Some fields are not mutable, however \uarch allows to declare instances of the struct and perform assignment operation between two instances to create copies.
 
 
 \subsection{Logical Externs}
 \label{subsection:logical-externs}
 \subsubsection{Packet Extern}
-$\mu$ SA models packets using an extern object, \texttt{pkt}, declared in $\mu$ SA (Figure \ref{fig:micro-switch-architecture}.
+\uarch models packets using an extern object, \texttt{pkt}, declared in \uarch (Figure \ref{fig:micro-switch-architecture}.
 The \texttt{pkt} extern can be instantiated inside control blocks of only orchestration pipelines.
-$\mu$P4C mandates to initialize \texttt{pkt} instances in the control block using its \texttt{copy\_from} method.
+\ucomp mandates to initialize \texttt{pkt} instances in the control block using its \texttt{copy\_from} method.
 The \texttt{pkt} extern object contains \texttt{copy\_from} having a parameter of its own type.
 The \texttt{copy\_from} method initializes its calling instance with content of \texttt{pa} without modifying the argument.
-$\mu$P4 considers this method as a compile-time known packet replication, whereas multicast as a run-time packet-replication described in Section \ref{subsubsection:multicast-extern}.
-$\mu$ SA provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
+\ulang considers this method as a compile-time known packet replication, whereas multicast as a run-time packet-replication described in Section \ref{subsubsection:multicast-extern}.
+\uarch provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
 The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, their instances are provided by the architecture as parameters in parser and deparser declarations of Micro pipeline programmable blocks. 
 
 \subsubsection{Correlated Intrinsic Metadata}
-$\mu$SA defines intrinsic metadata for the logical target $\mu$P4.
-For every real-target architecture , $\mu$P4C maintains mapping of its logical intrinsic metadata with the metadata of the architecture.
+\uarch defines intrinsic metadata for the logical target \ulang.
+For every real-target architecture , \ucomp maintains mapping of its logical intrinsic metadata with the metadata of the architecture.
 This mapping is used for transforming $\mu$s-programs to a given architecture-specific code.
 Many intrinsic per-packet metadata provided by architectures of real-target devices are correlated.
 For example, many real-target devices allow to measure every packet's queuing latency through the device.
 The timestamps required to compute queuing latency can be measured only after the packet's out port is finalized and packet is enqueued in appropriate queue.
-$\mu$ SA abstracts away correlated intrinsic metadata using stateful logical externs.
+\uarch abstracts away correlated intrinsic metadata using stateful logical externs.
 It captures dependency among correlated intrinsic metadata using stateful extern objects.
 It declares \texttt{es\_t} extern object with methods to manipulate and access correlated intrinsic metadata.
 For example, \texttt{set\_out\_port} and \texttt{get\_out\_port} allow, respectively, to set and get output port for the packet.
-In addition, $\mu$ SA declares an enumerator, called \texttt{meta\_t}.
+In addition, \uarch declares an enumerator, called \texttt{meta\_t}.
 Each value in the enumerator associated with a immutable intrinsic metadata populated by only target for every packet (e.g., \texttt{IN\_TIMESTAMP}, \texttt{OUT\_TIMESTAMP} etc).
 The \texttt{es\_t} extern declares a two-parameters method, \texttt{get\_value}, that allows to read values populated by the target.
 The first parameter with \texttt{in} direction is of \texttt{meta\_t} type indicating a particular metadata field.
 The second parameter with \texttt{out} direction provides value of the field.
 
-% $\mu$P4C allows repeated usage of the extern's functions in the single control block of $\mu$ SA pipelines.
-% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution control path, $\mu$P4C raises a compile-time error.
+% \ucomp allows repeated usage of the extern's functions in the single control block of \uarch pipelines.
+% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution control path, \ucomp raises a compile-time error.
 
 
 
@@ -703,13 +629,13 @@ Router(P, C, D) main;
 % 0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
 \subcaption[]{Router's main $\mu$s-program}\label{subfig:router-main}
 \end{minipage}
-\caption[]{Modular Router using $\mu$ SA \footnotemark}
+\caption[]{Modular Router using \uarch \footnotemark}
 \label{fig:modular-router}
 \end{figure*}
 \footnotetext{The unused parameters in parser, control blocks and run-time signature of interface are skipped.}
 
 \subsubsection*{Example $\mu$s-programs}
-Figure \ref{fig:modular-router} shows a possible way to write modular data plane program for a router using interfaces and externs declared in $\mu$ SA.
+Figure \ref{fig:modular-router} shows a possible way to write modular data plane program for a router using interfaces and externs declared in \uarch.
 The code snippet in (Figure \ref{subfig:ipv6}) defines \texttt{ipv6} as a package by implementing blocks of the \texttt{Unicast} interface.\footnotemark[\value{footnote}]
 The \texttt{Router} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes appropriate layer-3 module(e.g., \texttt{ipv4 ipv6, mpls}) based on \texttt{etherType} in the header, shown in highlighted code.
 The layer-3 modules are invoked by supplying partial packet (without ethernet header) along with intrinsic metadata and other data (\texttt{nh\_id}) as arguments.
@@ -769,7 +695,7 @@ We note that support for \texttt{srv6} is added without modifying $\mu$s-program
 
 \subsubsection{Multicast Extern}
 \label{subsubsection:multicast-extern}
-$\mu$P4 allows programmers to configure packet replication at run-time using a multicast extern , \texttt{mc\_engine}, declared in $\mu$ SA.
+\ulang allows programmers to configure packet replication at run-time using a multicast extern , \texttt{mc\_engine}, declared in \uarch.
 The \texttt{mc\_engine} can be instantiated inside control blocks of Micro pipelines implementing\texttt{Multicast} interface (Figure \ref{fig:multicast-example}).
 The control block of \texttt{Multicast} interface provides \texttt{mc\_buf} as one of the parameters to store copies of parsed headers, unparsed packet, intrinsic metadata and argument data related to the packet.
 Programmers can use \texttt{set\_mc\_group} method in actions or apply blocks to set a replication group for the packet.
@@ -785,14 +711,14 @@ It can $(1)$ store the partial copies, generated by the callee, into an instance
 
 \subsubsection{Logical Buffer Extern}
 \label{subsubsection:logical-buffer-extern}
-$\mu$ SA declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
+\uarch declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
 Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
-The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device $\mu$P4. 
+The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device \ulang. 
 However, programmers can instantiate the extern and use its instances to pass as arguments to callee $\mu$s-programs.
 The \texttt{out\_buf} extern has methods, \texttt{enqueue} and \texttt{merge}, to store packets processed by callees.
 In addition, the extern provides \texttt{to\_in\_buf} to move the elements of the caller instance to the instance of \texttt{in\_buf} provided in the argument.
 The \texttt{mc\_buf} extern allows to store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
-It is designed to  be used along with \texttt{mc\_engine} to express multicast packet-processing, where as \texttt{in\_buf} and \texttt{out\_buf} are facilitates packet-processing model of $\mu$P4.
+It is designed to  be used along with \texttt{mc\_engine} to express multicast packet-processing, where as \texttt{in\_buf} and \texttt{out\_buf} are facilitates packet-processing model of \ulang.
 An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
 \hse{TODO: text for Figure \ref{fig:multi-packet-processing} or \ref{fig:multi-packet-processing-II}}
 
@@ -877,7 +803,7 @@ control con(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
 
 
 \section{MicroP4 Compiler}
-$\mu$P4C transforms parsers and deparsers of the main and callee package types into match-action control blocks.
+\ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
 It synthesizes new parser and deparser for the main package.
 The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
 For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
@@ -886,11 +812,11 @@ The synthesized deparser emits all valid one-byte headers from the byte-stack.
 
 
 We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
-$\mu$P4C executes transformed parsers and deparsers in the match-action stages using the byte-stack.
-For each program, $\mu$P4C creates metadata variables, called \texttt{field-variables} for the header fields used in the program's control block.
+\ucomp executes transformed parsers and deparsers in the match-action stages using the byte-stack.
+For each program, \ucomp creates metadata variables, called \texttt{field-variables} for the header fields used in the program's control block.
 The header fields are substituted with the metadata variables in control blocks of the program.
-$\mu$P4C discards types and instances of the headers of each package.
-$\mu$P4C synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
+\ucomp discards types and instances of the headers of each package.
+\ucomp synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
 \texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related \emph{valid} metadata variable.
 Execution of parsers in match-action stages copy values from the appropriate locations in the byte-stack to the variables.
 It also updates valid metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
@@ -902,8 +828,8 @@ Section \ref{subsection:parser-to-match-action-table} discuss about converting s
 
 \subsection{Extract Length and Byte-Stack Size}
 \label{subsection:extract-length-and-byte-stack-size}
-As $\mu$P4 allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
-$\mu$P4C performs symbolic execution to evaluates extract-length and byte-stack size of every callee package in every control path in the CFG of the caller's control block.
+As \ulang allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
+\ucomp performs symbolic execution to evaluates extract-length and byte-stack size of every callee package in every control path in the CFG of the caller's control block.
 
 
 The symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph.
@@ -956,7 +882,7 @@ The ipv6 and ipv4 states in the parsers of callee1 and callee2 transit to the ac
 There are two control paths in the control block of callee1. One invalidates mpls header instance and another sets a new header (ipv4) to valid.
 A control path of the first callee removes the mpls header from the packet, thereby, decreasing the packet size by four bytes.
 The subsequent callee extracts eth, IPv6 and IPv4 headers from the packet.
-$\mu$P4C parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ the logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee package.
+\ucomp parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ the logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee package.
 \begin{figure}[!h]
     \centering
     \includegraphics[trim=0 396 487 0, clip,scale=0.5]{sequential-callees}
@@ -1059,30 +985,30 @@ The second and the forth keys can have any values, hence they are matched with d
 \subsection{Transformation To Simple Parser}
 % \subsection{Header Stacks \& Variable-Length Headers}
 \label{subsection:header-stacks-variable-length-headers}
-$\mu$P4 allows to use of header stacks with their size known at compile-time. 
-$\mu$P4C replaces every header stack instance with multiple instances of the header type. 
+\ulang allows to use of header stacks with their size known at compile-time. 
+\ucomp replaces every header stack instance with multiple instances of the header type. 
 It symbolically evaluates operations on the header stack instances and transforms them into appropriate built-in method calls of the instances.
 P4 provides various sets of computations to use in parser and control blocks.
 In parser blocks, programmers can use \texttt{next} and \texttt{last} operations to iterate through the stack.
 These operations along with \texttt{lastIndex} can be used to write loops in parsers to extract instances in header stack.
-$\mu$P4C unrolls such loops by replicating the parse states in them.
+\ucomp unrolls such loops by replicating the parse states in them.
 Loop unrolling replaces relative referencing operations, \texttt{next} and \texttt{last}, with appropriate header instances in the state replicas.
 P4 provides \texttt{push\_front} and \texttt{pop\_front} operations on stack instances to manipulate elements on top and bottom of the stack.
-$\mu$P4C transforms push\_front and pop\_front operations into series of assignments and built-in method calls of header instances.
+\ucomp transforms push\_front and pop\_front operations into series of assignments and built-in method calls of header instances.
 For example, assume that \texttt{hs} is a header stack instance of size 3. 
-$\mu$P4C synthesize hs0, hs1, hs2 header instances to replace hs.
+\ucomp synthesize hs0, hs1, hs2 header instances to replace hs.
 \texttt{hs\_inst.push\_front(1)} is replaced with \texttt{hs2 = hs1}, \texttt{hs1 = hs0} and \texttt{hs0.setInvalid()}.
 
 
-$\mu$P4 allows programmers to define variable-length header types, however it imposes a constraint that their variable-length fields must contain integer number of bytes at run-time.
-% $\mu$P4C splits header type containing fixed and variable-length fields into multiple types, where each type contains either fixed-length fields or the variable-length field.
-$\mu$P4C transforms every parser state with two-argument extract method call, used to extract variable-length header, into a sub-parser.
+\ulang allows programmers to define variable-length header types, however it imposes a constraint that their variable-length fields must contain integer number of bytes at run-time.
+% \ucomp splits header type containing fixed and variable-length fields into multiple types, where each type contains either fixed-length fields or the variable-length field.
+\ucomp transforms every parser state with two-argument extract method call, used to extract variable-length header, into a sub-parser.
 It splits the header type of the instance in the first argument into multiple types, where each type contains either fixed-length fields or the variable-length field.
 Every state in the sub-parser extracts a fixed-number of bytes from the packet bit stream.
 The sub-parser contains a state having the second argument (variableFieldSize) as the expression in its select statement.
 The select statement has case-list enumerating all possible values up to specified maximum size of the variable-length field.
 For each select case, the sub-parser transits to a state extracting a fixed number of bytes in the variable-length field.
-For example, if variable-length field has maximum size of 40 bytes, $\mu$P4C creates 40 states extracting different number of bytes.
+For example, if variable-length field has maximum size of 40 bytes, \ucomp creates 40 states extracting different number of bytes.
 The explosion of number of states would only increase number of entries in the transformed match-action table of the parser.
 
 % \begin{figure}[H]
@@ -1110,8 +1036,8 @@ The explosion of number of states would only increase number of entries in the t
 
 \subsection{Deparser To Match-Action Table:}
 \label{subsection:deparser-to-match-action-table}
-The deparser blocks of $\mu$ SA's pipelines are the control blocks with emitter as one of the parameters.
-$\mu$P4C replaces the emitter instance's emit method-call statements with match-action table to transform deparser into normal match-action control blocks.
+The deparser blocks of \uarch's pipelines are the control blocks with emitter as one of the parameters.
+\ucomp replaces the emitter instance's emit method-call statements with match-action table to transform deparser into normal match-action control blocks.
 The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
 The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
 In case of increase in packet size, byte-stack is always large enough to hold new headers.
@@ -1122,7 +1048,7 @@ Using the size of header instances and the emit order, we compute offsets in byt
 The match key comprises valid metadata variables associated with each header instance in the package.
 For every possible combination of valid headers, we synthesize a series of operations on byte-stack as an action to copy field-variables and to move data in byte-stack.
 The control block of callee1 shown in Figure \ref{fig:sequential-callees} invalidates the mpls header from packets if the execution follows a particular control path.
-Recall that, the parser synthesized by $\mu$P4C extracts 78 bytes in the stack.
+Recall that, the parser synthesized by \ucomp extracts 78 bytes in the stack.
 If the execution follows control path invalidating mpls header, 60 bytes following the header should be moved up by the offset of 4 in the stack.
 The synthesized action performs in-place copy of these 60 bytes. It invalidates the last 4 bytes.
 If the control block execution sets ipv4 header instance to valid, bytes after the ipv6 header are pushed down by the offset of 20 to insert ipv4 header instance.
@@ -1130,23 +1056,23 @@ If the control block execution sets ipv4 header instance to valid, bytes after t
 \hse{CONTinue refinement pass}
 
 \subsection{Real-Target Specific Transformation}
-$\mu$P4C transforms the packages described using $\mu$P4's data plane abstractions into a given real target specific ones.
-$\mu$ SA defines logical pipelines and externs to provide abstraction for data plane pipelines.
-As a part of data plane abstractions, $\mu$ SA allows to describe multiple packet processing in control blocks of its orchestration pipelines.
-Programmers can create multiple copies of packets in the control blocks using \texttt{copy\_from} methods of $\mu$ SA externs to describe multi-packet processing.
-$\mu$P4C's transformations create copies of packet using externs provided by the architecture of the specified target.
-$\mu$P4C realizes multi-packet processing by identifying a packet-processing sub-graph, called a \emph{thread}, for every definition of a \texttt{pkt} instance.
+\ucomp transforms the packages described using \ulang's data plane abstractions into a given real target specific ones.
+\uarch defines logical pipelines and externs to provide abstraction for data plane pipelines.
+As a part of data plane abstractions, \uarch allows to describe multiple packet processing in control blocks of its orchestration pipelines.
+Programmers can create multiple copies of packets in the control blocks using \texttt{copy\_from} methods of \uarch externs to describe multi-packet processing.
+\ucomp's transformations create copies of packet using externs provided by the architecture of the specified target.
+\ucomp realizes multi-packet processing by identifying a packet-processing sub-graph, called a \emph{thread}, for every definition of a \texttt{pkt} instance.
 % Existing target devices can not process multiple packets by the same thread at the same time.
 Then, it prepares \emph{Packet-Processing Schedule} (PPS) of the threads in the program and maps it to packet-processing blocks of the target's architecture.
 Some target architectures may impose constraint that PPSs must be serializable.
-If $\mu$P4C fails to find a serial PPS for such targets, it raises a compilation error. 
+If \ucomp fails to find a serial PPS for such targets, it raises a compilation error. 
 
 
 \subsubsection{Packet-Processing Schedule}
-$\mu$P4C extracts packet-processing threads from the control block of orchestration pipeline's interface while maintaining control and data dependencies.
+\ucomp extracts packet-processing threads from the control block of orchestration pipeline's interface while maintaining control and data dependencies.
 To this end, it constructs a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} and performs a series of transformations.
 
-$\mu$P4C treats parameter of orchestration control block or every \texttt{copy\_from} method call statement of \texttt{pkt} instance as its definition, because they initialize the instance.
+\ucomp treats parameter of orchestration control block or every \texttt{copy\_from} method call statement of \texttt{pkt} instance as its definition, because they initialize the instance.
 We note that \texttt{pkt} instance argument in \texttt{copy\_from} method calls is only used or read.
 Moreover, all other method call statements having \texttt{pkt} instances as arguments access (read and modify) the instances, such call statements are not considered as their definition statements.
 
@@ -1184,7 +1110,7 @@ We synthesise a variable to transform every control dependency among thread node
 The thread, which is depended on, sets the variable with a constant value and the other thread uses the variable in predicate of new if-conditional statement to continue processing on the control path.
 If a PPS has a directed cycle involving thread nodes, PPS is not serializable.
 If the real target does not have capability to process multiple copy of a packet at the same time, 
-$\mu$P4C raises error and lists program statements involved in cycles.
+\ucomp raises error and lists program statements involved in cycles.
 However, a PPS can have cycles involving maximum one thread node and common program statements represented by cps nodes.
 To decide execution thread for cps nodes, we compute strongly connected components of PPS graph.
 In each component, there can be exactly one thread node and one or more cps nodes.
@@ -1200,9 +1126,9 @@ We schedule such cps nodes while mapping the thread nodes to packet-processing b
 
 
 \subsubsection{Mapping to Target Architecture}
-$\mu$P4C visits PPS nodes in topological order to map thread and cps nodes on target architecture.
+\ucomp visits PPS nodes in topological order to map thread and cps nodes on target architecture.
 Also, standard metadata (\texttt{sm\_t}) instances and logical extern instances (\texttt{es\_t} and \texttt{mc\_engine}) used in the program are translated into intrinsic metadata and extern provided by the target architecture.
-$\mu$P4C partitions the sub-program represented by each thread node in multiple packet-processing block according to pipeline model of the target architecture.
+\ucomp partitions the sub-program represented by each thread node in multiple packet-processing block according to pipeline model of the target architecture.
 
 Let's consider v1model architecture of simple\_switch target device for an example.
 We create a two-state, named ingress and egress, finite-state machine to capture restriction on usage of egress-spec, egress-port and queuing metadata in ingress and egress blocks.
@@ -1251,7 +1177,7 @@ section.
 
 
 \appendix
-\section{Declarations in $\mu$ SA}
+\section{Declarations in \uarch}
 \label{appendix:section:micro-switch-architecture}
 % \begin{figure*}[h]
 % \begin{minipage}[t]{.35\textwidth}
