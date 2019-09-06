@@ -1,0 +1,43 @@
+\documentclass[class=minimal,border=0pt]{standalone}
+
+\usepackage[latin1]{inputenc}
+\usepackage{libertine}
+\usepackage{tikz}
+\usepackage{scrfontsizes}
+\usetikzlibrary{arrows,shapes,positioning}
+
+\renewcommand{\familydefault}{\sfdefault}
+\begin{document}
+
+\changefontsizes{13}
+\tikzstyle{fixed}=[rectangle, draw, fill=gray!10,
+  minimum height=6ex,text width=5em, text centered, inner sep=1pt]
+\tikzstyle{programmable}=[rectangle, draw, fill=white!20,
+  text width=4.5em, text centered, rounded corners,
+  minimum height=6ex, inner sep=1pt]
+\tikzstyle{line}=[draw, very thick, color=black!75, -latex']
+\tikzstyle{empty}=[]
+
+\begin{tikzpicture}[node distance=2.7cm, auto]
+  % Place nodes
+  \node [programmable, text width=10em, node distance=20em, minimum height=2em] (prog) {Programmable block};
+  \node [fixed, text width=10em, right of=prog, node distance=16em, minimum height=2em] (fixed) {Fixed function block};
+  \node [programmable, below of=prog, node distance=3em, anchor=left] (parser) {Parser};
+  \node [programmable, right of=parser] (verifycs) {Verify CS control};
+  \node [programmable, right of=verifycs] (ingress) {Ingress control};
+  \node [fixed, right of=ingress] (buffer) {Packet buffer \& RE};
+  \node [programmable, right of=buffer] (egress) {Egress control};
+  \node [programmable, right of=egress] (computecs) {Compute CS control};
+  \node [programmable, right of=computecs] (deparser) {Deparser};
+
+  % Draw edges
+  \path [line] (parser) -- (verifycs);
+  \path [line] (verifycs) -- (ingress);
+  \path [line] (ingress) -- (buffer);
+  \path [line] (buffer) -- (egress);
+  \path [line] (egress) -- (computecs);
+  \path [line] (computecs) -- (deparser);
+\end{tikzpicture}
+
+
+\end{document}

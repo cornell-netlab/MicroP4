@@ -313,13 +313,17 @@ their packet processing blocks defined in
 \texttt{v1model}~\cite{simple_switch.md} and Portable Switch
 Architecture (PSA)~\cite{psa}, respectively.
 
-Programmers provide P4 code for the programmable blocks in the pipeline model described in the architecture of the target device.
-Though this approach allows to support different types of target devices, but it makes P4 programs tightly coupled with the data plane model of the target devices. 
-Therefore, making them impossible to reuse on target devices with different models. 
+To program a target device, one can use P4 to specify the behavior of
+the programmable blocks exposed in the architecture of the target.
+While this approach allows supporting multiple targets which share the
+same architecture, it also makes the \emph{P4 programs tightly coupled
+to the architecture} of the target. Such tight coupling makes it
+impossible to reuse P4 programs on targets with different
+architectures.
 \begin{figure}[ht]
     \begin{subfigure}[b]{\linewidth}
         \centering
-        \includegraphics[trim=2 460 380 0, clip,scale=0.37]{v1model-pipeline.pdf}
+        \includegraphics[width=\textwidth]{v1model.pdf}
         \caption{simple\_switch v1 data plane model}
         \label{subfig:v1model}
     \end{subfigure}
@@ -360,9 +364,6 @@ $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P
 
 \subsection{Our approach}
 \label{sec:approach}
-
-
-
 
 
 \section{MicroP4}
