@@ -19,6 +19,13 @@
 
 \graphicspath{{figures/}}
 
+\hypersetup{
+  colorlinks,
+  linkcolor={green!0!black},
+  citecolor={red!0!black},
+  urlcolor={blue!0!black}
+}
+
 \lstdefinelanguage{P4}{
   keywords={in, out, struct, inout, function, return, switch, exact, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply, true, false},
   keywordstyle=\color{myk}\bfseries,
@@ -73,7 +80,7 @@
 \date{}
 
 % make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf \ulang: Towards Compositional Dataplane Programming}
+\title{\Large \bf \ulang: Towards Compositional (Modular?) Dataplane Programming}
 
 %for single author (just remove % characters)
 \author{
@@ -276,30 +283,35 @@ This paper makes the following contributions.
 
 \section{Dataplane Programming}
 \label{sec:background}
-We briefly describe data plane programming using P4 to understand
-challenges hindering reuse of packet-processing code libraries
-(\cref{sec:p4}) and give an overview of our approach for modular
+We briefly describe the current state of data plane programming using
+P4 to understand challenges hindering reuse of packet-processing code
+(\cref{sec:p4}). Then, we give an overview of our approach for modular
 dataplane programming (\cref{sec:approach}).
 
 
 \subsection{Challenges with P4}
 \label{sec:p4}
 
-P4 is developed to specify data plane functionality of software or
-hardware target devices (e.g., simple\_\-switch
-\cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).  To support
-variety of target devices, the ecosystem expects manufacturers to
-provide a framework to program the target devices using P4.  The
-framework includes an architecture definition written in P4 and a P4
-compiler for the target.  The architecture (e.g., v1model.p4
-\cite{v1model.p4} for simple\_switch) of a target specifies data plane
-pipeline model comprising a set of programmable and fixed-function
-blocks, flow of user-defined and target-specific (called intrinsic)
-metadata in the pipeline and semantics of target-specific actions and
-externs.  For example, Figure \ref{subfig:psa-model} and
-\ref{subfig:v1model} show data plane pipelines and their packet
-processing blocks defined in PSA \cite{psa} and v1model
-\cite{simple_switch.md}, respectively.
+P4~\cite{bosshart2014p4} has emerged as a popular language for
+specifying the packet processing behaviour of programmable switching
+chips, such as Barefoot Tofino~\cite{tofino} and Cavium
+Xpliant~\cite{xpliant}, which are based on a pipeline of match-action
+tables~\cite{bosshart2013forwarding}. To support a variety of
+\emph{targets}, the ecosystem expects manufacturers to provide a
+target-specific framework to program the devices. The framework also
+provides an \emph{architecture} definition, specified in P4, that acts
+as the programming model and provides an abstract view of the target
+pipeline. Specifically, an architecture, such as
+\texttt{v1model}~\cite{v1model.p4}, for a target, such as
+\texttt{simple\_switch} software switch~\cite{simple_switch.md},
+specifies the dataplane pipeline model comprising a set of
+programmable and fixed-function blocks, flow of user-defined and
+target-specific (called intrinsic) metadata in the pipeline, and
+semantics of target-specific actions and externs. For example,
+\cref{subfig:v1model,subfig:psa-model} show dataplane pipelines and
+their packet processing blocks defined in
+\texttt{v1model}~\cite{simple_switch.md} and Portable Switch
+Architecture (PSA)~\cite{psa}, respectively.
 
 Programmers provide P4 code for the programmable blocks in the pipeline model described in the architecture of the target device.
 Though this approach allows to support different types of target devices, but it makes P4 programs tightly coupled with the data plane model of the target devices. 
