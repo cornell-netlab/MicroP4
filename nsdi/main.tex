@@ -60,6 +60,8 @@
 \newcommand{\hs}[1]{{\color{blue}{HS:#1}}}
 \newcommand{\hse}[1]{{\color{blue}{#1}}}
 
+\newcommand{\todo}[1]{{\color{red}{TODO: #1}}}
+
 % Define custom macros
 \newcommand{\ulang}{$\mu$P4\xspace}
 \newcommand{\uarch}{$\mu$SA\xspace}
@@ -107,12 +109,11 @@ such as PISA, which is implemented by the Bmv2 software switch.
 Over the last decade, the synergistic development of packet-processing
 hardware and software has fundamentally changed how networks are built
 and operated. Hardware platforms such as
-RMT~\cite{Bosshart:2013:FMF:2486001.2486011} provide tremendous
-flexibility for customizing the forwarding plane without having to
-fabricate new chips, while languages such as
-P4~\cite{Bosshart:2014:PPP:2656877.2656890, p4lang} enable programmers
-to describe rich packet-processing functions in terms of high-level
-abstractions such as parsers and match-action tables.
+RMT~\cite{bosshart2013forwarding} provide tremendous flexibility for
+customizing the forwarding plane without having to fabricate new
+chips, while languages such as P4~\cite{bosshart2014p4, p4lang} enable
+programmers to describe rich packet-processing functions in terms of
+high-level abstractions such as parsers and match-action tables.
 
 In order to support different kinds of targets (e.g., software
 switches, ASICs, FPGAs, etc.), P4 allows programmable and
@@ -253,6 +254,7 @@ from device-specific structure, and a compiler, \ucomp, that maps one
 or more \uarch programs to a standard PISA pipeline.
 
 This paper makes the following contributions.
+\todo{rethink contributions}
 \begin{itemize}
 \item We motivate the need for modular data plane programming using a
   series of realistic examples.
@@ -272,15 +274,32 @@ This paper makes the following contributions.
 
 
 
-\section{Data Plane Programming using P4}
+\section{Dataplane Programming}
 \label{sec:background}
-In this section, we briefly explain the ecosystem of data plane programming using P4 to understand challenges involved in enabling reuse of packet-processing code libraries.
+We briefly describe data plane programming using P4 to understand
+challenges hindering reuse of packet-processing code libraries
+(\cref{sec:p4}) and give an overview of our approach for modular
+dataplane programming (\cref{sec:approach}).
 
-P4 is developed to specify data plane functionality of software or hardware target devices (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).
-To support variety of target devices, the ecosystem expects manufacturers to provide a framework to program the target devices using P4.
-The framework includes an architecture definition written in P4 and a P4 compiler for the target.
-The architecture (e.g., v1model.p4 \cite{v1model.p4} for simple\_switch) of a target specifies data plane pipeline model comprising a set of programmable and fixed-function blocks, flow of user-defined and target-specific (called intrinsic) metadata in the pipeline and semantics of target-specific actions and externs.
-For example, Figure \ref{subfig:psa-model} and \ref{subfig:v1model} show data plane pipelines and their packet processing blocks defined in PSA \cite{psa} and v1model \cite{simple_switch.md}, respectively.
+
+\subsection{Challenges with P4}
+\label{sec:p4}
+
+P4 is developed to specify data plane functionality of software or
+hardware target devices (e.g., simple\_\-switch
+\cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).  To support
+variety of target devices, the ecosystem expects manufacturers to
+provide a framework to program the target devices using P4.  The
+framework includes an architecture definition written in P4 and a P4
+compiler for the target.  The architecture (e.g., v1model.p4
+\cite{v1model.p4} for simple\_switch) of a target specifies data plane
+pipeline model comprising a set of programmable and fixed-function
+blocks, flow of user-defined and target-specific (called intrinsic)
+metadata in the pipeline and semantics of target-specific actions and
+externs.  For example, Figure \ref{subfig:psa-model} and
+\ref{subfig:v1model} show data plane pipelines and their packet
+processing blocks defined in PSA \cite{psa} and v1model
+\cite{simple_switch.md}, respectively.
 
 Programmers provide P4 code for the programmable blocks in the pipeline model described in the architecture of the target device.
 Though this approach allows to support different types of target devices, but it makes P4 programs tightly coupled with the data plane model of the target devices. 
@@ -324,6 +343,14 @@ Programmers implement packet-processing logic conforming to constraints, archite
 
 In summary, there are two main challenges for easy reuse of code with existing data plane programming ecosystem.
 $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P4 code from target devices and $(2)$ Absence of homogeneous abstract-machines or mechanism for seamless transition across heterogeneous abstract-machines involved in various packet-processing phases.
+
+
+
+\subsection{Our approach}
+\label{sec:approach}
+
+
+
 
 
 \section{MicroP4}
