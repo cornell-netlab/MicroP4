@@ -1,7 +1,6 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix2019_v3}
 
-% to be able to draw some self-contained figs
 \usepackage{tikz}
 \usepackage{amsmath}
 \usepackage{xcolor}
@@ -12,6 +11,13 @@
 \usepackage{listings, multicol}
 \usepackage{appendix}
 \usepackage{xspace}
+
+% fonts
+\usepackage[T1]{fontenc}
+\usepackage{libertine}
+\usepackage{inconsolata}
+
+\graphicspath{{figures/}}
 
 \lstdefinelanguage{P4}{
   keywords={in, out, struct, inout, function, return, switch, exact, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply, true, false},
@@ -45,6 +51,11 @@
 \definecolor{commentcolor}{RGB}{0,100,0}
 \definecolor{myk}{rgb}{0.0,0,0.65}
 
+\usepackage[capitalise]{cleveref}
+\crefformat{section}{\S#2#1#3} % see manual of cleveref, section 8.2.1
+\crefformat{subsection}{\S#2#1#3}
+\crefformat{subsubsection}{\S#2#1#3}
+
 
 \newcommand{\hs}[1]{{\color{blue}{HS:#1}}}
 \newcommand{\hse}[1]{{\color{blue}{#1}}}
@@ -64,15 +75,8 @@
 
 %for single author (just remove % characters)
 \author{
-{\rm Your N.\ Here}\\
-Your Institution
-\and
-{\rm Second Name}\\
-Second Institution
-% copy the following lines to add more authors
-% \and
-% {\rm Name}\\
-%Name Institution
+{\rm Paper \#XXX}\\
+Anonymous author(s)
 } % end author
 
 \maketitle
@@ -99,7 +103,7 @@ such as PISA, which is implemented by the Bmv2 software switch.
 
 
 \section{Introduction}
-
+\label{sec:intro}
 Over the last decade, the synergistic development of packet-processing
 hardware and software has fundamentally changed how networks are built
 and operated. Hardware platforms such as
@@ -269,6 +273,7 @@ This paper makes the following contributions.
 
 
 \section{Data Plane Programming using P4}
+\label{sec:background}
 In this section, we briefly explain the ecosystem of data plane programming using P4 to understand challenges involved in enabling reuse of packet-processing code libraries.
 
 P4 is developed to specify data plane functionality of software or hardware target devices (e.g., simple\_\-switch \cite{simple_switch.md}, TOFINO \cite{tofino} etc.,).
@@ -322,6 +327,7 @@ $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P
 
 
 \section{MicroP4}
+\label{sec:microp4}
 \ulang is an intermediate logical target with an abstract packet-processing model.
 It is designed to provide a higher-level logical abstraction for data plane pipelines to enable code reuse agnostic of architectures of target devices without compromising expressiveness and packet-processing features.
 Also, it allows to write P4 code modules implementing fine-grained packet-processing functionality, to define interfaces and to hide implementation, enabling modular programming.
@@ -391,12 +397,12 @@ It allocates and schedules code of transformed $\mu$s-programs to control blocks
 
 
 \section{Micro Switch Architecture}
-\label{section:micro-switch-architecture}
+\label{sec:architecture}
 Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define $\mu$s-program interfaces and packet-processing pipelines for \ulang as a part of its data plane architecture, \uarch.
 In addition, \uarch defines a set of logical externs providing various packet-processing constructs available in fixed-function blocks (e.g., packet duplication) of pipelines models of real-target architectures.
 
 \subsection{Pipelines and Interfaces}
-\label{subsection:pipelines}
+\label{sec:pipelines}
 \uarch has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
 % \uarch's logical externs can be instantiated and used within control blocks of the \uarch pipelines.
 Micro pipeline comprises of a Parser, a Micro control and a Deparser block.
@@ -529,14 +535,15 @@ Next, we give overview of logical externs defined in \uarch along with their exa
 
 
 \subsection{Logical Externs}
-\label{subsection:logical-externs}
+\label{sec:externs}
+
 \subsubsection{Packet Extern}
 \uarch models packets using an extern object, \texttt{pkt}, declared in \uarch (Figure \ref{fig:micro-switch-architecture}.
 The \texttt{pkt} extern can be instantiated inside control blocks of only orchestration pipelines.
 \ucomp mandates to initialize \texttt{pkt} instances in the control block using its \texttt{copy\_from} method.
 The \texttt{pkt} extern object contains \texttt{copy\_from} having a parameter of its own type.
 The \texttt{copy\_from} method initializes its calling instance with content of \texttt{pa} without modifying the argument.
-\ulang considers this method as a compile-time known packet replication, whereas multicast as a run-time packet-replication described in Section \ref{subsubsection:multicast-extern}.
+\ulang considers this method as a compile-time known packet replication, whereas multicast as a run-time packet-replication described in Section \ref{sec:multicast}.
 \uarch provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
 The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, their instances are provided by the architecture as parameters in parser and deparser declarations of Micro pipeline programmable blocks. 
 
@@ -634,6 +641,9 @@ Router(P, C, D) main;
 \end{figure*}
 \footnotetext{The unused parameters in parser, control blocks and run-time signature of interface are skipped.}
 
+
+
+
 \subsubsection*{Example $\mu$s-programs}
 Figure \ref{fig:modular-router} shows a possible way to write modular data plane program for a router using interfaces and externs declared in \uarch.
 The code snippet in (Figure \ref{subfig:ipv6}) defines \texttt{ipv6} as a package by implementing blocks of the \texttt{Unicast} interface.\footnotemark[\value{footnote}]
@@ -694,7 +704,7 @@ We note that support for \texttt{srv6} is added without modifying $\mu$s-program
 
 
 \subsubsection{Multicast Extern}
-\label{subsubsection:multicast-extern}
+\label{sec:multicast}
 \ulang allows programmers to configure packet replication at run-time using a multicast extern , \texttt{mc\_engine}, declared in \uarch.
 The \texttt{mc\_engine} can be instantiated inside control blocks of Micro pipelines implementing\texttt{Multicast} interface (Figure \ref{fig:multicast-example}).
 The control block of \texttt{Multicast} interface provides \texttt{mc\_buf} as one of the parameters to store copies of parsed headers, unparsed packet, intrinsic metadata and argument data related to the packet.
@@ -710,7 +720,7 @@ The caller (\texttt{Router}) can cascade multicast processing on partial packets
 It can $(1)$ store the partial copies, generated by the callee, into an instance of \texttt{mc\_engine} using \texttt{set\_buf} and $(2)$ invoke the apply method to process each copy using subsequent statments). 
 
 \subsubsection{Logical Buffer Extern}
-\label{subsubsection:logical-buffer-extern}
+\label{sec:logical}
 \uarch declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
 Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
 The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device \ulang. 
@@ -802,7 +812,14 @@ control con(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
 \end{figure}
 
 
+
+
+
+
+
+
 \section{MicroP4 Compiler}
+\label{sec:compiler}
 \ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
 It synthesizes new parser and deparser for the main package.
 The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
@@ -1156,20 +1173,6 @@ At the end of each thread, next thread-id is set.
 \section{Hardware Resource Consumption}
 
 \section{Conclusion}
-
-%-------------------------------------------------------------------------------
-\section*{Acknowledgments}
-%-------------------------------------------------------------------------------
-
-
-%-------------------------------------------------------------------------------
-\section*{Availability}
-%-------------------------------------------------------------------------------
-
-USENIX program committees give extra points to submissions that are
-backed by artifacts that are publicly available. If you made your code
-or data available, it's worth mentioning this fact in a dedicated
-section.
 
 %-------------------------------------------------------------------------------
 \bibliographystyle{plain}

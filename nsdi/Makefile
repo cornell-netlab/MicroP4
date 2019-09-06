@@ -12,6 +12,7 @@ all: $(PDFS)
 	bibtex $*
 	pdflatex $*.tex
 	pdflatex $*.tex
+	pdflatex $*.tex
 
 %.blg: %.bib 
 	pdflatex $*.tex
@@ -22,7 +23,7 @@ all: $(PDFS)
 	pdflatex $*.tex
 
 clean:
-	/bin/rm -f $(PDFS) *.dvi *.aux *.ps *~ *.log *.out *.lot *.lof *.toc *.blg *.bbl url.sty
+	/bin/rm -f $(PDFS) *.dvi *.aux *.fdb_latexmk *.fls *.ps *~ *.log *.out *.lot *.lof *.toc *.blg *.bbl url.sty *.synctex.gz
 
 FORCE:
 
