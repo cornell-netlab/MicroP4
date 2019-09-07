@@ -365,6 +365,40 @@ $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P
 \subsection{Our approach}
 \label{sec:approach}
 
+To address these challenges without disrupting current ecosystem and
+workflow of data plane programming in P4, we design a switch
+architecture \uarch for an intermediate logical device, called \ucomp.
+The data plane model with logical pipelines of \ucomp provides
+abstractions for pipeline models of real-target architectures.  \uarch
+provides a set of constructs to write modular code having interface to
+reuse it and to hide its implementation details.  The logical pipeline
+models defined in \uarch do not completely eliminate heterogeneity in
+packet-processing blocks (parser, control) of the pipelines.
+% However, constructs and pipeline models declared in \uarch allows to
+% write programs by reusing the code developed in conformance of
+% \uarch.
+The design choices for \uarch are intentional to avoid disruptive
+innovations in P4 language.  It partially address the above mentioned
+challenges and leaves following two aspects for unaddressed.  $1$
+creating P4 programs specific to \uarch and the logical device \ucomp.
+$2$ heterogeneity in packet-processing blocks of P4 programs.  We
+complement design choices of \uarch by designing and developing a
+compiler, \ucomp, to address these aspects.
+
+
+\ucomp transforms \uarch-specific P4 code for a given real-target
+architecture satisfying all the constraints and in conformance of
+lower-level details of the target.  First, \ucomp estimates
+operational region of packets to process the P4 code.  It synthesizes
+a parser and a deparers blocks as declared in real-target
+architecture.  Then, it transforms all parser and parser blocks into
+match-action control blocks homogenizing abstract-machines for
+packet-processing blocks.  This allows to natural transfer of
+execution-control across modules, enabling modularity and facilitating
+code reuse.  Finally, it allocates transformed match-action control
+blocks to control blocks in pipeline model of target architecture
+while translating \uarch-specific constructs to target
+architecture-specific ones.
 
 \section{MicroP4}
 \label{sec:microp4}
