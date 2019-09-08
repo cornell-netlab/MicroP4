@@ -74,11 +74,11 @@ fragments at finer granularity.
 Consider a simple scenario with two code fragments, as shown in
 \cref{fig:l2.p4,fig:ipv4.p4}. The first code fragment, \texttt{l2},
 parses the ethernet header, and modifies the ethernet addresses using
-the next hop, which is supplied as an argument, and finally deparses
-the packet.  The second code fragment, \texttt{ipv4}, parses the IPv4
-header, uses longest-prefix matching to determine the next hop,
-decrements the \texttt{ttl} field and, finally, deparses the packet.
-Note that neither \texttt{ipv4} nor \texttt{l2} is a complete
+the next hop (\texttt{nh\_id}), which is supplied as an argument, and
+finally deparses the packet. The second code fragment, \texttt{ipv4},
+parses the IPv4 header, uses longest-prefix matching to determine the
+next hop, decrements the \texttt{ttl} field and, finally, deparses the
+packet.  Note that neither \texttt{ipv4} nor \texttt{l2} is a complete
 packet-processing program: the former does not generate a functionally
 correct packets, while the latter is parameterized on the next hop and
 so does not specify forwarding behavior. However, we could use
@@ -86,13 +86,13 @@ so does not specify forwarding behavior. However, we could use
 obtain a valid program.
 
 \begin{figure}[ht]
-\begin{lstlisting}[frame=none]
-// l2
+\begin{lstlisting}[frame=none, escapechar=!]
+// l2.p4: parse and process only L2 header
 parser P(packet_in pin, out hdr_t ph) {
   state start { pin.extract(ph.eth); }
 }
 control Pipe(inout hdr_t ph, inout sm_t sm,
-             in bit<16> nh_id_id) {
+             in bit<16> !\colorbox{mygray}{nh\_id}!) {
   action drop () {}
   action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
     ph.eth.dstMac = dest_mac;
@@ -100,8 +100,8 @@ control Pipe(inout hdr_t ph, inout sm_t sm,
     sm.out_port = port;
   }
   table forward_tbl {
-    key = { nh_id_id : exact; }
-    actions = { process; drop; }
+    key = { nh_id : exact; }
+    actions = { forward; drop; }
   }
   apply { forward_tbl.apply(); }
 }
@@ -114,10 +114,11 @@ control D(packet_out po, in hdr_t ph) {
 \end{figure}
 
 \begin{figure}[ht]
-\begin{lstlisting}[frame=none]
-// ipv4
+\begin{lstlisting}[frame=none, escapechar=!]
+// ipv4.p4: parse and process only L3 header
 struct meta_t { bit<16> type; }
-parser P(packet_in pin, out hdr_t ph, inout meta_t m) {
+parser P(packet_in pin, out hdr_t ph,
+         inout meta_t m) {
   state start {
     transition select(m.type) {
       0x0800: parse_ipv4;
@@ -128,10 +129,10 @@ parser P(packet_in pin, out hdr_t ph, inout meta_t m) {
     transition accept;
   }
 }
-control Pipe(inout hdr_t ph, out bit<16> nh_id_id, inout sm_t sm) {
+control Pipe(inout hdr_t ph, out bit<16> !\colorbox{mygray}{nh\_id}!, inout sm_t sm) {
   action process(bit<16> nh) {
-    ph.ipv4.ttl = ph.ipv4 - 1;
-    nh_id_id = nh; // setting out param
+    ph.ipv4.ttl = ph.ipv4.ttl - 1;
+    nh_id = nh; // setting out param
   }
   table ipv4_lpm_tbl {
     key = { ph.ipv4.dstAddr : lpm; }
