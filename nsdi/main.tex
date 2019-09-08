@@ -308,10 +308,16 @@ specifies the dataplane pipeline model comprising a set of
 programmable and fixed-function blocks, flow of user-defined and
 target-specific (called intrinsic) metadata in the pipeline, and
 semantics of target-specific actions and externs. For example,
-\cref{subfig:v1model,subfig:psa-model} show dataplane pipelines and
-their packet processing blocks defined in
-\texttt{v1model}~\cite{simple_switch.md} and Portable Switch
-Architecture (PSA)~\cite{psa}, respectively.
+\cref{fig:arch-example} shows dataplane pipelines and their packet
+processing blocks defined in \texttt{v1model}~\cite{simple_switch.md}
+and Portable Switch Architecture (PSA)~\cite{psa}.
+\begin{figure}[tbh]
+  \centering
+  \includegraphics[width=\linewidth]{example-arch.pdf}
+  \caption{Dataplane pipelines for example architectures}
+  \label{fig:arch-example}
+\end{figure}
+
 
 To program a target device, one can use P4 to specify the behavior of
 the programmable blocks exposed in the architecture of the target.
@@ -320,22 +326,6 @@ same architecture, it also makes the \emph{P4 programs tightly coupled
 to the architecture} of the target. Such tight coupling makes it
 impossible to reuse P4 programs on targets with different
 architectures.
-\begin{figure}[ht]
-    \begin{subfigure}[b]{\linewidth}
-        \centering
-        \includegraphics[width=\textwidth]{v1model.pdf}
-        \caption{simple\_switch v1 data plane model}
-        \label{subfig:v1model}
-    \end{subfigure}
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
-        \caption{PSA data plane Model}
-        \label{subfig:psa-model}
-    \end{subfigure}
-\caption{Real Target Architectures}
-\label{fig:real-target-architectures}
-\end{figure}
 
 Moreover, architectures expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and \cite{psa}.
 This increases complexity in data plane model and coupling between P4 programs with the architecture.
