@@ -19,12 +19,12 @@ libraries of code that can be reused across many different programs.
 To address this challenge, we present the design and implementation of
 a logical target, MicroP4 (\ulang), that decouples P4 programs from
 architecture-specific constructs and naturally supports composition.
-We present the design of the \ulang architecture (\uarch), which
-abstracts away from hardware-level details without sacrificing
+We present the design of the \ulang logical architecture (\uarch),
+which abstracts away from hardware-level details without sacrificing
 expressiveness. Using realistic examples, we show how \ulang enables
-modular programming, and we present a prototype implementation of the
-\ucomp compiler that generates code for lower-level architectures
-such as PISA, which is implemented by the Bmv2 software switch.
+modular programming and composition, and we present an implementation
+of the \ucomp compiler that generates code for lower-level
+architectures which are implemented by real target devices.
 \end{abstract}
 
 
@@ -276,7 +276,7 @@ Moreover, current architectures expose certain target-specific
 information and operations---such as intrinsic metadata,
 target-specific actions and \emph{extern} functions (e.g., resubmit,
 recirculate, clone, etc.)---to enable special processing such as
-packet replication ~\cite{simple_switch.md,psa}. While doing so
+packet replication~\cite{simple_switch.md,psa}. While doing so
 enhances features, it also makes programs being closely tied to
 architectures and targets. More fundamentally, it breaks the notion of
 abstraction needed to write modular and portable programs.  For
@@ -285,19 +285,32 @@ intrinsic metadata supported by PSA, and such metadata is used across
 the program in an unrestricted manner~\cite{switch.p4}; porting such
 programs to a different architecture requires significant refactoring.
 
-% \hse{TODO:For example, resubmit or recirculate calls are like event trigger.. effects happen after the block}
 
+Further, the current approach also makes it hard to write modular and
+composable code. To understand why, note that even for the same
+target, the architecture usually contains packet-processing blocks
+with heterogeneous execution models, also called \emph{abstract
+machines}. For example, consider PSA in \cref{fig:arch-example}---the
+parser block  is usually described using a sub-language of P4 which
+uses Finite State Machines (FSM) as its abstract machine while the
+control blocks are expressed in another sub-language whose abstract
+machine models imperative control flow. As each abstract machine is
+defined independently, there is no common interface that programmers
+can write their packet-processing modules against. This lack of
+uniform abstract machine and interface prevents packet-processing
+modules to be composed together as composition requires modules to
+have compatible interfaces. For example, in
+\cref{fig:l2.p4,fig:ipv4.p4}, ideally we would like to execute the
+\texttt{ipv4} module right before applying \texttt{forward\_tbl} in
+\texttt{l2}'s \texttt{Pipe} control block so that \texttt{nh\_id} is
+available in \texttt{forward\_tbl}. But, such composition is not
+feasible currently.
 
-
-Even for the same target, heterogeneous packet-processing blocks and hardware-level details in the architecture pose more challenges to reuse code for modular programming.
-Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
-Control blocks are expressed using a sub-language modelling imperative control flow.
-Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
+\deleted{Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine. Control blocks are expressed using a sub-language modelling imperative control flow. Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
 Packet-processing logic in P4 programs is partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
 Incompatibility among abstract-machines, the absence of homogeneous one and fragmented execution flow in data plane hinders development of code modules with interfaces to reuse P4 code.
-% the natural reuse of packet-processing code.
 Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} Figure \ref{fig:ipv4.p4}.
-
+}
 
 Finally, architectures expose hardware-level constraints on intrinsic metadata of their targets to programmers.
 For example, $(1)$ output port can not be changed in a given programmable block, $(2)$ scope of some intrinsic metadata limited to specific programmable blocks, etc..
