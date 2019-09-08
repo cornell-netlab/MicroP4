@@ -30,24 +30,26 @@
 
 \begin{document}
 
-\tikzstyle{fixed}=[rectangle, draw, fill=gray!10, minimum height=6ex,text width=5em, text centered, inner sep=1pt]
-\tikzstyle{programmable}=[rectangle, draw, fill=white!20, text width=4.5em, text centered, rounded corners, minimum height=6ex, inner sep=0pt]
+\tikzstyle{fixed}=[rectangle, draw, fill=red!10, minimum height=6ex,text width=2em, text centered, inner sep=1pt]
+\tikzstyle{programmable}=[rectangle, draw, fill=green!5, text width=3.2em, text centered, rounded corners, minimum height=6ex, inner sep=0pt]
   \tikzstyle{line}=[draw, very thick, color=black!75, -latex']
   \tikzstyle{empty}=[]
-    \begin{tikzpicture}[node distance=5.5em, auto]
+    \begin{tikzpicture}[node distance=5em, auto]
       % Place nodes
       \node (prog) [programmable, text width=10em, node distance=20em, minimum height=2em] {Programmable block};
       \node (fixed) [fixed, text width=10em, right of=prog, node distance=15.5em, minimum height=2em] {Fixed function block};
 
-      \node (parser) at ($(prog.west)+(-2,-1.2)$) [programmable, node distance=3em, anchor=west] {Parser};
-      \node (verifycs) [programmable, right of=parser] {Verify CS control};
-      \node (ingress) [programmable, right of=verifycs] {Ingress control};
-      \node (buffer) [fixed, right of=ingress, node distance=6.0em] {Packet buffer \& RE};
-      \node (egress) [programmable, right of=buffer, node distance=5.8em] {Egress control};
-      \node (computecs) [programmable, right of=egress] {Compute CS control};
-      \node (deparser) [programmable, right of=computecs] {Deparser};
-      \node () at ($(parser.south)+(0,-0.3)$) [empty] {\large v1model};
-
+      \node (parser) at ($(prog.west)+(-1.5,-1.2)$) [programmable, node distance=3em, anchor=west] {parser};
+      \node (verifycs) [programmable, text width=4.2em,, right of=parser] {verify CS control};
+      \node (ingress) [programmable, right of=verifycs] {ingress control};
+      \node (buffer) [fixed, right of=ingress, node distance=4.2em] {PRE};
+      \node (egress) [programmable, right of=buffer, node distance=4.2em] {egress control};
+      \node (computecs) [programmable, text width=4.5em, right of=egress] {compute CS control};
+      \node (deparser) [programmable, text width=3.8em, right of=computecs] {deparser};
+      \node (v1model) at ($(parser.south west)+(0,-0.3)$) [empty, anchor=west] {\large \textbf{v1model}};
+      \node (pre) at ($(v1model.east)+(0.5,0)$) [empty, anchor=west] {PRE: Packet buffer and Replication Engine};
+      \node (cs) at ($(v1model.east)+(0.5,-0.4)$) [empty, anchor=west] {CS: Checksum};
+      \node (bqe) at ($(v1model.east)+(3,-0.4)$) [empty, anchor=west] {BQE: Buffer Queueing Engine};
       % Draw edges
       \path [line] (parser) -- (verifycs);
       \path [line] (verifycs) -- (ingress);
@@ -56,19 +58,21 @@
       \path [line] (egress) -- (computecs);
       \path [line] (computecs) -- (deparser);
 
+      \draw [dotted] ($(v1model.south west)+(0,0)$) -- ($(v1model.south east)+(0.4,0)$);
+      \draw [dotted] ($(v1model.south east)+(7.6,0)$) -- ($(v1model.south east)+(9.1,0)$);
 
       % Place nodes
-      \node (iparser) at ($(parser.west)+(0,-1.8)$) [programmable, minimum height=4ex, node distance=1em, text width=3em, anchor=west] {parser};
+      \node (iparser) at ($(parser.west)+(0,-1.9)$) [programmable, minimum height=4ex, node distance=1em, text width=3em, anchor=west] {parser};
       \node (icontrol) [programmable, minimum height=4ex, right of=iparser, node distance=4.0em, text width=3em] {control};
       \node (ideparser) [programmable, minimum height=4ex, right of=icontrol, node distance=4.5em, text width=4em] {deparser};
-      \node (buffer) [fixed, right of=ideparser, node distance=5.5em] {Packet buffer \& RE};
-      \node (eparser) [programmable, minimum height=4ex, right of=buffer, node distance=5.2em, text width=3em] {parser};
+      \node (buffer) [fixed, right of=ideparser, node distance=4.2em] {PRE};
+      \node (eparser) [programmable, minimum height=4ex, right of=buffer, node distance=3.8em, text width=3em] {parser};
       \node (econtrol) [programmable, minimum height=4ex, right of=eparser, node distance=4.0em, text width=3em] {control};
       \node (edeparser) [programmable, minimum height=4ex, right of=econtrol, node distance=4.5em, text width=4em] {deparser};
-      \node (qengine) [fixed, right of=edeparser, node distance=6.5em, text width=6.5em] {buffer queueing engine};
+      \node (qengine) [fixed, right of=edeparser, node distance=4.2em] {BQE};
       \node () at ($(icontrol.south)+(0,-0.3)$) [empty] {Ingress};
       \node () at ($(econtrol.south)+(0,-0.3)$) [empty] {Egress};
-      \node () at ($(iparser.south)+(0,-0.3)$) [empty] {\large PSA};
+      \node () at ($(iparser.south)+(0,-0.3)$) [empty] {\large \textbf{PSA}};
 
       % Draw edges
       \path [line] (iparser) -- (icontrol);
