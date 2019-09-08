@@ -1,0 +1,74 @@
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{listings, multicol}
+\usepackage{appendix}
+\usepackage{xspace}
+
+% fonts
+\usepackage[T1]{fontenc}
+\usepackage{libertine}
+\usepackage{inconsolata}
+
+\graphicspath{{figures/}}
+
+\hypersetup{
+  colorlinks,
+  linkcolor={green!0!black},
+  citecolor={red!0!black},
+  urlcolor={blue!0!black}
+}
+
+\lstdefinelanguage{P4}{
+  keywords={in, out, struct, inout, function, return, switch, exact, lpm, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply, true, false},
+  keywordstyle=\color{purple},
+  keywords=[2]{boolean, string, number, objectid},
+  keywordstyle=[2]\color{green}\bfseries,
+  identifierstyle=\color{darkgray},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{commentcolor}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+   language=P4,
+%    numbers=left,
+%    backgroundcolor=\color{mygray},
+   extendedchars=true,
+   basicstyle=\small\ttfamily\color{black},
+   showstringspaces=false,
+   showspaces=false,
+   tabsize=2,
+   frame=single,
+   breaklines=true,
+   showtabs=false,
+}
+\definecolor{mygray}{gray}{0.82}
+\definecolor{commentcolor}{RGB}{0,100,0}
+\definecolor{myk}{rgb}{0.0,0,0.65}
+
+\usepackage[capitalise]{cleveref}
+\crefformat{section}{\S#2#1#3} % see manual of cleveref, section 8.2.1
+\crefformat{subsection}{\S#2#1#3}
+\crefformat{subsubsection}{\S#2#1#3}
+
+
+\newcommand{\hs}[1]{{\color{blue}{HS:#1}}}
+\newcommand{\hse}[1]{{\color{blue}{#1}}}
+
+\newcommand{\todo}[1]{{\color{red}{TODO: #1}}}
+
+% Define custom macros
+\newcommand{\ulang}{$\mu$P4\xspace}
+\newcommand{\uarch}{$\mu$SA\xspace}
+\newcommand{\ucomp}{$\mu$P4C\xspace}
+
+

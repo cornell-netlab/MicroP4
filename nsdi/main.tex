@@ -1,96 +1,13 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix2019_v3}
-
-\usepackage{tikz}
-\usepackage{amsmath}
-\usepackage{xcolor}
-\usepackage{color}
-\usepackage{graphicx}
-\usepackage{subcaption}
-\usepackage{float}
-\usepackage{listings, multicol}
-\usepackage{appendix}
-\usepackage{xspace}
-
-% fonts
-\usepackage[T1]{fontenc}
-\usepackage{libertine}
-\usepackage{inconsolata}
-
-\graphicspath{{figures/}}
-
-\hypersetup{
-  colorlinks,
-  linkcolor={green!0!black},
-  citecolor={red!0!black},
-  urlcolor={blue!0!black}
-}
-
-\lstdefinelanguage{P4}{
-  keywords={in, out, struct, inout, function, return, switch, exact, const, entries, enum, if, else, case, break, extern, void, bit, error, int, verify, bool, key, table, action, actions, parser, control, state, transition, select, apply, true, false},
-  keywordstyle=\color{myk}\bfseries,
-  keywords=[2]{boolean, string, number, objectid},
-  keywordstyle=[2]\color{green}\bfseries,
-  identifierstyle=\color{darkgray}\bfseries,
-  sensitive=false,
-  comment=[l]{//},
-  morecomment=[s]{/*}{*/},
-  commentstyle=\color{commentcolor}\ttfamily,
-  stringstyle=\color{red}\ttfamily,
-  morestring=[b]',
-  morestring=[b]"
-}
-
-\lstset{
-   language=P4,
-%    numbers=left,
-%    backgroundcolor=\color{mygray},
-   extendedchars=true,
-   basicstyle=\small\ttfamily\color{darkgray}\bfseries,
-   showstringspaces=false,
-   showspaces=false,
-   tabsize=2,
-   frame=single,
-   breaklines=true,
-   showtabs=false,
-}
-\definecolor{mygray}{gray}{0.82}
-\definecolor{commentcolor}{RGB}{0,100,0}
-\definecolor{myk}{rgb}{0.0,0,0.65}
-
-\usepackage[capitalise]{cleveref}
-\crefformat{section}{\S#2#1#3} % see manual of cleveref, section 8.2.1
-\crefformat{subsection}{\S#2#1#3}
-\crefformat{subsubsection}{\S#2#1#3}
-
-
-\newcommand{\hs}[1]{{\color{blue}{HS:#1}}}
-\newcommand{\hse}[1]{{\color{blue}{#1}}}
-
-\newcommand{\todo}[1]{{\color{red}{TODO: #1}}}
-
-% Define custom macros
-\newcommand{\ulang}{$\mu$P4\xspace}
-\newcommand{\uarch}{$\mu$SA\xspace}
-\newcommand{\ucomp}{$\mu$P4C\xspace}
+\usepackage{local}
 
 \begin{document}
-
-%don't want date printed
 \date{}
-
-% make title bold and 14 pt font (Latex default is non-bold, 16 pt)
 \title{\Large \bf \ulang: Towards Compositional (Modular?) Dataplane Programming}
-
-%for single author (just remove % characters)
-\author{
-{\rm Paper \#XXX}\\
-Anonymous author(s)
-} % end author
-
+\author{{\rm Paper \#XXX}\\ Anonymous author(s)}
 \maketitle
 
-%-------------------------------------------------------------------------------
 \begin{abstract}
 Domain-specific languages such as P4 enable flexible and efficient
 packet-processing using primitives such as programmable parsers and
@@ -111,6 +28,10 @@ such as PISA, which is implemented by the Bmv2 software switch.
 \end{abstract}
 
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% INTRODUCTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 \label{sec:intro}
 Over the last decade, the synergistic development of packet-processing
@@ -140,12 +61,6 @@ and architectures, which makes it difficult to write programs in a
 compositional manner or reuse common code fragments in different
 programs.
 
-% \begin{figure}[h]
-%     \centering
-%     \includegraphics[trim=2 450 281 0, clip,scale=0.37]{psa-pipeline.pdf}
-%     \caption{PSA Model}
-%     \label{fig:psa-model}
-% \end{figure}
 For example, \texttt{switch.p4}~\cite{switch.p4} handles several dozen
 different protocols and functions (e.g., L2 switching, L3 routing,
 tunneling, etc.,). But the code is written against a global collection
@@ -157,18 +72,18 @@ the top-level program, it is difficult or impossible to reuse code
 fragments at finer granularity.
 
 Consider a simple scenario with two code fragments, as shown in
-Figures \ref{fig:l2.p4} and \ref{fig:ipv4.p4}.  The first code
-fragment, \texttt{l2}, parses the ethernet header, and modifies the
-ethernet addresses using the next hop, which is supplied as an
-argument, and finally deparses the packet.  The second code fragment,
-\texttt{ipv4}, parses the IPv4 header, uses longest-prefix matching to
-determine the next hop, decrements the \texttt{ttl} field and,
-finally, deparses the packet.  Note that neither \texttt{ipv4} nor
-\texttt{l2} is a complete packet-processing program: the former does
-not generate a functionally correct packets, while the latter is
-parameterized on the next hop and so does not specify forwarding
-behavior. However, we could use \texttt{l2} with any other routing
-scheme (e.g., IPv6, MPLS, etc.) to obtain a valid program.
+\cref{fig:l2.p4,fig:ipv4.p4}. The first code fragment, \texttt{l2},
+parses the ethernet header, and modifies the ethernet addresses using
+the next hop, which is supplied as an argument, and finally deparses
+the packet.  The second code fragment, \texttt{ipv4}, parses the IPv4
+header, uses longest-prefix matching to determine the next hop,
+decrements the \texttt{ttl} field and, finally, deparses the packet.
+Note that neither \texttt{ipv4} nor \texttt{l2} is a complete
+packet-processing program: the former does not generate a functionally
+correct packets, while the latter is parameterized on the next hop and
+so does not specify forwarding behavior. However, we could use
+\texttt{l2} with any other routing scheme (e.g., IPv6, MPLS, etc.) to
+obtain a valid program.
 
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none]
@@ -176,16 +91,16 @@ scheme (e.g., IPv6, MPLS, etc.) to obtain a valid program.
 parser P(packet_in pin, out hdr_t ph) {
   state start { pin.extract(ph.eth); }
 }
-control Pipe(inout hdr_t ph, inout sm_t sm, 
+control Pipe(inout hdr_t ph, inout sm_t sm,
              in bit<16> nh_id_id) {
-  action drop () {}           
+  action drop () {}
   action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
     ph.eth.dstMac = dest_mac;
     ph.eth.srcMac = src_mac;
-    sm.out_port = port;    
+    sm.out_port = port;
   }
   table forward_tbl {
-    key = { nh_id_id : exact; } 
+    key = { nh_id_id : exact; }
     actions = { process; drop; }
   }
   apply { forward_tbl.apply(); }
@@ -205,21 +120,21 @@ struct meta_t { bit<16> type; }
 parser P(packet_in pin, out hdr_t ph, inout meta_t m) {
   state start {
     transition select(m.type) {
-      0x0800: parse_ipv4; 
+      0x0800: parse_ipv4;
     }
   }
-  state parse_ipv4 { 
-    pin.extract(ph.ipv4); 
-    transition accept; 
+  state parse_ipv4 {
+    pin.extract(ph.ipv4);
+    transition accept;
   }
 }
 control Pipe(inout hdr_t ph, out bit<16> nh_id_id, inout sm_t sm) {
   action process(bit<16> nh) {
     ph.ipv4.ttl = ph.ipv4 - 1;
-    nh_id_id = nh;// setting out param
+    nh_id_id = nh; // setting out param
   }
   table ipv4_lpm_tbl {
-    key = { ph.ipv4.dstAddr : lpm } 
+    key = { ph.ipv4.dstAddr : lpm; }
     actions = { process; }
   }
   apply { ipv4_lpm_tbl.apply(); }
@@ -252,13 +167,13 @@ selective reuse of library code, specifying interfaces between
 modules, and facilitating inter-module communication. To write truly
 modular P4 programs, a fundamentally different approach is needed.
 
-To this end, this paper presents the design and (prototype)
-implementation of \ulang, a new architecture that provides
-fine-grained abstractions for constructing data plane programs.
-\ulang consists of two components, Micro Switch Architecture (\uarch),
-which distills packet processing to its essence, and abstracts away
-from device-specific structure, and a compiler, \ucomp, that maps one
-or more \uarch programs to a standard PISA pipeline.
+To this end, this paper presents the design and implementation of
+\ulang, a new architecture that provides fine-grained abstractions for
+constructing dataplane programs. \ulang consists of two components: i)
+Micro Switch Architecture (\uarch), which distills packet processing
+to its essence, and abstracts away from device-specific structure, and
+ii) a compiler, \ucomp, that maps one or more \uarch programs to a
+standard PISA pipeline.
 
 This paper makes the following contributions.
 \todo{rethink contributions}
@@ -280,18 +195,27 @@ This paper makes the following contributions.
 
 
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% DATAPLANE PROGRAMMING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dataplane Programming}
 \label{sec:background}
+% Goals:
+% i) implicit background on dataplane programming and highlight the
+% key challenges, and
+% ii) present the key insights of our approach
+
 We briefly describe the current state of data plane programming using
-P4 to understand challenges hindering reuse of packet-processing code
-(\cref{sec:p4}). Then, we give an overview of our approach for modular
-dataplane programming (\cref{sec:approach}).
+P4 to understand challenges hindering modular development and reuse of
+packet-processing code (\cref{sec:p4}). Then, we derive insights that
+make modular dataplane programming achievable with \ulang
+(\cref{sec:approach}).
 
-
-\subsection{Challenges with P4}
+\subsection{Challenges with current approach}
 \label{sec:p4}
+\todo{Clearly and precisely articulate the main challenges.}
 
+% Brief background on P4 programming model and architecture
 P4~\cite{bosshart2014p4} has emerged as a popular language for
 specifying the packet processing behaviour of programmable switching
 chips, such as Barefoot Tofino~\cite{tofino} and Cavium
@@ -318,19 +242,52 @@ and Portable Switch Architecture (PSA)~\cite{psa}.
   \label{fig:arch-example}
 \end{figure}
 
-
 To program a target device, one can use P4 to specify the behavior of
 the programmable blocks exposed in the architecture of the target.
 While this approach allows supporting multiple targets which share the
 same architecture, it also makes the \emph{P4 programs tightly coupled
 to the architecture} of the target. Such tight coupling makes it
-impossible to reuse P4 programs on targets with different
+impossible to reuse P4 programs across targets with different
 architectures.
 
-Moreover, architectures expose intrinsic metadata, target-specific actions and extern functions (e.g., resubmit, recirculate, clone) to replicate and/or program packet-path and flow of data across the processing blocks, as described in \cite{simple_switch.md} and \cite{psa}.
-This increases complexity in data plane model and coupling between P4 programs with the architecture.
-P4 code with such architecture-specific functions can not be reused on devices with different architectures.
+
+
+% NOTE: Two main points:
+% 1) across architectures: because pipeline model is different, it
+% hinders portability and code reuse
+% 2) even on the same architecture, a P4 program consists of
+% sub-languages with different abstract machines. So, modular
+% composition of programs is not possible.
+% NOTE: introduce terms such as "abstract machine" with definition or
+% examples
+
+% First explain the problem with different architectures
+Architectures differ in the way their dataplane pipeline is arranged.
+A P4 program written for a given architecture specifies the behaviour
+of programmable blocks within the corresponding pipeline. So, if the
+architecture changes, it is impossible to map the P4 program onto the
+different pipeline for the new architecture without a complete
+rewrite. For example, in \cref{fig:arch-example}, there is no obvious
+way to map the functionality in PSA's ingress deparser to any
+programmable block in v1model's pipeline. Doing so needs semantic
+understanding of the blocks and manual rewriting of the program.
+
+Moreover, current architectures expose certain target-specific
+information and operations---such as intrinsic metadata,
+target-specific actions and \emph{extern} functions (e.g., resubmit,
+recirculate, clone, etc.)---to enable special processing such as
+packet replication ~\cite{simple_switch.md,psa}. While doing so
+enhances features, it also makes programs being closely tied to
+architectures and targets. More fundamentally, it breaks the notion of
+abstraction needed to write modular and portable programs.  For
+example, many P4 programs written for PSA heavily rely on using
+intrinsic metadata supported by PSA, and such metadata is used across
+the program in an unrestricted manner~\cite{switch.p4}; porting such
+programs to a different architecture requires significant refactoring.
+
 % \hse{TODO:For example, resubmit or recirculate calls are like event trigger.. effects happen after the block}
+
+
 
 Even for the same target, heterogeneous packet-processing blocks and hardware-level details in the architecture pose more challenges to reuse code for modular programming.
 Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine.
@@ -340,6 +297,7 @@ Packet-processing logic in P4 programs is partitioned across programmable blocks
 Incompatibility among abstract-machines, the absence of homogeneous one and fragmented execution flow in data plane hinders development of code modules with interfaces to reuse P4 code.
 % the natural reuse of packet-processing code.
 Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} Figure \ref{fig:ipv4.p4}.
+
 
 Finally, architectures expose hardware-level constraints on intrinsic metadata of their targets to programmers.
 For example, $(1)$ output port can not be changed in a given programmable block, $(2)$ scope of some intrinsic metadata limited to specific programmable blocks, etc..
@@ -390,6 +348,14 @@ blocks to control blocks in pipeline model of target architecture
 while translating \uarch-specific constructs to target
 architecture-specific ones.
 
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% MICRO-P4 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MicroP4}
 \label{sec:microp4}
 \ulang is an intermediate logical target with an abstract packet-processing model.
@@ -647,7 +613,7 @@ parser P(extractor ex, pkt p, out ipv6_ht h) {
 control C(pkt p, inout ipv6_ht h, inout sm_t sm, es_t es, out bit<16> nh_id) {
   action process(bit<16> nh) {
     h.ip.hopLimit = h.ip.hopLimit - 1;
-    nh_id = nh;// setting out param
+    nh_id = nh;  // setting out param
   }
   table ipv6_lpm_tbl {
     key = { h.ip.dstAddr : lpm }
