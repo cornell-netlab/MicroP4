@@ -175,9 +175,12 @@ Micro Switch Architecture (\uarch), which distills packet processing
 to its essence, and abstracts away from device-specific structure, and
 ii) a compiler, \ucomp, that maps one or more \uarch programs to a
 standard PISA pipeline.
+\todo{Describe the impact, i.e what \ulang enables, further to
+appreciate why this is a good idea.}\\
+\todo{Fair to say the \ulang enables us to write portable, modular, and composable programs?}
 
-This paper makes the following contributions.
-\todo{rethink contributions}
+This paper makes the following contributions.\\
+\todo{rethink contributions}\\
 \begin{itemize}
 \item We motivate the need for modular data plane programming using a
   series of realistic examples.
@@ -246,8 +249,8 @@ and Portable Switch Architecture (PSA)~\cite{psa}.
 To program a target device, one can use P4 to specify the behavior of
 the programmable blocks exposed in the architecture of the target.
 While this approach allows supporting multiple targets which share the
-same architecture, it also makes the \emph{P4 programs tightly coupled
-to the architecture} of the target. Such tight coupling makes it
+same architecture, it also makes \emph{P4 programs tightly coupled to
+the architecture} of the target. Such tight coupling makes it
 impossible to reuse P4 programs across targets with different
 architectures.
 
@@ -262,56 +265,78 @@ architectures.
 % NOTE: introduce terms such as "abstract machine" with definition or
 % examples
 
-% First explain the problem with different architectures
+% First explain the problem with reuse across architectures
+% (Portability)
 Architectures differ in the way their dataplane pipeline is arranged.
 A P4 program written for a given architecture specifies the behaviour
 of programmable blocks within the corresponding pipeline. So, if the
-architecture changes, it is impossible to map the P4 program onto the
-different pipeline for the new architecture without a complete
-rewrite. For example, in \cref{fig:arch-example}, there is no obvious
-way to map the functionality in PSA's ingress deparser to any
+architecture changes, it is often impossible to map the P4 program
+onto the different pipeline for the new architecture without a
+complete rewrite. For example, in \cref{fig:arch-example}, there is no
+obvious way to map the functionality in PSA's ingress deparser to any
 programmable block in v1model's pipeline. Doing so needs semantic
 understanding of the blocks and manual rewriting of the program.
 
+% (... and modularity)
 Moreover, current architectures expose certain target-specific
 information and operations---such as intrinsic metadata,
 target-specific actions and \emph{extern} functions (e.g., resubmit,
 recirculate, clone, etc.)---to enable special processing such as
 packet replication~\cite{simple_switch.md,psa}. While doing so
 enhances features, it also makes programs being closely tied to
-architectures and targets. More fundamentally, it breaks the notion of
-abstraction needed to write modular and portable programs.  For
-example, many P4 programs written for PSA heavily rely on using
+architectures and targets and hurts portability. More fundamentally,
+it breaks the notion of abstraction needed to write modular programs.
+For example, many P4 programs written for PSA heavily rely on using
 intrinsic metadata supported by PSA, and such metadata is used across
-the program in an unrestricted manner~\cite{switch.p4}; porting such
-programs to a different architecture requires significant refactoring.
+the program in an unrestricted manner~\cite{switch.p4}; it is
+difficult to split such a program into clean modules that can be
+ported to a different architecture without significant refactoring.
 
-
-Further, the current approach also makes it hard to write modular and
-composable code. To understand why, note that even for the same
-target, the architecture usually contains packet-processing blocks
-with heterogeneous execution models, also called \emph{abstract
+% Then problem with writing modular code even on a single architecture
+% (Composition)
+The current approach also makes it hard to write modular and
+composable dataplane programs. To understand why, note that even for a
+fixed target, the architecture usually contains packet-processing
+blocks with heterogeneous execution models, also called \emph{abstract
 machines}. For example, consider PSA in \cref{fig:arch-example}---the
 parser block  is usually described using a sub-language of P4 which
-uses Finite State Machines (FSM) as its abstract machine while the
+uses Finite State Machines (FSM) as its abstract machine, while the
 control blocks are expressed in another sub-language whose abstract
 machine models imperative control flow. As each abstract machine is
 defined independently, there is no common interface that programmers
 can write their packet-processing modules against. This lack of
 uniform abstract machine and interface prevents packet-processing
 modules to be composed together as composition requires modules to
-have compatible interfaces. For example, in
+have compatible interfaces. Going back to the earlier example, in
 \cref{fig:l2.p4,fig:ipv4.p4}, ideally we would like to execute the
 \texttt{ipv4} module right before applying \texttt{forward\_tbl} in
 \texttt{l2}'s \texttt{Pipe} control block so that \texttt{nh\_id} is
-available in \texttt{forward\_tbl}. But, such composition is not
-feasible currently.
+available in \texttt{forward\_tbl}. But existing programming models do
+not support such composition.
+
+To summarize, there are three main challenges with current dataplane
+programming model that prevents hinders code reuse, modularity and
+composition:
+\begin{enumerate}
+  \item Different architectures vary in their dataplane pipelines
+    which have incompatible structure and semantics. This renders
+    programs written for one architecture not amenable to be ported to
+    others.
+  \item Architectures do not provide a clean abstraction that can
+    decouple dataplane programs from targets. This results in
+    dataplane programs being closely tied to a target, and it is
+    difficult to develop programs in a clean and modular way.
+  \item Programmable blocks within an architecture use heterogeneous
+    abstract machines without a common interface. The lack of a
+    compatible interface restricts composition of dataplane modules.
+\end{enumerate}
+
+
 
 \deleted{Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine. Control blocks are expressed using a sub-language modelling imperative control flow. Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
 Packet-processing logic in P4 programs is partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
 Incompatibility among abstract-machines, the absence of homogeneous one and fragmented execution flow in data plane hinders development of code modules with interfaces to reuse P4 code.
 Consider the example in Figure \ref{fig:l2.p4}, parser \texttt{P} of \texttt{l2} can not be executed at the end of deparser control block \texttt{D} of \texttt{ipv4} Figure \ref{fig:ipv4.p4}.
-}
 
 Finally, architectures expose hardware-level constraints on intrinsic metadata of their targets to programmers.
 For example, $(1)$ output port can not be changed in a given programmable block, $(2)$ scope of some intrinsic metadata limited to specific programmable blocks, etc..
@@ -319,8 +344,7 @@ Programmers implement packet-processing logic conforming to constraints, archite
 
 % Essentially, current ecosystem not only creates tight coupling between architectures and programs but also delegates responsibility of code allocation to programmers.
 
-In summary, there are two main challenges for easy reuse of code with existing data plane programming ecosystem.
-$(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P4 code from target devices and $(2)$ Absence of homogeneous abstract-machines or mechanism for seamless transition across heterogeneous abstract-machines involved in various packet-processing phases.
+In summary, there are two main challenges for easy reuse of code with existing data plane programming ecosystem.  $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P4 code from target devices and $(2)$ Absence of homogeneous abstract-machines or mechanism for seamless transition across heterogeneous abstract-machines involved in various packet-processing phases.}
 
 
 
