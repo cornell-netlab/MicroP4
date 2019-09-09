@@ -217,7 +217,6 @@ insights that make modular dataplane programming achievable with
 
 \subsection{Challenges with current approach}
 \label{sec:challenges}
-\todo{Clearly and precisely articulate the main challenges.}
 
 % Brief background on P4 programming model and architecture
 P4~\cite{bosshart2014p4} has emerged as a popular language for
@@ -298,21 +297,21 @@ The current approach also makes it hard to write modular and
 composable dataplane programs. To understand why, note that even for a
 fixed target, the architecture usually contains packet-processing
 blocks with heterogeneous execution models, also called \emph{abstract
-machines}. For example, consider PSA in \cref{fig:arch-example}---the
-parser block  is usually described using a sub-language of P4 which
-uses Finite State Machines (FSM) as its abstract machine, while the
-control blocks are expressed in another sub-language whose abstract
-machine models imperative control flow. As each abstract machine is
-defined independently, there is no common interface that programmers
-can write their packet-processing modules against. This lack of
-uniform abstract machine and interface prevents packet-processing
-modules to be composed together as composition requires modules to
-have compatible interfaces. Going back to the earlier example, in
-\cref{fig:l2.p4,fig:ipv4.p4}, ideally we would like to execute the
-\texttt{ipv4} module right before applying \texttt{forward\_tbl} in
-\texttt{l2}'s \texttt{Pipe} control block so that \texttt{nh\_id} is
-available in \texttt{forward\_tbl}. But existing programming models do
-not support such composition.
+machines}~\cite{p4lang,van1991machine}. For example, consider PSA in
+\cref{fig:arch-example}---the parser block  is usually described using
+a sub-language of P4 which uses Finite State Machines (FSM) as its
+abstract machine, while the control blocks are expressed in another
+sub-language whose abstract machine models imperative control flow. As
+each abstract machine is defined independently, there is no common
+interface that programmers can write their packet-processing modules
+against. This lack of uniform abstract machine and interface prevents
+packet-processing modules to be composed together as composition
+requires modules to have compatible interfaces. Going back to the
+earlier example, in \cref{fig:l2.p4,fig:ipv4.p4}, ideally we would
+like to execute the \texttt{ipv4} module right before applying
+\texttt{forward\_tbl} in \texttt{l2}'s \texttt{Pipe} control block so
+that \texttt{nh\_id} is available in \texttt{forward\_tbl}. But
+existing programming models do not support such composition.
 
 To summarize, there are three main challenges with current dataplane
 programming model that prevents hinders code reuse, modularity and
@@ -351,7 +350,6 @@ In summary, there are two main challenges for easy reuse of code with existing d
 \subsection{Design goals and key insights}
 \label{sec:goals}
 \label{sec:insights}
-\todo{Discuss if this makes sense, and elaborate}
 
 Our main goal is to enable dataplane programming in a portable,
 modular, and composable manner.
