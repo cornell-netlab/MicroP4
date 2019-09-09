@@ -1162,7 +1162,7 @@ The explosion of number of states would only increase number of entries in the t
 \subsection{Deparser To Match-Action Table:}
 \label{subsection:deparser-to-match-action-table}
 The deparser blocks of \uarch's pipelines are the control blocks with emitter as one of the parameters.
-\ucomp replaces the emitter instance's emit method-call statements with match-action table to transform deparser into normal match-action control blocks.
+\ucomp replaces the \texttt{emitter} instance's \texttt{emit} method-call statements with match-action table to transform deparser into normal match-action control blocks.
 The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
 The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
 In case of increase in packet size, byte-stack is always large enough to hold new headers.
@@ -1178,107 +1178,146 @@ If the execution follows control path invalidating mpls header, 60 bytes followi
 The synthesized action performs in-place copy of these 60 bytes. It invalidates the last 4 bytes.
 If the control block execution sets ipv4 header instance to valid, bytes after the ipv6 header are pushed down by the offset of 20 to insert ipv4 header instance.
 
-\hse{CONTinue refinement pass}
 
-\subsection{Real-Target Specific Transformation}
-\ucomp transforms the packages described using \ulang's data plane abstractions into a given real target specific ones.
-\uarch defines logical pipelines and externs to provide abstraction for data plane pipelines.
-As a part of data plane abstractions, \uarch allows to describe multiple packet processing in control blocks of its orchestration pipelines.
-Programmers can create multiple copies of packets in the control blocks using \texttt{copy\_from} methods of \uarch externs to describe multi-packet processing.
-\ucomp's transformations create copies of packet using externs provided by the architecture of the specified target.
-\ucomp realizes multi-packet processing by identifying a packet-processing sub-graph, called a \emph{thread}, for every definition of a \texttt{pkt} instance.
-% Existing target devices can not process multiple packets by the same thread at the same time.
-Then, it prepares \emph{Packet-Processing Schedule} (PPS) of the threads in the program and maps it to packet-processing blocks of the target's architecture.
+By the end of the midend passes, \ucomp transforms parser and deparser blocks of every package into match-action control blocks, homogenizing abstract-machine of the main package and realizing transition of execution control across callee packages.
+However, control blocks of the packages still contain \uarch-specific constructs.
+Next, we discuss backend of \ucomp that further transforms the control blocks to create a packet-processing program a given target architecture.
+
+
+\subsection{Transformation to Target Architecture}
+\ucomp's backend transforms all the control blocks by $(1)$ translating \uarch-specific constructs to target-specific ones and $(2)$ allocating the control blocks to ones of target pipeline model.
+\uarch-specific constructs are higher-level abstraction for fixed-function packet-processing blocks and functions in target architecture.
+\uarch's externs, \texttt{es\_t} and \texttt{mc\_engine}, provide abstraction for constraint on intrinsic metadata and fixed-function block, packet replication engine.
+The \texttt{copy\_from} methods of \uarch's externs (\texttt{pkt}, \texttt{es\_t}) are abstraction for compile-time replication of packet.
+Programmers can create multiple copies of packets and intrinsic metadata in implementation of the control blocks of orchestration interface to describe multi-packet processing.
+To translate the \uarch-specific constructs, \ucomp partitions and allocates the match-action control blocks to programmable-blocks in pipeline models of the target architecture.
+In control blocks of orchestration interface, \ucomp realizes multi-packet processing by identifying a packet-processing sub-graph, called a \emph{thread}, for every initialization (\texttt{copy\_from} method call) statement of a \texttt{pkt} instance.
+Then, it prepares \emph{Packet-Processing Schedule} (PPS) of the threads and allocates thread code to packet-processing blocks of the target's pipeline model.
 Some target architectures may impose constraint that PPSs must be serializable.
-If \ucomp fails to find a serial PPS for such targets, it raises a compilation error. 
+If \ucomp fails to find a serial PPS, it raises a compilation error for such targets. 
 
 
 \subsubsection{Packet-Processing Schedule}
-\ucomp extracts packet-processing threads from the control block of orchestration pipeline's interface while maintaining control and data dependencies.
-To this end, it constructs a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} and performs a series of transformations.
+If the main package has callees with orchestration interface, \ucomp extracts packet-processing threads and PPS for control block of every callee.
+\ucomp constructs a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} having statements as nodes and dependencies among them as edges. 
+\ucomp  performs a series of transformations on PDG to compute PPS.
 
-\ucomp treats parameter of orchestration control block or every \texttt{copy\_from} method call statement of \texttt{pkt} instance as its definition, because they initialize the instance.
-We note that \texttt{pkt} instance argument in \texttt{copy\_from} method calls is only used or read.
-Moreover, all other method call statements having \texttt{pkt} instances as arguments access (read and modify) the instances, such call statements are not considered as their definition statements.
-
-
-We define \emph{access ranges} of a \texttt{pkt} instance's definition as span of program statements until the next definition of the instance in reached on every possible path in the PFG.
-We merge overlapping access ranges of multiple definitions of the same \texttt{pkt} instance.
-Non overlapping access ranges of the same instance are renamed to create one-to-one mapping between an instance and its access range.
-Inspired from \emph{program slice} defined in \cite{Weiser:1981:PS:800078.802557}, we define \emph{packet slice} based on access ranges of \texttt{pkt} instances' definitions.
-A packet slice of a \texttt{pkt} instance is an executable subset of PDG, which consists of all the program statements affecting the instance's value in overlapping access ranges of its definitions.
-Packet slices can have multiple entry and exist points.
-A set of definition statements of \emph{pkt} instance with overlapping access ranges is considered as a slicing criteria for a given packet instance.
+% \ucomp treats parameter of orchestration control block or every \texttt{copy\_from} method call statement of \texttt{pkt} instance as its definition, because they initialize the instance.
+% We note that \texttt{pkt} instance argument in \texttt{copy\_from} method calls is only used or read.
+% Moreover, all other method call statements having \texttt{pkt} instances as arguments access (read and modify) the instances, such call statements are not considered as their definition statements.
+% We define \emph{access-ranges} of a \texttt{pkt} instance's definition as span of program statements until the next definition of the instance in reached on every possible path in the PDG.
+For every initialization statement of a \texttt{pkt} instance, we define an \emph{access-range}, analogous to live ranges, as span of program statements until the next initialize of the instance in reached on every possible path in the PDG.
+We merge overlapping access-ranges of multiple initialization of the same \texttt{pkt} instance.
+If an instance has non-overlapping access-ranges, a new instance for every access-range is synthesised to create one-to-one mapping between them.
+% the instance and its access-range.
+Inspired from \emph{program slice} defined in \cite{Weiser:1981:PS:800078.802557}, we define \emph{packet slice} based on access-ranges.
+% of \texttt{pkt} instances' definitions.
+A packet slice of a \texttt{pkt} instance is an executable subset of PDG, which consists of all the program statements affecting the instance's value in its access-ranges.
+A set of initialization statements of \emph{pkt} instance with overlapping access-ranges is considered as a slicing criteria for a given packet instance.
+Packet slices can have multiple entry and exist points due to presence of conditional statements.
 We compute packet slices from the PDG of control block using a method similar to one described in \cite{Ferrante:1987:PDG:24039.24041}.
-Specifically, we perform a graph traversal in reverse direction of edges from every statement at exit points in the access ranges until definition statements in the criteria set are reached.
+Specifically, we perform a graph traversal in reverse direction of edges from every statement at exit points in the access-ranges until initialization statements in the criteria are reached.
 The graph traversal continues until all possible definitions of every variable used in visited statement are reached.
 If any variable or extern instance is involved in anti-dependency, it is resolved by introducing new variable and renaming.
 An example program shown in Figure \ref{fig:multi-packet-processing} is sliced with respect to definitions of three instances \texttt{pm}, \texttt{p} and \texttt{pt}.
 
 
-Packet slices of different instances may have common program statements due to control and data dependence.
-Therefore, a packet slice may have method call statements processing different \emph{pkt} instances than one's definition statements used in slicing criteria.
+Packet slices of different instances may have common program statements due to control and data dependencies.
+Therefore, a packet slice may have method call statements processing different \emph{pkt} instances than one's initialization statements used in slicing criteria.
 For the program shown in Figure \ref{fig:multi-packet-processing}, slice 1 pertaining to instance \texttt{pm} shares program statements with slices 2 and 3 related to \texttt{p} and \texttt{pt}, respectively.
-We create a packet-processing thread per instance by excluding such method call statements from every packet slice but maintain dependence among them by creating inter-thread dependence.
-All the common program statements not accessing \texttt{pkt} instances are also excluded from threads.
+We create a packet-processing thread per instance by excluding such method call statements from every packet slice but maintain dependency among them by creating inter-thread dependency.
+% All other common program statements not accessing \texttt{pkt} instances are also excluded from threads.
+All other common program statements are also excluded from threads of \texttt{pkt} instances.
 We term such statements \emph{cps} nodes and maintain their control and data dependencies with the thread nodes.
-We associate every thread with an identifier, \emph{thread-id}, and a set of group-ids, called \emph{clone-group}.
-Every thread-id identifies a thread based on unique \texttt{pkt} instance processed by it.
-Every group-id identifies set of threads that may process copies of the same packet instance.
-In presence, of conditional statements like if-else and switch, a thread may process a copy of a packet from multiple possible clone groups.
+% We associate every thread with an identifier, \emph{thread-id}, and a set of group-ids, called \emph{clone-group}.
+We associate every thread with an identifier, \emph{thread-id}, and synthesize metadata for it.
+\ucomp synthesizes if-conditional statement in every thread to execute its program statements only if its id value is set in thread-id metadata.
+% Every thread-id identifies a thread based on unique \texttt{pkt} instance processed by it.
+% In presence of conditional statements, a thread may process a packet copied from one of multiple possible packet instances.
+% Every group-id identifies set of threads that may process copies of the same packet instance.
+
 
 % and clone-group identifies every possible \texttt{pkt} instances from which the thread's packet instance could be initialized.
 
+We follow similar approach to extract threads associated with \texttt{in\_buf} instance.
+The \texttt{merge} and \texttt{to\_in\_buf} methods of \texttt{out\_buf} easily allows to add thread nodes and control dependency among them in PPS.
 
 We transform PDG to PPS graph by coalescing all the nodes in a thread to a single node while maintaining their control and data dependencies with cps and other thread nodes.
 We synthesise a variable to transform every control dependency among thread nodes to a data dependency.
 The thread, which is depended on, sets the variable with a constant value and the other thread uses the variable in predicate of new if-conditional statement to continue processing on the control path.
 If a PPS has a directed cycle involving thread nodes, PPS is not serializable.
-If the real target does not have capability to process multiple copy of a packet at the same time, 
+If the target architecture does not have capability to process multiple copy of a packet at the same time, 
 \ucomp raises error and lists program statements involved in cycles.
-However, a PPS can have cycles involving maximum one thread node and common program statements represented by cps nodes.
+However, a PPS can have cycles involving maximum one thread node and cps nodes.
 To decide execution thread for cps nodes, we compute strongly connected components of PPS graph.
 In each component, there can be exactly one thread node and one or more cps nodes.
-We further transform PPS into a directed acyclic graph by contracting each component into a single node.
-PPS can still have cps nodes not part of any strongly connected component, such nodes can be executed as a part of any thread with which they have dependence.
-We schedule such cps nodes while mapping the thread nodes to packet-processing blocks of target architecture.
-
-
+We further transform PPS into a DAG by coalescing cps nodes in a component to its thread node.
+PPS can still have cps nodes not part of any SCC, such nodes can be executed as a part of any thread.
+We schedule such cps nodes while mapping the thread components to data plane of target architecture.
 
 % Every \texttt{apply} method call statement of \texttt{Multicast} or \texttt{Orchestration} type package gets transformed to a thread node in PPS.
 % \texttt{enqueue}, \texttt{merge} and \texttt{to\_in\_buf} method call statements of \texttt{out\_buf} extern's instances capture dependence among such threads nodes in PPS.
 
+\subsubsection{Allocation to Target Architecture}
+Finally \ucomp translates \uarch's constructs to intrinsic metadata and extern provided by the target architecture.
+\ucomp visits PPS nodes in topological order to map threads and cps on target architecture.
+It simultaneously partitions all the sub-programs represented by each thread node located at the same topological order in PPS.
+It allocates the partitions to packet-processing block according to pipeline model of the target architecture.
 
-
-\subsubsection{Mapping to Target Architecture}
-\ucomp visits PPS nodes in topological order to map thread and cps nodes on target architecture.
-Also, standard metadata (\texttt{sm\_t}) instances and logical extern instances (\texttt{es\_t} and \texttt{mc\_engine}) used in the program are translated into intrinsic metadata and extern provided by the target architecture.
-\ucomp partitions the sub-program represented by each thread node in multiple packet-processing block according to pipeline model of the target architecture.
-
-Let's consider v1model architecture of simple\_switch target device for an example.
-We create a two-state, named ingress and egress, finite-state machine to capture restriction on usage of egress-spec, egress-port and queuing metadata in ingress and egress blocks.
-Each state represents a set of assertions to be verified on program statements while visiting them in topological order.
+For an example, we consider v1model architecture for simple\_switch target.
+We create a FSM with two states, named ingress and egress.
+It captures restriction on usage of egress\_spec, egress\_port and queuing metadata in ingress and egress blocks.
+Each state represents a set of assertions to be verified on nodes while visiting them in topological order.
 State transition occurs when the graph traversal can not be continued due to absence of nodes without incoming edges.
-In the ingress state, the graph traversal asserts that every visited statement is not $1$ a call of apply method of \texttt{mc\_engine}  and $2$ \texttt{get\_value method} methods of \texttt{egress\_spec}.
+In the ingress state, the graph traversal asserts that every visited statement is not $(1)$ a call of apply method of \texttt{mc\_engine}  and $(2)$ \texttt{get\_value} methods of \texttt{es\_t}.
 When the traversal can not progress any further state transition happens and we split the thread PDG into two PDGs of visited and non-visited nodes.
 In the egress state, the graph traversal asserts every that visited statement is not a method call of \texttt{get\_egress\_port}.
+We perform trivial translation of method calls of \uarch's extern with corresponding method calls of target architecture.
 
-There can be multiple edges representing control branches between the partitions.
-We synthesize \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
-The second partition uses the metadata and condition on their values to resume execution on appropriate control branch.
-Also, partitioned code may access the same local declaration variables.
-These shared local variables along with the \emph{partition} metadata are passed as user-defined metadata between ingress and egress control block.
+There can be multiple edges representing control dependencies between the partitions.
+Also, partitions may have live local variables.
+We synthesize \emph{partition-metadata}to convert control dependencies into data dependencies and convert live variable to user metadata.
+We supply the partition-metadata and live variables as user-metadata parameter between ingress and egress control block to restore execution state.
+Finally, {copy\_from} method calls of \texttt{pkt} instances are replaced for v1model with \texttt{clone3} followed by \texttt{recirculate} or \texttt{resubmit} while setting appropriate thread-id user-defined metadata.
+We can perform similar transformation for other architectures like PSA using appropriate functions exposed by them.
 
-We synthesize per packet user metadata to store thread-id.
-A packet is processed by a thread only if the corresponding thread-id is set in the metadata. 
-We enforce this condition by instrumenting thread code with an if-conditional statement.
-At the end of each thread, next thread-id is set.
 
-\hse{TODO: may be a diagram for 5.5}
+% We synthesize \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
+% The second partition uses the metadata and condition on their values to resume execution on appropriate control branch.
+% Also, partitioned code may access the same local declaration variables.
+% These shared local variables along with the \emph{partition} metadata are passed as user-defined metadata between ingress and egress control block.
+
+% We synthesize per packet user metadata to store thread-id.
+% A packet is processed by a thread only if the corresponding thread-id is set in the metadata. 
+% We enforce this condition by instrumenting thread code with an if-conditional statement.
+% At the end of each thread, next thread-id is set.
+
+
 
 \subsection{Implementation}
+\ucomp is implemented with \textasciitilde 6K LoCs and as an extension of open source reference compiler p4c \cite{p4c}.
+We discuss our implementation in reference with specification of P4-16.
 
-\section{Hardware Resource Consumption}
+\subsubsection{Comparison with P4}
+\ucomp allows to define custom package types, similar to control and parser blocks, which is not feasible with current specification P4-16. 
+Also, for abstracting implementation of package types, \uarch defines interfaces encapsulating a set of programmable blocks.
+In addition, \uarch uses different representation of packet (\texttt{pkt}, \texttt{extractor} and \texttt{emitter}) compared to ones defined in P4 core library (\texttt{packet\_in} and \texttt{packet\_out}).
+Our prototype \ucomp minimally extends P4 grammar and frontend to implement features required for code reuse and modularity.
+\ulang do not violate semantics of any other programming constructs (externs, control and parser blocks) defined in P4-16's specification.
+
+
+\subsubsection{Supporting Target Architectures}
+
+
+\subsubsection{Limitation}
+
+
+\section{Experiments}
+
+\subsection{Examples and Use Cases}
+\subsection{Discussion On Evaluation}
+\textbf{Optimization}. \\
+\textbf{Hardware Resource Consumption}. \\
 
 \section{Conclusion}
 
@@ -1460,6 +1499,36 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 \caption{Programmable Blocks for Interfaces}
 \label{fig:programmable-blocks-for-interfaces}
 \end{figure*}
+
+
+
+% To address these challenges without disrupting current ecosystem and workflow of data plane programming in P4, we design a switch architecture \uarch for an intermediate logical device, called \ucomp.
+% The data plane model with logical pipelines of \ucomp provides abstractions for pipeline models of real-target architectures.
+% \uarch provides a set of constructs to write modular code having interface to reuse it and to hide its implementation details.
+% The logical pipeline models defined in \uarch do not completely eliminate heterogeneity in packet-processing blocks (parser, control) of the pipelines.
+% % However, constructs and pipeline models declared in \uarch allows to write programs by reusing the code developed in conformance of \uarch.
+% The design choices for \uarch are intentional to avoid disruptive innovations in P4 language.
+% It partially address the above mentioned challenges and leaves following two aspects for unaddressed.
+% $1$ creating P4 programs specific to \uarch and the logical device \ucomp.
+% $2$ heterogeneity in packet-processing blocks of P4 programs.
+% We complement design choices of \uarch by designing and developing a compiler, \ucomp, to address these aspects.
+% 
+% 
+% \ucomp transforms \uarch-specific P4 code for a given real-target architecture satisfying all the constraints and in conformance of lower-level details of the target.
+% First, \ucomp estimates operational region of packets to process the P4 code.
+% It synthesizes a parser and a deparers blocks as declared in real-target architecture.
+% Then, it transforms all parser and parser blocks into match-action control blocks homogenizing abstract-machines for packet-processing blocks.
+% This allows to natural transfer of execution-control across modules, enabling modularity and facilitating code reuse.
+% Finally, it allocates transformed match-action control blocks to control blocks in pipeline model of target architecture while translating \uarch-specific constructs to target architecture-specific ones.
+% 
+% 
+% Next sections..
+
+
+
+
+
+
 
 
 
