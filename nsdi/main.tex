@@ -211,12 +211,12 @@ This paper makes the following contributions.\\
 
 We briefly describe the current state of data plane programming using
 P4 to understand challenges hindering modular development and reuse of
-packet-processing code (\cref{sec:p4}). Then, we derive insights that
-make modular dataplane programming achievable with \ulang
-(\cref{sec:approach}).
+packet-processing code (\cref{sec:challenges}). Then, we derive
+insights that make modular dataplane programming achievable with
+\ulang (\cref{sec:approach}).
 
 \subsection{Challenges with current approach}
-\label{sec:p4}
+\label{sec:challenges}
 \todo{Clearly and precisely articulate the main challenges.}
 
 % Brief background on P4 programming model and architecture
@@ -349,17 +349,44 @@ In summary, there are two main challenges for easy reuse of code with existing d
 
 
 \subsection{Design goals and key insights}
-Our main goal is to make dataplane programs portable, modular, and
-composable.
+\label{sec:goals}
+\label{sec:insights}
+\todo{Discuss if this makes sense, and elaborate}
+
+Our main goal is to enable dataplane programming in a portable,
+modular, and composable manner.
 \tightpar{Portable:} Dataplane programs written for one target device
 and architecture should be easily reusable across other targets and
 architectures.
-\tightpar{Modular:} Individual dataplane functionality could be
+\tightpar{Modular:} Individual dataplane functionality can be
 developed in an independent manner agnostic of target, architecture
 and other functions.
 \tightpar{Composable:} Modules for individual dataplane functions can
-be composed together in custom ways to express more complex
-dataplanes.
+be composed together in custom ways to express complex dataplane
+processing.
+
+\paragraph{Insights.}
+We find that the root cause that restricts dataplane programming from
+achieving our goals is the abstraction offered by current
+architectures as discussed in~\cref{sec:challenges}.  Our key insight
+is that in order to achieve the goals, we need an architecture that is
+general enough to express a wide range of functionality with a
+homogeneous abstract machine while also being realistic so that
+programs written against it can be mapped to other real architectures
+in an automatic manner. Of course, introducing yet another
+architecture to unify existing architectures adds more complexity to
+the ecosystem; instead, what we need is a \emph{logical} architecture
+that acts as high-level description against which all programs are
+written, and this architecture maps to real architectures.
+
+Based on our analysis in \cref{sec:challenges}, the logical
+architecture should have three components:
+\begin{enumerate*}[label=\roman*)]
+  \item a logical pipeline that is expressive and general,
+  \item a common interface so that modules can be composed, and
+  \item a general way to use target-specific features such as externs.
+\end{enumerate*}
+
 
 \subsection{Our approach}
 \label{sec:approach}
