@@ -1,0 +1,62 @@
+\documentclass[a4paper,18pt]{article}
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+\usepackage{libertine}
+\usepackage[italic]{mathastext}
+\usepackage{amsmath,amsthm,amsfonts}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{subcaption}
+
+\usetikzlibrary{shapes,arrows,shadows}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{automata,positioning,arrows,matrix,backgrounds,calc}
+\usetikzlibrary{decorations.text}
+\usetikzlibrary{decorations.pathmorphing}
+
+\usepackage[active,tightpage]{preview}
+\usepackage{xparse}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{0pt}%
+
+\usetikzlibrary{fit}					% fitting shapes to coordinates
+\usetikzlibrary{backgrounds}	% drawing the background after the foreground
+\usetikzlibrary{calc}
+
+\renewcommand*{\familydefault}{\sfdefault}% Let's have a sans serif font
+
+\begin{document}
+
+\tikzstyle{block}=[rectangle, draw, fill=white!10, minimum height=6ex,text width=4em, text centered, inner sep=1pt]
+\tikzstyle{textbox}=[text width=2em, text centered, text width=3em]
+  \tikzstyle{line}=[draw, very thick, color=black!75, -latex']
+  \tikzstyle{empty}=[]
+    \begin{tikzpicture}[node distance=5em, auto]
+      % Place nodes
+      \node (source) [textbox] {source};
+      \node (frontend) [block, text width=4.2em, right of=source,] {Frontend};
+      \node (box) [block, right of=frontend, text width=22em, node distance=6em, minimum height=10ex,anchor=west] {};
+      \node (linking) [block, right of=frontend, node distance=9em] {linking};
+      \node (static) [block, right of=linking, node distance=6em] {static analysis};
+      \node (transformation) [block, right of=static, text width=8em, node distance=8em] {transformation to match-action control};
+      \node (targetspecific) at ($(transformation.south east)+(0,-1)$)
+        [block, text width=12em, anchor=east] {target-specific extern translation \& code allocation};
+      \node (targetcode) [textbox, text width=10em, left of=targetspecific, node distance=14em] {target architecture-specific source};
+      \node (backend) at ($(targetspecific.south)+(0,-0.3)$) [empty] {backend pass};
+
+
+      \node (library) at ($(linking.north)+(0,0.4)$) [textbox, anchor=south,text width=10em] {library modules};
+      % Draw edges
+      \path [line] (source) -- (frontend);
+      \path [line] (frontend) -- (box) node[midway]{$\mu$P4C-IR};
+      \path [line] (linking) -- (static);
+      \path [line] (static) -- (transformation);
+      \path [line] (box.east) -- ($(box.east)+(0.5,0)$) -- ($(targetspecific.east)+(0.88,0)$) -- (targetspecific.east);
+      \path [line] (targetspecific) -- (targetcode);
+      \path [line] (library) -- (linking);
+
+    \end{tikzpicture}
+\end{document}
