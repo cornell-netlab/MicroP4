@@ -348,6 +348,19 @@ In summary, there are two main challenges for easy reuse of code with existing d
 
 
 
+\subsection{Design goals and key insights}
+Our main goal is to make dataplane programs portable, modular, and
+composable.
+\tightpar{Portable:} Dataplane programs written for one target device
+and architecture should be easily reusable across other targets and
+architectures.
+\tightpar{Modular:} Individual dataplane functionality could be
+developed in an independent manner agnostic of target, architecture
+and other functions.
+\tightpar{Composable:} Modules for individual dataplane functions can
+be composed together in custom ways to express more complex
+dataplanes.
+
 \subsection{Our approach}
 \label{sec:approach}
 
