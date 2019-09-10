@@ -361,36 +361,58 @@ In summary, there are two main challenges for easy reuse of code with existing d
 
 Our main goal is to enable dataplane programming in a portable,
 modular, and composable manner.
+
 \tightpar{Portable:} Dataplane programs written for one target device
 and architecture should be easily reusable across other targets and
-architectures.
-\tightpar{Modular:} Individual dataplane functionality can be
-developed in an independent manner agnostic of target, architecture
-and other functions.
+architectures. For example, one should be able to port a program
+originally written with \texttt{v1model} in mind on to PSA without
+significant rewrite.
+
+\tightpar{Modular:} Individual dataplane functionality for processing
+packets can be developed in an independent manner agnostic of the
+target as well as other dataplane functions. For example, one should
+be able to write modules for L2 and L3 processing in an independent
+manner.
+
 \tightpar{Composable:} Modules for individual dataplane functions can
 be composed together in custom ways to express complex dataplane
-processing.
+processing. For example, in \cref{fig:l2.p4,fig:ipv4.p4}, one should
+be able to compose \texttt{ipv4} with \texttt{l2}, or replace
+\texttt{ipv4} with modules for IPv6, MPLS etc. as needed.
+
+
+
+
 
 \paragraph{Insights.}
 We find that the root cause that restricts dataplane programming from
 achieving our goals is the abstraction offered by current
-architectures as discussed in~\cref{sec:challenges}.  Our key insight
-is that in order to achieve the goals, we need an architecture that is
-general enough to express a wide range of functionality with a
-homogeneous abstract machine while also being realistic so that
-programs written against it can be mapped to other real architectures
-in an automatic manner. Of course, introducing yet another
-architecture to unify existing architectures adds more complexity to
-the ecosystem; instead, what we need is a \emph{logical} architecture
-that acts as high-level description against which all programs are
-written, and this architecture maps to real architectures.
+architectures as discussed in~\cref{sec:challenges}. Based on this,
+our key insight is that in order to achieve the above goals, we need
+\emph{to raise the level of abstraction that is general enough to
+  express a wide range of functionality while also being realistic so
+  that programs can be mapped to other real architectures in an
+automatic manner}. Of course, introducing yet another architecture to
+unify existing architectures adds more complexity to the ecosystem;
+instead, what we need is a \emph{logical} architecture that acts as
+high-level description against which programs are written, and this
+logical architecture maps to real architectures. This architecture is
+logical in the sense that devices do not explicitly implement it;
+rather, it captures the essence of packet processing and exposes that
+to programs.
 
-Based on our analysis in \cref{sec:challenges}, the logical
-architecture should have three components:
-\begin{enumerate*}[label=\roman*)]
-  \item a logical pipeline that is expressive and general,
-  \item a common interface so that modules can be composed, and
-  \item a general way to use target-specific features such as externs.
+Based on our analysis in \cref{sec:challenges}, we found that the
+problems stem from inconsistent pipelines, exposing target-specific
+externs, and lack of uniform abstract machine and interfaces with
+existing architectures. Accordingly, we believe that the logical
+architecture should have three main components:
+\begin{enumerate*}[label=(\roman*)]
+  \item a logical pipeline that is expressive to encode a variety of
+    packet-processing functions, while being general,
+  \item a generic way to use target-specific features such as externs
+    without introducing tight coupling, and
+  \item a common interface so that packet-processing modules can be
+    composed.
 \end{enumerate*}
 
 
