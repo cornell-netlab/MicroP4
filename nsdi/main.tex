@@ -4,7 +4,7 @@
 
 \begin{document}
 \date{}
-\title{\Large \bf \ulang: Towards [(Compositional) (Modular) (Reusable)] Dataplane [Programm(s)(ing)]}
+\title{\Large \bf \ulang: Towards Portable, Modular and Composable Dataplane Programs}
 \author{{\rm Paper \#XXX}\\ Anonymous author(s)}
 \maketitle
 
@@ -213,8 +213,8 @@ We briefly describe the current state of data plane programming using
 P4 to understand challenges that hinder writing dataplane programs in
 a portable, modular and composable manner (\cref{sec:challenges}).
 Then, we derive insights to achieve our goals for dataplane
-programming \ulang (\cref{sec:insights}) and give an overview of our
-approach (\cref{sec:approach}).
+programming (\cref{sec:insights}) and give an overview of our approach
+(\cref{sec:overview}).
 
 
 
@@ -351,7 +351,8 @@ Programmers implement packet-processing logic conforming to constraints, archite
 
 % Essentially, current ecosystem not only creates tight coupling between architectures and programs but also delegates responsibility of code allocation to programmers.
 
-In summary, there are two main challenges for easy reuse of code with existing data plane programming ecosystem.  $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P4 code from target devices and $(2)$ Absence of homogeneous abstract-machines or mechanism for seamless transition across heterogeneous abstract-machines involved in various packet-processing phases.}
+In summary, there are two main challenges for easy reuse of code with existing data plane programming ecosystem.  $(1)$ A lack of higher-level of abstraction for data plane pipeline to decoule P4 code from target devices and $(2)$ Absence of homogeneous abstract-machines or mechanism for seamless transition across heterogeneous abstract-machines involved in various packet-processing phases.
+}
 
 
 
@@ -391,15 +392,15 @@ architectures as discussed in~\cref{sec:challenges}. Based on this,
 our key insight is that in order to achieve the above goals, we need
 \emph{to raise the level of abstraction that is general enough to
   express a wide range of functionality while also being realistic so
-  that programs can be mapped to other real architectures in an
-automatic manner}. Of course, introducing yet another architecture to
-unify existing architectures adds more complexity to the ecosystem;
-instead, what we need is a \emph{logical} architecture that acts as
-high-level description against which programs are written, and this
-logical architecture maps to real architectures. This architecture is
-logical in the sense that devices do not explicitly implement it;
-rather, it captures the essence of packet processing and exposes that
-to programs.
+  that programs can be mapped to real architectures in an automatic
+manner}. Of course, introducing yet another architecture to unify
+existing architectures adds more complexity to the ecosystem; instead,
+what we need is a \emph{logical} architecture that acts as high-level
+description against which programs are written, and this logical
+architecture maps to real architectures. This architecture is logical
+in the sense that devices do not explicitly implement it; rather, it
+captures the essence of packet processing and exposes that to
+programs.
 
 Based on our analysis in \cref{sec:challenges}, we found that the
 problems stem from inconsistent pipelines, exposing target-specific
@@ -407,8 +408,8 @@ externs, and lack of uniform abstract machine and interfaces with
 existing architectures. Accordingly, we believe that the logical
 architecture should have three main components:
 \begin{enumerate*}[label=(\roman*)]
-  \item a logical pipeline that is expressive to encode a variety of
-    packet-processing functions, while being general,
+  \item a logical pipeline that is expressive enough to encode a
+    wide range of packet-processing functions while being general,
   \item a generic way to use target-specific features such as externs
     without introducing tight coupling, and
   \item a common interface so that packet-processing modules can be
@@ -416,24 +417,42 @@ architecture should have three main components:
 \end{enumerate*}
 
 
-\subsection{Our approach}
-\label{sec:approach}
-\begin{figure}[tbh]
-  \centering
-  \includegraphics[width=\linewidth]{workflow}
-  \caption{Workflow for building dataplanes in \ulang}
-  \label{fig:workflow}
-\end{figure}
 
-To address these challenges without disrupting current ecosystem and
-workflow of data plane programming in P4, we design a switch
-architecture \uarch for an intermediate logical device, called \ucomp.
-The data plane model with logical pipelines of \ucomp provides
-abstractions for pipeline models of real-target architectures.  \uarch
-provides a set of constructs to write modular code having interface to
-reuse it and to hide its implementation details.  The logical pipeline
-models defined in \uarch do not completely eliminate heterogeneity in
-packet-processing blocks (parser, control) of the pipelines.
+\subsection{Overview of our approach}
+\label{sec:overview}
+%% Give an overview of our approach, tying to the above discussion
+%% Do not go into specific details yet.
+
+To achieve our goals of portable, modular and composable dataplane
+programming without disrupting the existing workflow for P4, we
+introduce the \ulang framework. \ulang implements the above insights
+using three main components:
+\begin{enumerate*}[label=(\roman*)]
+  \item \uswitch: an intermediate logical device
+  \item \uarch: an architecture for the logical device, and
+  \item \ucomp: a compiler that translates \ulang programs into
+    intermediate \uswitch programs and then into real target code.
+\end{enumerate*}
+
+The workflow with \ulang is very simple. Users write dataplane
+programs using an extended P4 language which supports modularity and
+composition. These programs are written with the \uarch architecture.
+During compilation, users specify the real target architecture to
+which the \ulang programs are finally compiled.  This decouples
+programs from target architectures.
+
+\uarch provides a set of constructs to write modular code having a
+common interface that hides the implementation of packet-processing
+within each module. Modules can pass information or call each other
+through well-defined compatible interfaces. The logical target,
+\uswitch, has a dataplane model with logical pipelines that abstracts
+away the details of dataplane pipeline models of real targets, and
+provides a general and expressive pipeline that works on simple
+bit-streams.
+
+The logical pipeline models defined in \uarch do not completely
+eliminate heterogeneity in packet-processing blocks (parser,
+control) of the pipelines.
 % However, constructs and pipeline models declared in \uarch allows to
 % write programs by reusing the code developed in conformance of
 % \uarch.
@@ -460,6 +479,13 @@ blocks to control blocks in pipeline model of target architecture
 while translating \uarch-specific constructs to target
 architecture-specific ones.
 
+
+\begin{figure}[tbh]
+  \centering
+  \includegraphics[width=\linewidth]{workflow}
+  \caption{Workflow for building dataplanes in \ulang}
+  \label{fig:workflow}
+\end{figure}
 
 
 
