@@ -1361,23 +1361,36 @@ Otherwise, backend synthesize P4 source code by dumping the IR.
 
 
 
-\subsubsection{Limitations}
-Although \ucomp transforms and realizes many higher-level abstraction of data plane model defined in \uarch, there remians few sub-computations of packet-processing and functions of dataplane requiring abstraction to enhance portability.
+\section{Limitations}
+\label{section:limitations}
+Although \ucomp transforms and realizes many higher-level abstraction of data plane model defined in \uarch, there remians a few sub-computations of packet-processing and features of dataplane requiring abstraction to enhance portability.
+These limitations do not affect modularity and composibility, but limits the portibility of packet-processing code.
 
 \textbf{Device Capabilities.}
 Target architectures specify a fixed set of matching (Exact, LPM, Ternary, Range) capabilities (match kinds) of tables available in the device.
 \ucomp does not perform any transformation across different match kinds, because it requires to transform entries at runtime in target device. 
-For example, converting an entry with range kind of key into a set of entries with enumerating the range requires runtime translation from control plane.
-\ucomp addresses on only compile-time transformations
-Similarly, \uarch and \ucomp lacks abstractions and corresponding transformation to concrete implementation for checksum computations, action selector, action profiles.
+For example, converting an entry with range kind of key-value into a set of entries with enumerating the range requires runtime translation from control plane.
+Our current proposal focuses on only abstractions, which can be transformed and translated at compile-time.
+Similarly, \uarch and \ucomp lack abstractions and corresponding transformation to concrete implementation for checksum computations, action selector, action profiles.
 
 \textbf{Communication to control plane.}
-sending packet to control plane from data plane,  digest, to cpu
+There exist unified mechanism and abstraction (Control Plane APIs) to configurable data plane from control plane.
+However, data plane program still lacks an abstract to send data or packets to control plane.
+For example, PSA constructs two different, digest and packet\_in, constructs to send data to control plane.
+There could be more higher-level abstraction that can be translated to either of them.
+\uarch does not provide abstraction for sending data to control plane, hence exposes the same constructs to the programmers.
 
+\textbf{Stateful Memories.}
+Many network applications (e.g., statistics collector, load-balancing etc..) require stateful packet-processing in data plane. 
+The lifetime and scope of such state also varies with applications.
+The common practice is to expose varying types of constructs in architecture of the target for stateful packet-processing.
+For example, PSA provides counters, meters and registers for stateful packet-processing.
+% Again, such constructs for stateful packet-processing hinders portability.
+\uarch does not abstract away such stateful constructs and exposes them to programmers.
+However, it could be feasible to automatically allocate stateful data in program to appropriate type of memory available on device.
+Compilers of Most programming languages analyze scope and lifetime of variables to allocate them on appropriate type of memory.
+Currently, \ucomp does not perform any such analysis and relies on specific constructs included in \uarch, limiting portability on targets with different constructs for stateful memory.
 
-\textbf{Stateful Memories.} 
-No need of so many types of stateful Memories. counters, meters, registers.
-analyse programs and allocate metadata based on scope to counters, meter or registers.
 
 \section{Experiments}
 
