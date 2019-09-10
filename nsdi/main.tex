@@ -17,11 +17,11 @@ specific architectures and makes it difficult to write composeable
 libraries of code that can be reused across many different programs.
 
 To address this challenge, we present the design and implementation of
-a logical target, MicroP4 (\ulang), that decouples P4 programs from
+a logical target, MicroP4 (\uswitch), that decouples P4 programs from
 architecture-specific constructs and naturally supports composition.
-We present the design of the \ulang logical architecture (\uarch),
+We present the design of the \uswitch logical architecture (\uarch),
 which abstracts away from hardware-level details without sacrificing
-expressiveness. Using realistic examples, we show how \ulang enables
+expressiveness. Using realistic examples, we show how \uswitch enables
 modular programming and composition, and we present an implementation
 of the \ucomp compiler that generates code for lower-level
 architectures which are implemented by real target devices.
@@ -470,38 +470,38 @@ architecture-specific ones.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MicroP4}
 \label{sec:microp4}
-\ulang is an intermediate logical target with an abstract packet-processing model.
+\uswitch is an intermediate logical target with an abstract packet-processing model.
 It is designed to provide a higher-level logical abstraction for data plane pipelines to enable code reuse agnostic of architectures of target devices without compromising expressiveness and packet-processing features.
 Also, it allows to write P4 code modules implementing fine-grained packet-processing functionality, to define interfaces and to hide implementation, enabling modular programming.
-\ulang models every program as a black-box, \emph{Micro-Switch} ($\mu$s), that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
-The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of $\mu$-programs.
-\ulang executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
+\uswitch models every program as a black-box, \emph{Micro-Switch} ($\mu$s), that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
+The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of \uprograms.
+\uswitch executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
 \begin{figure}[h]
     \centering
     \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
-    \caption{Packet-Processing model of $\mu$s-programs}
+    \caption{Packet-Processing model of \uprograms}
     \label{fig:mp4-packet-processing-model}
 \end{figure}
-\ulang fetches an element from a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
+\uswitch fetches an element from a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
 Every element of the buffers comprises a packet bit-stream, intrinsic metadata (e.g., ingress\_port, egress\_port, packet\_length etc., ) and input arguments or output arguments associated with the packet.
 
 
-We design a Micro-Switch Architecture (\uarch) that defines data plane model with multiple logical pipelines to develop $\mu$s-programs.
+We design a Micro-Switch Architecture (\uarch) that defines data plane model with multiple logical pipelines to develop \uprograms.
 Each logical pipeline is associated with an interface declared in the architecture.
 Every interface specifies generic run-time parameters and declares programmable blocks required to be implemented for a pipeline.
 \uarch data plane pipelines comprise of only programmable packet-processing blocks, parser, match-action control blocks and deparser. 
 In addition, \uarch declares intrinsic metadata and logical externs to facilitate all the packet-processing features, e.g., multicast, cloning, that are not part of P4 language but supported by architectures of real-targets. 
 Programmers can use the logical externs in \uarch pipelines to use such packet-processing features.
-Using constructs declared in \uarch, programmers can write modules containing one or more $\mu$s-programs.
-Each $\mu$s-program specializes a generic interface.
-The run-time interfaces enable easy reuse and hide implementation detail of the $\mu$s-programs, facilitating modular and incremental development.
+Using constructs declared in \uarch, programmers can write modules containing one or more \uprograms.
+Each \uprogram specializes a generic interface.
+The run-time interfaces enable easy reuse and hide implementation detail of the \uprograms, facilitating modular and incremental development.
 Using logical data plane model of \uarch, programmers can develop modular P4 code which is specific to \uarch.
-We design and develop MicroP4 Compiler (\ucomp) to compile and transform $\mu$s-program for architectures of real target devices, making $\mu$s-programs agnostic of architectures of real-targets.
+We design and develop MicroP4 Compiler (\ucomp) to compile and transform \uprogram for architectures of real target devices, making \uprograms agnostic of architectures of real-targets.
 
-Programmer can use \ucomp to $(1)$ Create compiled libraries of $\mu$s-programs along with their control plane APIs, $(2)$ Link all the $\mu$s-programs used in the $\mu$s-program of main instance and transform the program for a specified architecture of a real-target.
+Programmer can use \ucomp to $(1)$ Create compiled libraries of \uprograms along with their control plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of main instance and transform the program for a specified architecture of a real-target.
 If the given source file does not contain an instance named, \ucomp generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
 It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
-If the source file contains \emph{main} instance, it links all the supplied libraries and transforms the $\mu$s-program of main instance for a given architecture (Figure \ref{subfig:compilation-to-target-architecture}).
+If the source file contains \emph{main} instance, it links all the supplied libraries and transforms the \uprogram of main instance for a given architecture (Figure \ref{subfig:compilation-to-target-architecture}).
 \begin{figure}[h]
     \begin{subfigure}{\linewidth}
         \centering
@@ -515,13 +515,13 @@ If the source file contains \emph{main} instance, it links all the supplied libr
         \caption{Compilation to a Target Architecture}
         \label{subfig:compilation-to-target-architecture}
     \end{subfigure}
-    \caption{Compiling $\mu$s-programs}
+    \caption{Compiling \uprograms}
 \end{figure}
-Programmers can include files containing definitions of data types (e.g., struct types of in and out parameters) used in run-time interfaces of $\mu$s-program in libraries.
+Programmers can include files containing definitions of data types (e.g., struct types of in and out parameters) used in run-time interfaces of \uprogram in libraries.
 \ucomp compiler generates either source P4 code for the specified architecture or an executable with architecture-specific CP APIs.
 
 
-To write a $\mu$s-program, programmers need to define a custom P4 \texttt{package} type by implementing an interface for a logical pipeline.
+To write a \uprogram, programmers need to define a custom P4 \texttt{package} type by implementing an interface for a logical pipeline.
 \ucomp extends current P4 language and allows programmers to define \texttt{package} types, declare their instances and invoke them using the built-in \texttt{apply} method.
 This allows to hide implementation of package types and reuse them using run-time parameters of their interfaces.
 
@@ -529,18 +529,18 @@ This allows to hide implementation of package types and reuse them using run-tim
 Programmers can use sub-languages of P4 for parser and control blocks to implement interfaces.
 \ucomp.
 \ucomp homogenizes abstract-machines of programmable blocks by transforming parser and deparser blocks into match-action control blocks.
-This transformation unifies the abstract-machines for packet-processing allowing seamless transfer of execution control across $\mu$s-programs.
+This transformation unifies the abstract-machines for packet-processing allowing seamless transfer of execution control across \uprograms.
 
 
-\ucomp perform static analysis to estimate possible packet sizes required to process all the transformed $\mu$s-programs in match-action control blocks of target architecture's pipeline.
+\ucomp perform static analysis to estimate possible packet sizes required to process all the transformed \uprograms in match-action control blocks of target architecture's pipeline.
 \ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
 Next, \ucomp translates intrinsic metadata and logical externs into the target architecture-specific constructs.
-It allocates and schedules code of transformed $\mu$s-programs to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
+It allocates and schedules code of transformed \uprograms to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
 
 
 \section{Micro Switch Architecture}
 \label{sec:architecture}
-Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define $\mu$s-program interfaces and packet-processing pipelines for \ulang as a part of its data plane architecture, \uarch.
+Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define \uprogram interfaces and packet-processing pipelines for \uswitch as a part of its data plane architecture, \uarch.
 In addition, \uarch defines a set of logical externs providing various packet-processing constructs available in fixed-function blocks (e.g., packet duplication) of pipelines models of real-target architectures.
 
 \subsection{Pipelines and Interfaces}
@@ -667,7 +667,7 @@ Figure \ref{fig:micro-switch-architecture} shows declarations of types used in t
 The \texttt{pkt} is an extern type representing packet. 
 The \texttt{sm\_t} is struct type containing intrinsic metadata (e.g., in\_port, pkt\_len etc.,).
 The \texttt{es\_t} extern represent intrinsic metadata related to output port of the packet in the pipeline along with queuing related metadata.
-\texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of \ulang packet-processing model (Figure \ref{fig:mp4-packet-processing-model}).
+\texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of \uswitch packet-processing model (Figure \ref{fig:mp4-packet-processing-model}).
 Next, we give overview of logical externs defined in \uarch along with their example usage.
 
 % It defines standard intrinsic metadata as \emph{sm\_t} as a struct type.
@@ -685,14 +685,14 @@ The \texttt{pkt} extern can be instantiated inside control blocks of only orches
 \ucomp mandates to initialize \texttt{pkt} instances in the control block using its \texttt{copy\_from} method.
 The \texttt{pkt} extern object contains \texttt{copy\_from} having a parameter of its own type.
 The \texttt{copy\_from} method initializes its calling instance with content of \texttt{pa} without modifying the argument.
-\ulang considers this method as a compile-time known packet replication, whereas multicast as a run-time packet-replication described in Section \ref{sec:multicast}.
+\uswitch considers this method as a compile-time known packet replication, whereas multicast as a run-time packet-replication described in Section \ref{sec:multicast}.
 \uarch provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
 The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, their instances are provided by the architecture as parameters in parser and deparser declarations of Micro pipeline programmable blocks. 
 
 \subsubsection{Correlated Intrinsic Metadata}
-\uarch defines intrinsic metadata for the logical target \ulang.
+\uarch defines intrinsic metadata for the logical target \uswitch.
 For every real-target architecture , \ucomp maintains mapping of its logical intrinsic metadata with the metadata of the architecture.
-This mapping is used for transforming $\mu$s-programs to a given architecture-specific code.
+This mapping is used for transforming \uprograms to a given architecture-specific code.
 Many intrinsic per-packet metadata provided by architectures of real-target devices are correlated.
 For example, many real-target devices allow to measure every packet's queuing latency through the device.
 The timestamps required to compute queuing latency can be measured only after the packet's out port is finalized and packet is enqueued in appropriate queue.
@@ -735,9 +735,9 @@ control C(pkt p, inout ipv6_ht h, inout sm_t sm, es_t es, out bit<16> nh_id) {
 }
 control D(emitter em, pkt p, in ipv6_ht h) {
   apply { em.emit(p, h.ip); }
-}!{\subcaption[]{ipv6 $\mu$s-program}\label{subfig:ipv6}}!
+}!{\subcaption[]{ipv6 \uprogram}\label{subfig:ipv6}}!
 /* router.p4 */
-// Declarations of !{\color{commentcolor}{$\mu$s-programs}}!
+// Declarations of !{\color{commentcolor}{\uprograms}}!
 !\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, 
     out bit<16> nh_id);
 !\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
@@ -776,7 +776,7 @@ control D(emitter em, pkt p, in hdr_t h) {
 Router(P, C, D) main;
 \end{lstlisting}
 % 0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
-\subcaption[]{Router's main $\mu$s-program}\label{subfig:router-main}
+\subcaption[]{Router's main \uprogram}\label{subfig:router-main}
 \end{minipage}
 \caption[]{Modular Router using \uarch \footnotemark}
 \label{fig:modular-router}
@@ -786,7 +786,7 @@ Router(P, C, D) main;
 
 
 
-\subsubsection*{Example $\mu$s-programs}
+\subsubsection*{Example \uprograms}
 Figure \ref{fig:modular-router} shows a possible way to write modular data plane program for a router using interfaces and externs declared in \uarch.
 The code snippet in (Figure \ref{subfig:ipv6}) defines \texttt{ipv6} as a package by implementing blocks of the \texttt{Unicast} interface.\footnotemark[\value{footnote}]
 The \texttt{Router} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes appropriate layer-3 module(e.g., \texttt{ipv4 ipv6, mpls}) based on \texttt{etherType} in the header, shown in highlighted code.
@@ -819,7 +819,7 @@ control D(emitter em, pkt p, in srv_ht h) {
   }
 }
 \end{lstlisting}
-\caption{srv6 $\mu$s-program to support IPv6 SRH}
+\caption{srv6 \uprogram to support IPv6 SRH}
 \label{subfig:srv6}
 \end{subfigure}
 \begin{subfigure}[b]{\linewidth}
@@ -840,9 +840,9 @@ apply {
 \caption{Incremental Development}
 \label{fig:incremental-development}
 \end{figure}
-In the \texttt{Router} program, we can easily add support for yet another routing mechanism, SRv6, by independently developing a $\mu$s-program (Figure \ref{subfig:srv6}) processing IPv6 Segment Routing Header (SRH).
+In the \texttt{Router} program, we can easily add support for yet another routing mechanism, SRv6, by independently developing a \uprogram (Figure \ref{subfig:srv6}) processing IPv6 Segment Routing Header (SRH).
 Figure \ref{subfig:extending-modular-router} shows a portion of code from modular router (Figure \ref{subfig:router-main}) to integrate \texttt{srv6} program.
-We note that support for \texttt{srv6} is added without modifying $\mu$s-program of any other routing scheme.
+We note that support for \texttt{srv6} is added without modifying \uprogram of any other routing scheme.
 
 
 \subsubsection{Multicast Extern}
@@ -857,7 +857,7 @@ The second argument having \texttt{out} direction provides packet instance id to
 All the reachable program statements from the method call statement are executed by every replica.
 
 The \texttt{mc\_engine} has two more methods, \texttt{set\_buf} and four-arguments \texttt{apply}, to facilitate invocation of callees with multicast interface.
-For example, had \texttt{ipv4} and \texttt{ipv6} implemented using multicast interface, the \texttt{forward} table in the \texttt{Router} $\mu$s-program have to be applied on all the copies of partial packet.
+For example, had \texttt{ipv4} and \texttt{ipv6} implemented using multicast interface, the \texttt{forward} table in the \texttt{Router} \uprogram have to be applied on all the copies of partial packet.
 The caller (\texttt{Router}) can cascade multicast processing on partial packets.
 It can $(1)$ store the partial copies, generated by the callee, into an instance of \texttt{mc\_engine} using \texttt{set\_buf} and $(2)$ invoke the apply method to process each copy using subsequent statments). 
 
@@ -865,12 +865,12 @@ It can $(1)$ store the partial copies, generated by the callee, into an instance
 \label{sec:logical}
 \uarch declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
 Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
-The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device \ulang. 
-However, programmers can instantiate the extern and use its instances to pass as arguments to callee $\mu$s-programs.
+The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device \uswitch. 
+However, programmers can instantiate the extern and use its instances to pass as arguments to callee \uprograms.
 The \texttt{out\_buf} extern has methods, \texttt{enqueue} and \texttt{merge}, to store packets processed by callees.
 In addition, the extern provides \texttt{to\_in\_buf} to move the elements of the caller instance to the instance of \texttt{in\_buf} provided in the argument.
 The \texttt{mc\_buf} extern allows to store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
-It is designed to  be used along with \texttt{mc\_engine} to express multicast packet-processing, where as \texttt{in\_buf} and \texttt{out\_buf} are facilitates packet-processing model of \ulang.
+It is designed to  be used along with \texttt{mc\_engine} to express multicast packet-processing, where as \texttt{in\_buf} and \texttt{out\_buf} are facilitates packet-processing model of \uswitch.
 An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
 \hse{TODO: text for Figure \ref{fig:multi-packet-processing} or \ref{fig:multi-packet-processing-II}}
 
