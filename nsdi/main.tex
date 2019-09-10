@@ -1189,19 +1189,21 @@ Next, we discuss backend of \ucomp that further transforms the control blocks to
 
 
 \subsection{Transformation to Target Architecture}
-\ucomp's backend transforms all the control blocks by $(1)$ translating \uarch-specific constructs to target-specific ones and $(2)$ allocating the control blocks to ones of target pipeline model.
+\ucomp's backend transforms all the control blocks by $(1)$ translating \uarch-specific constructs to target-specific ones and $(2)$ allocating the control blocks to the ones in target pipeline model.
 \uarch-specific constructs are higher-level abstraction for fixed-function packet-processing blocks and functions in target architecture.
 \uarch's externs, \texttt{es\_t} and \texttt{mc\_engine}, provide abstraction for constraint on intrinsic metadata and fixed-function block, packet replication engine.
 The \texttt{copy\_from} methods of \uarch's externs (\texttt{pkt}, \texttt{es\_t}) are abstraction for compile-time replication of packet.
 Programmers can create multiple copies of packets and intrinsic metadata in implementation of the control blocks of orchestration interface to describe multi-packet processing.
-To translate the \uarch-specific constructs, \ucomp partitions and allocates the match-action control blocks to programmable-blocks in pipeline models of the target architecture.
 In control blocks of orchestration interface, \ucomp realizes multi-packet processing by identifying a packet-processing sub-graph, called a \emph{thread}, for every initialization (\texttt{copy\_from} method call) statement of a \texttt{pkt} instance.
 Then, it prepares \emph{Packet-Processing Schedule} (PPS) of the threads and allocates thread code to packet-processing blocks of the target's pipeline model.
 Some target architectures may impose constraint that PPSs must be serializable.
 If \ucomp fails to find a serial PPS, it raises a compilation error for such targets. 
+% To translate the \uarch-specific constructs, \ucomp partitions and allocates the match-action control blocks to programmable-blocks in pipeline models of the target architecture.
+
 
 
 \subsubsection{Packet-Processing Schedule}
+\label{subsubsection:packet-processing-schedule}
 If the main package has callees with orchestration interface, \ucomp extracts packet-processing threads and PPS for control block of every callee.
 \ucomp constructs a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} having statements as nodes and dependencies among them as edges. 
 \ucomp  performs a series of transformations on PDG to compute PPS.
@@ -1263,6 +1265,7 @@ We schedule such cps nodes while mapping the thread components to data plane of 
 % \texttt{enqueue}, \texttt{merge} and \texttt{to\_in\_buf} method call statements of \texttt{out\_buf} extern's instances capture dependence among such threads nodes in PPS.
 
 \subsubsection{Allocation to Target Architecture}
+\label{subsubsection:allocation-to-target-architecture}
 Finally \ucomp translates \uarch's constructs to intrinsic metadata and extern provided by the target architecture.
 \ucomp visits PPS nodes in topological order to map threads and cps on target architecture.
 It simultaneously partitions all the sub-programs represented by each thread node located at the same topological order in PPS.
@@ -1282,8 +1285,8 @@ There can be multiple edges representing control dependencies between the partit
 Also, partitions may have live local variables.
 We synthesize \emph{partition-metadata}to convert control dependencies into data dependencies and convert live variable to user metadata.
 We supply the partition-metadata and live variables as user-metadata parameter between ingress and egress control block to restore execution state.
-Finally, {copy\_from} method calls of \texttt{pkt} instances are replaced for v1model with \texttt{clone3} followed by \texttt{recirculate} or \texttt{resubmit} while setting appropriate thread-id user-defined metadata.
-We can perform similar transformation for other architectures like PSA using appropriate functions exposed by them.
+Finally, {copy\_from} method calls of \texttt{pkt} instances are replaced for v1model with \texttt{clone3} and \texttt{recirculate} or by synthesizing multicast session while setting appropriate thread-id in user-defined metadata.
+We can perform similar transformation for other architectures like PSA using appropriate functions provided by them.
 
 
 % We synthesize \emph{partition} metadata that is assigned a unique value for each control branch in the first partition.
@@ -1299,22 +1302,52 @@ We can perform similar transformation for other architectures like PSA using app
 
 
 \subsection{Implementation}
-\ucomp is implemented with \textasciitilde 6K LoCs and as an extension of open source reference compiler p4c \cite{p4c}.
+\ucomp is implemented by extending open source reference compiler p4c \cite{p4c}.
 We discuss our implementation in reference with specification of P4-16.
+In addition of Frontend extension, midend and backend of \ucomp contains \textasciitilde 6K LoCs.
+The backend passes are target architecture-specific and the current backend is written for v1model.
 
 \subsubsection{Comparison with P4}
-\ucomp allows to define custom package types, similar to control and parser blocks, which is not feasible with current specification P4-16. 
-Also, for abstracting implementation of package types, \uarch defines interfaces encapsulating a set of programmable blocks.
+We briefly highlighted important constructs in our proposal with reference to P4-16 language specifications.
+\ucomp allows to define custom package types, similar to control and parser blocks, that allows programmer to hide implementation details and define interface to reuse the code.
+Essentially, package types are associated runtime behavior, unlike P4-16's specification.
+Also, \uarch defines interfaces to encapsulate a set of programmable blocks.
 In addition, \uarch uses different representation of packet (\texttt{pkt}, \texttt{extractor} and \texttt{emitter}) compared to ones defined in P4 core library (\texttt{packet\_in} and \texttt{packet\_out}).
-Our prototype \ucomp minimally extends P4 grammar and frontend to implement features required for code reuse and modularity.
-\ulang do not violate semantics of any other programming constructs (externs, control and parser blocks) defined in P4-16's specification.
+Apart from above mentioned constructs, \ulang do not violate semantics of any other programming constructs (externs, control and parser blocks etc.,) of P4-16.
+\ucomp minimally extends P4 syntax, grammar and frontend facilitating programmers to write modular code.
 
 
-\subsubsection{Supporting Target Architectures}
+\subsubsection{Supporting New Target Architectures}
+The Frontend of \ucomp generates P4 code library after the same preliminary processing of IR as p4c.
+Also, the midend primarily converts parser-deparser to match-action control blocks and prepares PPS.
+The frontend and backend do not perform any target architecture-specific transformation or translations.
+The backend passes (implements Section \ref{subsubsection:allocation-to-target-architecture}) are target architecture-specific, as it translates the logical abstraction declared in \uarch.
+\ucomp's backend requires mapping between intrinsic metadata of \uarch and target architecture.
+For example, architecture-specific mappings for fields and methods of \texttt{sm\_t} \texttt{es\_t} and \texttt{mc\_engine} are used for translation.
+The backend first transforms the IR to conform programmable blocks and externs declared in target architecture.
+If the midend of target architecture's compiler is available, the backend can invoke pass the IR to midend to generate executable for the target.
+Otherwise, backend synthesize P4 source code by dumping the IR.
 
 
-\subsubsection{Limitation}
 
+
+\subsubsection{Limitations}
+Although \ucomp transforms and realizes many higher-level abstraction of data plane model defined in \uarch, there remians few sub-computations of packet-processing and functions of dataplane requiring abstraction to enhance portability.
+
+\textbf{Device Capabilities.}
+Target architectures specify a fixed set of matching (Exact, LPM, Ternary, Range) capabilities (match kinds) of tables available in the device.
+\ucomp does not perform any transformation across different match kinds, because it requires to transform entries at runtime in target device. 
+For example, converting an entry with range kind of key into a set of entries with enumerating the range requires runtime translation from control plane.
+\ucomp addresses on only compile-time transformations
+Similarly, \uarch and \ucomp lacks abstractions and corresponding transformation to concrete implementation for checksum computations, action selector, action profiles.
+
+\textbf{Communication to control plane.}
+sending packet to control plane from data plane,  digest, to cpu
+
+
+\textbf{Stateful Memories.} 
+No need of so many types of stateful Memories. counters, meters, registers.
+analyse programs and allocate metadata based on scope to counters, meter or registers.
 
 \section{Experiments}
 
@@ -1324,6 +1357,10 @@ Our prototype \ucomp minimally extends P4 grammar and frontend to implement feat
 \textbf{Hardware Resource Consumption}. \\
 
 \section{Conclusion}
+
+
+
+
 \clearpage
 %-------------------------------------------------------------------------------
 \bibliographystyle{plain}
