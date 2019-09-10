@@ -210,10 +210,13 @@ This paper makes the following contributions.\\
 % ii) present the key insights of our approach
 
 We briefly describe the current state of data plane programming using
-P4 to understand challenges hindering modular development and reuse of
-packet-processing code (\cref{sec:challenges}). Then, we derive
-insights that make modular dataplane programming achievable with
-\ulang (\cref{sec:approach}).
+P4 to understand challenges that hinder writing dataplane programs in
+a portable, modular and composable manner (\cref{sec:challenges}).
+Then, we derive insights to achieve our goals for dataplane
+programming \ulang (\cref{sec:insights}) and give an overview of our
+approach (\cref{sec:approach}).
+
+
 
 \subsection{Challenges with current approach}
 \label{sec:challenges}
@@ -238,7 +241,7 @@ semantics of target-specific actions and externs. For example,
 \cref{fig:arch-example} shows dataplane pipelines and their packet
 processing blocks defined in \texttt{v1model}~\cite{simple_switch.md}
 and Portable Switch Architecture (PSA)~\cite{psa}.
-\begin{figure}[tbh]
+\begin{figure}[tb]
   \centering
   \includegraphics[width=\linewidth]{example-arch.pdf}
   \caption{Dataplane pipelines for example architectures}
@@ -283,48 +286,53 @@ target-specific actions and \emph{extern} functions (e.g., resubmit,
 recirculate, clone, etc.)---to enable special processing such as
 packet replication~\cite{simple_switch.md,psa}. While doing so
 enhances features, it also makes programs being closely tied to
-architectures and targets and hurts portability. More fundamentally,
-it breaks the notion of abstraction needed to write modular programs.
-For example, many P4 programs written for PSA heavily rely on using
-intrinsic metadata supported by PSA, and such metadata is used across
-the program in an unrestricted manner~\cite{switch.p4}; it is
-difficult to split such a program into clean modules that can be
-ported to a different architecture without significant refactoring.
+architectures and targets and hurts portability. For example, many P4
+programs written for PSA heavily rely on using intrinsic metadata
+supported by PSA, and such metadata is used across a program in an
+unrestricted manner~\cite{switch.p4}; it is difficult to split such a
+program into clean modules which can be developed independently.  More
+fundamentally, it breaks the notion of abstraction needed to write
+modular programs.  Ideally, target-specific implementation should be
+hidden from high-level programs to enable modular development. In
+fact, P4 does not enforce scoping of data need to develop independent
+modules. As a result, even to update a small piece of functionality,
+developers need to be aware of how each variable is used throughout
+the entire program.
 
 % Then problem with writing modular code even on a single architecture
 % (Composition)
-The current approach also makes it hard to write modular and
-composable dataplane programs. To understand why, note that even for a
-fixed target, the architecture usually contains packet-processing
-blocks with heterogeneous execution models, also called \emph{abstract
+The current approach also makes it hard to write composable dataplane
+modules. To understand why, note that even for a fixed target, the
+architecture usually contains packet-processing blocks with
+heterogeneous execution models, also called \emph{abstract
 machines}~\cite{p4lang,van1991machine}. For example, consider PSA in
 \cref{fig:arch-example}---the parser block  is usually described using
 a sub-language of P4 which uses Finite State Machines (FSM) as its
 abstract machine, while the control blocks are expressed in another
-sub-language whose abstract machine models imperative control flow. As
-each abstract machine is defined independently, there is no common
-interface that programmers can write their packet-processing modules
-against. This lack of uniform abstract machine and interface prevents
-packet-processing modules to be composed together as composition
-requires modules to have compatible interfaces. Going back to the
-earlier example, in \cref{fig:l2.p4,fig:ipv4.p4}, ideally we would
-like to execute the \texttt{ipv4} module right before applying
+sub-language whose abstract machine models imperative control
+flow~\cite{p4lang}. As each abstract machine is defined independently,
+there is no common interface that programmers can write their
+packet-processing modules against. This lack of uniform abstract
+machine and interface prevents packet-processing modules to be
+composed together as composition requires modules to have compatible
+interfaces. Going back to the earlier example, in
+\cref{fig:l2.p4,fig:ipv4.p4}, ideally we would like to execute the
+\texttt{ipv4} module (parser and control blocks) right before applying
 \texttt{forward\_tbl} in \texttt{l2}'s \texttt{Pipe} control block so
 that \texttt{nh\_id} is available in \texttt{forward\_tbl}. But
 existing programming models do not support such composition.
 
 To summarize, there are three main challenges with current dataplane
-programming model that prevents hinders code reuse, modularity and
-composition:
+programming model that hinders code reuse, modularity and composition:
 \begin{enumerate}
   \item Different architectures vary in their dataplane pipelines
     which have incompatible structure and semantics. This renders
     programs written for one architecture not amenable to be ported to
     others.
   \item Architectures do not provide a clean abstraction that can
-    decouple dataplane programs from targets. This results in
-    dataplane programs being closely tied to a target, and it is
-    difficult to develop programs in a clean and modular way.
+    decouple dataplane programs from targets and also do not enforce
+    sufficient scoping of information. This makes it difficult to
+    develop clean and independent modules.
   \item Programmable blocks within an architecture use heterogeneous
     abstract machines without a common interface. The lack of a
     compatible interface restricts composition of dataplane modules.
