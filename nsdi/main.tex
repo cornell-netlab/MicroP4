@@ -430,25 +430,41 @@ using three main components:
 \begin{enumerate*}[label=(\roman*)]
   \item \uswitch: an intermediate logical device
   \item \uarch: an architecture for the logical device, and
-  \item \ucomp: a compiler that translates \ulang programs into
-    intermediate \uswitch programs and then into real target code.
+  \item \ucomp: a compiler that translates \ulang programs into real
+    target code.
 \end{enumerate*}
 
-The workflow with \ulang is very simple and intuitive. Users write
-dataplane programs using an extended P4 language which supports
-modularity and composition. These programs are written with the \uarch
-architecture. While compiling, users specify the real target
-architecture to which the \ulang programs should be mapped to. This
-decouples programs from target architectures.
+Users write dataplane programs using an extended P4 language which
+supports modularity and composition. These programs are written with
+the \uarch architecture. While compiling, users specify the real
+target architecture to which the \ulang programs should be mapped to.
+This decouples programs from target architectures while keeping the
+workflow very simple and intuitive.
 
 \uarch provides a set of constructs to write modular code having a
 common interface that hides the implementation of packet-processing
-within each module. Modules can pass information or call each other
-through well-defined compatible interfaces. The logical target,
-\uswitch, has a dataplane model with logical pipelines that abstracts
-away the details of dataplane pipeline models of real targets, and
-provides a general and expressive pipeline that works on simple
-bit-streams.
+within each module. A module can be thought of receiving a partial
+packet along with certain metadata, process it as needed, and send out
+one or more packets along with some metadata. Thus, each module can be
+developed independently. Modules can pass information or call each
+other through a well-defined compatible interface---caller write
+packets and metadata to a logical input buffer for the callee. By
+introducing these logical buffers, \uswitch abstracts away the details
+of dataplane pipelines of real targets. \uarch also provides a way to
+use target-specific externs by introducing logical externs that each
+modules may use.
+
+\ucomp transforms \ulang code to a specified target architecture while
+conforming to the constraints of the target device in two main steps.
+First, \ucomp compiles the program to a \uarch-specific intermediate
+representation. It transforms all programmable blocks into
+match-action control blocks, thus homogenizing abstract-machine for
+each block. This allows for a natural transfer of execution-control
+across modules, enabling modularity and facilitating code reuse. In
+the second step, it transforms the homogeneous control blocks into
+target-specific control blocks based on the pipeline model of the
+specified target architecture while translating \uarch-specific
+constructs to target architecture-specific ones.
 
 \deleted{The logical pipeline models defined in \uarch do not completely
 eliminate heterogeneity in packet-processing blocks (parser,
@@ -464,30 +480,6 @@ $2$ heterogeneity in packet-processing blocks of P4 programs.  We
 complement design choices of \uarch by designing and developing a
 compiler, \ucomp, to address these aspects.
 }
-
-\ucomp transforms \uarch-specific P4 code for a given real-target
-architecture satisfying all the constraints and in conformance of
-lower-level details of the target.  First, \ucomp estimates
-operational region of packets to process the P4 code.  It synthesizes
-a parser and a deparers blocks as declared in real-target
-architecture.  Then, it transforms all parser and parser blocks into
-match-action control blocks homogenizing abstract-machines for
-packet-processing blocks.  This allows to natural transfer of
-execution-control across modules, enabling modularity and facilitating
-code reuse.  Finally, it allocates transformed match-action control
-blocks to control blocks in pipeline model of target architecture
-while translating \uarch-specific constructs to target
-architecture-specific ones.
-
-
-\begin{figure}[tbh]
-  \centering
-  \includegraphics[width=\linewidth]{workflow}
-  \caption{Workflow for building dataplanes in \ulang}
-  \label{fig:workflow}
-\end{figure}
-
-
 
 
 
@@ -508,6 +500,17 @@ The black-box model hides implementation details (headers types, user-defined me
     \caption{Packet-Processing model of \uprograms}
     \label{fig:mp4-packet-processing-model}
 \end{figure}
+
+
+\begin{figure}[tbh]
+  \centering
+  \includegraphics[width=\linewidth]{workflow}
+  \caption{Workflow for building dataplanes in \ulang}
+  \label{fig:workflow}
+\end{figure}
+
+
+
 \uswitch fetches an element from a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
 Every element of the buffers comprises a packet bit-stream, intrinsic metadata (e.g., ingress\_port, egress\_port, packet\_length etc., ) and input arguments or output arguments associated with the packet.
 
