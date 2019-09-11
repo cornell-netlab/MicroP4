@@ -225,7 +225,7 @@ specifying the packet processing behaviour of programmable switching
 chips, such as Barefoot Tofino~\cite{tofino} and Cavium
 Xpliant~\cite{xpliant}, which are based on a pipeline of match-action
 tables~\cite{bosshart2013forwarding}. To support a variety of
-\emph{targets}, the ecosystem expects manufacturers to provide a
+\emph{targets}, the ecosystem expects device manufacturers to provide a
 target-specific framework to program the devices. The framework also
 provides an \emph{architecture} definition, specified in P4, that acts
 as the programming model and provides an abstract view of the target
@@ -252,7 +252,7 @@ While this approach allows supporting multiple targets which share the
 same architecture, it also makes \emph{P4 programs tightly coupled to
 the architecture} of the target. Such tight coupling makes it
 impossible to reuse P4 programs across targets with different
-architectures.
+architectures, as explained next.
 
 
 
@@ -271,11 +271,12 @@ Architectures differ in the way their dataplane pipeline is arranged.
 A P4 program written for a given architecture specifies the behaviour
 of programmable blocks within the corresponding pipeline. So, if the
 architecture changes, it is often impossible to map the P4 program
-onto the different pipeline for the new architecture without a
+on to the different pipeline for the new architecture without a
 complete rewrite. For example, in \cref{fig:arch-example}, there is no
-obvious way to map the functionality in PSA's ingress deparser to any
-programmable block in v1model's pipeline. Doing so needs semantic
-understanding of the blocks and manual rewriting of the program.
+obvious and automatic way to map the functionality implemented for
+PSA's ingress deparser block to any programmable block in v1model's
+pipeline. Doing so needs semantic understanding of the blocks and
+manual rewriting of the program.
 
 % (... and modularity)
 Moreover, current architectures expose certain target-specific
@@ -285,17 +286,17 @@ recirculate, clone, etc.)---to enable special processing such as
 packet replication~\cite{simple_switch.md,psa}. While doing so
 enhances features, it also makes programs being closely tied to
 architectures and targets and hurts portability. For example, many P4
-programs written for PSA heavily rely on using intrinsic metadata
+programs written for PSA rely heavily on using intrinsic metadata
 supported by PSA, and such metadata is used across a program in an
 unrestricted manner~\cite{switch.p4}; it is difficult to split such a
 program into clean modules which can be developed independently.  More
 fundamentally, it breaks the notion of abstraction needed to write
 modular programs.  Ideally, target-specific implementation should be
 hidden from high-level programs to enable modular development. In
-fact, P4 does not enforce scoping of data need to develop independent
-modules. As a result, even to update a small piece of functionality,
-developers need to be aware of how each variable is used throughout
-the entire program.
+fact, P4 does not enforce sufficient scoping of data needed to develop
+independent modules. As a result, even to update a small piece of
+functionality, developers need to be aware of how each variable is
+used throughout the entire program.
 
 % Then problem with writing modular code even on a single architecture
 % (Composition)
@@ -386,25 +387,26 @@ be able to compose \texttt{ipv4} with \texttt{l2}, or replace
 \paragraph{Insights.}
 We find that the root cause that restricts dataplane programming from
 achieving our goals is the abstraction offered by current
-architectures as discussed in~\cref{sec:challenges}. Based on this,
+architectures as discussed in~\cref{sec:challenges}.  Consequently,
 our key insight is that in order to achieve the above goals, we need
 \emph{to raise the level of abstraction that is general enough to
   express a wide range of functionality while also being realistic so
   that programs can be mapped to real architectures in an automatic
 manner}. Of course, introducing yet another architecture to unify
-existing architectures adds more complexity to the ecosystem; instead,
-what we need is a \emph{logical} architecture that acts as high-level
-description against which programs are written, and this logical
-architecture maps to real architectures. This architecture is logical
-in the sense that devices do not explicitly implement it; rather, it
-captures the essence of packet processing and exposes that to
-programs.
+existing architectures would add significant complexity to the
+ecosystem; instead, what we need is a \emph{logical} architecture that
+acts as high-level description against which programs are written, and
+this logical architecture maps to real architectures. This
+architecture is logical in the sense that devices do not explicitly
+implement it; rather, it captures the bare essence of packet
+processing and exposes that to programs.
 
 Based on our analysis in \cref{sec:challenges}, we found that the
-problems stem from inconsistent pipelines, exposing target-specific
-externs, and lack of uniform abstract machine and interfaces with
-existing architectures. Accordingly, we believe that the logical
-architecture should have three main components:
+challenges stem from inconsistent pipelines across architectures,
+exposing target-specific externs, and a lack of uniform abstract
+machine and interfaces with any existing architecture. Accordingly, we
+believe that the logical architecture should have three main
+components:
 \begin{enumerate*}[label=(\roman*)]
   \item a logical pipeline that is expressive enough to encode a
     wide range of packet-processing functions while being general,
@@ -432,12 +434,12 @@ using three main components:
     intermediate \uswitch programs and then into real target code.
 \end{enumerate*}
 
-The workflow with \ulang is very simple. Users write dataplane
-programs using an extended P4 language which supports modularity and
-composition. These programs are written with the \uarch architecture.
-During compilation, users specify the real target architecture to
-which the \ulang programs are finally compiled.  This decouples
-programs from target architectures.
+The workflow with \ulang is very simple and intuitive. Users write
+dataplane programs using an extended P4 language which supports
+modularity and composition. These programs are written with the \uarch
+architecture. While compiling, users specify the real target
+architecture to which the \ulang programs should be mapped to. This
+decouples programs from target architectures.
 
 \uarch provides a set of constructs to write modular code having a
 common interface that hides the implementation of packet-processing
@@ -448,7 +450,7 @@ away the details of dataplane pipeline models of real targets, and
 provides a general and expressive pipeline that works on simple
 bit-streams.
 
-The logical pipeline models defined in \uarch do not completely
+\deleted{The logical pipeline models defined in \uarch do not completely
 eliminate heterogeneity in packet-processing blocks (parser,
 control) of the pipelines.
 % However, constructs and pipeline models declared in \uarch allows to
@@ -461,7 +463,7 @@ creating P4 programs specific to \uarch and the logical device \ucomp.
 $2$ heterogeneity in packet-processing blocks of P4 programs.  We
 complement design choices of \uarch by designing and developing a
 compiler, \ucomp, to address these aspects.
-
+}
 
 \ucomp transforms \uarch-specific P4 code for a given real-target
 architecture satisfying all the constraints and in conformance of
