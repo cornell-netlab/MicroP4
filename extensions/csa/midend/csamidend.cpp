@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <unordered_set>
 #include "csamidend.h"
-#include "extensions/csa/midend/parserConverter.h"
 #include "frontends/common/parseInput.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/evaluator/evaluator.h"
@@ -25,6 +24,7 @@
 #include "toV1Model.h"
 #include "controlStateReconInfo.h"
 #include "csaExternSubstituter.h"
+#include "parserConverter.h"
 
 namespace CSA {
 

@@ -35,6 +35,7 @@ class ParserConverter final : public Transform {
     IR::IndexedVector<IR::StatOrDecl> statOrDeclsOfControlBody;
     IR::IndexedVector<IR::Declaration> varDecls;
     IR::IndexedVector<IR::Declaration> actionDecls;
+    IR::IndexedVector<IR::Property> tablePropertyList;
     IR::IndexedVector<IR::Declaration> tableDecls;
     cstring paketInParamName;
     std::map<cstring, unsigned> stateIDMap;

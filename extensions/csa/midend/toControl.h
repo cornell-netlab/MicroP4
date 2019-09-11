@@ -10,9 +10,9 @@
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeChecking/typeChecker.h"
 #include "frontends/p4/typeMap.h"
-#include "parserConverter.h"
 #include "deparserConverter.h"
 #include "controlStateReconInfo.h"
+#include "parserConverter.h"
 
 
 namespace CSA {
