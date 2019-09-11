@@ -645,14 +645,14 @@ extern mc_engine {
 }
 \end{lstlisting}
 \end{minipage}
-\begin{minipage}[t]{0.40\textwidth}
+\begin{minipage}[t]{0.47\textwidth}
 \begin{lstlisting}[frame=none]
 extern extractor { /* Data Extraction */
   void extract<H>(pkt p, out H hdr);
   void extract<H>(pkt p, out H hdr, in bit<32> size);
   H lookahead<H>();
 }
-extern es_t {
+extern es_t {/* Correlated intrinsic metadata */
   void set_out_port(in bit<8>);
   bit<8> get_out_port();
   bit<32> get_value(in meta_t ft);
@@ -660,7 +660,7 @@ extern es_t {
 }
 \end{lstlisting}
 \end{minipage}\vline
-\hfill\noindent\begin{minipage}[t]{0.57\textwidth}
+\hfill\noindent\begin{minipage}[t]{0.52\textwidth}
 \begin{lstlisting}[frame=none]
 extern in_buf<I> { // used only by architecture
   dequeue(pkt, out sm_t, es_t, out I);
@@ -800,10 +800,10 @@ control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
 control D(emitter em, pkt p, in hdr_t h) {
   apply { em.emit(p, h.eth); }
 }
-RouterMain(P, C, D) main;
+ModularRouter(P, C, D) main;
 \end{lstlisting}
 % 0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
-\subcaption[]{Main \uprogram}\label{subfig:router-main}
+\subcaption[]{ModularRouter \uprogram with main instance}\label{subfig:router-main}
 \end{minipage}
 \caption[]{Modular Router using \uarch \footnotemark}
 \label{fig:modular-router}
@@ -815,7 +815,7 @@ The code snippet in (Figure \ref{subfig:router}) defines \texttt{router} as a pa
 According to the runtime signature of \texttt{router} package, its \texttt{apply} method call expects arguments for \texttt{nh\_id} and \texttt{type} parameter in addition of packet and intrinsic metadata.
 Such user-define parameters allows to pass data across packages and provides great flexibility for composition.
 Similar to \texttt{router} package, packages for \texttt{ipv4} and \texttt{ipv6} protocols are only declared.
-The \texttt{RouterMain} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes the instance \texttt{route} of \texttt{router}, shown with highlighted code.
+The \texttt{ModularRouter} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes the instance \texttt{route} of \texttt{router}, shown with highlighted code.
 The \texttt{route.apply} method call is supplied with the partial packet represent by the instance \texttt{p} of \texttt{pkt}, not containing ehternet header.
 The \texttt{router} package uses its \texttt{type} parameter to invoke an instance appropriate routing protocol (ipv6 or ipv4) package.
 As a result, it populates \texttt{nh\_id} parameter passed as \texttt{out} argument.
@@ -1364,77 +1364,117 @@ Currently, \ucomp does not perform any such analysis and relies on specific cons
 
 \section{Experiments}
 We have implemented a set of \uprograms to test expressiveness and composability of our framework.
-The features of \ulang and constructs defined in \uarch enable novel ways of expressing data plane of network applications.
+The features of \ulang and constructs defined in \uarch enable novel ways of expressing data plane programs of network applications.
 
 \subsection{Composing Packet-Processing Layers}
 Network packets are self-describing piece of data arranged by repeated encapsulation in protocols headers.
 Every encapsulation increases number of layers and complexity of data plane programs.
-Therefore, developing \uprograms responsible for processing a layer or set of layers is a natural way to design data plane programs, which can be easily reused and developed incrementally.
+Therefore, developing modules responsible for processing a layer or set of layers is a natural way to design data plane programs, which can be easily reused and developed incrementally.\\
+\textbf{Layered Modularity.}
 The generic interfaces defined in \uarch allows programmers to define custom runtime interfaces of modules to exchange data.
 The interfaces allow to define data exchange between \ulang modules of packet-processing layers.
-We have already shown Modular Router (igure \ref{fig:modular-router}) decoupling TCP/IP layer-2 and layer-3 processing.
+We have already shown Modular Router (Figure \ref{fig:modular-router}) decoupling TCP/IP layer-2 and layer-3 processing.\\
 % Figure \ref{fig:incremental-development} shows an example of incremental development, which adds SRH processing to support SRv6 in the network.
-\begin{figure}[!h]
-\begin{subfigure}[b]{\linewidth}
- \begin{lstlisting}[frame=none]
-// srv6.p4
-header ext_routing_h { ... }; 
-header srh_h { ... }; header ipv6_h { ... }; 
-struct srv_ht { 
-  ipv6_h ipv6; ext_routing_h er; srh_h sr;
-};
-parser P(extractor e, pkt p, out srv_ht h) {
-  state start {
-    e.extract(p, h.ipv6);
-    transition select (h.ipv6.nextHdr) {
-      0x2B : parse_routing_hdr; }
-  }
-  state parse_routing_hdr { ... }
-  state parse_srh { ... }
-}
-control C(pkt p, inout srv_ht h, inout sm_t sm, es_t es) {
-  apply { // copy next segment address from h.sr to h.ipv6.destAddr}
-}
-control D(emitter em, pkt p, in srv_ht h) {
-  apply { 
-    em.emit(p, h.ipv6);
-    em.emit(p, h.er); em.emit(p, h.sr);
-  }
+% \begin{figure}[!h]
+% \begin{subfigure}[b]{\linewidth}
+%  \begin{lstlisting}[frame=none]
+% // srv6.p4
+% header ext_routing_h { ... }; 
+% header srh_h { ... }; header ipv6_h { ... }; 
+% struct srv_ht { 
+%   ipv6_h ipv6; ext_routing_h er; srh_h sr;
+% };
+% parser P(extractor e, pkt p, out srv_ht h) {
+%   state start {
+%     e.extract(p, h.ipv6);
+%     transition select (h.ipv6.nextHdr) {
+%       0x2B : parse_routing_hdr; }
+%   }
+%   state parse_routing_hdr { ... }
+%   state parse_srh { ... }
+% }
+% control C(pkt p, inout srv_ht h, inout sm_t sm, es_t es) {
+%   apply { // copy next segment address from h.sr to h.ipv6.destAddr}
+% }
+% control D(emitter em, pkt p, in srv_ht h) {
+%   apply { 
+%     em.emit(p, h.ipv6);
+%     em.emit(p, h.er); em.emit(p, h.sr);
+%   }
+% }
+% \end{lstlisting}
+% \caption{\texttt{srv6} \uprogram to support IPv6 SRH\cite{srh}}
+% \label{subfig:srv6}
+% \end{subfigure}
+% \begin{subfigure}[b]{\linewidth}
+% \begin{lstlisting}[frame=none, escapechar=!]
+% 0x86DD : { 
+%   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}!
+%   ipv6_i.apply(p, sm, es, nh_id);
+% }
+% \end{lstlisting}
+% \caption{Extending \texttt{router} \uprogram}
+% \label{subfig:extending-modular-router}
+% \end{subfigure}
+% \caption{Incremental Development}
+% \label{fig:incremental-development}
+% \end{figure}
+\textbf{Incremental Development.} In the \texttt{router} program, we incrementally develop novel routing mechanism, SRv6, by adding independently developed a \uprogram (\texttt{srv6}) to process IPv6 Segment Routing Header (SRH) \cite{srh}.
+\begin{lstlisting}[frame=none, escapechar=!]
+0x86DD : {
+   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from h.sr to h.ipv6.destAddr 
+  ipv6_i.apply(p, sm, es, nh_id);
 }
 \end{lstlisting}
-\caption{\texttt{srv6} \uprogram to support IPv6 SRH\cite{srh}}
-\label{subfig:srv6}
-\end{subfigure}
-\begin{subfigure}[b]{\linewidth}
- \begin{lstlisting}[frame=none, escapechar=!]
-    0x86DD : { 
-      !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}!
-      ipv6_i.apply(p, sm, es, nh_id);
-    }
+Above code fragment shows a portion of code from modular router (Figure \ref{subfig:router-main}) to integrate \texttt{srv6} program.
+We add support for \texttt{srv6} without modifying any other \uprogram.
+
+
+\subsection{Composing Data Plane Programs of NFs}
+Many network functions (e.g., Firewall, NAT) may process packets across protocol layers.
+Network administrators need to deploy data plane programs of such applications on a subset of devices and/or using different combinations and configurations of the programs.
+Previous work on data plane composition (P4Bricks \cite{soni:hal-01632431} and P4Visor \cite{Zheng:2018:PLV:3281411.3281436}) and virtualization (HyPer4 \cite{Hancock:2016:HUP:2999572.2999607} and HyperV \cite{8038396}) define operators based on selective use cases.
+\uswitch facilitates natural composition of such operators using new features (user-defined package types) of \ulang and native ones of P4, (e.g., conditional statements in, imperative control).
+
+
+\textbf{Composition Operators.} Following snippet of code from implementation of orchestration interface shows use of \texttt{if} statement to express \emph{sequential} and \emph{override} (CoVisor \cite{188954}) composition.
+\begin{lstlisting}[frame=none, escapechar=!]
+// Sequential: Firewall -> Routing
+firewall.apply(p, sm, es);
+if (sm.drop == false) {
+  // Override: Routing decision
+  elephant_flow_routing.apply(p, sm, es);
+  if (sm.drop == true) 
+    modular_router.apply(p, sm, es);
+}
+p4_int.apply(p, sm, es);
 \end{lstlisting}
-\caption{Extending \texttt{router} \uprogram}
-\label{subfig:extending-modular-router}
-\end{subfigure}
-\caption{Incremental Development}
-\label{fig:incremental-development}
-\end{figure}
+The \texttt{firewall} may drop packets by analysing headers of Ethernet, IP, TCP and UDP or more protocols.
+Packets are routed only if they are not marked for drop.
+Similarly, \texttt{elephant\_flow\_routing} overrides normal routing.
+Finally, \texttt{p4\_int} appends In-band Network Telemetry (INT) \cite{Kim2015InbandNT, p4int} headers with basic ingress and egress information.
+Another, example code fragment below shows implementation of \texttt{A-B Testing} composition operator defined by P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
+\begin{lstlisting}[frame=none, escapechar=!]
+/* A-B Testing in core devices*/
+// parser extracts 1 byte header with flag
+extractor.extract(p, testHdr);
+// Inside control block, the `p` w/o testHdr
+if (h.testHdr.testFlag == 1)
+  test_prog.apply(p, sm, es);
+else
+  prod_prog.apply(p, sm, es)
+// deparser puts back the test header
+emiiter.emit(p, testHdr);
+\end{lstlisting}
 
-In the \texttt{router} program, we can incrementally develop novel routing mechanism, SRv6, by 
-independently developing a \uprogram (Figure \ref{subfig:srv6}) to process IPv6 Segment Routing Header (SRH) \cite{srh}.
-Figure \ref{subfig:extending-modular-router} shows a portion of code from modular router (Figure \ref{subfig:router-main}) to integrate \texttt{srv6} program.
-We note that support for \texttt{srv6} is added without modifying any other \uprogram.
 
-
-\subsection{Network Function Chaining in Data Plane}
-
-\subsection{Advance Features}
+\subsection{Advanced}
 
 \subsection{Discussion On Evaluation}
 \textbf{Optimization}. \\
 \textbf{Hardware Resource Consumption}. \\
 
 \section{Conclusion}
-
 
 
 
