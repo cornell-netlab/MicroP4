@@ -4,7 +4,11 @@
 
 \begin{document}
 \date{}
-\title{\Large \bf \ulang: Towards Portable, Modular and Composable Dataplane Programs}
+% <<<<<<< Updated upstream
+% \title{\Large \bf \ulang: Towards Portable, Modular and Composable Dataplane Programs}
+% =======
+\title{\Large \bf Writing Reusable Dataplane Programs Using \ulang}
+% >>>>>>> Stashed changes
 \author{{\rm Paper \#XXX}\\ Anonymous author(s)}
 \maketitle
 
@@ -19,8 +23,8 @@ libraries of code that can be reused across many different programs.
 To address this challenge, we present the design and implementation of
 a logical target, MicroP4 (\uswitch), that decouples P4 programs from
 architecture-specific constructs and naturally supports composition.
-We present the design of the \uswitch logical architecture (\uarch),
-which abstracts away from hardware-level details without sacrificing
+We present the design of the higher-level architecture (\uarch),
+which models \uswitch and abstracts away from hardware-level details without sacrificing
 expressiveness. Using realistic examples, we show how \uswitch enables
 modular programming and composition, and we present an implementation
 of the \ucomp compiler that generates code for lower-level
@@ -115,16 +119,10 @@ control D(packet_out po, in hdr_t ph) {
 
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none, escapechar=!]
-// ipv4.p4: parse and process only L3 header
+// ipv4.p4: parse and process only IPv4 header
 struct meta_t { bit<16> type; }
-parser P(packet_in pin, out hdr_t ph,
-         inout meta_t m) {
+parser P(packet_in pin, out hdr_t ph) {
   state start {
-    transition select(m.type) {
-      0x0800: parse_ipv4;
-    }
-  }
-  state parse_ipv4 {
     pin.extract(ph.ipv4);
     transition accept;
   }
@@ -566,17 +564,18 @@ It allocates and schedules code of transformed \uprograms to control blocks of t
 
 \section{Micro Switch Architecture}
 \label{sec:architecture}
-Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define \uprogram interfaces and packet-processing pipelines for \uswitch as a part of its data plane architecture, \uarch.
-In addition, \uarch defines a set of logical externs providing various packet-processing constructs available in fixed-function blocks (e.g., packet duplication) of pipelines models of real-target architectures.
+Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define \uprogram interfaces and packet-processing pipelines for \uswitch as a part of its architecture, \uarch.
+In addition, \uarch defines a set of logical externs which provides abstractions for various packet-processing constructs defined in architectures of real targets.
+\deleted{available in fixed-function blocks (e.g., packet duplication) of pipelines models of real-target architectures.}
 
 \subsection{Pipelines and Interfaces}
 \label{sec:pipelines}
-\uarch has two types logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
+\uarch provides two types of logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
 % \uarch's logical externs can be instantiated and used within control blocks of the \uarch pipelines.
 Micro pipeline comprises of a Parser, a Micro control and a Deparser block.
 \uarch does not allow conditional statements in deparser blocks of its pipelines.
 For each pipeline type, it exposes one or more interface types.
-Each interface type comprises of a set of declarations for programmable blocks and run-time signature.
+Each interface type comprises of a set of declarations for programmable blocks and runtime signature.
 \begin{figure}[ht]
     \centering
     \begin{subfigure}{0.59\linewidth}
@@ -603,13 +602,14 @@ Every incoming packet is parsed and validated by the parser, if parser terminate
 If the execution control reaches till the end of the micro control block, packet is processed by the deparser block.
 Orchestration pipeline has only a control block, named orchestration.
 \begin{figure*}
-\begin{minipage}[t]{.35\textwidth}
+\begin{minipage}[t]{.38\textwidth}
 \begin{lstlisting}[frame=none]
-extern pkt {
-  byte[] packet;
+extern pkt { /* packet representation */
+  byte[] packet; 
   unsigned length;
   void copy_from(pkt pa);
 }
+/* packet reassembler */
 extern emitter {
   void emit<H>(pkt p, in H hdr);
 }
@@ -617,22 +617,23 @@ extern emitter {
 \end{minipage}\vline
 \hfill\begin{minipage}[t]{.22\textwidth}
 \begin{lstlisting}[frame=none]
-enum meta_t {
-  INGRESS_TIMESTAMP,
-  EGRESS_TIMESTAMP
-}
-struct sm_t {
+/* standard metadata */
+struct sm_t { 
   bit<16> pkt_len;
   bit<8> in_port;
 }
+enum meta_t {
+  IN_TIMESTAMP,
+  OUT_TIMESTAMP 
+}
 \end{lstlisting}
 \end{minipage}\vline
-\hfill\begin{minipage}[t]{.41\textwidth}
+\hfill\begin{minipage}[t]{.35\textwidth}
 \begin{lstlisting}[frame=none]
 extern mc_engine {
   mc_engine();
   void set_mc_group(GroupId_t gid);
-  apply(es_t, out PacketInstanceId_t);
+  apply(es_t, out PktInstId_t);
   
   set_buf(out_buf<O>);
   apply(pkt, out sm_t, es_t, out O);  
@@ -641,7 +642,7 @@ extern mc_engine {
 \end{minipage}
 \begin{minipage}[t]{0.40\textwidth}
 \begin{lstlisting}[frame=none]
-extern extractor {
+extern extractor { /* Data Extraction */
   void extract<H>(pkt p, out H hdr);
   void extract<H>(pkt p, out H hdr, in bit<32> size);
   H lookahead<H>();
@@ -675,6 +676,9 @@ extern void recirculate();
 \end{figure*}
 
 
+
+\uarch declares threes interface types, \texttt{Unicast}, \texttt{Multicast} and \texttt{Orchestration}.
+Programmers can implement programmable blocks of Micro pipeline to create custom package types having runtime signature same as unicast or multicast interface.
 \begin{lstlisting}[frame=none]
 Unicast<H,M,I,O,IO>
   (pkt p, inout sm_t sm, es_t es, in I i_param, out O o_param, inout IO io_param) // Runtime Params
@@ -686,14 +690,13 @@ Orchestration<I,O>
   (in_buf<I> ib, out_buf<O> ob)
   {Con<I,O> c};
 \end{lstlisting}
-\uarch declares threes interface types, \texttt{Unicast}, \texttt{Multicast} and \texttt{Orchestration}.
-Programmers can implement programmable blocks declared for Micro pipeline to create custom package types having run-time signature same as unicast or multicast interface.
 Similarly, Orchestration interface is associated with Orchestration pipeline.
-Figure \ref{fig:micro-switch-architecture} shows declarations of types used in the interfaces.
-The \texttt{pkt} is an extern type representing packet. 
-The \texttt{sm\_t} is struct type containing intrinsic metadata (e.g., in\_port, pkt\_len etc.,).
-The \texttt{es\_t} extern represent intrinsic metadata related to output port of the packet in the pipeline along with queuing related metadata.
-\texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of \uswitch packet-processing model (Figure \ref{fig:mp4-packet-processing-model}).
+Figure \ref{fig:micro-switch-architecture} shows declarations of types (\texttt{pkt}, \texttt{sm\_t}, \texttt{es\_t}, \texttt{in\_buf} and \texttt{out\_buf}) used in the above mentioned interfaces and some other important constructs.
+\hs{TODO: behavior of apply method call of each interface}
+% The \texttt{pkt} is an extern type representing packet. 
+% The \texttt{sm\_t} is struct type containing intrinsic metadata (e.g., in\_port, pkt\_len etc.,).
+% The \texttt{es\_t} extern represent intrinsic metadata related to output port of the packet in the pipeline along with queuing related metadata.
+% \texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of \uswitch packet-processing model (Figure \ref{fig:mp4-packet-processing-model}).
 Next, we give overview of logical externs defined in \uarch along with their example usage.
 
 % It defines standard intrinsic metadata as \emph{sm\_t} as a struct type.
@@ -703,19 +706,19 @@ Next, we give overview of logical externs defined in \uarch along with their exa
 
 
 \subsection{Logical Externs}
-\label{sec:externs}
+\label{sec:logical-externs}
 
-\subsubsection{Packet Extern}
+\textbf{Packet Extern.}
 \uarch models packets using an extern object, \texttt{pkt}, declared in \uarch (Figure \ref{fig:micro-switch-architecture}.
 The \texttt{pkt} extern can be instantiated inside control blocks of only orchestration pipelines.
 \ucomp mandates to initialize \texttt{pkt} instances in the control block using its \texttt{copy\_from} method.
 The \texttt{pkt} extern object contains \texttt{copy\_from} having a parameter of its own type.
 The \texttt{copy\_from} method initializes its calling instance with content of \texttt{pa} without modifying the argument.
-\uswitch considers this method as a compile-time known packet replication, whereas multicast as a run-time packet-replication described in Section \ref{sec:multicast}.
+\uswitch considers this method as a compile-time known packet replication, whereas multicast as a runtime packet-replication.
 \uarch provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
 The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, their instances are provided by the architecture as parameters in parser and deparser declarations of Micro pipeline programmable blocks. 
 
-\subsubsection{Correlated Intrinsic Metadata}
+\textbf{Correlated Intrinsic Metadata.}
 \uarch defines intrinsic metadata for the logical target \uswitch.
 For every real-target architecture , \ucomp maintains mapping of its logical intrinsic metadata with the metadata of the architecture.
 This mapping is used for transforming \uprograms to a given architecture-specific code.
@@ -740,34 +743,30 @@ The second parameter with \texttt{out} direction provides value of the field.
 \begin{figure*}[!ht]
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
-/* ipv6.p4 */
-header ipv6_h { ... }; 
-struct ipv6_ht { ipv6_h ip };
-parser P(extractor ex, pkt p, out ipv6_ht h) {
-  state start {
-    ex.extract(p, h.ip); transition accept;
-  }
-}
-control C(pkt p, inout ipv6_ht h, inout sm_t sm, es_t es, out bit<16> nh_id) {
-  action process(bit<16> nh) {
-    h.ip.hopLimit = h.ip.hopLimit - 1;
-    nh_id = nh;  // setting out param
-  }
-  table ipv6_lpm_tbl {
-    key = { h.ip.dstAddr : lpm }
-    actions = { process; }
-  }
-  apply { ipv6_lpm_tbl.apply(); }
-}
-control D(emitter em, pkt p, in ipv6_ht h) {
-  apply { em.emit(p, h.ip); }
-}!{\subcaption[]{ipv6 \uprogram}\label{subfig:ipv6}}!
 /* router.p4 */
-// Declarations of !{\color{commentcolor}{\uprograms}}!
+// package type declaration of !{\color{commentcolor}{\uprograms for protocols}}! 
 !\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, 
     out bit<16> nh_id);
 !\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
     out bit<16> nh_id);
+// implement unicast interface for router package
+parser P(extractor ex, pkt p, out empty_ht h, inout data_t d) {
+  state start { transition accept; }
+}
+control C(pkt p, inout empty_ht h, inout sm_t sm, es_t e, !\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!) {
+  apply {
+    switch (!\colorbox{mygray}{type}!) {
+      0x0800:!\colorbox{mygray}{ipv4\_i.apply(p, sm, e, nh\_id);}!
+      0x86DD:!\colorbox{mygray}{ipv6\_i.apply(p, sm, e, nh\_id);}!
+    }
+  }
+}
+control D(emitter em, pkt p, in empty_ht h) {
+  apply { }
+}
+!{\subcaption[]{router \uprogram}\label{subfig:router}}!
+/* main.p4 */
+!\colorbox{mygray}{router}!(pkt p, inout sm_t sm, es_t es, !\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!);
 \end{lstlisting}% !\colorbox{mygray}{mpls}!(pkt p, inout sm_t sm, es_t es);
 \end{minipage}\hspace{-4pt}\vline
 \hfill\begin{minipage}[t]{.50\textwidth}
@@ -778,7 +777,7 @@ parser P(extractor ex, pkt p, out hdr_t h) {
   }
 }
 control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
-  !\colorbox{mygray}{bit<16> nh\_id; ipv4() ipv4\_i; ipv6() ipv6\_i;}!
+  !\colorbox{mygray}{bit<16> nh\_id; router() route; }!
   action drop () {}           
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstMac = dmac; h.eth.srcMac = smac;
@@ -789,90 +788,37 @@ control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
     actions = { forward; drop; }
   }
   apply {
-    switch (h.eth.etherType) {
-      0x0800:!\colorbox{mygray}{ipv4\_i.apply(p, sm, es, nh\_id);}!
-      0x86DD:!\colorbox{mygray}{ipv6\_i.apply(p, sm, es, nh\_id);}!
-    }
+    !\colorbox{mygray}{route.apply(p, sm, es, nh\_id, h.eth.etherType);}!
     forward_tbl.apply(); 
   }
 }
 control D(emitter em, pkt p, in hdr_t h) {
   apply { em.emit(p, h.eth); }
 }
-Router(P, C, D) main;
+RouterMain(P, C, D) main;
 \end{lstlisting}
 % 0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
-\subcaption[]{Router's main \uprogram}\label{subfig:router-main}
+\subcaption[]{Main \uprogram}\label{subfig:router-main}
 \end{minipage}
 \caption[]{Modular Router using \uarch \footnotemark}
 \label{fig:modular-router}
 \end{figure*}
-\footnotetext{The unused parameters in parser, control blocks and run-time signature of interface are skipped.}
+\footnotetext{For brevity, we have skipped the unused parameters in parser, control blocks and package type declarations of \uprograms.}
+
+\textbf{Example: Modular Router Using \texttt{Unicast} interface.}
+The code snippet in (Figure \ref{subfig:router}) defines \texttt{router} as a package by implementing blocks of the \texttt{Unicast} interface and specializing its generic runtime parameters.\footnotemark[\value{footnote}]
+According to the runtime signature of \texttt{router} package, its \texttt{apply} method call expects arguments for \texttt{nh\_id} and \texttt{type} parameter in addition of packet and intrinsic metadata.
+Such user-define parameters allows to pass data across packages and provides great flexibility for composition.
+Similar to \texttt{router} package, packages for \texttt{ipv4} and \texttt{ipv6} protocols are only declared.
+The \texttt{RouterMain} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes the instance \texttt{route} of \texttt{router}, shown with highlighted code.
+The \texttt{route.apply} method call is supplied with the partial packet represent by the instance \texttt{p} of \texttt{pkt}, not containing ehternet header.
+The \texttt{router} package uses its \texttt{type} parameter to invoke an instance appropriate routing protocol (ipv6 or ipv4) package.
+As a result, it populates \texttt{nh\_id} parameter passed as \texttt{out} argument.
 
 
 
-
-\subsubsection*{Example \uprograms}
-Figure \ref{fig:modular-router} shows a possible way to write modular data plane program for a router using interfaces and externs declared in \uarch.
-The code snippet in (Figure \ref{subfig:ipv6}) defines \texttt{ipv6} as a package by implementing blocks of the \texttt{Unicast} interface.\footnotemark[\value{footnote}]
-The \texttt{Router} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes appropriate layer-3 module(e.g., \texttt{ipv4 ipv6, mpls}) based on \texttt{etherType} in the header, shown in highlighted code.
-The layer-3 modules are invoked by supplying partial packet (without ethernet header) along with intrinsic metadata and other data (\texttt{nh\_id}) as arguments.
-\begin{figure}[!h]
-\begin{subfigure}[b]{\linewidth}
- \begin{lstlisting}[frame=none]
-// srv6.p4
-header ext_routing_h { ... }; 
-header srh_h { ... }; header ipv6_h { ... }; 
-struct srv_ht { 
-  ipv6_h ipv6; ext_routing_h er; srh_h sr;
-};
-parser P(extractor e, pkt p, out srv_ht h) {
-  state start {
-    e.extract(p, h.ipv6);
-    transition select (h.ipv6.nextHdr) {
-      0x2B : parse_routing_hdr; }
-  }
-  state parse_routing_hdr { ... }
-  state parse_srh { ... }
-}
-control C(pkt p, inout srv_ht h, inout sm_t sm, es_t es) {
-  apply { // copy next segment address from h.sr to h.ipv6.destAddr}
-}
-control D(emitter em, pkt p, in srv_ht h) {
-  apply { 
-    em.emit(p, h.ipv6);
-    em.emit(p, h.er); em.emit(p, h.sr);
-  }
-}
-\end{lstlisting}
-\caption{srv6 \uprogram to support IPv6 SRH}
-\label{subfig:srv6}
-\end{subfigure}
-\begin{subfigure}[b]{\linewidth}
- \begin{lstlisting}[frame=none, escapechar=!]
-apply {
-  switch (h.eth.etherType) {
-    0x86DD : { 
-      !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}!
-      ipv6_i.apply(p, sm, es, nh_id);
-    }
-  }
-  forward_tbl.apply(); 
-}
-\end{lstlisting}
-\caption{Extending Modular Router}
-\label{subfig:extending-modular-router}
-\end{subfigure}
-\caption{Incremental Development}
-\label{fig:incremental-development}
-\end{figure}
-In the \texttt{Router} program, we can easily add support for yet another routing mechanism, SRv6, by independently developing a \uprogram (Figure \ref{subfig:srv6}) processing IPv6 Segment Routing Header (SRH).
-Figure \ref{subfig:extending-modular-router} shows a portion of code from modular router (Figure \ref{subfig:router-main}) to integrate \texttt{srv6} program.
-We note that support for \texttt{srv6} is added without modifying \uprogram of any other routing scheme.
-
-
-\subsubsection{Multicast Extern}
-\label{sec:multicast}
+\textbf{Multicast Extern.}
+% \label{sec:multicast}
 \ulang allows programmers to configure packet replication at run-time using a multicast extern , \texttt{mc\_engine}, declared in \uarch.
 The \texttt{mc\_engine} can be instantiated inside control blocks of Micro pipelines implementing\texttt{Multicast} interface (Figure \ref{fig:multicast-example}).
 The control block of \texttt{Multicast} interface provides \texttt{mc\_buf} as one of the parameters to store copies of parsed headers, unparsed packet, intrinsic metadata and argument data related to the packet.
@@ -887,8 +833,7 @@ For example, had \texttt{ipv4} and \texttt{ipv6} implemented using multicast int
 The caller (\texttt{Router}) can cascade multicast processing on partial packets.
 It can $(1)$ store the partial copies, generated by the callee, into an instance of \texttt{mc\_engine} using \texttt{set\_buf} and $(2)$ invoke the apply method to process each copy using subsequent statments). 
 
-\subsubsection{Logical Buffer Extern}
-\label{sec:logical}
+% \textbf{Logical Buffer Extern.} 
 \uarch declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
 Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
 The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device \uswitch. 
@@ -978,12 +923,6 @@ control con(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
 \caption{Multi-Packet Processing II}
 \label{fig:multi-packet-processing-II}
 \end{figure}
-
-
-
-
-
-
 
 
 \section{MicroP4 Compiler}
@@ -1390,7 +1329,7 @@ Otherwise, backend synthesize P4 source code by dumping the IR.
 \section{Limitations}
 \label{section:limitations}
 Although \ucomp transforms and realizes many higher-level abstraction of data plane model defined in \uarch, there remians a few sub-computations of packet-processing and features of dataplane requiring abstraction to enhance portability.
-These limitations do not affect modularity and composibility, but limits the portibility of packet-processing code.
+These limitations do not affect modularity and composability, but limits the portability of packet-processing code.
 
 \textbf{Device Capabilities.}
 Target architectures specify a fixed set of matching (Exact, LPM, Ternary, Range) capabilities (match kinds) of tables available in the device.
@@ -1419,8 +1358,72 @@ Currently, \ucomp does not perform any such analysis and relies on specific cons
 
 
 \section{Experiments}
+We have implemented a set of \uprograms to test expressiveness and composability of our framework.
+The features of \ulang and constructs defined in \uarch enable novel ways of expressing data plane of network applications.
 
-\subsection{Examples and Use Cases}
+\subsection{Composing Packet-Processing Layers}
+Network packets are self-describing piece of data arranged by repeated encapsulation in protocols headers.
+Every encapsulation increases number of layers and complexity of data plane programs.
+Therefore, developing \uprograms responsible for processing a layer or set of layers is a natural way to design data plane programs, which can be easily reused and developed incrementally.
+The generic interfaces defined in \uarch allows programmers to define custom runtime interfaces of modules to exchange data.
+The interfaces allow to define data exchange between \ulang modules of packet-processing layers.
+We have already shown Modular Router (igure \ref{fig:modular-router}) decoupling TCP/IP layer-2 and layer-3 processing.
+% Figure \ref{fig:incremental-development} shows an example of incremental development, which adds SRH processing to support SRv6 in the network.
+\begin{figure}[!h]
+\begin{subfigure}[b]{\linewidth}
+ \begin{lstlisting}[frame=none]
+// srv6.p4
+header ext_routing_h { ... }; 
+header srh_h { ... }; header ipv6_h { ... }; 
+struct srv_ht { 
+  ipv6_h ipv6; ext_routing_h er; srh_h sr;
+};
+parser P(extractor e, pkt p, out srv_ht h) {
+  state start {
+    e.extract(p, h.ipv6);
+    transition select (h.ipv6.nextHdr) {
+      0x2B : parse_routing_hdr; }
+  }
+  state parse_routing_hdr { ... }
+  state parse_srh { ... }
+}
+control C(pkt p, inout srv_ht h, inout sm_t sm, es_t es) {
+  apply { // copy next segment address from h.sr to h.ipv6.destAddr}
+}
+control D(emitter em, pkt p, in srv_ht h) {
+  apply { 
+    em.emit(p, h.ipv6);
+    em.emit(p, h.er); em.emit(p, h.sr);
+  }
+}
+\end{lstlisting}
+\caption{\texttt{srv6} \uprogram to support IPv6 SRH\cite{srh}}
+\label{subfig:srv6}
+\end{subfigure}
+\begin{subfigure}[b]{\linewidth}
+ \begin{lstlisting}[frame=none, escapechar=!]
+    0x86DD : { 
+      !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}!
+      ipv6_i.apply(p, sm, es, nh_id);
+    }
+\end{lstlisting}
+\caption{Extending \texttt{router} \uprogram}
+\label{subfig:extending-modular-router}
+\end{subfigure}
+\caption{Incremental Development}
+\label{fig:incremental-development}
+\end{figure}
+
+In the \texttt{router} program, we can incrementally develop novel routing mechanism, SRv6, by 
+independently developing a \uprogram (Figure \ref{subfig:srv6}) to process IPv6 Segment Routing Header (SRH) \cite{srh}.
+Figure \ref{subfig:extending-modular-router} shows a portion of code from modular router (Figure \ref{subfig:router-main}) to integrate \texttt{srv6} program.
+We note that support for \texttt{srv6} is added without modifying any other \uprogram.
+
+
+\subsection{Network Function Chaining in Data Plane}
+
+\subsection{Advance Features}
+
 \subsection{Discussion On Evaluation}
 \textbf{Optimization}. \\
 \textbf{Hardware Resource Consumption}. \\
