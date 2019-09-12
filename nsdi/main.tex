@@ -22,7 +22,7 @@ libraries of code that can be reused across many different programs.
 
 To address this challenge, we present the design and implementation of
 a logical target, MicroP4 (\uswitch), that decouples P4 programs from
-architecture-specific constructs and naturally supports composition.
+lower-leverl, architecture-specific constructs and naturally supports composition.
 We present the design of the higher-level architecture (\uarch),
 which models \uswitch and abstracts away from hardware-level details without sacrificing
 expressiveness. Using realistic examples, we show how \uswitch enables
@@ -483,53 +483,38 @@ compiler, \ucomp, to address these aspects.
 
 
 
-
-
-
-
-
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO-P4 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{The \ulang framework}
+\section{MicroP4}
 \label{sec:microp4}
-%% Describe each component of microP4
-Now, we describe each component of \ulang to show how they enable our
-goals for dataplane programming.
-
-\paragraph{\uswitch.}
-\uswitch is an intermediate logical target with an abstract
-packet-processing model. It is designed to provide a higher-level
-abstraction for data plane pipelines to enable code reuse agnostic of
-architectures of target devices without compromising on expressiveness
-and packet-processing features. It enables modular programming by
-allowing to write modules that implement fine-grained
-packet-processing and defining interfaces to hide implementation.
-\begin{figure}[htb]
+\uswitch is an intermediate logical target with an abstract packet-processing model.
+It is designed to provide a higher-level logical abstraction for data plane pipelines to enable code reuse agnostic of architectures of target devices without compromising expressiveness and packet-processing features.
+Also, it allows to write P4 code modules implementing fine-grained packet-processing functionality, to define interfaces and to hide implementation, enabling modular programming.
+\uswitch models every program as a black-box, \emph{Micro-Switch} ($\mu$s), that processes packet byte-stream, intrinsic metadata and arguments for user-defined parameters.
+The black-box model hides implementation details (headers types, user-defined metadata, programmable blocks etc.,) of \uprograms.
+\uswitch executes programs using the packet-processing model shown in Figure \ref{fig:mp4-packet-processing-model}.
+\begin{figure}[h]
     \centering
-    \includegraphics[width=\linewidth]{uswitch-model}
+    \includegraphics[trim=0 420 667 0, clip, scale=0.5]{microp4-program-model}
     \caption{Packet-Processing model of \uprograms}
-    \label{fig:uswitch}
+    \label{fig:mp4-packet-processing-model}
 \end{figure}
 
-\uswitch models each program as a black-box, called a
-\emph{\uprogram}, and executes it using the model shown in
-\cref{fig:uswitch}. A \uprogram takes as input: a packet byte-stream,
-intrinsic metadata and arguments for user-defined parameters. As
-output, it generates byte-streams, metadata, and return values
-corresponding to one or more packets. Such a model hides
-implementation details, such as headers types, user-defined metadata
-and programmable blocks, of a \uprogram from other \uprograms.
-\uswitch fetches an element from a logical input buffer for each
-\uprogram, executes the program and writes one or more elements to the
-logical output buffer.
+
+\begin{figure}[tbh]
+  \centering
+  \includegraphics[width=\linewidth]{workflow}
+  \caption{Workflow for building dataplanes in \ulang}
+  \label{fig:workflow}
+\end{figure}
 
 
 
-\paragraph{\uswitch Architecture (\uarch).}
+\uswitch fetches an element from a logical input buffer queue, executes the program and writes one or more elements to a logical output buffer queue.
+Every element of the buffers comprises a packet bit-stream, intrinsic metadata (e.g., ingress\_port, egress\_port, packet\_length etc., ) and input arguments or output arguments associated with the packet.
+
+
 We design a Micro-Switch Architecture (\uarch) that defines data plane model with multiple logical pipelines to develop \uprograms.
 Each logical pipeline is associated with an interface declared in the architecture.
 Every interface specifies generic run-time parameters and declares programmable blocks required to be implemented for a pipeline.
@@ -541,14 +526,6 @@ Each \uprogram specializes a generic interface.
 The run-time interfaces enable easy reuse and hide implementation detail of the \uprograms, facilitating modular and incremental development.
 Using logical data plane model of \uarch, programmers can develop modular P4 code which is specific to \uarch.
 We design and develop MicroP4 Compiler (\ucomp) to compile and transform \uprogram for architectures of real target devices, making \uprograms agnostic of architectures of real-targets.
-
-\begin{figure}[tbh]
-  \centering
-  \includegraphics[width=\linewidth]{workflow}
-  \caption{Workflow for building dataplanes in \ulang}
-  \label{fig:workflow}
-\end{figure}
-
 
 Programmer can use \ucomp to $(1)$ Create compiled libraries of \uprograms along with their control plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of main instance and transform the program for a specified architecture of a real-target.
 If the given source file does not contain an instance named, \ucomp generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
@@ -902,55 +879,7 @@ control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, ou
 \label{fig:multicast-example}
 \end{figure}
 
-\begin{figure}[!h]
- \begin{lstlisting}[frame=none]
-struct e_t {};  struct h_t { ... };
-prog(pkt, inout sm_t, es_t, out h_t);
-test(pkt, inout sm_t, es_t, out h_t);
-log(pkt, inout sm_t, es_t, in h_t, in h_t);
-control validate(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
-          pkt pt, pm;  es_t et, em;  
-/*slice*/ sm_t st, sm; h_t hp, ht;
-/*  #  */ apply {
-/*  1  */   pm.copy_from(p); // c1
-/*  1  */   em.copy_from(e); sm = s;
-/*  3  */   pt.copy_from(p); // c3 
-/*  3  */   et.copy_from(e); st = s;
-/* 2,1 */   prog.apply(p, s, e, hp); 
-/* 3,1 */   test.apply(pt, st, et, ht); 
-/*  1  */   if (hp != ht) {
-/*  1  */     log.apply(pm, sm, em, hp, ht);
-/*  1  */     ob.enqueue(pm, sm, em);
-/*  1  */   }
-/*  3  */   smt.drop = true;
-/*  2  */   ob.enqueue(p, sm, e);
-/*  3  */   ob.enqueue(pt, smt, et);
-          }
-       }
-\end{lstlisting}
-\caption{Multi-Packet Processing}
-\label{fig:multi-packet-processing}
 
-\begin{lstlisting}[frame=none]
-struct e_t {};
-sflow(pkt, inout sm_t, es_t);
-control con(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
-  pkt ps;  es_t es;  sm_t ss;
-  in_buf<e_t> ib;
-  apply {
-    ps.copy_from(p);
-    es.copy_from(e); ss = s;
-    sflow.apply(ps, ss, es); 
-    ob.enqueue(ps, ss, es);
-    ob.enqueue(p, s, e);
-    ob.to_in_buf(ib);
-    router.apply(ib, ob);
-  }
-}
-\end{lstlisting}
-\caption{Multi-Packet Processing II}
-\label{fig:multi-packet-processing-II}
-\end{figure}
 
 
 \section{MicroP4 Compiler}
@@ -1227,6 +1156,39 @@ If \ucomp fails to find a serial PPS, it raises a compilation error for such tar
 
 \subsubsection{Packet-Processing Schedule}
 \label{subsubsection:packet-processing-schedule}
+\hs{TODO: this Section \ref{subsubsection:packet-processing-schedule} will move out of paper of in appendix. In that scenario, modify  above para to hint convincing solution to reader}
+
+
+\label{subsubsection:packet-processing-schedule}
+\begin{figure}[!h]
+\begin{lstlisting}[frame=none]
+struct e_t {};  struct h_t { ... };
+prog(pkt, inout sm_t, es_t, out h_t);
+test(pkt, inout sm_t, es_t, out h_t);
+log(pkt, inout sm_t, es_t, in h_t, in h_t);
+control validate(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
+          pkt pt, pm;  es_t et, em;  
+/*slice*/ sm_t st, sm; h_t hp, ht;
+/*  #  */ apply {
+/*  1  */   pm.copy_from(p); // c1
+/*  1  */   em.copy_from(e); sm = s;
+/*  3  */   pt.copy_from(p); // c3 
+/*  3  */   et.copy_from(e); st = s;
+/* 2,1 */   prog.apply(p, s, e, hp); 
+/* 3,1 */   test.apply(pt, st, et, ht); 
+/*  1  */   if (hp != ht) {
+/*  1  */     log.apply(pm, sm, em, hp, ht);
+/*  1  */     ob.enqueue(pm, sm, em);
+/*  1  */   }
+/*  3  */   smt.drop = true;
+/*  2  */   ob.enqueue(p, sm, e);
+/*  3  */   ob.enqueue(pt, smt, et);
+          }
+       }
+\end{lstlisting}
+\caption{Multi-Packet Processing}
+\label{fig:multi-packet-processing}
+\end{figure}
 If the main package has callees with orchestration interface, \ucomp extracts packet-processing threads and PPS for control block of every callee.
 \ucomp constructs a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} having statements as nodes and dependencies among them as edges. 
 \ucomp  performs a series of transformations on PDG to compute PPS.
@@ -1390,6 +1352,7 @@ We have implemented a set of \uprograms to test expressiveness and composability
 The features of \ulang and constructs defined in \uarch enable novel ways of expressing data plane programs of network applications.
 
 \subsection{Composing Packet-Processing Layers}
+\label{subsection:composing-packet-processing-layers}
 Network packets are self-describing piece of data arranged by repeated encapsulation in protocols headers.
 Every encapsulation increases number of layers and complexity of data plane programs.
 Therefore, developing modules responsible for processing a layer or set of layers is a natural way to design data plane programs, which can be easily reused and developed incrementally.\\
@@ -1445,7 +1408,7 @@ We have already shown Modular Router (Figure \ref{fig:modular-router}) decouplin
 \textbf{Incremental Development.} In the \texttt{router} program, we incrementally develop novel routing mechanism, SRv6, by adding independently developed a \uprogram (\texttt{srv6}) to process IPv6 Segment Routing Header (SRH) \cite{srh}.
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
-   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from h.sr to h.ipv6.destAddr 
+   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
   ipv6_i.apply(p, sm, es, nh_id);
 }
 \end{lstlisting}
@@ -1454,6 +1417,8 @@ We add support for \texttt{srv6} without modifying any other \uprogram.
 
 
 \subsection{Composing Data Plane Programs of NFs}
+\label{subsection:composing-dataplane-programs-of-NFs}
+
 Many network functions (e.g., Firewall, NAT) may process packets across protocol layers.
 Network administrators need to deploy data plane programs of such applications on a subset of devices and/or using different combinations and configurations of the programs.
 Previous work on data plane composition (P4Bricks \cite{soni:hal-01632431} and P4Visor \cite{Zheng:2018:PLV:3281411.3281436}) and virtualization (HyPer4 \cite{Hancock:2016:HUP:2999572.2999607} and HyperV \cite{8038396}) define operators based on selective use cases.
@@ -1476,7 +1441,11 @@ The \texttt{firewall} may drop packets by analysing headers of Ethernet, IP, TCP
 Packets are routed only if they are not marked for drop.
 Similarly, \texttt{elephant\_flow\_routing} overrides normal routing.
 Finally, \texttt{p4\_int} appends In-band Network Telemetry (INT) \cite{Kim2015InbandNT, p4int} headers with basic ingress and egress information.
-Another, example code fragment below shows implementation of \texttt{A-B Testing} composition operator defined by P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
+Though \uarch does not have notion of ingress and ingress pipelines, but it declares intrinsic metadata which can be mapped to INT data.
+For example, \emph{ingress timestamp} of INT is mapped to \texttt{IN\_TIMESTAMP}.
+\ucomp paritions the composed pipeline and allocates \texttt{p4\_int} to egress control block of v1model architecture.
+
+Another example code fragment shown below implements of \texttt{A-B Testing} composition operator defined by P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
 \begin{lstlisting}[frame=none, escapechar=!]
 /* A-B Testing in core devices*/
 // parser extracts 1 byte header with flag
@@ -1491,13 +1460,48 @@ emiiter.emit(p, testHdr);
 \end{lstlisting}
 
 
-\subsection{Advanced}
+\subsection{Possible Use Cases}
+Many network applications like mirroring, statistics collector (sFlow, NetFlow), generating packet history (postcards \cite{179783}) and testing mechanism (Differential-Testing (\cite{Zheng:2018:PLV:3281411.3281436})) etc., require selectively creating copies of packets and further differently process it in network devices.
+The \texttt{pkt} and \texttt{es} externs of \uarch contains \texttt{copy\_from} method which allow to express such packet processing.
+Following code fragment creates a copy of parameter \texttt{pk} and \texttt{e} using the method.
+\begin{lstlisting}[frame=none]
+struct e_t {}; // empty type
+sflow(pkt, inout sm_t, es_t);// Implements Unicast 
+control con(pkt pk, inout sm_t s, es_t e, 
+    out_buf<e_t> ob) { // `ob` holds out packets
+  pkt ps;  es_t es;  sm_t ss;
+  in_buf<e_t> ib; // used for composition
+  apply {
+    ps.copy_from(pk); // copying
+    es.copy_from(e); ss = s; // copying
+    sflow.apply(ps, ss, es); // 
+    ob.enqueue(ps, ss, es);
+    ob.enqueue(pk, s, e); // puting original in ob
+    ob.to_in_buf(ib); // moves all elements to ib
+    modular_router_orch.apply(ib, ob);
+  }
+}
+\end{lstlisting}
+The \texttt{sflow} processes the copied packet and intrinsic metadata.
+The packet copy, process by sflow, and the original packet are queued into parameter \texttt{ob} of \texttt{out\_buf} type.
+The \texttt{to\_in\_buf} method call moves the contents of \texttt{ob} to an instance, \texttt{ib}, of \texttt{in\_buf} and resets \texttt{ob}.
+Finally, the \texttt{apply} method call of \texttt{modular\_router\_orch} routes all the packets
 
 \subsection{Discussion On Evaluation}
-\textbf{Optimization}. \\
+
 \textbf{Hardware Resource Consumption}. \\
 
+
+\textbf{Optimization}. \\
+
+\section{Related Work}
 \section{Conclusion}
+
+
+
+
+
+
 
 
 
