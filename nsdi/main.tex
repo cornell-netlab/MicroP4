@@ -1556,6 +1556,7 @@ Further, the computations for extract-length and byte-stack size of \uprograms a
 
 
 \section{Related Work}
+
 Frenetic Pyretic NetCore, NetKat CoVisor
 
 PSA
@@ -1563,6 +1564,14 @@ PSA
 P4Visor, Hyper4 HyperV
 
 \section{Conclusion}
+We forsee that data plane programs are going to be more and more complex and diverse with novel use cases emerging from in-network computations to packets-carrying-program (SRv6).
+Therefore, data plane programming model must facilitate portable and modular programs.
+In this work, we identified that data plane programming using P4 needs more than basic (programmable-parser and match-action) primitives for packet-processing.
+We showed higher-level abstraction on top of the basic primitives are necessary for writing portable and modular programs.
+For composition of program modules, we leveraged the proposed transformation between basic primitives, programmable-parser and match-action.
+This transformation promises fundamental change in the way packet-processing can be implemented in hardware.
+Though, analysis of resource utilization of our proposed framework yet to be done but there exists encouraging scenarios for optimizations.
+
 
 
 
@@ -1748,27 +1757,6 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 
 
 
-% To address these challenges without disrupting current ecosystem and workflow of data plane programming in P4, we design a switch architecture \uarch for an intermediate logical device, called \ucomp.
-% The data plane model with logical pipelines of \ucomp provides abstractions for pipeline models of real-target architectures.
-% \uarch provides a set of constructs to write modular code having interface to reuse it and to hide its implementation details.
-% The logical pipeline models defined in \uarch do not completely eliminate heterogeneity in packet-processing blocks (parser, control) of the pipelines.
-% % However, constructs and pipeline models declared in \uarch allows to write programs by reusing the code developed in conformance of \uarch.
-% The design choices for \uarch are intentional to avoid disruptive innovations in P4 language.
-% It partially address the above mentioned challenges and leaves following two aspects for unaddressed.
-% $1$ creating P4 programs specific to \uarch and the logical device \ucomp.
-% $2$ heterogeneity in packet-processing blocks of P4 programs.
-% We complement design choices of \uarch by designing and developing a compiler, \ucomp, to address these aspects.
-% 
-% 
-% \ucomp transforms \uarch-specific P4 code for a given real-target architecture satisfying all the constraints and in conformance of lower-level details of the target.
-% First, \ucomp estimates operational region of packets to process the P4 code.
-% It synthesizes a parser and a deparers blocks as declared in real-target architecture.
-% Then, it transforms all parser and parser blocks into match-action control blocks homogenizing abstract-machines for packet-processing blocks.
-% This allows to natural transfer of execution-control across modules, enabling modularity and facilitating code reuse.
-% Finally, it allocates transformed match-action control blocks to control blocks in pipeline model of target architecture while translating \uarch-specific constructs to target architecture-specific ones.
-% 
-% 
-% Next sections..
 
 
 
