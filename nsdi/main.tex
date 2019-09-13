@@ -1439,9 +1439,7 @@ We add support for \texttt{srv6} without modifying any other \uprogram.
 Many network functions (e.g., Firewall, NAT) may process packets across protocol layers.
 Network administrators need to deploy data plane programs of such applications on a subset of devices and/or using different combinations and configurations of the programs.
 Previous work on data plane composition (P4Bricks \cite{soni:hal-01632431} and P4Visor \cite{Zheng:2018:PLV:3281411.3281436}) and virtualization (HyPer4 \cite{Hancock:2016:HUP:2999572.2999607} and HyperV \cite{8038396}) define operators based on selective use cases.
-\uswitch facilitates natural composition of such operators using new features (user-defined package types) of \ulang and native ones of P4, (e.g., conditional statements in, imperative control).
-
-
+\uswitch facilitates natural composition of such operators using new features (user-defined package types) of \ulang and native ones of P4, (e.g., conditional statements in, imperative control).\\
 \textbf{Composition Operators.} Following snippet of code from implementation of orchestration interface shows use of \texttt{if} statement to express \emph{sequential} and \emph{override} (CoVisor \cite{188954}) composition.
 \begin{lstlisting}[frame=none, escapechar=!]
 // Sequential: Firewall -> Routing
@@ -1460,7 +1458,7 @@ Similarly, \texttt{elephant\_flow\_routing} overrides normal routing.
 Finally, \texttt{p4\_int} appends In-band Network Telemetry (INT) \cite{Kim2015InbandNT, p4int} headers with basic ingress and egress information.
 Though \uarch does not have notion of ingress and ingress pipelines, but it declares intrinsic metadata which can be mapped to INT data.
 For example, \emph{ingress timestamp} of INT is mapped to \texttt{IN\_TIMESTAMP}.
-\ucomp paritions the composed pipeline and allocates \texttt{p4\_int} to egress control block of v1model architecture.
+\ucomp partitions the composed pipeline and allocates \texttt{p4\_int} to egress control block of v1model architecture.
 
 Another example code fragment shown below implements of \texttt{A-B Testing} composition operator defined by P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
 \begin{lstlisting}[frame=none, escapechar=!]
@@ -1505,20 +1503,66 @@ The \texttt{to\_in\_buf} method call moves the contents of \texttt{ob} to an ins
 Finally, the \texttt{apply} method call of \texttt{modular\_router\_orch} routes all the packets
 
 \subsection{Discussion On Evaluation}
+In this paper, the focus of our framework is on developing abstractions, interfaces and their compiler transformations to enable target-agnostic reuse of programs. However, the transformations by \ucomp to lower-level architectures may cause resource overhead in targets. 
+We highlight some of the key insights of \ucomp to understand possible source of overheads and opportunities for optimizations.
 
-\textbf{Hardware Resource Consumption}. \\
+\subsubsection{Hardware Resource Consumption}. 
+\ucomp performs static analysis of \uprograms to find the required size of byte-stack (\cref{subsection:extract-length-and-byte-stack-size}) and synthesize a parser/deparser to extract and emit required packet bytes in byte-stack (\cref{subsection:parser-to-match-action-table}). 
+It transforms parser/deparser blocks of P4 executed in packet-parser in hardware to a match-action table executed in hardware stages. 
+The data plane programs use two crucial resource available on RMT based hardware devices.
 
 
-\textbf{Optimization}. \\
+\textbf{$(1)$ Packet Header Vector(PHV)} stores parsed headers and data (user-define metadata and local declarations).
+The size of byte-stack directly affects consumption of PHV in the same way as size of all parsed headers of monolithic P4 programs. 
+Because, both remains in scope and live throughout all the stages in hardware pipeline. We term such utilization of PHV as \textbf{global usage}.
+
+To compare global usage, let's assume that the caller shown in Figure \ref{fig:sequential-callees} is re-written as a monolithic program, called \texttt{mp}.
+The \texttt{mp}'s parser is a union of callees' parsers, the total size of headers to execute \texttt{mp} would be 98 (=eth+mpls+ipv6+(2 ipv4)) bytes, which is the same as byte-stack required to execute the caller. 
+However, note that extract-length for the caller is 78.
+The extra space of 20 bytes in byte-stack is required to accommodate the ipv4 header set by callee1 in its control block.
+
+If we consider absence of setValid and setInValid method calls in callee1's control block, the required size of byte-stack is max(54, 74) = 74.
+In this scenario, the caller's byte-stack header would consume less space in PHV compared to mp's headers.
+
+The variables and user-defined metadata used within a control blocks consume PHV, but may not live and consume PHV during entire program execution. 
+We term such utilization of PHV as \textbf{local usage}. \ucomp indeed introduces new local variables within control blocks. 
+For example, it removes all header instances and creates local variable for header fields accessed in control blocks. 
+If for one stage combined, global and local, usages exceeds PHV capacity, allocation of match-action tables to hardware stages would play significant role in fitting composed program on pipeline. 
+Our current implementation of \ucomp translates to v1model architecture for \texttt{simple\_switch} target. 
+As a part of future work, we will analyze these two aspects, global and local, PHV consumption for real hardware like Tofino \cite{tofino}.
+
+
+\textbf{$(2)$ The number of Match-Action Hardware Stages:} RMT based devices have limited number of stages in pipeline to execution match-action tables defined in control blocks of P4.
+The transformations by \ucomp consumes one hardware stage for every parser or deparser. 
+On the other hand, \ucomp greatly simplifies programmability requirement of parser and deparser circuits in hardware. 
+Because, \ucomp accepts all packet with size greater than min-packet-size and extract bytes up to extract-length estimated by static-analysis. 
+The required programmability can be achieved by using simple counters based design. 
+However, as the parser consumes only 1-2\% of chip-area, the gain may not be significant to trade for usage of match-action stages in hardware pipeline. 
+Therefore, further optimization would be required to reduce consumption of match-action stages.\\
+\textbf{Optimization:} In cases described in \cref{subsection:composing-dataplane-programs-of-NFs}, execution of the match-action table of transformed-deparser is followed by of transformed-parser.
+These tables contain static entries. Therefore, creating single table by performing cross-product is feasible, reducing overhead on match-action stages by half.
+
+
+
+
+\subsubsection{Compilation Time}
+We are yet to test \ucomp on extensive set of programs and in composition scenario to conclude on compilation time.
+However, the selective symbolic-execution results in well-know path explosion problem for programs with high branching factor.
+Hence, \ucomp's compile-time analysis can result in significantly huge compilation time.\\
+\textbf{Optimization:}
+We only evaluate method calls of header types, extractor and emitter during symbolic-executable allowing to spawn lightweight threads for parallel execution.
+Further, the computations for extract-length and byte-stack size of \uprograms are highly recursively, therefore they can be avoided by storing and reusing the values during compilation with libraries.
+
+
 
 \section{Related Work}
+Frenetic Pyretic NetCore, NetKat CoVisor
+
+PSA
+
+P4Visor, Hyper4 HyperV
+
 \section{Conclusion}
-
-
-
-
-
-
 
 
 
