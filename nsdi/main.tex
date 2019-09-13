@@ -285,11 +285,12 @@ target-specific actions and \emph{extern} functions (e.g., resubmit,
 recirculate, clone, etc.)---to enable special processing such as
 packet replication~\cite{simple_switch.md,psa}. While doing so
 enhances features, it also makes programs being closely tied to
-architectures and targets and hurts portability. For example, many P4
-programs written for PSA rely heavily on using intrinsic metadata
-supported by PSA, and such metadata is used across a program in an
-unrestricted manner~\cite{switch.p4}; it is difficult to split such a
-program into clean modules which can be developed independently.  More
+architectures and targets which hurts portability and also prohibits
+modular development. For example, many P4 programs written for PSA
+rely heavily on using intrinsic metadata supported by PSA, and such
+metadata is used across a program in an unrestricted
+manner~\cite{switch.p4}; it is difficult to split such a program into
+clean modules which can be developed independently.  More
 fundamentally, it breaks the notion of abstraction needed to write
 modular programs.  Ideally, target-specific implementation should be
 hidden from high-level programs to enable modular development. In
