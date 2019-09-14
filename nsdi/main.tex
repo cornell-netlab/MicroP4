@@ -221,9 +221,11 @@ programming (\cref{sec:insights}) and give an overview of our approach
 
 % Brief background on P4 programming model and architecture
 P4~\cite{bosshart2014p4} has emerged as a popular language for
-specifying the packet processing behaviour of programmable switching
+specifying the packet-processing behaviour of 
+\hse{re-configurable} \deleted{programmable switching}
 chips, such as Barefoot Tofino~\cite{tofino} and Cavium
-Xpliant~\cite{xpliant}, which are based on a pipeline of match-action
+Xpliant~\cite{xpliant}, which are based on \hse{a programmable 
+parser} and a pipeline of match-action
 tables~\cite{bosshart2013forwarding}. To support a variety of
 \emph{targets}, the ecosystem expects device manufacturers to provide a
 target-specific framework to program the devices. The framework also
@@ -233,9 +235,10 @@ pipeline. Specifically, an architecture, such as
 \texttt{v1model}~\cite{v1model.p4}, for a target, such as
 \texttt{simple\_switch} software switch~\cite{simple_switch.md},
 specifies the dataplane pipeline model comprising a set of
-programmable and fixed-function blocks, flow of user-defined and
-target-specific (called intrinsic) metadata in the pipeline, and
-semantics of target-specific actions and externs. For example,
+programmable and fixed-function blocks, flow of \hse{packet}, user-defined and
+target-specific (called \emph{intrinsic}) metadata in the pipeline, and
+semantics of target-specific \hse{constructs (actions and externs)}. For 
+example,
 \cref{fig:arch-example} shows dataplane pipelines and their packet
 processing blocks defined in \texttt{v1model}~\cite{simple_switch.md}
 and Portable Switch Architecture (PSA)~\cite{psa}.
@@ -246,15 +249,15 @@ and Portable Switch Architecture (PSA)~\cite{psa}.
   \label{fig:arch-example}
 \end{figure}
 
-To program a target device, one can use P4 to specify the behavior of
-the programmable blocks exposed in the architecture of the target.
-While this approach allows supporting multiple targets which share the
-same architecture, it also makes \emph{P4 programs tightly coupled to
-the architecture} of the target. Such tight coupling makes it
-impossible to reuse P4 programs across targets with different
-architectures, as explained next.
-
-
+\hse{To program a target, one can use P4 to specify the behavior
+of the programmable blocks exposed in the architecture of the target.
+While, this approach allows supporting multiple targets which share the
+same architecture, it also makes P4 programs dependent on
+$(1)$ dataplane pipeline, $(2)$ flow of packet and metadata in
+the pipeline and  $(3)$ target-specific constructs.
+These dependencies pose multiple challenges to reuse P4 programs
+across targets with different and, even, the same architectures, as
+explained next.}
 
 % NOTE: Two main points:
 % 1) across architectures: because pipeline model is different, it
@@ -267,78 +270,144 @@ architectures, as explained next.
 
 % First explain the problem with reuse across architectures
 % (Portability)
-Architectures differ in the way their dataplane pipeline is arranged.
-A P4 program written for a given architecture specifies the behaviour
-of programmable blocks within the corresponding pipeline. So, if the
-architecture changes, it is often impossible to map the P4 program
-on to the different pipeline for the new architecture without a
-complete rewrite. For example, in \cref{fig:arch-example}, there is no
-obvious and automatic way to map the functionality implemented for
+\paragraph{Challenge 1: P4 programs are specific to architecture.}
+\deleted{Architectures differ in the way their dataplane pipeline is arranged.}
+\hse{The structure of a P4 program is dependent on a 
+dataplane pipeline model which is specified by the architecture of 
+the program's target. Architectures differ in the set of 
+programmable-blocks and their arrangement in pipeline.}
+So, if the architecture changes, it is often impossible to \hse{reuse}
+the P4 program \hse{with the pipeline model of} the new architecture 
+without a complete rewrite. For example, in 
+\cref{fig:arch-example}, \hse{to map the functionality implemented 
+for PSA's ingress deparser block to any programmable block in 
+v1model's pipeline, semantic understanding of the blocks are 
+required. Therefore, there is no obvious and automatic way, but 
+manual rewrite, to reuse the implementation of programmable blocks 
+across different pipeline model.}
+\deleted{there is no obvious and automatic way to map the 
+functionality implemented for
 PSA's ingress deparser block to any programmable block in v1model's
 pipeline. Doing so needs semantic understanding of the blocks and
-manual rewriting of the program.
-
+manual rewriting of the program.}
 % (... and modularity)
-Moreover, current architectures expose certain target-specific
-information and operations---such as intrinsic metadata,
-target-specific actions and \emph{extern} functions (e.g., resubmit,
+\hse{Moreover, to program pipeline of an architecture, P4 
+programs have to rely heavily on the architecture-specific intrinsic 
+metadata and constructs (e.g., resubmit, recirculate, clone, etc.) 
+enabling special processing such as packet 
+replication~\cite{simple_switch.md,psa}.
+These dependence hurt portability of P4 programs across different 
+architectures.}
+
+\deleted{Moreover, current architectures expose certain 
+target-specific information and constructs---such as intrinsic 
+metadata, actions and \emph{extern} functions (e.g., resubmit,
 recirculate, clone, etc.)---to enable special processing such as
 packet replication~\cite{simple_switch.md,psa}. While doing so
 enhances features, it also makes programs being closely tied to
-architectures and targets which hurts portability and also prohibits
-modular development. For example, many P4 programs written for PSA
+architectures and targets which hurts portability.}
+% \sout{also prohibits modular development.}
+
+\paragraph{Challenge 2: High coupling of programmable blocks 
+exposed by the same architecture.} \hse{
+A P4 program specifies the behavior of programmable blocks 
+exposed by the architecture of its target. An architecture
+specifies a flow of packet, user-defined and intrinsic metadata 
+passing through programmable blocks in its pipeline. This results in 
+highly coupled block-specific P4 modules in every P4 program. For 
+example, In \cref{fig:arch-example}, PSA's ingress parser initializes 
+a set of declarations, packet headers and user-define metadata which 
+are passed to and processed by ingress control. To reuse the 
+ingress control module of a P4 program in another PSA-specific 
+program, it is mandatory to expose all the declarations passed to 
+the module. Because these declarations are initialized by the 
+parser block, its implementation should be known or it must be reused 
+along with the ingress module. The high coupling and global 
+scope of data in pipeline makes extremely difficult to develop 
+independent modules, thereby hindering modularity.}
+
+% \hs{text explaining split of switch.p4 did not read well today.}
+
+\deleted{For example, many P4 programs written for PSA
 rely heavily on using intrinsic metadata supported by PSA, and such
 metadata is used across a program in an unrestricted
-manner~\cite{switch.p4}; it is difficult to split such a program into
-clean modules which can be developed independently.  More
-fundamentally, it breaks the notion of abstraction needed to write
+manner~\cite{switch.p4};
+it is difficult to split such a program into
+clean modules which can be \hse{reused} developed independently.  
+More fundamentally, it breaks the notion of abstraction needed to 
+write 
 modular programs.  Ideally, target-specific implementation should be
 hidden from high-level programs to enable modular development. In
 fact, P4 does not enforce sufficient scoping of data needed to develop
 independent modules. As a result, even to update a small piece of
 functionality, developers need to be aware of how each variable is
-used throughout the entire program.
+used throughout the entire program.}
+
 
 % Then problem with writing modular code even on a single architecture
 % (Composition)
+\paragraph{Challenge 3: Programmable blocks with heterogeneous 
+abstract machines.}
+\deleted{
 The current approach also makes it hard to write composable dataplane
-modules. To understand why, note that even for a fixed target, the
-architecture usually contains packet-processing blocks with
+modules. To understand why, note that Even for a fixed target, 
+ \hse{The dataplane pipeline model of an } }
+Architecture usually contains packet-processing blocks with
 heterogeneous execution models, also called \emph{abstract
-machines}~\cite{p4lang,van1991machine}. For example, consider PSA in
-\cref{fig:arch-example}---the parser block  is usually described using
+machines}~\cite{p4lang,van1991machine}. For example\deleted{ 
+consider PSA} in
+\cref{fig:arch-example}, \hse{the parser blocks are} described using
 a sub-language of P4 which uses Finite State Machines (FSM) as its
 abstract machine, while the control blocks are expressed in another
 sub-language whose abstract machine models imperative control
-flow~\cite{p4lang}. As each abstract machine is defined independently,
-there is no common interface that programmers can write their
-packet-processing modules against. This lack of uniform abstract
+flow~\cite{p4lang}. As \hse{behavior of each type of 
+programmable-block} \deleted{abstract machine}is \hse{expressed using 
+different sub-languages and constructs of P4, } \deleted{defined 
+independently}
+there is no uniform or compatible interface \deleted{that programmers 
+can use}
+\hse{to express composition of packet-processing modules through
+programmable-blocks with different abstract-machines.}
+\deleted{write their packet-processing modules against.}
+\deleted{This lack of uniform abstract
 machine and interface prevents packet-processing modules to be
 composed together as composition requires modules to have compatible
-interfaces. Going back to the earlier example, in
+interfaces.}
+Going back to the earlier example, in
 \cref{fig:l2.p4,fig:ipv4.p4}, ideally we would like to execute the
 \texttt{ipv4} module (parser and control blocks) right before applying
 \texttt{forward\_tbl} in \texttt{l2}'s \texttt{Pipe} control block so
 that \texttt{nh\_id} is available in \texttt{forward\_tbl}. But
 existing programming models do not support such composition.
 
+% \hs{May be we can get away with summary and put shorter summary}
+\deleted{
 To summarize, there are three main challenges with current dataplane
-programming model that hinders code reuse, modularity and composition:
+programming model that hinders code reuse.\deleted{portability, 
+modularity and composition:}
 \begin{enumerate}
-  \item Different architectures vary in their dataplane pipelines
-    which have incompatible structure and semantics. This renders
-    programs written for one architecture not amenable to be ported to
-    others.
-  \item Architectures do not provide a clean abstraction that can
-    decouple dataplane programs from targets and also do not enforce
-    sufficient scoping of information. This makes it difficult to
+  \item \hse{P4 programs are architecture-specific.}
+    Different architectures vary in their dataplane pipeline model.
+    \deleted{which have incompatible structure and semantics.} 
+    This renders P4 programs written for one architecture not 
+    amenable to be ported to others.
+  \item Architectures do not provide \deleted{a clean abstraction 
+that can
+    decouple dataplane programs from targets and also do not enforce}
+    sufficient \hse{encapsulation and} scoping of information 
+\hse{across programmable blocks}. This makes it difficult to
     develop clean and independent modules.
   \item Programmable blocks within an architecture use heterogeneous
     abstract machines without a common interface. The lack of a
     compatible interface restricts composition of dataplane modules.
 \end{enumerate}
-
-
+}
+\hse{In summary, P4 programs are $(1)$ \emph{non-portable}, because
+of their affinity to architectures, $(2)$ \emph{monolithic}, 
+because of huge data-sharing across processing-blocks within the 
+pipeline and $(3)$ \emph{non-composable}, because of heterogeneity 
+in abstract machines of processing-blocks and the lack of uniform 
+interface.}
 
 \deleted{Specifically, Parser blocks are described using a sub-language of P4, based on abstraction of Finite State Machine. Control blocks are expressed using a sub-language modelling imperative control flow. Deparsers are special control blocks that allows to use statements, to reassemble packets, that are prohibited in other control blocks.
 Packet-processing logic in P4 programs is partitioned across programmable blocks with heterogeneous abstract machines (e.g., parsers, deparsers, control) and fixed-function blocks (Packet Buffer and Replication Engine).
@@ -438,13 +507,15 @@ using three main components:
 Users write dataplane programs using an extended P4 language which
 supports modularity and composition. These programs are written with
 the \uarch architecture. While compiling, users specify the real
-target architecture to which the \ulang programs should be mapped to.
+target architecture \hse{for} which the \ulang programs should be
+\hse{translated}.
 This decouples programs from target architectures while keeping the
 workflow very simple and intuitive.
 
 \uarch provides a set of constructs to write modular code having a
 common interface that hides the implementation of packet-processing
-within each module. A module can be thought of receiving a partial
+within each module. A module can be thought of receiving a partial or
+\hse{complete}
 packet along with certain metadata, process it as needed, and send out
 one or more packets along with some metadata. Thus, each module can be
 developed independently. Modules can pass information or call each
@@ -523,12 +594,12 @@ these buffers serve to provide an abstraction, and they do not
 necessarily mean that we need to allocate buffers in the hardware when
 mapping to real architectures.
 
-
 \paragraph{\uswitch Architecture (\uarch).}
-\todo{``pipeline'', normally, refers to a set of stages that process packet
-end-to-end. But, in this context, we are using pipeline to refer to
-one small portion within an actual pipeline. Is there a better term to
-use other than pipeline? Maybe, $\mu$-pipeline?}
+\deleted{\todo{``pipeline'', normally, refers to a set of stages that
+process packet end-to-end. But, in this context, we are using pipeline
+to refer to one small portion within an actual pipeline. Is there a
+better term to use other than pipeline? Maybe, $\mu$-pipeline?}}
+
 To write programs for \uswitch, we provide \uswitch Architecture
 (\uarch) that defines the dataplane as consisting of two types of
 \emph{\uarch pipelines}, where each $\mu$-pipeline implements a part
@@ -590,7 +661,9 @@ This transformation unifies the abstract-machines for packet-processing allowing
 Next, \ucomp translates intrinsic metadata and logical externs into the target architecture-specific constructs.
 It allocates and schedules code of transformed \uprograms to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% MICRO Switch Architecture%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Micro Switch Architecture}
 \label{sec:architecture}
 Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define \uprogram interfaces and packet-processing pipelines for \uswitch as a part of its architecture, \uarch.
@@ -737,7 +810,7 @@ Next, we give overview of logical externs defined in \uarch along with their exa
 \subsection{Logical Externs}
 \label{sec:logical-externs}
 
-\textbf{Packet Extern.}
+\paragraph{Packet Extern.}
 \uarch models packets using an extern object, \texttt{pkt}, declared in \uarch (Figure \ref{fig:micro-switch-architecture}.
 The \texttt{pkt} extern can be instantiated inside control blocks of only orchestration pipelines.
 \ucomp mandates to initialize \texttt{pkt} instances in the control block using its \texttt{copy\_from} method.
@@ -747,7 +820,7 @@ The \texttt{copy\_from} method initializes its calling instance with content of 
 \uarch provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
 The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, their instances are provided by the architecture as parameters in parser and deparser declarations of Micro pipeline programmable blocks. 
 
-\textbf{Correlated Intrinsic Metadata.}
+\paragraph{Correlated Intrinsic Metadata.}
 \uarch defines intrinsic metadata for the logical target \uswitch.
 For every real-target architecture , \ucomp maintains mapping of its logical intrinsic metadata with the metadata of the architecture.
 This mapping is used for transforming \uprograms to a given architecture-specific code.
@@ -834,7 +907,7 @@ ModularRouter(P, C, D) main;
 \end{figure*}
 \footnotetext{For brevity, we have skipped the unused parameters in parser, control blocks and package type declarations of \uprograms.}
 
-\textbf{Example: Modular Router Using \texttt{Unicast} interface.}
+\paragraph{Example: Modular Router Using \texttt{Unicast} interface.}
 The code snippet in (Figure \ref{subfig:router}) defines \texttt{router} as a package by implementing blocks of the \texttt{Unicast} interface and specializing its generic runtime parameters.\footnotemark[\value{footnote}]
 According to the runtime signature of \texttt{router} package, its \texttt{apply} method call expects arguments for \texttt{nh\_id} and \texttt{type} parameter in addition of packet and intrinsic metadata.
 Such user-define parameters allows to pass data across packages and provides great flexibility for composition.
@@ -846,7 +919,7 @@ As a result, it populates \texttt{nh\_id} parameter passed as \texttt{out} argum
 
 
 
-\textbf{Multicast Extern.}
+\paragraph{Multicast Extern.}
 % \label{sec:multicast}
 \ulang allows programmers to configure packet replication at run-time using a multicast extern , \texttt{mc\_engine}, declared in \uarch.
 The \texttt{mc\_engine} can be instantiated inside control blocks of Micro pipelines implementing\texttt{Multicast} interface (Figure \ref{fig:multicast-example}).
@@ -856,13 +929,31 @@ To create copies of the packet, programmers can invoke the two-arguments \texttt
 The first argument provides an instance of \texttt{es\_t} with out port already set for the replica of the packet.
 The second argument having \texttt{out} direction provides packet instance id to identify the replica.
 All the reachable program statements from the method call statement are executed by every replica.
-
+\begin{lstlisting}[frame=none, escapechar=!]
+control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
+  !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
+  !\colorbox{mygray}{out\_t oa;}! // some out args
+  action replicate(GroupId_t gid) {
+    !\colorbox{mygray}{mce.set\_mc\_group(gid);}!
+  }
+  table MulticastRouting{ key = { ... } 
+    actions = { replicate; }
+  }
+  table mac{ ...}
+  apply {
+    MulticastRouting.apply();
+    !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
+    mac.apply();
+    !\colorbox{mygray}{hb.enqueue(h, sm, es, oa);}!
+  }
+}
+\end{lstlisting}
 The \texttt{mc\_engine} has two more methods, \texttt{set\_buf} and four-arguments \texttt{apply}, to facilitate invocation of callees with multicast interface.
 For example, had \texttt{ipv4} and \texttt{ipv6} implemented using multicast interface, the \texttt{forward} table in the \texttt{Router} \uprogram have to be applied on all the copies of partial packet.
 The caller (\texttt{Router}) can cascade multicast processing on partial packets.
 It can $(1)$ store the partial copies, generated by the callee, into an instance of \texttt{mc\_engine} using \texttt{set\_buf} and $(2)$ invoke the apply method to process each copy using subsequent statments). 
 
-% \textbf{Logical Buffer Extern.} 
+\paragraph{Logical Buffers.}
 \uarch declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
 Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
 The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device \uswitch. 
@@ -874,38 +965,35 @@ It is designed to  be used along with \texttt{mc\_engine} to express multicast p
 An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
 \hse{TODO: text for Figure \ref{fig:multi-packet-processing} or \ref{fig:multi-packet-processing-II}}
 
-\begin{figure}[h]
-\begin{lstlisting}[frame=none, escapechar=!]
-struct out_t { /* empty */ }
-control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
-  !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
-  out_t  oa;
-  action replicate(GroupId_t gid) {
-    !\colorbox{mygray}{mce.set\_mc\_group(gid);}!
-  }
-  table MulticastRouting{
-    key = { h.ipv4.dstAddr : exact; } 
-    actions = { replicate; }
-  }
-  table mac{
-    key = { es.get_port() : exact; } 
-    actions = { mac_update; }
-  }
-  apply {
-    MulticastRouting.apply();
-    !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
-    mac.apply();
-    hb.enqueue(h, sm, es, oa);
-  }
-}
-\end{lstlisting}
-\caption{Multicast Example}
-\label{fig:multicast-example}
-\end{figure}
+% \begin{figure}[htb]
+% \begin{lstlisting}[frame=none, escapechar=!]
+% control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
+%   !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
+%   !\colorbox{mygray}{out\_t oa;}! // some out args
+%   action replicate(GroupId_t gid) {
+%     !\colorbox{mygray}{mce.set\_mc\_group(gid);}!
+%   }
+%   table MulticastRouting{ key = { ... } 
+%     actions = { replicate; }
+%   }
+%   table mac{ ...}
+%   apply {
+%     MulticastRouting.apply();
+%     !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
+%     mac.apply();
+%     !\colorbox{mygray}{hb.enqueue(h, sm, es, oa);}!
+%   }
+% }
+% \end{lstlisting}
+% \caption{Multicast Example}
+% \label{fig:multicast-example}
+% \end{figure}
 
 
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% MICRO P4 Compiler %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MicroP4 Compiler}
 \label{sec:compiler}
 \ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
@@ -1737,6 +1825,36 @@ Though, analysis of resource utilization of our proposed framework yet to be don
 % \label{fig:msa-multicast-extern}
 % \end{figure}
 
+
+
+% \begin{figure}[h]
+% \begin{lstlisting}[frame=none, escapechar=!]
+% struct out_t { /* empty */ }
+% control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
+%   !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
+%   out_t  oa;
+%   action replicate(GroupId_t gid) {
+%     !\colorbox{mygray}{mce.set\_mc\_group(gid);}!
+%   }
+%   table MulticastRouting{
+%     key = { h.ipv4.dstAddr : exact; } 
+%     actions = { replicate; }
+%   }
+%   table mac{
+%     key = { es.get_port() : exact; } 
+%     actions = { mac_update; }
+%   }
+%   apply {
+%     MulticastRouting.apply();
+%     !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
+%     mac.apply();
+%     hb.enqueue(h, sm, es, oa);
+%   }
+% }
+% \end{lstlisting}
+% \caption{Multicast Example}
+% \label{fig:multicast-example}
+% \end{figure}
 
 \begin{figure*}[h]
 \begin{lstlisting}[frame=none]
