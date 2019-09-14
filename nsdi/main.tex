@@ -254,8 +254,10 @@ of the programmable blocks exposed in the architecture of the target.
 While, this approach allows supporting multiple targets which share the
 same architecture, it also makes P4 programs dependent on
 $(1)$ dataplane pipeline, $(2)$ flow of packet and metadata in
-the pipeline and  $(3)$ target-specific constructs.
-These dependencies pose multiple challenges to reuse P4 programs
+the pipeline and  $(3)$ target-specific constructs. These 
+dependencies pose multiple challenges for architecture-agnostic reuse 
+of independently developed P4 programs to build new ones}
+\deleted{to reuse P4 programs
 across targets with different and, even, the same architectures, as
 explained next.}
 
@@ -308,7 +310,7 @@ enhances features, it also makes programs being closely tied to
 architectures and targets which hurts portability.}
 % \sout{also prohibits modular development.}
 
-\paragraph{Challenge 2: High coupling of programmable blocks 
+\paragraph{Challenge 2: High coupling among programmable blocks 
 exposed by the same architecture.} \hse{
 A P4 program specifies the behavior of programmable blocks 
 exposed by the architecture of its target. An architecture
@@ -364,10 +366,10 @@ flow~\cite{p4lang}. As \hse{behavior of each type of
 programmable-block} \deleted{abstract machine}is \hse{expressed using 
 different sub-languages and constructs of P4, } \deleted{defined 
 independently}
-there is no uniform or compatible interface \deleted{that programmers 
-can use}
+\hse{P4 lacks} uniform or compatible interface \deleted{that 
+programmers can use}
 \hse{to express composition of packet-processing modules through
-programmable-blocks with different abstract-machines.}
+programmable-blocks with different abstract machines.}
 \deleted{write their packet-processing modules against.}
 \deleted{This lack of uniform abstract
 machine and interface prevents packet-processing modules to be
@@ -402,10 +404,10 @@ that can
     compatible interface restricts composition of dataplane modules.
 \end{enumerate}
 }
-\hse{In summary, P4 programs are $(1)$ \emph{non-portable}, because
-of their affinity to architectures, $(2)$ \emph{monolithic}, 
+\hse{In summary, P4 programs are $(1)$ \emph{non-portable} because
+of their affinity to architectures, $(2)$ \emph{monolithic} 
 because of huge data-sharing across processing-blocks within the 
-pipeline and $(3)$ \emph{non-composable}, because of heterogeneity 
+pipeline and $(3)$ \emph{non-composable} because of heterogeneity 
 in abstract machines of processing-blocks and the lack of uniform 
 interface.}
 
@@ -429,8 +431,12 @@ In summary, there are two main challenges for easy reuse of code with existing d
 \label{sec:goals}
 \label{sec:insights}
 
+\hse{Our main design goal is to make P4 programs portable, modular, 
+and composable.}
+\deleted{
 Our main goal is to enable dataplane programming in a portable,
 modular, and composable manner.
+}
 
 \tightpar{Portable:} Dataplane programs written for one target device
 and architecture should be easily reusable across other targets and
@@ -493,8 +499,8 @@ components:
 %% Give an overview of our approach, tying to the above discussion
 %% Do not go into specific details yet.
 
-To achieve our goals of portable, modular and composable dataplane
-programming without disrupting the existing workflow for P4, we
+To achieve our goals, portable, modular and composable dataplane
+programming, without disrupting the existing workflow for P4, we
 introduce the \ulang framework. \ulang implements the above insights
 using three main components:
 \begin{enumerate*}[label=(\roman*)]
@@ -505,13 +511,18 @@ using three main components:
 \end{enumerate*}
 
 Users write dataplane programs using an extended P4 language which
-supports modularity and composition. These programs are written with
+supports modularity and composition. These programs, \hse{called 
+\uprograms}, are written with
 the \uarch architecture. While compiling, users specify the real
 target architecture \hse{for} which the \ulang programs should be
-\hse{translated}.
-This decouples programs from target architectures while keeping the
-workflow very simple and intuitive.
+\hse{translated}. This decouples programs from target architectures 
+while keeping the workflow very simple and intuitive.
 
+
+% \hs{TODO: start with: \uarch raises the level of abstraction for 
+% packet-processing from mere RMT based primitives to dataplane 
+% pipeline model of target architectures. Therefor handling portability 
+% problem. shorten to 3-4 sentence para}
 \uarch provides a set of constructs to write modular code having a
 common interface that hides the implementation of packet-processing
 within each module. A module can be thought of receiving a partial or
@@ -522,21 +533,28 @@ developed independently. Modules can pass information or call each
 other through a well-defined compatible interface---caller write
 packets and metadata to a logical input buffer for the callee. By
 introducing these logical buffers, \uswitch abstracts away the details
-of dataplane pipelines of real targets. \uarch also provides a way to
-use target-specific externs by introducing logical externs that each
-modules may use.
+of dataplane pipelines of real targets. \uarch also provides a way to 
+\hse{express special processing (e.g., packet replication)}
+\deleted{use target-specific externs} by introducing logical externs 
+that each modules may use.
 
-\ucomp transforms \ulang code to a specified target architecture while
+\ucomp \hse{translates} \ulang code to a specified target 
+architecture while
 conforming to the constraints of the target device in two main steps.
-First, \ucomp compiles the program to a \uarch-specific intermediate
-representation. It transforms all programmable blocks into
-match-action control blocks, thus homogenizing abstract-machine for
+First, \ucomp compiles the program to a \uarch-specific Intermediate
+Representation (IR). It transforms all programmable blocks into
+match-action control blocks, thus homogenizing abstract machine for
 each block. This allows for a natural transfer of execution-control
-across modules, enabling modularity and facilitating code reuse. In
-the second step, it transforms the homogeneous control blocks into
-target-specific control blocks based on the pipeline model of the
-specified target architecture while translating \uarch-specific
-constructs to target architecture-specific ones.
+across modules, enabling \hse{their composition} and 
+facilitating code reuse. 
+\hse{In the second step, it translates all the control blocks 
+and \uarch-specific constructs into the control blocks and 
+constructs exposed by the target architecture's dataplane pipeline 
+model.}
+\deleted{In the second step, it translates the homogeneous control 
+blocks into target-specific control blocks based on the pipeline model 
+of the specified target architecture while translating \uarch-specific
+constructs to target architecture-specific ones.}
 
 \deleted{The logical pipeline models defined in \uarch do not completely
 eliminate heterogeneity in packet-processing blocks (parser,
@@ -579,7 +597,8 @@ packet-processing and defining interfaces to hide implementation.
     \label{fig:uswitch}
 \end{figure}
 
-\uswitch models each packet-processing module as a self-contained
+\uswitch models each packet-processing module as a self-contained 
+\hse{black-box}
 execution unit, called a \emph{\uprogram}, and executes it using the
 model shown in \cref{fig:uswitch}. A \uprogram takes as input: a
 packet byte-stream, intrinsic metadata and arguments for user-defined
