@@ -1,0 +1,74 @@
+\documentclass[a4paper,18pt]{article}
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+\usepackage{libertine}
+\usepackage[italic]{mathastext}
+\usepackage{amsmath,amsthm,amsfonts}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{subcaption}
+\usepackage{inconsolata}
+
+\usetikzlibrary{shapes,arrows,shadows}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{automata,positioning,arrows,matrix,backgrounds,calc}
+\usetikzlibrary{decorations.text}
+\usetikzlibrary{decorations.pathmorphing}
+
+\usepackage[active,tightpage]{preview}
+\usepackage{xparse}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{0pt}%
+
+\usetikzlibrary{fit}					% fitting shapes to coordinates
+\usetikzlibrary{backgrounds}	% drawing the background after the foreground
+\usetikzlibrary{calc}
+
+\renewcommand*{\familydefault}{\sfdefault}% Let's have a sans serif font
+
+\begin{document}
+
+\tikzstyle{userdefined}=[rectangle, draw=black, minimum height=4ex, text width=7em, text centered, inner sep=1pt, anchor=west]
+\tikzstyle{intermediate}=[rectangle, draw, dashed, thick, minimum height=4ex, text width=7em, text centered, inner sep=1pt, anchor=west]
+\tikzstyle{output}=[rectangle, rounded corners, draw, minimum height=4ex,text width=5em, text centered, inner sep=1pt, anchor=west]
+\tikzstyle{provided}=[rectangle, rounded corners, fill=cyan!10, minimum height=4ex,text width=5em, text centered, inner sep=1pt, anchor=west]
+
+\tikzstyle{code}=[userdefined]
+\tikzstyle{compiler}=[provided]
+\tikzstyle{textbox}=[text width=2em, text centered, text width=3em]
+\tikzstyle{line}=[draw, very thick, color=black!75, -latex']
+\tikzstyle{empty}=[]
+
+\newcounter{cntr}
+\begin{tikzpicture}[>=latex]
+% the shapes
+  \node (input) at (0,0) [code] {\texttt{main.$\mu$p4}};
+  \node (l2api) at (0.1,-0.9) [intermediate, draw=green!50!black] {L2 $\mu$P4 IR};
+  \node (l2ir) at (0,-1) [intermediate, draw=red!50!black, fill=white] {L2 $\mu$P4 IR};
+
+  \node (l3api) at (0.1,-1.9) [intermediate, draw=green!50!black] {L3 $\mu$P4 IR};
+  \node (l3ir) at (0,-2) [intermediate, draw=red!50!black, fill=white] {L3 $\mu$P4 IR};
+
+  \node (compiler) at ($(input.east)+(2,0)$) [compiler] {$\mu$P4C};
+  \node (main-api) at ($(compiler.east)+(1.1,0.1)$) [intermediate, draw=green!50!black] {main.p4};
+  \node (mainp4) at ($(compiler.east)+(1,0)$) [intermediate, draw=blue!50!black,fill=white] {main.p4};
+
+  \node (p4c) at ($(mainp4.south)+(0,-0.8)$) [compiler, text width
+    =8em, anchor=center] {P4C or target-compiler};
+  
+  \node (exe) at ($(p4c.south west)+(-2.5,-0.7)$) [output, text width=8em] {target-specific exe};
+  \node (api) at ($(p4c.south west)+(1,-0.7)$) [output, text width=8em] {control API};
+  \node () at ($(compiler.south east)+(0.3,-0.3)$) [anchor=east] {\texttt{\--\--arch=<real target>}};
+
+\path [line] (input.east) -- (compiler.west);
+\path [line] (l2ir.east) -- ($(l2ir.east)+(0.4,0)$) -- ($(input.east)+(0.4,0)$) -- (compiler.west);
+\path [line] (l3ir.east) -- ($(l3ir.east)+(0.4,0)$) -- ($(input.east)+(0.4,0)$) -- (compiler.west);
+\path [line] (compiler.east) -- (mainp4.west);
+\path [line] (mainp4.south) -- (p4c.north);
+\path [line] (p4c.south) -- (exe.north);
+\path [line] (p4c.south) -- (api.north);
+\end{tikzpicture}
+\end{document}

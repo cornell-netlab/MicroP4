@@ -1,0 +1,64 @@
+\documentclass[a4paper,18pt]{article}
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+\usepackage{libertine}
+\usepackage[italic]{mathastext}
+\usepackage{amsmath,amsthm,amsfonts}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{subcaption}
+\usepackage{inconsolata}
+
+\usetikzlibrary{shapes,arrows,shadows}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{automata,positioning,arrows,matrix,backgrounds,calc}
+\usetikzlibrary{decorations.text}
+\usetikzlibrary{decorations.pathmorphing}
+
+\usepackage[active,tightpage]{preview}
+\usepackage{xparse}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{0pt}%
+
+\usetikzlibrary{fit}					% fitting shapes to coordinates
+\usetikzlibrary{backgrounds}	% drawing the background after the foreground
+\usetikzlibrary{calc}
+
+\renewcommand*{\familydefault}{\sfdefault}% Let's have a sans serif font
+
+\begin{document}
+
+\tikzstyle{userdefined}=[rectangle, draw=black, minimum height=4ex, text width=7em, text centered, inner sep=1pt, anchor=west]
+\tikzstyle{intermediate}=[rectangle, draw, dashed, thick, minimum height=4ex, text width=7em, text centered, inner sep=1pt, anchor=west]
+\tikzstyle{output}=[rectangle, rounded corners, draw, minimum height=4ex,text width=5em, text centered, inner sep=1pt, anchor=west]
+\tikzstyle{provided}=[rectangle, rounded corners, fill=cyan!10, minimum height=4ex,text width=5em, text centered, inner sep=1pt, anchor=west]
+
+
+\tikzstyle{code}=[userdefined]
+\tikzstyle{compiler}=[provided]
+\tikzstyle{textbox}=[text width=2em, text centered, text width=3em]
+\tikzstyle{line}=[draw, very thick, color=black!75, -latex']
+\tikzstyle{empty}=[]
+
+\newcounter{cntr}
+\begin{tikzpicture}[>=latex]
+% the shapes
+  \node (user) at (0,1.2) [userdefined] {user-defined};
+  \node (intermediate) at ($(user.east)+(0.5,0)$) [intermediate] {intermediate};
+  \node (provided) at ($(intermediate.east)+(0.5,0)$) [provided] {provided};
+  \node () at ($(provided.east)+(0.5,0)$) [output] {output};
+
+  \node (input) at (1,0) [code] {L2.$\mu$p4};
+  \node (compiler) at ($(input.east)+(1,0)$) [compiler] {$\mu$P4C};
+  \node (ir) at ($(compiler.east)+(1,0.4)$) [intermediate, draw=red!50!black] {L2 $\mu$P4 IR};
+  \node (api) at ($(compiler.east)+(1,-0.4)$) [intermediate, draw=green!40!black] {L2 control API};
+  \node () at ($(compiler.south east)+(0,-0.3)$) [anchor=east] {\texttt{\--\--arch=}$\mu$SA};
+
+\path [line] (input.east) -- (compiler.west);
+\path [line] (compiler.east) -- (ir.west);
+\path [line] (compiler.east) -- (api.west);
+\end{tikzpicture}
+\end{document}
