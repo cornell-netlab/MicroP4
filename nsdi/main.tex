@@ -7,7 +7,7 @@
 % <<<<<<< Updated upstream
 % \title{\Large \bf \ulang: Towards Portable, Modular and Composable Dataplane Programs}
 % =======
-\title{\Large \bf Writing Reusable Dataplane Programs Using \ulang}
+\title{\Large \bf Reusing Dataplane Programs Using \ulang}
 % >>>>>>> Stashed changes
 \author{{\rm Paper \#XXX}\\ Anonymous author(s)}
 \maketitle
@@ -511,9 +511,8 @@ using three main components:
 \end{enumerate*}
 
 Users write dataplane programs using an extended P4 language which
-supports modularity and composition. These programs, \hse{called 
-\uprograms}, are written with
-the \uarch architecture. While compiling, users specify the real
+supports modularity and composition. These programs are written 
+with the \uarch architecture. While compiling, users specify the real
 target architecture \hse{for} which the \ulang programs should be
 \hse{translated}. This decouples programs from target architectures 
 while keeping the workflow very simple and intuitive.
@@ -523,6 +522,7 @@ while keeping the workflow very simple and intuitive.
 % packet-processing from mere RMT based primitives to dataplane 
 % pipeline model of target architectures. Therefor handling portability 
 % problem. shorten to 3-4 sentence para}
+\hs{TODO:shorten it}
 \uarch provides a set of constructs to write modular code having a
 common interface that hides the implementation of packet-processing
 within each module. A module can be thought of receiving a partial or
@@ -538,7 +538,7 @@ of dataplane pipelines of real targets. \uarch also provides a way to
 \deleted{use target-specific externs} by introducing logical externs 
 that each modules may use.
 
-\ucomp \hse{translates} \ulang code to a specified target 
+\ucomp \hse{transforms} \ulang code \hse{for} a specified target 
 architecture while
 conforming to the constraints of the target device in two main steps.
 First, \ucomp compiles the program to a \uarch-specific Intermediate
@@ -584,61 +584,59 @@ for dataplane programming.
 
 \paragraph{\uswitch.}
 \uswitch is an intermediate logical target with an abstract
-packet-processing model. It is designed to provide a high-level
-abstraction for the dataplane pipeline to enable code reuse agnostic
+programming model. It is designed to provide a high-level
+abstraction \hse{that enables modular programming for dataplane.}
+\deleted{packet processing.}
+\deleted{the dataplane pipeline to enable code reuse agnostic
 of architectures of target devices, and do so without compromising on
-expressiveness for processing packets. It enables modular programming
+expressiveness for processing packets.} 
+It enables modular programming
 by allowing to write modules that implement fine-grained
-packet-processing and defining interfaces to hide implementation.
+packet-processing and defining interfaces to \hse{compose them}.
 \begin{figure}[htb]
     \centering
     \includegraphics[width=\linewidth]{uswitch-model}
-    \caption{Packet-Processing model of \uprograms}
+    \caption{Programming Model for \uswitch}
     \label{fig:uswitch}
 \end{figure}
 
-\uswitch models each packet-processing module as a self-contained 
-\hse{black-box}
-execution unit, called a \emph{\uprogram}, and executes it using the
-model shown in \cref{fig:uswitch}. A \uprogram takes as input: a
-packet byte-stream, intrinsic metadata and arguments for user-defined
-parameters. As output, it generates byte-streams, metadata, and return
-values corresponding to one or more packets. Such a model hides
-implementation details, such as headers types, user-defined metadata
-and programmable blocks, of a \uprogram from other \uprograms.
-\uswitch fetches an element from a logical input buffer for each
-\uprogram, executes the \uprogram and writes one or more elements to
-the logical output buffer, which acts as input for another. Note that
-these buffers serve to provide an abstraction, and they do not
-necessarily mean that we need to allocate buffers in the hardware when
-mapping to real architectures.
+\uswitch models each packet-processing module as 
+a self-contained,\hse{black-box} execution unit, called a 
+\emph{\uprogram}, and executes it using the model shown in 
+\cref{fig:uswitch}. A \uprogram takes as input: a packet byte-stream, 
+intrinsic metadata and arguments for user-defined
+parameters. As output, it generates byte-streams, metadata, and 
+return values corresponding to one or more packets. Such a model
+hides implementation details, such as headers types, user-defined 
+metadata and programmable blocks, of a \uprogram from other 
+\uprograms. \uswitch fetches an element from a logical input buffer 
+for each \uprogram, executes the \uprogram and writes one or more 
+elements to the logical output buffer, which acts as input for 
+another. Note that these buffers are \hse{just} an abstraction, and 
+they \hse{do not represent} buffers in \hse{real 
+target devices.}
 
 \paragraph{\uswitch Architecture (\uarch).}
-\deleted{\todo{``pipeline'', normally, refers to a set of stages that
-process packet end-to-end. But, in this context, we are using pipeline
-to refer to one small portion within an actual pipeline. Is there a
-better term to use other than pipeline? Maybe, $\mu$-pipeline?}}
+To write \hse{portable \uprograms}, we provide \uswitch Architecture
+(\uarch) that defines the dataplane as composition of logical 
+pipelines, called \emph{\upipeline}, where each \upipeline implements 
+a part of the complete packet processing on the device. Each 
+\upipeline is associated with an interface declared in the 
+architecture. Every interface specifies generic run-time parameters 
+and declares programmable blocks required to be implemented for a 
+pipeline. In order to raise level of abstraction for packet processing 
+in dataplane pipeline, \upipelines comprise of \emph{only programmable 
+packet-processing blocks}, parser, match-action control blocks and 
+deparser. In addition, \uarch declares  intrinsic metadata and 
+\emph{logical} externs to facilitate all the packet-processing 
+features, e.g., multicast, cloning, that are not part of P4 language 
+but supported by architectures of real-targets. Programmers can use 
+the logical externs in to use such packet-processing features. 
+\deleted{Using  constructs declared in \uarch, programmers can write 
+modules containing one or more \uprograms.}
 
-To write programs for \uswitch, we provide \uswitch Architecture
-(\uarch) that defines the dataplane as consisting of two types of
-\emph{\uarch pipelines}, where each $\mu$-pipeline implements a part
-of the complete packet processing.
-Each logical pipeline is associated with an interface declared in the architecture.
-Every interface specifies generic run-time parameters and declares programmable blocks required to be implemented for a pipeline.
-\uarch data plane pipelines comprise of only programmable packet-processing blocks, parser, match-action control blocks and deparser. 
-In addition, \uarch declares intrinsic metadata and logical externs to facilitate all the packet-processing features, e.g., multicast, cloning, that are not part of P4 language but supported by architectures of real-targets. 
-Programmers can use the logical externs in \uarch pipelines to use such packet-processing features.
-Using constructs declared in \uarch, programmers can write modules containing one or more \uprograms.
-Each \uprogram specializes a generic interface.
-The run-time interfaces enable easy reuse and hide implementation detail of the \uprograms, facilitating modular and incremental development.
-Using logical data plane model of \uarch, programmers can develop modular P4 code which is specific to \uarch.
-We design and develop MicroP4 Compiler (\ucomp) to compile and transform \uprogram for architectures of real target devices, making \uprograms agnostic of architectures of real-targets.
 
-Programmer can use \ucomp to $(1)$ Create compiled libraries of \uprograms along with their control plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of main instance and transform the program for a specified architecture of a real-target.
-If the given source file does not contain an instance named, \ucomp generates a library by compiling it to an Intermediate Representation (IR) in json format (Figure \ref{subfig:module-compilation}).
-It also generates architecture-independent control-plane APIs, P4Runtime \cite{p4runtime} files.
-If the source file contains \emph{main} instance, it links all the supplied libraries and transforms the \uprogram of main instance for a given architecture (Figure \ref{subfig:compilation-to-target-architecture}).
-\begin{figure}[h]
+\begin{figure}[tbh]
     \begin{subfigure}{\linewidth}
         \centering
         \includegraphics[width=\linewidth]{compilation-module.pdf}
@@ -653,32 +651,70 @@ If the source file contains \emph{main} instance, it links all the supplied libr
     \end{subfigure}
     \caption{Compiling \uprograms}
 \end{figure}
-Programmers can include files containing definitions of data types (e.g., struct types of in and out parameters) used in run-time interfaces of \uprogram in libraries.
-\ucomp compiler generates either source P4 code for the specified architecture or an executable with architecture-specific CP APIs.
-
-\begin{figure}[tbh]
-  \centering
-  \includegraphics[width=\linewidth]{workflow}
-  \caption{Workflow for building dataplanes in \ulang}
-  \label{fig:workflow}
-\end{figure}
 
 
-To write a \uprogram, programmers need to define a custom P4 \texttt{package} type by implementing an interface for a logical pipeline.
-\ucomp extends current P4 language and allows programmers to define \texttt{package} types, declare their instances and invoke them using the built-in \texttt{apply} method.
-This allows to hide implementation of package types and reuse them using run-time parameters of their interfaces.
 
 
-Programmers can use sub-languages of P4 for parser and control blocks to implement interfaces.
-\ucomp.
-\ucomp homogenizes abstract-machines of programmable blocks by transforming parser and deparser blocks into match-action control blocks.
-This transformation unifies the abstract-machines for packet-processing allowing seamless transfer of execution control across \uprograms.
+\hse{
+\paragraph{\ulang and Compiler (\ucomp).}
+To enable programmers to hide implementations and develop 
+independent \uprograms, \ulang extends P4 with a construct 
+that allows programmers to declare custom types, called \upackage, by 
+implementing interfaces declared in \uarch. The interfaces enable 
+\upackages to have run-time behavior, enabling composition \upackages.
+}
+\hs{TODO: cont}
 
+% \ucomp extends current P4 language and allows programmers to define 
+% \texttt{package} types, declare their instances and invoke them using 
+% the built-in \texttt{apply} method.
+% This allows to hide implementation of package types and reuse them 
+% using run-time parameters of their interfaces.
+% Programmers can use sub-languages of P4 for parser and control blocks 
+% to implement interfaces.
+% \ucomp homogenizes abstract-machines of programmable blocks by 
+% transforming parser and deparser blocks into match-action control 
+% blocks. This transformation unifies the abstract-machines for 
+% packet-processing allowing seamless transfer of execution control 
+% across \uprograms.
 
-\ucomp perform static analysis to estimate possible packet sizes required to process all the transformed \uprograms in match-action control blocks of target architecture's pipeline.
+\deleted{
+Each \uprogram specializes a generic interface. The run-time 
+interfaces enable easy reuse and hide implementation detail of the 
+\uprograms, facilitating modular and incremental development. Using 
+logical data plane model of \uarch, programmers can develop modular 
+P4 code which is specific to \uarch. We design and develop MicroP4 
+Compiler (\ucomp) to compile and transform \uprogram for 
+architectures of real target devices, making \uprograms agnostic of 
+architectures of real-targets. Programmer can use \ucomp to $(1)$ 
+Create compiled libraries of \uprograms along with their control 
+plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of 
+main instance and transform the program for a specified architecture 
+of a real-target.
+If the given source file does not contain an instance named, \ucomp 
+generates a library by compiling it to an Intermediate Representation 
+(IR) in json format (Figure \ref{subfig:module-compilation}). It also 
+generates architecture-independent control-plane APIs, P4Runtime 
+\cite{p4runtime} files. If the source file contains \emph{main} 
+instance, it links all the supplied libraries and transforms the 
+\uprogram of main instance for a given architecture (Figure 
+\ref{subfig:compilation-to-target-architecture}). Programmers can 
+include files containing definitions of data types (e.g., struct 
+types 
+of in and out parameters) used in run-time interfaces of \uprogram in 
+libraries. \ucomp compiler generates either source P4 code for the 
+specified architecture or an executable with architecture-specific CP 
+APIs.
+}
+
+\sout{\ucomp perform static analysis to estimate possible packet 
+sizes required to process all the transformed \uprograms in 
+match-action control blocks of target architecture's pipeline.
 \ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
 Next, \ucomp translates intrinsic metadata and logical externs into the target architecture-specific constructs.
-It allocates and schedules code of transformed \uprograms to control blocks of the target architecture's pipeline model while satisfying constraints posed by hardware details.
+It allocates and schedules code of transformed \uprograms to control 
+blocks of the target architecture's pipeline model while satisfying 
+constraints posed by hardware details.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO Switch Architecture%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1015,6 +1051,13 @@ An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Fig
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MicroP4 Compiler}
 \label{sec:compiler}
+
+\begin{figure}[tbh]
+  \centering
+  \includegraphics[width=\linewidth]{workflow}
+  \caption{Workflow for building dataplanes in \ulang}
+  \label{fig:workflow}
+\end{figure}
 \ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
 It synthesizes new parser and deparser for the main package.
 The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
