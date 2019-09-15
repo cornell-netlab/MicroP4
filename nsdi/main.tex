@@ -377,12 +377,8 @@ To summarize, dataplane programs currently written in P4 are
 \label{sec:goals}
 \label{sec:insights}
 
-\hse{Our main design goal is to make P4 programs portable, modular, 
-and composable.}
-\deleted{
 Our main goal is to enable dataplane programming in a portable,
 modular, and composable manner.
-}
 
 \tightpar{Portable:} Dataplane programs written for one target device
 and architecture should be easily reusable across other targets and
@@ -457,11 +453,11 @@ using three main components:
 \end{enumerate*}
 
 Users write dataplane programs using an extended P4 language which
-supports modularity and composition. These programs are written 
-with the \uarch architecture. While compiling, users specify the real
-target architecture \hse{for} which the \ulang programs should be
-\hse{translated}. This decouples programs from target architectures 
-while keeping the workflow very simple and intuitive.
+supports modularity and composition. These programs are written with
+the \uarch architecture. While compiling, users specify the real
+target architecture for which the \ulang programs should be
+translated. This decouples programs from target architectures while
+keeping the workflow very simple and intuitive.
 
 
 % \hs{TODO: start with: \uarch raises the level of abstraction for 
@@ -471,36 +467,27 @@ while keeping the workflow very simple and intuitive.
 \hs{TODO:shorten it}
 \uarch provides a set of constructs to write modular code having a
 common interface that hides the implementation of packet-processing
-within each module. A module can be thought of receiving a partial or
-\hse{complete}
-packet along with certain metadata, process it as needed, and send out
-one or more packets along with some metadata. Thus, each module can be
-developed independently. Modules can pass information or call each
-other through a well-defined compatible interface---caller write
-packets and metadata to a logical input buffer for the callee. By
-introducing these logical buffers, \uswitch abstracts away the details
-of dataplane pipelines of real targets. \uarch also provides a way to 
-\hse{express special processing (e.g., packet replication)}
-\deleted{use target-specific externs} by introducing logical externs 
-that each modules may use.
+within each module. A module can be thought of receiving a complete or
+partial packet along with certain metadata, process it as needed, and
+send out one or more packets along with some metadata. Thus, each
+module can be developed independently. Modules can pass information or
+call each other through a well-defined compatible interface---caller
+write packets and metadata to a logical input buffer for the callee.
+By introducing these logical buffers, \uswitch abstracts away the
+details of dataplane pipelines of real targets. \uarch also provides a
+way to express special processing (e.g., packet replication) by
+introducing logical externs that each module may use.
 
-\ucomp \hse{transforms} \ulang code \hse{for} a specified target 
-architecture while
-conforming to the constraints of the target device in two main steps.
+\ucomp compiles \ulang code for a specified target architecture
+while conforming to the constraints of the target device in two main steps.
 First, \ucomp compiles the program to a \uarch-specific Intermediate
 Representation (IR). It transforms all programmable blocks into
 match-action control blocks, thus homogenizing abstract machine for
 each block. This allows for a natural transfer of execution-control
-across modules, enabling \hse{their composition} and 
-facilitating code reuse. 
-\hse{In the second step, it translates all the control blocks 
-and \uarch-specific constructs into the control blocks and 
-constructs exposed by the target architecture's dataplane pipeline 
-model.}
-\deleted{In the second step, it translates the homogeneous control 
-blocks into target-specific control blocks based on the pipeline model 
-of the specified target architecture while translating \uarch-specific
-constructs to target architecture-specific ones.}
+across modules, enabling composition and facilitating code reuse.
+In the second step, it translates all control blocks and
+\uarch-specific constructs into the control blocks and constructs
+exposed by the target architecture.
 
 \deleted{The logical pipeline models defined in \uarch do not completely
 eliminate heterogeneity in packet-processing blocks (parser,
