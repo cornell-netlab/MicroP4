@@ -551,17 +551,15 @@ a part of the complete packet processing on the device. A \upipeline
 may map to one or more \uprograms. Each \upipeline is associated with
 a \uarch interface, which specifies run-time parameters in a generic
 way and declares programmable blocks required to be implemented for
-the pipeline. In order to raise the level of abstraction for packet
-processing in dataplane pipeline, \upipelines comprise of \emph{only programmable
-packet-processing blocks} such as parser, match-action control blocks and
-deparser. In addition, \uarch declares intrinsic metadata and
-\emph{logical} externs to facilitate all the packet-processing
-features, e.g., multicast, cloning, that are not part of P4 language
-but supported by architectures of real-targets. Programmers can use
-the logical externs in to use such packet-processing features.
-\deleted{Using  constructs declared in \uarch, programmers can write
-modules containing one or more \uprograms.}
-
+the pipeline. In order to capture the essence of packet-processing and
+expose a minimal interface, \upipelines comprise of only programmable
+packet-processing blocks such as parser, match-action control blocks
+and deparser. In addition, to abstract away from target-specific
+constructs, \uarch defines \emph{logical} externs and metadata to
+facilitate use of packet-processing features such as multicast,
+cloning, etc. that are not part of P4 language but supported by
+architectures of real-targets. Programmers can use the logical externs
+to use such features.
 
 \begin{figure}[tbh]
     \begin{subfigure}{\linewidth}
