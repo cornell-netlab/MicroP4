@@ -512,60 +512,54 @@ compiler, \ucomp, to address these aspects.
 \section{The \ulang framework}
 \label{sec:microp4}
 %% Describe each component of microP4
-Now, we describe each component of \ulang to which enable our goals
-for dataplane programming.
+Now, we describe each component of \ulang which enable our goals for
+dataplane programming.
 
 \paragraph{\uswitch.}
 \uswitch is an intermediate logical target with an abstract
-programming model. It is designed to provide a high-level
-abstraction \hse{that enables modular programming for dataplane.}
-\deleted{packet processing.}
-\deleted{the dataplane pipeline to enable code reuse agnostic
-of architectures of target devices, and do so without compromising on
-expressiveness for processing packets.} 
-It enables modular programming
-by allowing to write modules that implement fine-grained
-packet-processing and defining interfaces to \hse{compose them}.
+programming model. It is designed to provide a high-level abstraction
+that enables modular programming for dataplane without compromising on
+the expressiveness.  It does so by allowing to write modules that
+implement fine-grained packet processing and defining interfaces to
+compose these modules.
 \begin{figure}[htb]
     \centering
     \includegraphics[width=\linewidth]{uswitch-model}
-    \caption{Programming Model for \uswitch}
+    \caption{Abstract programming model for \uswitch}
     \label{fig:uswitch}
 \end{figure}
 
-\uswitch models each packet-processing module as 
-a self-contained,\hse{black-box} execution unit, called a 
-\emph{\uprogram}, and executes it using the model shown in 
-\cref{fig:uswitch}. A \uprogram takes as input: a packet byte-stream, 
-intrinsic metadata and arguments for user-defined
-parameters. As output, it generates byte-streams, metadata, and 
-return values corresponding to one or more packets. Such a model
-hides implementation details, such as headers types, user-defined 
-metadata and programmable blocks, of a \uprogram from other 
-\uprograms. \uswitch fetches an element from a logical input buffer 
-for each \uprogram, executes the \uprogram and writes one or more 
-elements to the logical output buffer, which acts as input for 
-another. Note that these buffers are \hse{just} an abstraction, and 
-they \hse{do not represent} buffers in \hse{real 
-target devices.}
+\uswitch models each packet-processing module as a self-contained
+\hse{black-box} execution unit, called a \emph{\uprogram}, and
+executes it using the model shown in \cref{fig:uswitch}. A \uprogram
+takes as input: a packet byte-stream, intrinsic metadata and arguments
+for user-defined parameters. As output, it generates byte-streams,
+metadata, and return values corresponding to one or more packets. Such
+a model hides implementation details, such as headers types,
+user-defined metadata and programmable blocks, of a \uprogram from
+other \uprograms.  \uswitch fetches an element from a logical input
+buffer for each \uprogram, executes the \uprogram and writes one or
+more elements to the logical output buffer, which acts as input for
+another. Note that these buffers only exist in the abstraction and do
+not represent buffers in real target devices.
 
 \paragraph{\uswitch Architecture (\uarch).}
-To write \hse{portable \uprograms}, we provide \uswitch Architecture
-(\uarch) that defines the dataplane as composition of logical 
-pipelines, called \emph{\upipeline}, where each \upipeline implements 
-a part of the complete packet processing on the device. Each 
-\upipeline is associated with an interface declared in the 
-architecture. Every interface specifies generic run-time parameters 
-and declares programmable blocks required to be implemented for a 
-pipeline. In order to raise level of abstraction for packet processing 
-in dataplane pipeline, \upipelines comprise of \emph{only programmable 
-packet-processing blocks}, parser, match-action control blocks and 
-deparser. In addition, \uarch declares  intrinsic metadata and 
-\emph{logical} externs to facilitate all the packet-processing 
-features, e.g., multicast, cloning, that are not part of P4 language 
-but supported by architectures of real-targets. Programmers can use 
-the logical externs in to use such packet-processing features. 
-\deleted{Using  constructs declared in \uarch, programmers can write 
+To write portable \uprograms, we define \uswitch Architecture
+(\uarch)---it specifies the dataplane as composition of logical
+pipelines, called \emph{\upipeline}, where each \upipeline implements
+a part of the complete packet processing on the device. A \upipeline
+may map to one or more \uprograms. Each \upipeline is associated with
+a \uarch interface, which specifies run-time parameters in a generic
+way and declares programmable blocks required to be implemented for
+the pipeline. In order to raise the level of abstraction for packet
+processing in dataplane pipeline, \upipelines comprise of \emph{only programmable
+packet-processing blocks} such as parser, match-action control blocks and
+deparser. In addition, \uarch declares intrinsic metadata and
+\emph{logical} externs to facilitate all the packet-processing
+features, e.g., multicast, cloning, that are not part of P4 language
+but supported by architectures of real-targets. Programmers can use
+the logical externs in to use such packet-processing features.
+\deleted{Using  constructs declared in \uarch, programmers can write
 modules containing one or more \uprograms.}
 
 
