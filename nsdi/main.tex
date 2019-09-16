@@ -1421,17 +1421,25 @@ license\footnote{\url{https://github.com/anonymized-for-review}}.
 
 
 \subsection{Comparison with P4}
-We briefly highlight important constructs in our proposal with
-reference to P4-16 specification. \ulang allows defining custom
-package types that enable hiding the implementation of a
-packet-processing function and exposing an interface to reuse the
-code.
-Essentially, package types are associated runtime behavior, unlike P4-16's specification.
-Also, \uarch defines interfaces to encapsulate a set of programmable blocks.
-In addition, \uarch uses different representation of packet (\texttt{pkt}, \texttt{extractor} and \texttt{emitter}) compared to ones defined in P4 core library (\texttt{packet\_in} and \texttt{packet\_out}).
-Apart from above mentioned constructs, \ulang do not violate semantics of any other programming constructs (externs, control and parser blocks etc.,) of P4-16.
-\ucomp minimally extends P4 syntax, grammar and frontend facilitating programmers to write modular code.
+One of our goals is also to keep the changes to the syntax and grammar
+of P4 minimal so that users familiar with P4 can easily adopt \ulang.
+We briefly highlight major differences in \ulang compared to P4-16.
+First, \ulang allows defining custom package types that enable hiding
+the implementation of a packet-processing function and exposing an
+interface to reuse the code. This enables modular development of
+\ulang programs. Second, \uarch defines interfaces to encapsulate a
+set of programmable blocks so that the logical dataplane pipeline can
+be extended. Third, \uarch uses explicit information passing between
+modules in contrast to implicit global sharing of metadata in P4.
+Finally, instead of using target-specific constructs, programmers use
+logical \uarch constructs. Apart from these, \ulang conforms to the
+semantics of other P4-16 constructs such as externs, control, parser
+blocks, etc.
 
+\deleted{Essentially, package types are associated runtime behavior,
+unlike P4-16's specification. ... (\texttt{pkt}, \texttt{extractor}
+and \texttt{emitter}) compared to ones defined in P4 core library
+(\texttt{packet\_in} and \texttt{packet\_out}).}
 
 \subsection{Supporting New Target Architectures}
 The Frontend of \ucomp generates P4 code library after the same preliminary processing of IR as p4c.
