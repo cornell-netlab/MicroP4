@@ -680,6 +680,13 @@ declarations of processing-blocks (\cref{fig:msa-interfaces}).
 The processing-blocks in an interface type is modelled by a logical 
 pipeline type, Micro or Orchestration, (\cref{fig:msa-pipelines}).
 \begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{upipe-types}
+  \caption{Types of \uarch pipelines}
+  \label{fig:pipe-types}
+\end{figure}
+
+\begin{figure}[ht]
     \centering
     \begin{subfigure}{0.59\linewidth}
         \centering
@@ -1625,17 +1632,28 @@ P4 constructs such as conditionals.
 The following \ulang snippet from the implementation of orchestration
 interface shows an example of how one can express \emph{sequential}
 and \emph{override} composition from CoVisor~\cite{188954}.
+% \begin{lstlisting}[frame=none, escapechar=!]
+% // Sequential: Firewall -> Routing
+% firewall.apply(p, sm, es);
+% if (sm.drop == false) {
+  % // Override: Routing decision
+  % elephant_flow_routing.apply(p, sm, es);
+  % if (sm.drop == true) 
+    % modular_router.apply(p, sm, es);
+% }
+% p4_int.apply(p, sm, es);
+% \end{lstlisting}
 \begin{lstlisting}[frame=none, escapechar=!]
-// Sequential: Firewall -> Routing
+// Sequential: Firewall -> Routing -> INT
 firewall.apply(p, sm, es);
 if (sm.drop == false) {
-  // Override: Routing decision
+  modular_router.apply(p, sm, es);
+  // Override: routing decision
   elephant_flow_routing.apply(p, sm, es);
-  if (sm.drop == true) 
-    modular_router.apply(p, sm, es);
 }
 p4_int.apply(p, sm, es);
 \end{lstlisting}
+
 The \texttt{firewall} module may decide to drop a packet by analysing
 L2, L3 or more headers. Otherwise, the packet is routed.  Similarly,
 \texttt{elephant\_flow\_routing} overrides normal routing. Finally,
