@@ -1756,37 +1756,66 @@ packets between modules.
 
 
 
-\subsection{Discussion On Evaluation}
-In this paper, the focus of our framework is on developing abstractions, interfaces and their compiler transformations to enable target-agnostic reuse of programs. However, the transformations by \ucomp to lower-level architectures may cause resource overhead in targets. 
-We highlight some of the key insights of \ucomp to understand possible source of overheads and opportunities for optimizations.
+\subsection{Discussion on Overheads}
+While \ulang focuses on developing abstractions and compiler
+techniques to enable target-agnostic reuse of programs, the
+transformation to target-specific configuration may introduce resource
+overheads. We discuss some of the possible sources of overheads and
+opportunities for optimization.
 
-\subsubsection{Hardware Resource Consumption}. 
-\ucomp performs static analysis of \uprograms to find the required size of byte-stack (\cref{subsection:extract-length-and-byte-stack-size}) and synthesize a parser/deparser to extract and emit required packet bytes in byte-stack (\cref{subsection:parser-to-match-action-table}). 
-It transforms parser/deparser blocks of P4 executed in packet-parser in hardware to a match-action table executed in hardware stages. 
-The data plane programs use two crucial resource available on RMT based hardware devices.
-
-
-\textbf{$(1)$ Packet Header Vector(PHV)} stores parsed headers and data (user-define metadata and local declarations).
-The size of byte-stack directly affects consumption of PHV in the same way as size of all parsed headers of monolithic P4 programs. 
-Because, both remains in scope and live throughout all the stages in hardware pipeline. We term such utilization of PHV as \textbf{global usage}.
-
-To compare global usage, let's assume that the caller shown in Figure \ref{fig:sequential-callees} is re-written as a monolithic program, called \texttt{mp}.
-The \texttt{mp}'s parser is a union of callees' parsers, the total size of headers to execute \texttt{mp} would be 98 (=eth+mpls+ipv6+(2 ipv4)) bytes, which is the same as byte-stack required to execute the caller. 
-However, note that extract-length for the caller is 78.
-The extra space of 20 bytes in byte-stack is required to accommodate the ipv4 header set by callee1 in its control block.
-
-If we consider absence of setValid and setInValid method calls in callee1's control block, the required size of byte-stack is max(54, 74) = 74.
-In this scenario, the caller's byte-stack header would consume less space in PHV compared to mp's headers.
-
-The variables and user-defined metadata used within a control blocks consume PHV, but may not live and consume PHV during entire program execution. 
-We term such utilization of PHV as \textbf{local usage}. \ucomp indeed introduces new local variables within control blocks. 
-For example, it removes all header instances and creates local variable for header fields accessed in control blocks. 
-If for one stage combined, global and local, usages exceeds PHV capacity, allocation of match-action tables to hardware stages would play significant role in fitting composed program on pipeline. 
-Our current implementation of \ucomp translates to v1model architecture for \texttt{simple\_switch} target. 
-As a part of future work, we will analyze these two aspects, global and local, PHV consumption for real hardware like Tofino \cite{tofino}.
+\subsubsection{Hardware Resource Consumption}
+\ucomp performs static analysis of \ulang programs to estimate the
+size of byte-stack needed
+(\cref{subsection:extract-length-and-byte-stack-size}) and synthesizes
+a (de)parser to extract/emit bytes from the packet
+(\cref{subsection:parser-to-match-action-table}). It transforms
+user-defined (de)parser into a match-action table executed in
+hardware. We discuss its overhead on two crucial resources in
+RMT-based devices.
 
 
-\textbf{$(2)$ The number of Match-Action Hardware Stages:} RMT based devices have limited number of stages in pipeline to execution match-action tables defined in control blocks of P4.
+\tightparbf{1. Packet Header Vector (PHV)} stores parsed headers,
+metadata and other data through the pipeline. The size of \ulang
+byte-stack directly impacts PHV consumption in the same way as size of
+parsed headers of monolithic P4 programs. As these remain in scope and
+live through all hardware stages, we term such utilization of PHV as
+\emph{global usage}. Variables and user-defined metadata used within a
+control block also consume PHV, but may not live and consume PHV
+at all hardware stages. We term such utilization as \emph{local usage}.
+
+To illustrate and compare global usage, consider the example from
+\cref{fig:sequential-callees} and a monolithic P4 version of the
+caller, say \texttt{mp}. As \texttt{mp}'s parser is a union of all
+parsers, the total size of headers to execute \texttt{mp} would be 98
+(=\texttt{eth}+\texttt{mpls}+\texttt{ipv6}+2 \texttt{ipv4}) bytes.
+This is the same as that required for \ulang's byte-stack---the
+extract-length for the caller is 78, and additional 20 bytes are
+required for the ipv4 header set by \texttt{callee1}.  If we consider
+the case without \texttt{setValid} and \texttt{setInValid} in
+\texttt{callee1} , the required size of byte-stack is $max(54, 74) =
+74$. In this scenario, the caller's byte-stack header would consume
+less space in PHV compared to \texttt{mp}'s headers. Of course, this
+naive analysis considers overheads at the source-level. A smart
+target-specific compiler can optimize the PHV needed for \texttt{mp},
+and we believe similar optimizations can be performed for \ulang.
+\ucomp indeed introduces new local variables within control blocks.
+For example, it removes all header instances and creates local
+variables for header fields accessed in control blocks. This may
+increase the resources needed at each stage in the hardware.
+
+% \ucomp indeed introduces new local variables within control blocks.
+% For example, it removes all header instances and creates local
+% variables for header fields accessed in control blocks. one stage
+% combined, global and local, usages exceeds PHV capacity, allocation of
+% match-action tables to hardware stages would play significant role in
+% fitting composed program on pipeline.  Our current implementation of
+% \ucomp translates to v1model architecture for \texttt{simple\_switch}
+% target.
+% As a part of future work, we will analyze these two aspects, global and local, PHV consumption for real hardware like Tofino \cite{tofino}.
+
+
+\tightparbf{2. Number of Match-Action Hardware Stages.}%
+RMT based devices have limited number of stages in pipeline to execution match-action tables defined in control blocks of P4.
 The transformations by \ucomp consumes one hardware stage for every parser or deparser. 
 On the other hand, \ucomp greatly simplifies programmability requirement of parser and deparser circuits in hardware. 
 Because, \ucomp accepts all packet with size greater than min-packet-size and extract bytes up to extract-length estimated by static-analysis. 
