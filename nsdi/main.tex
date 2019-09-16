@@ -665,14 +665,34 @@ In this section, we explain \uarch's logical constructs enabling
 programming model (\cref{fig:uswitch}) of \uswitch. We designed 
 the constructs that are amenable to \ucomp translations for 
 portability without compromising on expressiveness of \uprograms. In 
-\cref{sec:pipelines}, we explain interfaces and \upipelines.
-programmers require to implement in ourder to define \upackages. 
+\cref{sec:pipelines}, we explain interfaces and \upipelines
+programmers require to implement in order to declare \upackages. 
 \cref{sec:pipelines} explains a set of logical externs, which can be 
 used to express packet-processing functionality in \upackages.
 
 
 \subsection{Interfaces and \upipelines}
 \label{sec:pipelines}
+\deleted{
+We explain composition requirements before introducing 
+interfaces. To 
+enable seamless composition, every \uprogram should be enable invoke 
+another \uprogram with a uniform interface. A a caller halts its 
+execution for the packet, puts the packet and the data related to it 
+into the callee's input buffer, callee executes and puts all the 
+resultant packets into its output buffer. The caller fetches 
+proceesed packets from the callee's output buffer and continues 
+execution.} 
+
+\hs{
+Micro-Pipe ---> one-to-many similar to orchestration-pipe-control\\
+Micro-Pipe can be thought of as it allows replicate entire pipeline 
+ (code replication). every instance of the pipeline has the same code.
+ \\
+orch-> allows to replicates packets only, and allows to execute 
+different \upipelines on each copy.
+}
+
 \uarch provides three interface types, \texttt{Unicast}, 
 \texttt{Multicast} and \texttt{Orchestration}.
 Each type provides distinct run-time behavior and 
@@ -705,19 +725,11 @@ clip,scale=0.45]{msa-pipeline}
 \caption{\uarch Pipelines}
 \label{fig:msa-pipelines}
 \begin{lstlisting}[frame=none]
-Unicast<H,M,I,O,IO>
-  (pkt p, inout sm_t sm, es_t es, in I i_param, 
-   out O o_param, inout IO io_param) // Runtime Params
-  {Par<H,M,I,O> p, Con<H,M,I,O,IO> c, Dep<H> d}; 
-  // Programmable Blocks
-Multicast<H,M,I,O>
-  (pkt p, in sm_t sm, es_t es, in I i_param, out_buf<O> ob)
-  {Par<H,M,I> p, Con<H,M,I,O> c, Dep<H> d}; 
-Orchestration<I,O>
-  (in_buf<I> ib, out_buf<O> ob)
-  {Con<I,O> c};
+Unicast<H,M,I,O,IO> (pkt p, inout sm_t sm, es_t es, in I i_param, out O o_param, inout IO io_param) {}
+Multicast<H,M,I,O>(pkt p, in sm_t sm, es_t es, in I i_param, out_buf<O> ob)
+Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {}
 \end{lstlisting}
-\caption{\uarch Interfaces}
+\caption{\uarch Interfaces with run-time signatures}
 \label{fig:msa-interfaces}
 \end{figure}
 
@@ -1127,8 +1139,20 @@ facilitate nested invocation of \upackages with multicast interface.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO P4 Compiler %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{MicroP4 Compiler}
+\section{MicroP4 Compiler (\ucomp)}
 \label{sec:compiler}
+
+The constructs of \uarch and programming model of the 
+logical target \uswitch, together, allow writing modular \uprograms  
+that are specific to the logical target. So, to transform these 
+programs into a single dataplane prorgam for a given target, 
+we design \ucomp. It composes all the \uprogram dependent on by the 
+\texttt{main} porgram and translates the composed program 
+for a specified target architecture. We explain its design and key 
+transformations that enables composition and complements \uarch and 
+\uswitch to realizes portable and modular programming.
+
+\hse{CONT}
 
 \begin{figure}[tbh]
   \centering
