@@ -1746,14 +1746,27 @@ The snippets shows how we can integrate SRv6 without touching any
 other module used in the router.
 
 
-\subsection{Composing Data Plane Programs of NFs}
+
+
+\subsection{Composing Dataplane Programs of NFs}
 \label{subsection:composing-dataplane-programs-of-NFs}
 
-Many network functions (e.g., Firewall, NAT) may process packets across protocol layers.
-Network administrators need to deploy data plane programs of such applications on a subset of devices and/or using different combinations and configurations of the programs.
-Previous work on data plane composition (P4Bricks \cite{soni:hal-01632431} and P4Visor \cite{Zheng:2018:PLV:3281411.3281436}) and virtualization (HyPer4 \cite{Hancock:2016:HUP:2999572.2999607} and HyperV \cite{8038396}) define operators based on selective use cases.
-\uswitch facilitates natural composition of such operators using new features (user-defined package types) of \ulang and native ones of P4, (e.g., conditional statements in, imperative control).\\
-\textbf{Composition Operators.} Following snippet of code from implementation of orchestration interface shows use of \texttt{if} statement to express \emph{sequential} and \emph{override} (CoVisor \cite{188954}) composition.
+Many network functions (NFs), such as firewall and NAT, process
+complete packets across protocol layers. Operators often need to
+deploy such programs on devices using different combinations and as
+specified by some policy. To enable this, prior work on dataplane
+composition, such as P4Bricks~\cite{soni:hal-01632431} and
+P4Visor~\cite{Zheng:2018:PLV:3281411.3281436}, and virtualization,
+such as HyPer4~\cite{Hancock:2016:HUP:2999572.2999607} and
+HyperV~\cite{8038396}, define operators based on certain use cases.
+\ulang naturally supports such composition using a combination of
+\ulang-specific features such as user-defined package types and native
+P4 constructs such as conditionals.
+
+\tightparbf{Composition Operators.}%
+The following \ulang snippet from the implementation of orchestration
+interface shows an example of how one can express \emph{sequential}
+and \emph{override} composition from CoVisor~\cite{188954}.
 \begin{lstlisting}[frame=none, escapechar=!]
 // Sequential: Firewall -> Routing
 firewall.apply(p, sm, es);
@@ -1765,15 +1778,22 @@ if (sm.drop == false) {
 }
 p4_int.apply(p, sm, es);
 \end{lstlisting}
-The \texttt{firewall} may drop packets by analysing headers of Ethernet, IP, TCP and UDP or more protocols.
-Packets are routed only if they are not marked for drop.
-Similarly, \texttt{elephant\_flow\_routing} overrides normal routing.
-Finally, \texttt{p4\_int} appends In-band Network Telemetry (INT) \cite{Kim2015InbandNT, p4int} headers with basic ingress and egress information.
-Though \uarch does not have notion of ingress and ingress pipelines, but it declares intrinsic metadata which can be mapped to INT data.
-For example, \emph{ingress timestamp} of INT is mapped to \texttt{IN\_TIMESTAMP}.
-\ucomp partitions the composed pipeline and allocates \texttt{p4\_int} to egress control block of v1model architecture.
+The \texttt{firewall} module may decide to drop a packet by analysing
+L2, L3 or more headers. Otherwise, the packet is routed.  Similarly,
+\texttt{elephant\_flow\_routing} overrides normal routing. Finally,
+\texttt{p4\_int} updates the INT (In-band Network Telemetry)
+\cite{Kim2015InbandNT, p4int} header with appropriate information.
+Note that even though \uarch does not have a notion of ingress and
+egress pipelines, it declares intrinsic metadata which can be mapped
+to INT data. For example, \emph{ingress timestamp} of INT is mapped to
+\ulang's \texttt{IN\_TIMESTAMP}. When compiling for a target such as
+\texttt{v1model}, \ucomp partitions the composed pipeline and
+allocates \texttt{p4\_int} to egress control block of v1model
+architecture. \todo{discuss and clarify example}
 
-Another example code fragment shown below implements of \texttt{A-B Testing} composition operator defined by P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
+Another interesting example of composition is the \texttt{A-B Testing}
+operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
+\ulang can implement it as follows:
 \begin{lstlisting}[frame=none, escapechar=!]
 /* A-B Testing in core devices*/
 // parser extracts 1 byte header with flag
