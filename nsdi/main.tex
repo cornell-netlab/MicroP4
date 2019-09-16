@@ -661,17 +661,14 @@ constraints posed by hardware details.}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Micro Switch Architecture}
 \label{sec:architecture}
-In this section, we explain \uarch's logical constructs facilitating
-programming model (\cref{fig:uswitch}) of \uswitch.
-Also, the constructs are designed to be amenable to compiler 
-translations for portability without compromising on expressiveness 
-of 
-\uprograms.
-
-In \cref{sec:pipelines}, we explain \upipelines and interfaces 
-required to be implemented to define \upackages. \cref{sec:pipelines} 
-explains a set of logical externs, which can be used to express 
-packet-processing functionality in \upackages.
+In this section, we explain \uarch's logical constructs enabling
+programming model (\cref{fig:uswitch}) of \uswitch. We designed 
+the constructs that are amenable to \ucomp translations for 
+portability without compromising on expressiveness of \uprograms. In 
+\cref{sec:pipelines}, we explain interfaces and \upipelines.
+programmers require to implement in ourder to define \upackages. 
+\cref{sec:pipelines} explains a set of logical externs, which can be 
+used to express packet-processing functionality in \upackages.
 
 
 \subsection{Interfaces and \upipelines}
@@ -889,7 +886,7 @@ to read value, populated by the target, for every such field.
 % allow, respectively, sets and gets output port for the packet.
 % \uarch defines intrinsic metadata for the logical target \uswitch.
 % For every real-target architecture , \ucomp maintains mapping of 
-its 
+% its 
 % logical intrinsic metadata with the metadata of the architecture.
 % This mapping is used for transforming \uprograms to a given 
 % architecture-specific code.
@@ -901,10 +898,11 @@ its
 % second parameter with \texttt{out} direction provides value of the 
 % field.
 % \ucomp allows repeated usage of the extern's functions in the 
-single 
+% single 
 % control block of \uarch pipelines.
 % If \emph{get\_value} occurs before \emph{set\_egress\_port} on any 
-% possible execution control path, \ucomp raises a compile-time error.
+% possible execution control path, \ucomp raises a compile-time 
+% error.
 
 
 
@@ -912,8 +910,7 @@ single
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
 /* router.p4 */
-// package type declaration of !{\color{commentcolor}{\uprograms for 
-protocols}}! 
+// package type declaration of !{\color{commentcolor}{\uprograms for protocols}}! 
 !\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, 
     out bit<16> nh_id);
 !\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
@@ -938,8 +935,7 @@ control D(emitter em, pkt p, in empty_ht h) {
 /* main.p4 */
 !\colorbox{mygray}{router}!(pkt p, inout sm_t sm, es_t es, 
 !\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!);
-\end{lstlisting}% !\colorbox{mygray}{mpls}!(pkt p, inout sm_t sm, es_t 
-es);
+\end{lstlisting}
 \end{minipage}\hspace{-4pt}\vline
 \hfill\begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
@@ -1308,55 +1304,6 @@ The second and the forth keys can have any values, hence they are matched with d
 % We insert setValid method call statement for the extracted header instances.
 % We add an assignment statement to set visit variable associated with the parser state.
 
-\subsection{Transformation To Simple Parser}
-% \subsection{Header Stacks \& Variable-Length Headers}
-\label{subsection:header-stacks-variable-length-headers}
-\ulang allows to use of header stacks with their size known at compile-time. 
-\ucomp replaces every header stack instance with multiple instances of the header type. 
-It symbolically evaluates operations on the header stack instances and transforms them into appropriate built-in method calls of the instances.
-P4 provides various sets of computations to use in parser and control blocks.
-In parser blocks, programmers can use \texttt{next} and \texttt{last} operations to iterate through the stack.
-These operations along with \texttt{lastIndex} can be used to write loops in parsers to extract instances in header stack.
-\ucomp unrolls such loops by replicating the parse states in them.
-Loop unrolling replaces relative referencing operations, \texttt{next} and \texttt{last}, with appropriate header instances in the state replicas.
-P4 provides \texttt{push\_front} and \texttt{pop\_front} operations on stack instances to manipulate elements on top and bottom of the stack.
-\ucomp transforms push\_front and pop\_front operations into series of assignments and built-in method calls of header instances.
-For example, assume that \texttt{hs} is a header stack instance of size 3. 
-\ucomp synthesize hs0, hs1, hs2 header instances to replace hs.
-\texttt{hs\_inst.push\_front(1)} is replaced with \texttt{hs2 = hs1}, \texttt{hs1 = hs0} and \texttt{hs0.setInvalid()}.
-
-
-\ulang allows programmers to define variable-length header types, however it imposes a constraint that their variable-length fields must contain integer number of bytes at run-time.
-% \ucomp splits header type containing fixed and variable-length fields into multiple types, where each type contains either fixed-length fields or the variable-length field.
-\ucomp transforms every parser state with two-argument extract method call, used to extract variable-length header, into a sub-parser.
-It splits the header type of the instance in the first argument into multiple types, where each type contains either fixed-length fields or the variable-length field.
-Every state in the sub-parser extracts a fixed-number of bytes from the packet bit stream.
-The sub-parser contains a state having the second argument (variableFieldSize) as the expression in its select statement.
-The select statement has case-list enumerating all possible values up to specified maximum size of the variable-length field.
-For each select case, the sub-parser transits to a state extracting a fixed number of bytes in the variable-length field.
-For example, if variable-length field has maximum size of 40 bytes, \ucomp creates 40 states extracting different number of bytes.
-The explosion of number of states would only increase number of entries in the transformed match-action table of the parser.
-
-% \begin{figure}[H]
-% \begin{minipage}[c]{0.45\linewidth}
-% \begin{lstlisting}[frame=none]
-% header_t[3] hs;
-% 
-% hs.push_front(1);
-% \end{lstlisting}
-% \end{minipage}
-% \begin{minipage}[c]{0.45\linewidth}
-% \begin{lstlisting}[frame=none]
-% header_t hs0, hs1, hs2;
-% 
-% hs2 = hs1;
-% hs1 = hs0;
-% hs0.setInvalid()
-% \end{lstlisting}
-% \end{minipage}
-% \caption{Extern to }
-% \label{fig:}
-% \end{figure}
 
 
 
@@ -2122,6 +2069,94 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Transformation To Simple Parser}
+% \subsection{Header Stacks \& Variable-Length Headers}
+\label{subsection:header-stacks-variable-length-headers}
+\ulang allows to use of header stacks with their size known at 
+compile-time. 
+\ucomp replaces every header stack instance with multiple instances of 
+the header type. 
+It symbolically evaluates operations on the header stack instances and 
+transforms them into appropriate built-in method calls of the 
+instances.
+P4 provides various sets of computations to use in parser and control 
+blocks.
+In parser blocks, programmers can use \texttt{next} and \texttt{last} 
+operations to iterate through the stack.
+These operations along with \texttt{lastIndex} can be used to write 
+loops in parsers to extract instances in header stack.
+\ucomp unrolls such loops by replicating the parse states in them.
+Loop unrolling replaces relative referencing operations, \texttt{next} 
+and \texttt{last}, with appropriate header instances in the state 
+replicas.
+P4 provides \texttt{push\_front} and \texttt{pop\_front} operations on 
+stack instances to manipulate elements on top and bottom of the stack.
+\ucomp transforms push\_front and pop\_front operations into series of 
+assignments and built-in method calls of header instances.
+For example, assume that \texttt{hs} is a header stack instance of 
+size 3. 
+\ucomp synthesize hs0, hs1, hs2 header instances to replace hs.
+\texttt{hs\_inst.push\_front(1)} is replaced with \texttt{hs2 = hs1}, 
+\texttt{hs1 = hs0} and \texttt{hs0.setInvalid()}.
+
+
+\ulang allows programmers to define variable-length header types, 
+however it imposes a constraint that their variable-length fields must 
+contain integer number of bytes at run-time.
+% \ucomp splits header type containing fixed and variable-length 
+fields into multiple types, where each type contains either 
+fixed-length fields or the variable-length field.
+\ucomp transforms every parser state with two-argument extract method 
+call, used to extract variable-length header, into a sub-parser.
+It splits the header type of the instance in the first argument into 
+multiple types, where each type contains either fixed-length fields or 
+the variable-length field.
+Every state in the sub-parser extracts a fixed-number of bytes from 
+the packet bit stream.
+The sub-parser contains a state having the second argument 
+(variableFieldSize) as the expression in its select statement.
+The select statement has case-list enumerating all possible values up 
+to specified maximum size of the variable-length field.
+For each select case, the sub-parser transits to a state extracting a 
+fixed number of bytes in the variable-length field.
+For example, if variable-length field has maximum size of 40 bytes, 
+\ucomp creates 40 states extracting different number of bytes.
+The explosion of number of states would only increase number of 
+entries in the transformed match-action table of the parser.
+
+% \begin{figure}[H]
+% \begin{minipage}[c]{0.45\linewidth}
+% \begin{lstlisting}[frame=none]
+% header_t[3] hs;
+% 
+% hs.push_front(1);
+% \end{lstlisting}
+% \end{minipage}
+% \begin{minipage}[c]{0.45\linewidth}
+% \begin{lstlisting}[frame=none]
+% header_t hs0, hs1, hs2;
+% 
+% hs2 = hs1;
+% hs1 = hs0;
+% hs0.setInvalid()
+% \end{lstlisting}
+% \end{minipage}
+% \caption{Extern to }
+% \label{fig:}
+% \end{figure}
 
 
 
