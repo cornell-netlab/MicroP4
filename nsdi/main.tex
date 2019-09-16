@@ -1530,19 +1530,29 @@ across architectures which differ in these constructs.
 
 
 
-\section{Experiments}
-We have implemented a set of \uprograms to test expressiveness and composability of our framework.
-The features of \ulang and constructs defined in \uarch enable novel ways of expressing data plane programs of network applications.
+\section{Evaluation}
+\label{sec:evaluation}
+To test the expressiveness and composability of \ulang, we have
+implemented a set of applications in \ulang. We present a subset of
+these to illustrate some novel ways in which  we can compose dataplane
+programs to build real applications.
 
 \subsection{Composing Packet-Processing Layers}
 \label{subsection:composing-packet-processing-layers}
-Network packets are self-describing piece of data arranged by repeated encapsulation in protocols headers.
-Every encapsulation increases number of layers and complexity of data plane programs.
-Therefore, developing modules responsible for processing a layer or set of layers is a natural way to design data plane programs, which can be easily reused and developed incrementally.\\
-\textbf{Layered Modularity.}
-The generic interfaces defined in \uarch allows programmers to define custom runtime interfaces of modules to exchange data.
-The interfaces allow to define data exchange between \ulang modules of packet-processing layers.
-We have already shown Modular Router (Figure \ref{fig:modular-router}) decoupling TCP/IP layer-2 and layer-3 processing.\\
+Packets are usually structured into layers of protocols headers, where
+each layer is specialized for a specific role and has a specific
+layout. Therefore, writing modules for processing a layer or a set of
+layers is a natural and desired way to develop dataplane programs as
+these modules can be developed incrementally, composed together, and
+reused.
+\tightparbf{Layered Modularity.}
+\uarch's generic interfaces allows programmers to define custom
+interfaces for modules to exchange data. These can be used to compose
+\ulang modules for packet-processing layers. To demonstrate this, we
+built a modular router by composing together independent modules
+responsible for processing each layer. For example,
+\cref{fig:modular-router} shows how we compose modules for processing
+the L2 and L3 headers.
 % Figure \ref{fig:incremental-development} shows an example of incremental development, which adds SRH processing to support SRv6 in the network.
 % \begin{figure}[!h]
 % \begin{subfigure}[b]{\linewidth}
@@ -1588,15 +1598,24 @@ We have already shown Modular Router (Figure \ref{fig:modular-router}) decouplin
 % \caption{Incremental Development}
 % \label{fig:incremental-development}
 % \end{figure}
-\textbf{Incremental Development.} In the \texttt{router} program, we incrementally develop novel routing mechanism, SRv6, by adding independently developed a \uprogram (\texttt{srv6}) to process IPv6 Segment Routing Header (SRH) \cite{srh}.
+
+
+\tightparbf{Incremental Development.}%
+For the same program, suppose we want to replace IP routing with
+another approach based on segment routing (SRv6). With \ulang, one can
+independently and incrementally develop another module for segment
+routing, say \texttt{srv6}, to process IPv6 Segment Routing
+Header~\cite{srh}. And, we can reuse this module in our modular router
+from \cref{subfig:router-main} as follows:
+
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
-   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
+  !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
   ipv6_i.apply(p, sm, es, nh_id);
 }
 \end{lstlisting}
-Above code fragment shows a portion of code from modular router (Figure \ref{subfig:router-main}) to integrate \texttt{srv6} program.
-We add support for \texttt{srv6} without modifying any other \uprogram.
+The snippets shows how we can integrate SRv6 without touching any
+other module used in the router.
 
 
 \subsection{Composing Data Plane Programs of NFs}
