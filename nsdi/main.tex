@@ -1859,14 +1859,15 @@ PSA
 P4Visor, Hyper4 HyperV
 
 \section{Conclusion}
-We forsee that data plane programs are going to be more and more complex and diverse with novel use cases emerging from in-network computations to packets-carrying-program (SRv6).
-Therefore, data plane programming model must facilitate portable and modular programs.
-In this work, we identified that data plane programming using P4 needs more than basic (programmable-parser and match-action) primitives for packet-processing.
-We showed higher-level abstraction on top of the basic primitives are necessary for writing portable and modular programs.
-For composition of program modules, we leveraged the proposed transformation between basic primitives, programmable-parser and match-action.
-This transformation promises fundamental change in the way packet-processing can be implemented in hardware.
-Though, analysis of resource utilization of our proposed framework yet to be done but there exists encouraging scenarios for optimizations.
-
+Dataplane programs are evolving to be complex and diverse with novel
+use cases, such as those arising from in-network compute, and we are
+also starting to see a variety of target devices. So, we believe that
+the programming model must facilitate writing portable, modular and
+composable programs. To support this, we introduce \ulang which raises
+the level of abstraction from target-specific packet-processing
+pipelines and constructs. With \ulang, users can write
+target-agnostic, self-contained modules independently, and compose
+them to build larger programs while supporting a range of devices.
 
 
 
