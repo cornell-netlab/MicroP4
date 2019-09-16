@@ -1808,32 +1808,48 @@ emiiter.emit(p, testHdr);
 \end{lstlisting}
 
 
-\subsection{Possible Use Cases}
-Many network applications like mirroring, statistics collector (sFlow, NetFlow), generating packet history (postcards \cite{179783}) and testing mechanism (Differential-Testing (\cite{Zheng:2018:PLV:3281411.3281436})) etc., require selectively creating copies of packets and further differently process it in network devices.
-The \texttt{pkt} and \texttt{es} externs of \uarch contains \texttt{copy\_from} method which allow to express such packet processing.
-Following code fragment creates a copy of parameter \texttt{pk} and \texttt{e} using the method.
+
+
+
+
+\subsection{Advanced Processing}
+Many applications---e.g., mirroring, statistics collector such as
+sFlow and NetFlow, packet history based telemetry as in
+NetSight~\cite{179783}, testing mechanisms such as differential
+testing~\cite{Zheng:2018:PLV:3281411.3281436}---require selectively
+creating copies of packets and processing the copies in a different
+manner. \ulang enables such processing through its \texttt{copy\_from}
+method in \texttt{pkt} and \texttt{es} externs of \uarch. The
+following snippet illustrates creating a copy of parameter \texttt{pk}
+and \texttt{e} using the method.
 \begin{lstlisting}[frame=none]
 struct e_t {}; // empty type
 sflow(pkt, inout sm_t, es_t);// Implements Unicast 
 control con(pkt pk, inout sm_t s, es_t e, 
-    out_buf<e_t> ob) { // `ob` holds out packets
-  pkt ps;  es_t es;  sm_t ss;
-  in_buf<e_t> ib; // used for composition
+    out_buf<e_t> ob) { // `ob' holds out packets
+  pkt pk2;  es_t e2;  sm_t s2;
+  in_buf<e_t> ib; // in_buffer for another module
   apply {
-    ps.copy_from(pk); // copying
-    es.copy_from(e); ss = s; // copying
-    sflow.apply(ps, ss, es); // 
-    ob.enqueue(ps, ss, es);
+    pk2.copy_from(pk); // copying
+    e2.copy_from(e); s2 = s; // copying
+    sflow.apply(pk2, s2, e2); // sflow on copy
     ob.enqueue(pk, s, e); // puting original in ob
+    ob.enqueue(pk2, s2, e2); // copy in ob
     ob.to_in_buf(ib); // moves all elements to ib
     modular_router_orch.apply(ib, ob);
   }
 }
 \end{lstlisting}
-The \texttt{sflow} processes the copied packet and intrinsic metadata.
-The packet copy, process by sflow, and the original packet are queued into parameter \texttt{ob} of \texttt{out\_buf} type.
-The \texttt{to\_in\_buf} method call moves the contents of \texttt{ob} to an instance, \texttt{ib}, of \texttt{in\_buf} and resets \texttt{ob}.
-Finally, the \texttt{apply} method call of \texttt{modular\_router\_orch} routes all the packets
+The \texttt{sflow} module processes the copy of the packet and
+metadata.  Then, the original packet as well as the processed copy are
+queued into the output buffer \texttt{ob}. \texttt{to\_in\_buf} moves
+the contents of \texttt{ob} to another buffer, \texttt{ib}, and resets
+\texttt{ob}. Finally, the \texttt{modular\_router\_orch} routes
+packets between modules.
+
+
+
+
 
 \subsection{Discussion On Evaluation}
 In this paper, the focus of our framework is on developing abstractions, interfaces and their compiler transformations to enable target-agnostic reuse of programs. However, the transformations by \ucomp to lower-level architectures may cause resource overhead in targets. 
