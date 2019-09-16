@@ -32,11 +32,11 @@
 \tikzset{
     queuei/.pic={
   \stepcounter{cntr}
-        \node[outer sep=0pt,draw, color=lightgray, rectangle split,rectangle split horizontal,minimum height=10em, rectangle split parts=2] (queue-\thecntr) [pic actions] {};
+        \node[outer sep=0pt,draw, color=lightgray, rectangle split,rectangle split horizontal,minimum height=4em, rectangle split parts=2] (queue-\thecntr) [pic actions] {};
         \draw [color=lightgray]
           (queue-\thecntr.north west) -- ++(-0.5cm,0)
           (queue-\thecntr.south west) -- ++(-0.5cm,0);
-        \node[above, fill=white, opacity=0.5] at ([xshift=-0.2cm]queue-\thecntr.south) {#1 buffer};
+        \node[above, fill=white, opacity=0.5] at ([xshift=-0.2cm]queue-\thecntr.south) {#1};
     },
 }
 
@@ -51,8 +51,13 @@
 \begin{tikzpicture}[>=latex]
 % the shapes
 \path
-(-0.5,-1.2) pic[rectangle split part fill={white,white,gray!80},anchor=east] {queuei=}
-(8,-1.2) pic[anchor=west] {queuei=};
+(-0.5,0) pic[rectangle split part fill={white,white,gray!80},anchor=east] {queuei=}
+(8,0) pic[anchor=west] {queuei=};
+\path
+(-0.5,-2) pic[rectangle split part fill={white,white,gray!80},anchor=east] {queuei=}
+(8,-2) pic[anchor=west] {queuei=};
+
+
 \node (parser) at (0,0) [rectangle, draw, minimum height=1cm, text centered, text width=4em,anchor=west] {\large parser};
 \node (upipe) at (2.0,0) [rectangle, draw, minimum height=1cm, text centered, text width=8em,anchor=west] {};
 \node (upipetext) at (upipe.south) [minimum height=0.5cm, text centered, text width=8em,anchor=north] {\large $\mu$-pipe control};
@@ -61,7 +66,10 @@
 \node (opipe) at (1.5,-2) [rectangle, draw, minimum height=1cm, text centered, text width=12em,anchor=west] {};
 \node (opipetext) at (opipe.south) [minimum height=0.5cm, text centered, text width=16em,anchor=north] {\large orchestration-pipe control};
 
-\path [line, -, dotted] (0,-1.2) -- (7,-1.2);
+\node () at (-1,-1) [minimum height=0.5cm, color=gray, text centered, text width=1em,anchor=east] {buffer};
+\node () at (8,-1) [minimum height=0.5cm, color=gray, text centered, text width=1em,anchor=east] {buffer};
+
+\path [line, -, dotted] (0,-1.1) -- (7,-1.1);
 
 \path [line] ($(parser.west)+(-0.5,0)$) -- (parser.west);
 \path [line] (parser.east) -- (upipe.west);
