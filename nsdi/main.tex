@@ -1657,18 +1657,20 @@ if (sm.drop == false) {
 p4_int.apply(p, sm, es);
 \end{lstlisting}
 
-The \texttt{firewall} module may decide to drop a packet by analysing
-L2, L3 or more headers. Otherwise, the packet is routed.  Similarly,
-\texttt{elephant\_flow\_routing} overrides normal routing. Finally,
+First, a packet is processed by the \texttt{firewall} module, which
+may decide to drop it after analysing one or more headers. Otherwise,
+the packet is routed.  While routing,
+\texttt{elephant\_flow\_routing} may override normal routing if
+the packet belongs to a large flow. Finally,
 \texttt{p4\_int} updates the INT (In-band Network Telemetry)
-\cite{Kim2015InbandNT, p4int} header with appropriate information.
-Note that even though \uarch does not have a notion of ingress and
-egress pipelines, it declares intrinsic metadata which can be mapped
-to INT data. For example, \emph{ingress timestamp} of INT is mapped to
-\ulang's \texttt{IN\_TIMESTAMP}. When compiling for a target such as
-\texttt{v1model}, \ucomp partitions the composed pipeline and
-allocates \texttt{p4\_int} to egress control block of v1model
-architecture. \todo{discuss and clarify example}
+\cite{Kim2015InbandNT, p4int} header with the appropriate data. Note
+that even though \uarch does not have a notion of ingress and egress
+pipelines, it declares intrinsic metadata which can be mapped to INT
+data at the appropriate location. For example, \emph{ingress
+timestamp} of INT is mapped to \ulang's \texttt{IN\_TIMESTAMP}. When
+compiling for a target such as \texttt{v1model}, \ucomp partitions the
+composed pipeline and allocates \texttt{p4\_int} to the egress
+pipeline of the architecture.
 
 Another interesting example of composition is the \texttt{A-B Testing}
 operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
