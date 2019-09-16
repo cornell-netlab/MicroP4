@@ -1815,26 +1815,38 @@ increase the resources needed at each stage in the hardware.
 
 
 \tightparbf{2. Number of Match-Action Hardware Stages.}%
-RMT based devices have limited number of stages in pipeline to execution match-action tables defined in control blocks of P4.
-The transformations by \ucomp consumes one hardware stage for every parser or deparser. 
-On the other hand, \ucomp greatly simplifies programmability requirement of parser and deparser circuits in hardware. 
-Because, \ucomp accepts all packet with size greater than min-packet-size and extract bytes up to extract-length estimated by static-analysis. 
-The required programmability can be achieved by using simple counters based design. 
-However, as the parser consumes only 1-2\% of chip-area, the gain may not be significant to trade for usage of match-action stages in hardware pipeline. 
-Therefore, further optimization would be required to reduce consumption of match-action stages.\\
-\textbf{Optimization:} In cases described in \cref{subsection:composing-dataplane-programs-of-NFs}, execution of the match-action table of transformed-deparser is followed by of transformed-parser.
-These tables contain static entries. Therefore, creating single table by performing cross-product is feasible, reducing overhead on match-action stages by half.
+RMT-based devices have limited number of pipeline stages to execution
+match-action tables. The transformations by \ucomp introduce an extra table
+for each (de)parser. As multiple tables can fit in a single stage, and
+each new table is relatively small, the overhead on resources is modest
+but requires careful placement of tables~\cite{jose2015compiling}.
+
+Further, \ucomp greatly simplifies the complexity of (de)parser
+circuits in hardware as \ucomp accepts all packet with size greater
+than min-packet-size and extract bytes up to extract-length estimated
+by static-analysis. In fact, this can be implemented with a simple
+simple counter-based design.
+
+% However, as the parser consumes only 1-2\% of chip-area, the gain may not be significant to trade for usage of match-action stages in hardware pipeline. 
+% Therefore, further optimization would be required to reduce consumption of match-action stages.\\
+
+\tightpar{Optimization.} In cases described in
+\cref{subsection:composing-dataplane-programs-of-NFs}, execution of
+the match-action table of transformed deparser is followed by another
+transformed-parser. As these tables contain static entries, creating a
+single table based on their cross-product can reduce the overhead on
+match-action stages.
 
 
 
 
-\subsubsection{Compilation Time}
-We are yet to test \ucomp on extensive set of programs and in composition scenario to conclude on compilation time.
-However, the selective symbolic-execution results in well-know path explosion problem for programs with high branching factor.
-Hence, \ucomp's compile-time analysis can result in significantly huge compilation time.\\
-\textbf{Optimization:}
-We only evaluate method calls of header types, extractor and emitter during symbolic-executable allowing to spawn lightweight threads for parallel execution.
-Further, the computations for extract-length and byte-stack size of \uprograms are highly recursively, therefore they can be avoided by storing and reusing the values during compilation with libraries.
+% \subsubsection{Compilation Time}
+% We are yet to test \ucomp on extensive set of programs and in composition scenario to conclude on compilation time.
+% However, the selective symbolic-execution results in well-know path explosion problem for programs with high branching factor.
+% Hence, \ucomp's compile-time analysis can result in significantly huge compilation time.\\
+% \textbf{Optimization:}
+% We only evaluate method calls of header types, extractor and emitter during symbolic-executable allowing to spawn lightweight threads for parallel execution.
+% Further, the computations for extract-length and byte-stack size of \uprograms are highly recursively, therefore they can be avoided by storing and reusing the values during compilation with libraries.
 
 
 
