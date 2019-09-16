@@ -1,0 +1,92 @@
+\documentclass[a4paper,18pt]{article}
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+\usepackage{libertine}
+\usepackage[italic]{mathastext}
+\usepackage{amsmath,amsthm,amsfonts}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{subcaption}
+
+\usetikzlibrary{shapes,arrows,shadows}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{automata,positioning,arrows,matrix,backgrounds,calc}
+\usetikzlibrary{decorations.text}
+\usetikzlibrary{decorations.pathmorphing}
+
+\usepackage[active,tightpage]{preview}
+\usepackage{xparse}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{0pt}%
+
+\usetikzlibrary{fit}					% fitting shapes to coordinates
+\usetikzlibrary{backgrounds}	% drawing the background after the foreground
+\usetikzlibrary{calc}
+
+\renewcommand*{\familydefault}{\sfdefault}% Let's have a sans serif font
+
+\begin{document}
+\tikzset{
+    queuei/.pic={
+  \stepcounter{cntr}
+        \node[outer sep=0pt,draw, color=lightgray, rectangle split,rectangle split horizontal,minimum height=10em, rectangle split parts=2] (queue-\thecntr) [pic actions] {};
+        \draw [color=lightgray]
+          (queue-\thecntr.north west) -- ++(-0.5cm,0)
+          (queue-\thecntr.south west) -- ++(-0.5cm,0);
+        \node[above, fill=white, opacity=0.5] at ([xshift=-0.2cm]queue-\thecntr.south) {#1 buffer};
+    },
+}
+
+
+
+\tikzstyle{block}=[rectangle, draw, fill=white!10, minimum height=6ex,text width=4em, text centered, inner sep=1pt]
+\tikzstyle{textbox}=[text width=2em, text centered, text width=3em]
+  \tikzstyle{line}=[draw, very thick, color=black!75, -latex']
+  \tikzstyle{empty}=[]
+
+\newcounter{cntr}
+\begin{tikzpicture}[>=latex]
+% the shapes
+\path
+(-0.5,-1.2) pic[rectangle split part fill={white,white,gray!80},anchor=east] {queuei=}
+(8,-1.2) pic[anchor=west] {queuei=};
+\node (parser) at (0,0) [rectangle, draw, minimum height=1cm, text centered, text width=4em,anchor=west] {\large parser};
+\node (upipe) at (2.0,0) [rectangle, draw, minimum height=1cm, text centered, text width=8em,anchor=west] {};
+\node (upipetext) at (upipe.south) [minimum height=0.5cm, text centered, text width=8em,anchor=north] {\large $\mu$-pipe control};
+\node (deparser) at (5.5,0) [rectangle, draw, minimum height=1cm, text centered, text width=4em,anchor=west] {\large deparser};
+
+\node (opipe) at (1.5,-2) [rectangle, draw, minimum height=1cm, text centered, text width=12em,anchor=west] {};
+\node (opipetext) at (opipe.south) [minimum height=0.5cm, text centered, text width=16em,anchor=north] {\large orchestration-pipe control};
+
+\path [line, -, dotted] (0,-1.2) -- (7,-1.2);
+
+\path [line] ($(parser.west)+(-0.5,0)$) -- (parser.west);
+\path [line] (parser.east) -- (upipe.west);
+\path [line] (upipe.east) -- (deparser.west);
+\path [line, color=lightgray] ($(upipe.east)+(0,0.3)$) -- ($(deparser.west)+(0,0.3)$);
+\path [line, color=lightgray] ($(upipe.east)+(0,-0.3)$) -- ($(deparser.west)+(0,-0.3)$);
+\path [line] (deparser.east) -- ++(0.5,0);
+\path [line, color=lightgray] ($(deparser.east)+(0,0.3)$) -- ++(0.5,0);
+\path [line, color=lightgray] ($(deparser.east)+(0,-0.3)$) -- ++(0.5,0);
+
+\path [line, color=lightgray] (upipe.west) -- ++(1,0) -- ++(0,0.3) -- ($(upipe.east)+(0,0.3)$);
+\path [line, color=lightgray] (upipe.west) -- ++(1,0) -- ++(0,-0.3) -- ($(upipe.east)+(0,-0.3)$);
+\path [line] (upipe.west) -- (upipe.east);
+
+\path [line] ($(opipe.west)+(-2.0,0)$) -- (opipe.west);
+
+\path [line, color=blue, dashed] ($(opipe.west)+(1,0)$) -- ++(0,0.3) -- ($(opipe.east)+(0,0.3)$);
+\path [line, color=red, dotted] ($(opipe.west)+(1,0)$) -- ++(0,-0.3) -- ($(opipe.east)+(0,-0.3)$);
+\path [line] (opipe.west) -- (opipe.east);
+
+\path [line] (opipe.east) -- ++(1.6,0);
+\path [line, color=blue, dashed] ($(opipe.east)+(0,0.3)$) -- ++(1.6,0);
+\path [line, color=red, dotted] ($(opipe.east)+(0,-0.3)$) -- ++(1.6,0);
+
+
+% \node () at ($(upip.north)+(0.5,0.5)$) {{packet byte-stream, metadata, arguments}};
+\end{tikzpicture}
+\end{document}
