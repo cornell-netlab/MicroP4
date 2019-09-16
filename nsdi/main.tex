@@ -1418,9 +1418,16 @@ backend. Finally, we have made our implementation available under an
 open-source
 license\footnote{\url{https://github.com/anonymized-for-review}}.
 
+In the rest of this section, we focus on the following questions.
+\begin{enumerate*}[label=(\roman*)]
+  \item How different are \ulang programs (\cref{sec:comparison})?
+  \item How can we support new targets (\cref{sec:new-target})?
+  \item What are the limitations of \ulang (\cref{sec:limitations})?
+\end{enumerate*}
 
 
 \subsection{Comparison with P4}
+\label{sec:comparison}
 One of our goals is also to keep the changes to the syntax and grammar
 of P4 minimal so that users familiar with P4 can easily adopt \ulang.
 We briefly highlight major differences in \ulang compared to P4-16.
@@ -1441,16 +1448,34 @@ unlike P4-16's specification. ... (\texttt{pkt}, \texttt{extractor}
 and \texttt{emitter}) compared to ones defined in P4 core library
 (\texttt{packet\_in} and \texttt{packet\_out}).}
 
+
+
+
+
 \subsection{Supporting New Target Architectures}
-The Frontend of \ucomp generates P4 code library after the same preliminary processing of IR as p4c.
-Also, the midend primarily converts parser-deparser to match-action control blocks and prepares PPS.
-The frontend and backend do not perform any target architecture-specific transformation or translations.
-The backend passes (implements Section \ref{subsubsection:allocation-to-target-architecture}) are target architecture-specific, as it translates the logical abstraction declared in \uarch.
-\ucomp's backend requires mapping between intrinsic metadata of \uarch and target architecture.
-For example, architecture-specific mappings for fields and methods of \texttt{sm\_t} \texttt{es\_t} and \texttt{mc\_engine} are used for translation.
-The backend first transforms the IR to conform programmable blocks and externs declared in target architecture.
-If the midend of target architecture's compiler is available, the backend can invoke pass the IR to midend to generate executable for the target.
-Otherwise, backend synthesize P4 source code by dumping the IR.
+\label{sec:new-target}
+\ucomp's frontend and midend translate \ulang programs into \uarch IR
+and perform certain optimizations. They do not perform any
+target-specific translations. \ucomp's backend
+(\cref{subsubsection:allocation-to-target-architecture}) is
+target-specific as it translates the target-independent \uarch IR into
+a configuration for the specified target. Specifically, it maps
+intrinsic metadata of \uarch to that of the target architecture. For
+this, it needs target architecture-specific mappings for fields and
+methods corresponding to \texttt{sm\_t}, \texttt{es\_t} and
+\texttt{mc\_engine}. These mappings are used for translation. The
+backend transforms the IR to conform programmable blocks and externs
+declared in the target architecture. Additionally, if the midend of
+the target's compiler is available, \ucomp backend can pass the IR to
+target compiler's midend to generate executable for the target.
+Otherwise, \ucomp synthesizes P4 source code from the IR.
+
+Thus, to support a new target architecture, we need to provide
+\ucomp's backend with a mapping from \uarch's logical constructs to
+target-specific constructs. Our implementation provides an example of
+how to do this for \texttt{v1model}.
+
+
 
 
 
