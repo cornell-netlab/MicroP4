@@ -1403,15 +1403,29 @@ We can perform similar transformation for other architectures like PSA using app
 
 
 
-\subsection{Implementation}
-\ucomp is implemented by extending open source reference compiler p4c \cite{p4c}.
-We discuss our implementation in reference with specification of P4-16.
-In addition of Frontend extension, midend and backend of \ucomp contains \textasciitilde 6K LoCs.
-The backend passes are target architecture-specific and the current backend is written for v1model.
+\section{Implementation}
+\label{sec:implementation}
+We have implemented \ucomp by extending the open-source P4 reference
+compiler, \texttt{p4c}~\cite{p4c}. For any P4-specific components, our
+implementation conforms to the P4-16 specification~\cite{p4lang}. In
+addition to the frontend extension needed to support \ulang programs,
+\ucomp's midend and backend implementation comprises of
+\textasciitilde 6,000 LoCs. As supporting a target architecture
+requires an architecture-specific backend, our current prototype
+includes a backend for \texttt{v1model}~\cite{v1model.p4}. To support
+other targets, \ucomp's can be extended with the corresponding
+backend. Finally, we have made our implementation available under an
+open-source
+license\footnote{\url{https://github.com/anonymized-for-review}}.
 
-\subsubsection{Comparison with P4}
-We briefly highlighted important constructs in our proposal with reference to P4-16 language specifications.
-\ucomp allows to define custom package types, similar to control and parser blocks, that allows programmer to hide implementation details and define interface to reuse the code.
+
+
+\subsection{Comparison with P4}
+We briefly highlight important constructs in our proposal with
+reference to P4-16 specification. \ulang allows defining custom
+package types that enable hiding the implementation of a
+packet-processing function and exposing an interface to reuse the
+code.
 Essentially, package types are associated runtime behavior, unlike P4-16's specification.
 Also, \uarch defines interfaces to encapsulate a set of programmable blocks.
 In addition, \uarch uses different representation of packet (\texttt{pkt}, \texttt{extractor} and \texttt{emitter}) compared to ones defined in P4 core library (\texttt{packet\_in} and \texttt{packet\_out}).
@@ -1419,7 +1433,7 @@ Apart from above mentioned constructs, \ulang do not violate semantics of any ot
 \ucomp minimally extends P4 syntax, grammar and frontend facilitating programmers to write modular code.
 
 
-\subsubsection{Supporting New Target Architectures}
+\subsection{Supporting New Target Architectures}
 The Frontend of \ucomp generates P4 code library after the same preliminary processing of IR as p4c.
 Also, the midend primarily converts parser-deparser to match-action control blocks and prepares PPS.
 The frontend and backend do not perform any target architecture-specific transformation or translations.
@@ -1432,9 +1446,8 @@ Otherwise, backend synthesize P4 source code by dumping the IR.
 
 
 
-
-\section{Limitations}
-\label{section:limitations}
+\subsection{Limitations}
+\label{sec:limitations}
 Although \ucomp transforms and realizes many higher-level abstraction of data plane model defined in \uarch, there remians a few sub-computations of packet-processing and features of dataplane requiring abstraction to enhance portability.
 These limitations do not affect modularity and composability, but limits the portability of packet-processing code.
 
