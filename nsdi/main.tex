@@ -1003,6 +1003,27 @@ appropriate routing protocol package. As a result, it populates
 \texttt{nh\_id} parameter passed as an \texttt{out} argument.
 
 
+\paragraph{Input/Output Buffers.}
+Representative to logical buffers in programming model for \uswitch, 
+\uarch declares \texttt{in\_buf} and \texttt{out\_buf} externs. 
+Programmers can use them to invoke other programs in implementation 
+of 
+the control block of the \texttt{Orchestration} interface. As 
+\uswitch does not allow to fetch multiple packets at time from input 
+buffer, the \texttt{in\_buf} extern has \texttt{dequeue} method that 
+can be used only by the \uswitch. However, programmers can 
+instantiate 
+the extern and use them to pass as arguments to other 
+\upackages. The \texttt{out\_buf} extern has, \texttt{enqueue} 
+and \texttt{merge}, methods to store packets processed by callee 
+\upackages. In addition, it provides \texttt{to\_in\_buf} to move the 
+elements of the caller to the instance of \texttt{in\_buf} type
+passed as the argument. Note, the \texttt{mc\_buf} extern allows to 
+store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} 
+externs. It is designed to be used along with \texttt{mc\_engine} to 
+express multicast packet-processing, where as \texttt{in\_buf} and 
+\texttt{out\_buf} are designed for generic composition interface.
+
 
 \paragraph{Multicast Extern.}
 To avoid compromising expressiveness of \uprograms, \uswitch models 
@@ -1066,24 +1087,7 @@ facilitate nested invocation of \upackages with multicast interface.
 % \texttt{set\_buf} and $(2)$ invoke the apply method to process each 
 % copy using subsequent statments). 
 
-\paragraph{Input/Output Buffers.}
-To support programming model for \uswitch, \uarch declares 
-\texttt{in\_buf} and \texttt{out\_buf} buffer externs. Programmers
-can use \texttt{in\_buf} and \texttt{out\_buf} to invoke other 
-programs in implementation of the control block of the
-\texttt{Orchestration} interface. The \texttt{in\_buf} extern has 
-\texttt{dequeue} method that is used only by the \uswitch. However, 
-programmers can instantiate the extern and use its instances to pass 
-as arguments to other \upackages.
-The \texttt{out\_buf} extern has methods, \texttt{enqueue} and 
-\texttt{merge}, to store packets processed by callee \upackages.
-In addition, it provides \texttt{to\_in\_buf} to move the elements of 
-the caller instance to the instance of \texttt{in\_buf} provided in 
-the argument. The \texttt{mc\_buf} extern allows to store parsed 
-headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
-It is designed to  be used along with \texttt{mc\_engine} to express 
-multicast packet-processing, where as \texttt{in\_buf} and 
-\texttt{out\_buf} are designed for generic composition interface.
+
 
 
 % \begin{figure}[htb]
@@ -1346,100 +1350,7 @@ If \ucomp fails to find a serial PPS, it raises a compilation error for such tar
 
 
 
-\subsubsection{Packet-Processing Schedule}
-\label{subsubsection:packet-processing-schedule}
-\hs{TODO: this Section \ref{subsubsection:packet-processing-schedule} will move out of paper of in appendix. In that scenario, modify  above para to hint convincing solution to reader}
 
-
-\label{subsubsection:packet-processing-schedule}
-\begin{figure}[!h]
-\begin{lstlisting}[frame=none]
-struct e_t {};  struct h_t { ... };
-prog(pkt, inout sm_t, es_t, out h_t);
-test(pkt, inout sm_t, es_t, out h_t);
-log(pkt, inout sm_t, es_t, in h_t, in h_t);
-control validate(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
-          pkt pt, pm;  es_t et, em;  
-/*slice*/ sm_t st, sm; h_t hp, ht;
-/*  #  */ apply {
-/*  1  */   pm.copy_from(p); // c1
-/*  1  */   em.copy_from(e); sm = s;
-/*  3  */   pt.copy_from(p); // c3 
-/*  3  */   et.copy_from(e); st = s;
-/* 2,1 */   prog.apply(p, s, e, hp); 
-/* 3,1 */   test.apply(pt, st, et, ht); 
-/*  1  */   if (hp != ht) {
-/*  1  */     log.apply(pm, sm, em, hp, ht);
-/*  1  */     ob.enqueue(pm, sm, em);
-/*  1  */   }
-/*  3  */   smt.drop = true;
-/*  2  */   ob.enqueue(p, sm, e);
-/*  3  */   ob.enqueue(pt, smt, et);
-          }
-       }
-\end{lstlisting}
-\caption{Multi-Packet Processing}
-\label{fig:multi-packet-processing}
-\end{figure}
-If the main package has callees with orchestration interface, \ucomp extracts packet-processing threads and PPS for control block of every callee.
-\ucomp constructs a Program Dependence Graph(PDG) \cite{Ferrante:1987:PDG:24039.24041} having statements as nodes and dependencies among them as edges. 
-\ucomp  performs a series of transformations on PDG to compute PPS.
-
-% \ucomp treats parameter of orchestration control block or every \texttt{copy\_from} method call statement of \texttt{pkt} instance as its definition, because they initialize the instance.
-% We note that \texttt{pkt} instance argument in \texttt{copy\_from} method calls is only used or read.
-% Moreover, all other method call statements having \texttt{pkt} instances as arguments access (read and modify) the instances, such call statements are not considered as their definition statements.
-% We define \emph{access-ranges} of a \texttt{pkt} instance's definition as span of program statements until the next definition of the instance in reached on every possible path in the PDG.
-For every initialization statement of a \texttt{pkt} instance, we define an \emph{access-range}, analogous to live ranges, as span of program statements until the next initialize of the instance in reached on every possible path in the PDG.
-We merge overlapping access-ranges of multiple initialization of the same \texttt{pkt} instance.
-If an instance has non-overlapping access-ranges, a new instance for every access-range is synthesised to create one-to-one mapping between them.
-% the instance and its access-range.
-Inspired from \emph{program slice} defined in \cite{Weiser:1981:PS:800078.802557}, we define \emph{packet slice} based on access-ranges.
-% of \texttt{pkt} instances' definitions.
-A packet slice of a \texttt{pkt} instance is an executable subset of PDG, which consists of all the program statements affecting the instance's value in its access-ranges.
-A set of initialization statements of \emph{pkt} instance with overlapping access-ranges is considered as a slicing criteria for a given packet instance.
-Packet slices can have multiple entry and exist points due to presence of conditional statements.
-We compute packet slices from the PDG of control block using a method similar to one described in \cite{Ferrante:1987:PDG:24039.24041}.
-Specifically, we perform a graph traversal in reverse direction of edges from every statement at exit points in the access-ranges until initialization statements in the criteria are reached.
-The graph traversal continues until all possible definitions of every variable used in visited statement are reached.
-If any variable or extern instance is involved in anti-dependency, it is resolved by introducing new variable and renaming.
-An example program shown in Figure \ref{fig:multi-packet-processing} is sliced with respect to definitions of three instances \texttt{pm}, \texttt{p} and \texttt{pt}.
-
-
-Packet slices of different instances may have common program statements due to control and data dependencies.
-Therefore, a packet slice may have method call statements processing different \emph{pkt} instances than one's initialization statements used in slicing criteria.
-For the program shown in Figure \ref{fig:multi-packet-processing}, slice 1 pertaining to instance \texttt{pm} shares program statements with slices 2 and 3 related to \texttt{p} and \texttt{pt}, respectively.
-We create a packet-processing thread per instance by excluding such method call statements from every packet slice but maintain dependency among them by creating inter-thread dependency.
-% All other common program statements not accessing \texttt{pkt} instances are also excluded from threads.
-All other common program statements are also excluded from threads of \texttt{pkt} instances.
-We term such statements \emph{cps} nodes and maintain their control and data dependencies with the thread nodes.
-% We associate every thread with an identifier, \emph{thread-id}, and a set of group-ids, called \emph{clone-group}.
-We associate every thread with an identifier, \emph{thread-id}, and synthesize metadata for it.
-\ucomp synthesizes if-conditional statement in every thread to execute its program statements only if its id value is set in thread-id metadata.
-% Every thread-id identifies a thread based on unique \texttt{pkt} instance processed by it.
-% In presence of conditional statements, a thread may process a packet copied from one of multiple possible packet instances.
-% Every group-id identifies set of threads that may process copies of the same packet instance.
-
-
-% and clone-group identifies every possible \texttt{pkt} instances from which the thread's packet instance could be initialized.
-
-We follow similar approach to extract threads associated with \texttt{in\_buf} instance.
-The \texttt{merge} and \texttt{to\_in\_buf} methods of \texttt{out\_buf} easily allows to add thread nodes and control dependency among them in PPS.
-
-We transform PDG to PPS graph by coalescing all the nodes in a thread to a single node while maintaining their control and data dependencies with cps and other thread nodes.
-We synthesise a variable to transform every control dependency among thread nodes to a data dependency.
-The thread, which is depended on, sets the variable with a constant value and the other thread uses the variable in predicate of new if-conditional statement to continue processing on the control path.
-If a PPS has a directed cycle involving thread nodes, PPS is not serializable.
-If the target architecture does not have capability to process multiple copy of a packet at the same time, 
-\ucomp raises error and lists program statements involved in cycles.
-However, a PPS can have cycles involving maximum one thread node and cps nodes.
-To decide execution thread for cps nodes, we compute strongly connected components of PPS graph.
-In each component, there can be exactly one thread node and one or more cps nodes.
-We further transform PPS into a DAG by coalescing cps nodes in a component to its thread node.
-PPS can still have cps nodes not part of any SCC, such nodes can be executed as a part of any thread.
-We schedule such cps nodes while mapping the thread components to data plane of target architecture.
-
-% Every \texttt{apply} method call statement of \texttt{Multicast} or \texttt{Orchestration} type package gets transformed to a thread node in PPS.
-% \texttt{enqueue}, \texttt{merge} and \texttt{to\_in\_buf} method call statements of \texttt{out\_buf} extern's instances capture dependence among such threads nodes in PPS.
 
 \subsubsection{Allocation to Target Architecture}
 \label{subsubsection:allocation-to-target-architecture}
@@ -2161,8 +2072,173 @@ entries in the transformed match-action table of the parser.
 
 
 
+\section{\ucomp}
+\subsection{Packet-Processing Schedule}
+\label{subsubsection:packet-processing-schedule}
+\hs{TODO: this Section \ref{subsubsection:packet-processing-schedule} 
+will move out of paper of in appendix. In that scenario, modify  above 
+para to hint convincing solution to reader}
 
 
+\label{subsubsection:packet-processing-schedule}
+\begin{figure}[!h]
+\begin{lstlisting}[frame=none]
+struct e_t {};  struct h_t { ... };
+prog(pkt, inout sm_t, es_t, out h_t);
+test(pkt, inout sm_t, es_t, out h_t);
+log(pkt, inout sm_t, es_t, in h_t, in h_t);
+control validate(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
+          pkt pt, pm;  es_t et, em;  
+/*slice*/ sm_t st, sm; h_t hp, ht;
+/*  #  */ apply {
+/*  1  */   pm.copy_from(p); // c1
+/*  1  */   em.copy_from(e); sm = s;
+/*  3  */   pt.copy_from(p); // c3 
+/*  3  */   et.copy_from(e); st = s;
+/* 2,1 */   prog.apply(p, s, e, hp); 
+/* 3,1 */   test.apply(pt, st, et, ht); 
+/*  1  */   if (hp != ht) {
+/*  1  */     log.apply(pm, sm, em, hp, ht);
+/*  1  */     ob.enqueue(pm, sm, em);
+/*  1  */   }
+/*  3  */   smt.drop = true;
+/*  2  */   ob.enqueue(p, sm, e);
+/*  3  */   ob.enqueue(pt, smt, et);
+          }
+       }
+\end{lstlisting}
+\caption{Multi-Packet Processing}
+\label{fig:multi-packet-processing}
+\end{figure}
+If the main package has callees with orchestration interface, \ucomp 
+extracts packet-processing threads and PPS for control block of every 
+callee.
+\ucomp constructs a Program Dependence Graph(PDG) 
+\cite{Ferrante:1987:PDG:24039.24041} having statements as nodes and 
+dependencies among them as edges. 
+\ucomp  performs a series of transformations on PDG to compute PPS.
+
+% \ucomp treats parameter of orchestration control block or every 
+\texttt{copy\_from} method call statement of \texttt{pkt} instance as 
+its definition, because they initialize the instance.
+% We note that \texttt{pkt} instance argument in \texttt{copy\_from} 
+method calls is only used or read.
+% Moreover, all other method call statements having \texttt{pkt} 
+instances as arguments access (read and modify) the instances, such 
+call statements are not considered as their definition statements.
+% We define \emph{access-ranges} of a \texttt{pkt} instance's 
+definition as span of program statements until the next definition of 
+the instance in reached on every possible path in the PDG.
+For every initialization statement of a \texttt{pkt} instance, we 
+define an \emph{access-range}, analogous to live ranges, as span of 
+program statements until the next initialize of the instance in 
+reached on every possible path in the PDG.
+We merge overlapping access-ranges of multiple initialization of the 
+same \texttt{pkt} instance.
+If an instance has non-overlapping access-ranges, a new instance for 
+every access-range is synthesised to create one-to-one mapping between 
+them.
+% the instance and its access-range.
+Inspired from \emph{program slice} defined in 
+\cite{Weiser:1981:PS:800078.802557}, we define \emph{packet slice} 
+based on access-ranges.
+% of \texttt{pkt} instances' definitions.
+A packet slice of a \texttt{pkt} instance is an executable subset of 
+PDG, which consists of all the program statements affecting the 
+instance's value in its access-ranges.
+A set of initialization statements of \emph{pkt} instance with 
+overlapping access-ranges is considered as a slicing criteria for a 
+given packet instance.
+Packet slices can have multiple entry and exist points due to presence 
+of conditional statements.
+We compute packet slices from the PDG of control block using a method 
+similar to one described in \cite{Ferrante:1987:PDG:24039.24041}.
+Specifically, we perform a graph traversal in reverse direction of 
+edges from every statement at exit points in the access-ranges until 
+initialization statements in the criteria are reached.
+The graph traversal continues until all possible definitions of every 
+variable used in visited statement are reached.
+If any variable or extern instance is involved in anti-dependency, it 
+is resolved by introducing new variable and renaming.
+An example program shown in Figure \ref{fig:multi-packet-processing} 
+is sliced with respect to definitions of three instances \texttt{pm}, 
+\texttt{p} and \texttt{pt}.
+
+
+Packet slices of different instances may have common program 
+statements due to control and data dependencies.
+Therefore, a packet slice may have method call statements processing 
+different \emph{pkt} instances than one's initialization statements 
+used in slicing criteria.
+For the program shown in Figure \ref{fig:multi-packet-processing}, 
+slice 1 pertaining to instance \texttt{pm} shares program statements 
+with slices 2 and 3 related to \texttt{p} and \texttt{pt}, 
+respectively.
+We create a packet-processing thread per instance by excluding such 
+method call statements from every packet slice but maintain dependency 
+among them by creating inter-thread dependency.
+% All other common program statements not accessing \texttt{pkt} 
+instances are also excluded from threads.
+All other common program statements are also excluded from threads of 
+\texttt{pkt} instances.
+We term such statements \emph{cps} nodes and maintain their control 
+and data dependencies with the thread nodes.
+% We associate every thread with an identifier, \emph{thread-id}, and 
+a set of group-ids, called \emph{clone-group}.
+We associate every thread with an identifier, \emph{thread-id}, and 
+synthesize metadata for it.
+\ucomp synthesizes if-conditional statement in every thread to execute 
+its program statements only if its id value is set in thread-id 
+metadata.
+% Every thread-id identifies a thread based on unique \texttt{pkt} 
+instance processed by it.
+% In presence of conditional statements, a thread may process a packet 
+copied from one of multiple possible packet instances.
+% Every group-id identifies set of threads that may process copies of 
+the same packet instance.
+
+
+% and clone-group identifies every possible \texttt{pkt} instances 
+from which the thread's packet instance could be initialized.
+
+We follow similar approach to extract threads associated with 
+\texttt{in\_buf} instance.
+The \texttt{merge} and \texttt{to\_in\_buf} methods of 
+\texttt{out\_buf} easily allows to add thread nodes and control 
+dependency among them in PPS.
+
+We transform PDG to PPS graph by coalescing all the nodes in a thread 
+to a single node while maintaining their control and data dependencies 
+with cps and other thread nodes.
+We synthesise a variable to transform every control dependency among 
+thread nodes to a data dependency.
+The thread, which is depended on, sets the variable with a constant 
+value and the other thread uses the variable in predicate of new 
+if-conditional statement to continue processing on the control path.
+If a PPS has a directed cycle involving thread nodes, PPS is not 
+serializable.
+If the target architecture does not have capability to process 
+multiple copy of a packet at the same time, 
+\ucomp raises error and lists program statements involved in cycles.
+However, a PPS can have cycles involving maximum one thread node and 
+cps nodes.
+To decide execution thread for cps nodes, we compute strongly 
+connected components of PPS graph.
+In each component, there can be exactly one thread node and one or 
+more cps nodes.
+We further transform PPS into a DAG by coalescing cps nodes in a 
+component to its thread node.
+PPS can still have cps nodes not part of any SCC, such nodes can be 
+executed as a part of any thread.
+We schedule such cps nodes while mapping the thread components to data 
+plane of target architecture.
+
+% Every \texttt{apply} method call statement of \texttt{Multicast} or 
+\texttt{Orchestration} type package gets transformed to a thread node 
+in PPS.
+% \texttt{enqueue}, \texttt{merge} and \texttt{to\_in\_buf} method 
+call statements of \texttt{out\_buf} extern's instances capture 
+dependence among such threads nodes in PPS.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
