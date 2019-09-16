@@ -1480,6 +1480,21 @@ has certain limitations. These limitations do not affect modularity
 and composability, but slightly limits the portability of
 packet-processing code.
 
+\tightparbf{Stateful memories.}
+Many applications require stateful processing of packets. To support
+these, architectures provide various constructs to maintain state in
+the dataplane---e.g., PSA provides counters, meters and registers.
+Currently, \uarch doesn't provide a portable abstraction for such
+constructs. So, while a \ulang program can still use these constructs
+for stateful packet processing, it limits the program's portability
+across architectures which differ in these constructs.
+
+\tightparbf{Switch CPU-dataplane interface.}
+\uarch does not provide a generic abstraction for communication
+between the dataplane and the switch CPU. To use such functionality,
+programmers have to use target-specific constructs such as
+\texttt{digest} and \texttt{packet\_in} for PSA.
+
 \tightparbf{Device capabilities.}
 Target devices support match-action tables with a fixed set of match
 capabilities---such as exact, LPM, ternary, and range. \ulang requires
@@ -1492,22 +1507,10 @@ compile-time. Similarly, \ulang cannot automatically synthesize
 implementations for new checksum computations, action selector, action
 profiles.
 
-\tightparbf{Communication to control plane.}
-\todo{unable to parse this}
-There exist unified mechanism and abstraction (Control Plane APIs) to configurable data plane from control plane.
-However, data plane program still lacks an abstract to send data or packets to control plane.
-For example, PSA constructs two different, digest and packet\_in, constructs to send data to control plane.
-There could be more higher-level abstraction that can be translated to either of them.
-\uarch does not provide abstraction for sending data to control plane, hence exposes the same constructs to the programmers.
-
-\tightparbf{Stateful memories.}
-Many applications require stateful processing of packets. To support
-these, architectures provide various constructs to maintain state in
-the dataplane---e.g., PSA provides counters, meters and registers.
-Currently, \uarch doesn't provide a portable abstraction for such
-constructs. So, while a \ulang program can still use these constructs
-for stateful packet processing, it limits the program's portability
-across architectures which differ in these constructs.
+% There exist unified mechanism and abstraction (Control Plane APIs) to configurable data plane from control plane.
+% However, data plane program still lacks an abstract to send data or packets to control plane.
+% For example, PSA constructs two different, digest and packet\_in, constructs to send data to control plane.
+% There could be more higher-level abstraction that can be translated to either of them.
 
 %% The common practice is to expose varying types of constructs in architecture of the target for stateful packet-processing.
 %% For example, PSA provides counters, meters and registers for stateful packet-processing.
