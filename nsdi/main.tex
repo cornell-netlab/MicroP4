@@ -596,16 +596,14 @@ to use such features.
 \end{figure}
 
 
-
-
-\hse{
 \paragraph{\ulang and Compiler (\ucomp).}
 To enable programmers to hide implementations and develop 
 independent \uprograms, \ulang extends P4 with a construct 
 that allows programmers to declare custom types, called \upackage, by 
-implementing interfaces declared in \uarch. The interfaces enable 
-\upackages to have run-time behavior, enabling composition \upackages.
-}
+implementing interfaces declared in \uarch. \upackages 
+have in-built \texttt{apply} method that can be used to invoke their 
+instance by supplying run-time parameters specified by their 
+interfaces.
 \hs{TODO: cont}
 
 % \ucomp extends current P4 language and allows programmers to define 
@@ -654,7 +652,6 @@ APIs.
 sizes required to process all the transformed \uprograms in 
 match-action control blocks of target architecture's pipeline.
 \ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
-Next, \ucomp translates intrinsic metadata and logical externs into the target architecture-specific constructs.
 It allocates and schedules code of transformed \uprograms to control 
 blocks of the target architecture's pipeline model while satisfying 
 constraints posed by hardware details.}
@@ -664,43 +661,110 @@ constraints posed by hardware details.}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Micro Switch Architecture}
 \label{sec:architecture}
-Using the packet-processing model described in Figure \ref{fig:mp4-packet-processing-model}, we define \uprogram interfaces and packet-processing pipelines for \uswitch as a part of its architecture, \uarch.
-In addition, \uarch defines a set of logical externs which provides abstractions for various packet-processing constructs defined in architectures of real targets.
-\deleted{available in fixed-function blocks (e.g., packet duplication) of pipelines models of real-target architectures.}
+In this section, we explain \uarch's logical constructs facilitating
+programming model (\cref{fig:uswitch}) of \uswitch.
+Also, the constructs are designed to be amenable to compiler 
+translations for portability without compromising on expressiveness 
+of 
+\uprograms.
 
-\subsection{Pipelines and Interfaces}
+In \cref{sec:pipelines}, we explain \upipelines and interfaces 
+required to be implemented to define \upackages. \cref{sec:pipelines} 
+explains a set of logical externs, which can be used to express 
+packet-processing functionality in \upackages.
+
+
+\subsection{Interfaces and \upipelines}
 \label{sec:pipelines}
-\uarch provides two types of logical pipeline, Micro and Orchestration, shown in Figure \ref{fig:msa-pipelines}
-% \uarch's logical externs can be instantiated and used within control blocks of the \uarch pipelines.
-Micro pipeline comprises of a Parser, a Micro control and a Deparser block.
-\uarch does not allow conditional statements in deparser blocks of its pipelines.
-For each pipeline type, it exposes one or more interface types.
-Each interface type comprises of a set of declarations for programmable blocks and runtime signature.
+\uarch provides three interface types, \texttt{Unicast}, 
+\texttt{Multicast} and \texttt{Orchestration}.
+Each type provides distinct run-time behavior and 
+declarations of processing-blocks (\cref{fig:msa-interfaces}).
+The processing-blocks in an interface type is modelled by a logical 
+pipeline type, Micro or Orchestration, (\cref{fig:msa-pipelines}).
 \begin{figure}[ht]
     \centering
     \begin{subfigure}{0.59\linewidth}
         \centering
-        \includegraphics[trim=0 482 692 0, clip,scale=0.45]{msa-pipeline}
+        \includegraphics[trim=0 482 692 0, 
+clip,scale=0.45]{msa-pipeline}
         \caption{Micro}
 %         \label{subfig:micro}
     \end{subfigure}\vline
     \begin{subfigure}{0.41\linewidth}
         \centering
-        \includegraphics[trim=0 480 805 0,clip,scale=0.45]{micro-orchestration-pipeline}
+        \includegraphics[trim=0 480 805 
+0,clip,scale=0.45]{micro-orchestration-pipeline}
         \caption{Orchestration}
 %         \label{subfig:orchestration}
     \end{subfigure}
 \caption{\uarch Pipelines}
 \label{fig:msa-pipelines}
+\begin{lstlisting}[frame=none]
+Unicast<H,M,I,O,IO>
+  (pkt p, inout sm_t sm, es_t es, in I i_param, 
+   out O o_param, inout IO io_param) // Runtime Params
+  {Par<H,M,I,O> p, Con<H,M,I,O,IO> c, Dep<H> d}; 
+  // Programmable Blocks
+Multicast<H,M,I,O>
+  (pkt p, in sm_t sm, es_t es, in I i_param, out_buf<O> ob)
+  {Par<H,M,I> p, Con<H,M,I,O> c, Dep<H> d}; 
+Orchestration<I,O>
+  (in_buf<I> ib, out_buf<O> ob)
+  {Con<I,O> c};
+\end{lstlisting}
+\caption{\uarch Interfaces}
+\label{fig:msa-interfaces}
 \end{figure}
-Programmers can provide implementations of the interface types to create user-defined P4 package types.
-To implement an interface type, programmers need to implement all the programmable blocks of the interface type.
-Programmers can instantiate variable of user-defined package types and invoke the instances using built-in  \texttt{apply} method similar to control blocks.
-The \texttt{apply} method of package instance can be called by supplying arguments for run-time parameters of the interface implemented by the package type.
 
-Every incoming packet is parsed and validated by the parser, if parser terminates in \texttt{accept} state, then execution control is transferred to micro control block.
-If the execution control reaches till the end of the micro control block, packet is processed by the deparser block.
-Orchestration pipeline has only a control block, named orchestration.
+\hse{ 
+TODO: Why Orchestration and Micro.\\
+Why 3 interfaces? \\
+Their Apply calls \\
+Micro pipeline models a sequence of processing blocks for 
+a packet, where as Orchestration pipeline models only a control 
+block. These distinctions are made to manage the complexity of 
+\ucomp, but note that }
+
+% \uarch allows programmers to write multiple implementations of 
+% the same interface type to define multiple \upackages with 
+% required run-time behaviors.
+% Micro pipeline comprises of a parser, a control and a deparser 
+% block.\uarch does not allow conditional statements in deparser 
+% blocks of its % pipelines.
+% For each pipeline type, it exposes one or more interface types.
+% Each interface type comprises of a set of declarations for 
+% programmable blocks and runtime signature.
+% Programmers can provide implementations of the interface types 
+% to create user-defined P4 package types.
+% To implement an interface type, programmers need to implement 
+% all the programmable blocks of the interface type.
+% Programmers can instantiate variable of user-defined package 
+% types and invoke the instances using built-in  \texttt{apply} 
+% method similar to control blocks.
+% The \texttt{apply} method of package instance can be called by 
+% supplying arguments for run-time parameters of the interface 
+% implemented by the package type.
+% Every incoming packet is parsed and validated by the parser, if 
+% parser terminates in \texttt{accept} state, then execution 
+% control is transferred to micro control block.
+% If the execution control reaches till the end of the micro 
+% control block, packet is processed by the deparser block.
+% Orchestration pipeline has only a control block, named 
+% orchestration.
+% Programmers can implement programmable blocks of Micro pipeline 
+% to create custom package types having runtime signature same as 
+% unicast 
+% or multicast interface.
+% Similarly, Orchestration interface is associated with 
+% Orchestration pipeline.
+
+\cref{fig:micro-switch-architecture} shows declarations of types 
+(\texttt{pkt}, \texttt{sm\_t}, \texttt{es\_t}, \texttt{in\_buf} 
+and \texttt{out\_buf}) used in the above mentioned interfaces and 
+some other important constructs.
+
+
 \begin{figure*}
 \begin{minipage}[t]{.38\textwidth}
 \begin{lstlisting}[frame=none]
@@ -768,7 +832,7 @@ extern out_buf<O> {
 extern mc_buf<H, O> {
   enqueue(pkt, in H, in sm_t, es_t, in O);
 }
-extern void recirculate();
+extern void recirculate<D>(in D data);
 \end{lstlisting}
 \end{minipage}
 \caption{Declarations in Micro-Switch Architecture}
@@ -777,66 +841,70 @@ extern void recirculate();
 
 
 
-\uarch declares threes interface types, \texttt{Unicast}, \texttt{Multicast} and \texttt{Orchestration}.
-Programmers can implement programmable blocks of Micro pipeline to create custom package types having runtime signature same as unicast or multicast interface.
-\begin{lstlisting}[frame=none]
-Unicast<H,M,I,O,IO>
-  (pkt p, inout sm_t sm, es_t es, in I i_param, out O o_param, inout IO io_param) // Runtime Params
-  {Par<H,M,I,O> p, Con<H,M,I,O,IO> c, Dep<H> d}; // Programmable Blocks
-Multicast<H,M,I,O>
-  (pkt p, in sm_t sm, es_t es, in I i_param, out_buf<O> ob)
-  {Par<H,M,I> p, Con<H,M,I,O> c, Dep<H> d}; 
-Orchestration<I,O>
-  (in_buf<I> ib, out_buf<O> ob)
-  {Con<I,O> c};
-\end{lstlisting}
-Similarly, Orchestration interface is associated with Orchestration pipeline.
-Figure \ref{fig:micro-switch-architecture} shows declarations of types (\texttt{pkt}, \texttt{sm\_t}, \texttt{es\_t}, \texttt{in\_buf} and \texttt{out\_buf}) used in the above mentioned interfaces and some other important constructs.
-\hs{TODO: behavior of apply method call of each interface}
-% The \texttt{pkt} is an extern type representing packet. 
-% The \texttt{sm\_t} is struct type containing intrinsic metadata (e.g., in\_port, pkt\_len etc.,).
-% The \texttt{es\_t} extern represent intrinsic metadata related to output port of the packet in the pipeline along with queuing related metadata.
-% \texttt{in\_buf} and \texttt{out\_buf} externs represent logical input and output buffer of \uswitch packet-processing model (Figure \ref{fig:mp4-packet-processing-model}).
-Next, we give overview of logical externs defined in \uarch along with their example usage.
-
-% It defines standard intrinsic metadata as \emph{sm\_t} as a struct type.
-% The fields of this struct provide basic information populated by the target e.g., \emph{packet\_length}.
-
-% Some fields are not mutable, however \uarch allows to declare instances of the struct and perform assignment operation between two instances to create copies.
-
-
 \subsection{Logical Externs}
 \label{sec:logical-externs}
 
 \paragraph{Packet Extern.}
-\uarch models packets using an extern object, \texttt{pkt}, declared in \uarch (Figure \ref{fig:micro-switch-architecture}.
-The \texttt{pkt} extern can be instantiated inside control blocks of only orchestration pipelines.
-\ucomp mandates to initialize \texttt{pkt} instances in the control block using its \texttt{copy\_from} method.
-The \texttt{pkt} extern object contains \texttt{copy\_from} having a parameter of its own type.
-The \texttt{copy\_from} method initializes its calling instance with content of \texttt{pa} without modifying the argument.
-\uswitch considers this method as a compile-time known packet replication, whereas multicast as a runtime packet-replication.
-\uarch provides two externs objects, \texttt{extractor} and \texttt{emitter}, to facilitate data extraction from and insertion into packets.
-The \texttt{extractor} and \texttt{emitter} externs can not be instantiated, their instances are provided by the architecture as parameters in parser and deparser declarations of Micro pipeline programmable blocks. 
+To model a packet as a part of an element of the buffers in 
+\uswitch's programming model (\cref{fig:uswitch}), \uarch declares an 
+extern object, \texttt{pkt} (\cref{fig:micro-switch-architecture}.
+The \texttt{pkt} instance, in parameters of every processing-block, 
+is 
+supplied by \uswitch.
+Also, \uswitch allows to create compile-time copies of packets 
+by declaring \texttt{pkt} instances and initializing them using the 
+\texttt{copy\_from} method. \hse{..in implementation of the control 
+block of only the orchestration pipeline}
+
+% The \texttt{copy\_from} method initializes its caller instance with 
+% content of \texttt{pa} without modifying the argument.
+% \uswitch considers this method as a compile-time known packet 
+% replication, whereas multicast as a runtime packet-replication.
+To extract and insert data in \texttt{pkt}, \uarch provides two 
+externs objects, \texttt{extractor} and \texttt{emitter}.
+The \texttt{extractor} and \texttt{emitter} externs can not be 
+instantiated, their instances are provided by the \uswitch as 
+parameters in parser and deparser declarations of \texttt{Unicast} 
+and \texttt{Multicast} interfaces. 
 
 \paragraph{Correlated Intrinsic Metadata.}
-\uarch defines intrinsic metadata for the logical target \uswitch.
-For every real-target architecture , \ucomp maintains mapping of its logical intrinsic metadata with the metadata of the architecture.
-This mapping is used for transforming \uprograms to a given architecture-specific code.
-Many intrinsic per-packet metadata provided by architectures of real-target devices are correlated.
-For example, many real-target devices allow to measure every packet's queuing latency through the device.
-The timestamps required to compute queuing latency can be measured only after the packet's out port is finalized and packet is enqueued in appropriate queue.
-\uarch abstracts away correlated intrinsic metadata using stateful logical externs.
-It captures dependency among correlated intrinsic metadata using stateful extern objects.
-It declares \texttt{es\_t} extern object with methods to manipulate and access correlated intrinsic metadata.
-For example, \texttt{set\_out\_port} and \texttt{get\_out\_port} allow, respectively, to set and get output port for the packet.
-In addition, \uarch declares an enumerator, called \texttt{meta\_t}.
-Each value in the enumerator associated with a immutable intrinsic metadata populated by only target for every packet (e.g., \texttt{IN\_TIMESTAMP}, \texttt{OUT\_TIMESTAMP} etc).
-The \texttt{es\_t} extern declares a two-parameters method, \texttt{get\_value}, that allows to read values populated by the target.
-The first parameter with \texttt{in} direction is of \texttt{meta\_t} type indicating a particular metadata field.
-The second parameter with \texttt{out} direction provides value of the field.
+Due to requirement from network monitoring and debugging applications,
+architectures of real targets usually provide intrinsic per-packet 
+metadata that are correlated. e.g., to measure every packet's queuing 
+latency through the device, the timestamps required to compute 
+queuing latency can be measured only after the packet's out port is 
+finalized and packet is enqueued in appropriate queue.
 
-% \ucomp allows repeated usage of the extern's functions in the single control block of \uarch pipelines.
-% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any possible execution control path, \ucomp raises a compile-time error.
+To capture such dependency among intrinsic metadata, \uarch provides 
+a stateful extern, \texttt{es\_t}. The extern exposes methods to 
+access correlated intrinsic metadata. In addition, \uarch declares an 
+enumerator, called \texttt{meta\_t}. Each value in the enumerator 
+associated with a immutable intrinsic metadata populated only by the 
+target for every packet (e.g., \texttt{IN\_TIMESTAMP}, 
+\texttt{OUT\_TIMESTAMP} etc). The \texttt{es\_t} extern declares a 
+method (\texttt{get\_value}), parameterized on the enum, that allows 
+to read value, populated by the target, for every such field.
+
+% For example \texttt{set\_out\_port} and \texttt{get\_out\_port} 
+% allow, respectively, sets and gets output port for the packet.
+% \uarch defines intrinsic metadata for the logical target \uswitch.
+% For every real-target architecture , \ucomp maintains mapping of 
+its 
+% logical intrinsic metadata with the metadata of the architecture.
+% This mapping is used for transforming \uprograms to a given 
+% architecture-specific code.
+% 
+% 
+% 
+%  The first parameter with \texttt{in} direction is of 
+% \texttt{meta\_t} type indicating a particular metadata field. The 
+% second parameter with \texttt{out} direction provides value of the 
+% field.
+% \ucomp allows repeated usage of the extern's functions in the 
+single 
+% control block of \uarch pipelines.
+% If \emph{get\_value} occurs before \emph{set\_egress\_port} on any 
+% possible execution control path, \ucomp raises a compile-time error.
 
 
 
@@ -844,7 +912,8 @@ The second parameter with \texttt{out} direction provides value of the field.
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
 /* router.p4 */
-// package type declaration of !{\color{commentcolor}{\uprograms for protocols}}! 
+// package type declaration of !{\color{commentcolor}{\uprograms for 
+protocols}}! 
 !\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, 
     out bit<16> nh_id);
 !\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
@@ -853,7 +922,8 @@ The second parameter with \texttt{out} direction provides value of the field.
 parser P(extractor ex, pkt p, out empty_ht h, inout data_t d) {
   state start { transition accept; }
 }
-control C(pkt p, inout empty_ht h, inout sm_t sm, es_t e, !\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!) {
+control C(pkt p, inout empty_ht h, inout sm_t sm, es_t e, 
+!\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!) {
   apply {
     switch (!\colorbox{mygray}{type}!) {
       0x0800:!\colorbox{mygray}{ipv4\_i.apply(p, sm, e, nh\_id);}!
@@ -866,8 +936,10 @@ control D(emitter em, pkt p, in empty_ht h) {
 }
 !{\subcaption[]{router \uprogram}\label{subfig:router}}!
 /* main.p4 */
-!\colorbox{mygray}{router}!(pkt p, inout sm_t sm, es_t es, !\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!);
-\end{lstlisting}% !\colorbox{mygray}{mpls}!(pkt p, inout sm_t sm, es_t es);
+!\colorbox{mygray}{router}!(pkt p, inout sm_t sm, es_t es, 
+!\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!);
+\end{lstlisting}% !\colorbox{mygray}{mpls}!(pkt p, inout sm_t sm, es_t 
+es);
 \end{minipage}\hspace{-4pt}\vline
 \hfill\begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
@@ -888,7 +960,8 @@ control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
     actions = { forward; drop; }
   }
   apply {
-    !\colorbox{mygray}{route.apply(p, sm, es, nh\_id, h.eth.etherType);}!
+    !\colorbox{mygray}{route.apply(p, sm, es, nh\_id, 
+h.eth.etherType);}!
     forward_tbl.apply(); 
   }
 }
@@ -898,37 +971,54 @@ control D(emitter em, pkt p, in hdr_t h) {
 ModularRouter(P, C, D) main;
 \end{lstlisting}
 % 0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
-\subcaption[]{ModularRouter \uprogram with main instance}\label{subfig:router-main}
+\subcaption[]{ModularRouter \uprogram with main 
+instance}\label{subfig:router-main}
 \end{minipage}
 \caption[]{Modular Router using \uarch \footnotemark}
 \label{fig:modular-router}
 \end{figure*}
-\footnotetext{For brevity, we have skipped the unused parameters in parser, control blocks and package type declarations of \uprograms.}
+\footnotetext{For brevity, we have skipped the unused parameters in 
+parser, control blocks and \upackage type declarations of 
+\uprograms.}
+
+
+% We illustrate modular programming and composition using the logical 
+% constructs introduced till now.
 
 \paragraph{Example: Modular Router Using \texttt{Unicast} interface.}
-The code snippet in (Figure \ref{subfig:router}) defines \texttt{router} as a package by implementing blocks of the \texttt{Unicast} interface and specializing its generic runtime parameters.\footnotemark[\value{footnote}]
-According to the runtime signature of \texttt{router} package, its \texttt{apply} method call expects arguments for \texttt{nh\_id} and \texttt{type} parameter in addition of packet and intrinsic metadata.
-Such user-define parameters allows to pass data across packages and provides great flexibility for composition.
-Similar to \texttt{router} package, packages for \texttt{ipv4} and \texttt{ipv6} protocols are only declared.
-The \texttt{ModularRouter} program in Figure \ref{subfig:router-main}, parses the ethernet header and invokes the instance \texttt{route} of \texttt{router}, shown with highlighted code.
-The \texttt{route.apply} method call is supplied with the partial packet represent by the instance \texttt{p} of \texttt{pkt}, not containing ehternet header.
-The \texttt{router} package uses its \texttt{type} parameter to invoke an instance appropriate routing protocol (ipv6 or ipv4) package.
-As a result, it populates \texttt{nh\_id} parameter passed as \texttt{out} argument.
+\cref{subfig:router} shows code snippet of a \upackage, 
+\texttt{router}, implementing the \texttt{Unicast} interface type 
+along with the declarations of \upackages \texttt{ipv6} and 
+\texttt{ipv4}.\footnotemark[\value{footnote}] In 
+\texttt{router.p4}, \texttt{ipv4} and \texttt{ipv6}, each declare 
+a user-defined parameter, \texttt{nh\_id}, as a part of run-time 
+parameters with packet and intrinsic metadata. The 
+\texttt{router} (in \texttt{main.p4}) declares an additional 
+parameter, \texttt{type}. Such user-define parameters allow to pass 
+data across \upackages, providing great flexibility for composition.
+
+The \texttt{ModularRouter} \uprogram in 
+\cref{subfig:router-main}, parses the ethernet header and invokes 
+(highlighted code) the instance \texttt{route} by calling 
+\texttt{apply} method. The method call is supplied with the partial 
+packet `\texttt{p}', without ehternet header. The \texttt{router} 
+package uses its \texttt{type} parameter to invoke an instance of 
+appropriate routing protocol package. As a result, it populates 
+\texttt{nh\_id} parameter passed as an \texttt{out} argument.
 
 
 
 \paragraph{Multicast Extern.}
-% \label{sec:multicast}
-\ulang allows programmers to configure packet replication at run-time using a multicast extern , \texttt{mc\_engine}, declared in \uarch.
-The \texttt{mc\_engine} can be instantiated inside control blocks of Micro pipelines implementing\texttt{Multicast} interface (Figure \ref{fig:multicast-example}).
-The control block of \texttt{Multicast} interface provides \texttt{mc\_buf} as one of the parameters to store copies of parsed headers, unparsed packet, intrinsic metadata and argument data related to the packet.
-Programmers can use \texttt{set\_mc\_group} method in actions or apply blocks to set a replication group for the packet.
-To create copies of the packet, programmers can invoke the two-arguments \texttt{apply} method which is analogous to fork system call in C. 
-The first argument provides an instance of \texttt{es\_t} with out port already set for the replica of the packet.
-The second argument having \texttt{out} direction provides packet instance id to identify the replica.
-All the reachable program statements from the method call statement are executed by every replica.
+To avoid compromising expressiveness of \uprograms, \uswitch models 
+packet replication at run-time using an extern, \texttt{mc\_engine}, 
+declared in \uarch. The \texttt{mc\_engine} can be instantiated 
+inside 
+the control blocks while implementing the \texttt{Multicast} 
+interface 
+(shown below).
 \begin{lstlisting}[frame=none, escapechar=!]
-control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
+control mc(pkt p, hdr_t h, sm_t s, es_t e, 
+!\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
   !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
   !\colorbox{mygray}{out\_t oa;}! // some out args
   action replicate(GroupId_t gid) {
@@ -946,26 +1036,64 @@ control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, ou
   }
 }
 \end{lstlisting}
-The \texttt{mc\_engine} has two more methods, \texttt{set\_buf} and four-arguments \texttt{apply}, to facilitate invocation of callees with multicast interface.
-For example, had \texttt{ipv4} and \texttt{ipv6} implemented using multicast interface, the \texttt{forward} table in the \texttt{Router} \uprogram have to be applied on all the copies of partial packet.
-The caller (\texttt{Router}) can cascade multicast processing on partial packets.
-It can $(1)$ store the partial copies, generated by the callee, into an instance of \texttt{mc\_engine} using \texttt{set\_buf} and $(2)$ invoke the apply method to process each copy using subsequent statments). 
+The control block of \texttt{Multicast} provides 
+\texttt{mc\_buf} as one of the parameters to store copies of parsed 
+headers, unparsed packet, intrinsic metadata and argument data 
+related 
+to the packet. 
+% Programmers can use \texttt{set\_mc\_group} method in 
+% actions or apply blocks to set a replication group for the packet.
+To create copies of the packet, programmers can invoke the 
+two-arguments \texttt{apply} method. Logically, at run-time the call 
+spawns number of \upipelines, each processing one replica, according 
+to CP configurations. In every \upipeline, all the reachable 
+statements from the call are executed by the replica. The two 
+parameters passes required information (\texttt{es\_t} and 
+\texttt{PktInstId\_t}) for each replica.
+% first argument provides an instance of 
+% \texttt{es\_t} having out port already set for the replica of the 
+% packet.
+% The second argument having \texttt{out} direction provides packet 
+% instance id to identify the replica.
+Due to space constraint, we skip the detail description of two more 
+methods, \texttt{set\_buf} and four-arguments \texttt{apply}, which 
+facilitate nested invocation of \upackages with multicast interface. 
 
-\paragraph{Logical Buffers.}
-\uarch declares three types of extern objects, \texttt{in\_buf}, \texttt{out\_buf}, \texttt{mc\_buf}.
-Among the three buffer externs, programmers can use \texttt{in\_buf} and \texttt{out\_buf} in the control block of orchestration pipeline to invoke other programs.
-The \texttt{in\_buf} extern has \texttt{dequeue} method that is used only by the logical device \uswitch. 
-However, programmers can instantiate the extern and use its instances to pass as arguments to callee \uprograms.
-The \texttt{out\_buf} extern has methods, \texttt{enqueue} and \texttt{merge}, to store packets processed by callees.
-In addition, the extern provides \texttt{to\_in\_buf} to move the elements of the caller instance to the instance of \texttt{in\_buf} provided in the argument.
-The \texttt{mc\_buf} extern allows to store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
-It is designed to  be used along with \texttt{mc\_engine} to express multicast packet-processing, where as \texttt{in\_buf} and \texttt{out\_buf} are facilitates packet-processing model of \uswitch.
-An example usage of \texttt{enqueue} method of \texttt{out\_buf} is shown in Figure \ref{fig:multi-packet-processing}.
-\hse{TODO: text for Figure \ref{fig:multi-packet-processing} or \ref{fig:multi-packet-processing-II}}
+% For example, had \texttt{ipv4} and 
+% \texttt{ipv6} implemented using multicast interface, the 
+% \texttt{forward} table in the \texttt{Router} \uprogram have to be 
+% applied on all the copies of partial packet.
+% The caller (\texttt{Router}) can cascade multicast processing on 
+% partial packets. It can $(1)$ store the partial copies, generated 
+% by 
+% the callee, into an instance of \texttt{mc\_engine} using 
+% \texttt{set\_buf} and $(2)$ invoke the apply method to process each 
+% copy using subsequent statments). 
+
+\paragraph{Input/Output Buffers.}
+To support programming model for \uswitch, \uarch declares 
+\texttt{in\_buf} and \texttt{out\_buf} buffer externs. Programmers
+can use \texttt{in\_buf} and \texttt{out\_buf} to invoke other 
+programs in implementation of the control block of the
+\texttt{Orchestration} interface. The \texttt{in\_buf} extern has 
+\texttt{dequeue} method that is used only by the \uswitch. However, 
+programmers can instantiate the extern and use its instances to pass 
+as arguments to other \upackages.
+The \texttt{out\_buf} extern has methods, \texttt{enqueue} and 
+\texttt{merge}, to store packets processed by callee \upackages.
+In addition, it provides \texttt{to\_in\_buf} to move the elements of 
+the caller instance to the instance of \texttt{in\_buf} provided in 
+the argument. The \texttt{mc\_buf} extern allows to store parsed 
+headers, unlike \texttt{in\_buf} and \texttt{out\_buf} externs.
+It is designed to  be used along with \texttt{mc\_engine} to express 
+multicast packet-processing, where as \texttt{in\_buf} and 
+\texttt{out\_buf} are designed for generic composition interface.
+
 
 % \begin{figure}[htb]
 % \begin{lstlisting}[frame=none, escapechar=!]
-% control mc(pkt p, hdr_t h, sm_t s, es_t e, !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
+% control mc(pkt p, hdr_t h, sm_t s, es_t e, 
+% !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
 %   !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
 %   !\colorbox{mygray}{out\_t oa;}! // some out args
 %   action replicate(GroupId_t gid) {
