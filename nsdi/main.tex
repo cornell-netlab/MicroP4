@@ -661,86 +661,67 @@ constraints posed by hardware details.}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Micro Switch Architecture}
 \label{sec:architecture}
-In this section, we explain \uarch's logical constructs enabling
-programming model (\cref{fig:uswitch}) of \uswitch. We designed 
-the constructs that are amenable to \ucomp translations for 
-portability without compromising on expressiveness of \uprograms. In 
-\cref{sec:pipelines}, we explain interfaces and \upipelines
-programmers require to implement in order to declare \upackages. 
-\cref{sec:pipelines} explains a set of logical externs, which can be 
-used to express packet-processing functionality in \upackages.
+In this section, we explain \uarch's logical constructs enabling the 
+programming model (\cref{fig:uswitch}) for the \uswitch. We designed 
+the constructs that are amenable to the \ucomp translations for 
+portability without compromising on expressiveness. In 
+\cref{sec:pipelines}, we explain \upipelines and interfaces 
+programmers require to implement in order to declare \uprogram types. 
+\cref{sec:logical-externs} explains a set of logical externs, which 
+can be used to express packet-processing functionality in \uprograms.
 
 
-\subsection{Interfaces and \upipelines}
+\subsection{\upipelines and Interfaces}
 \label{sec:pipelines}
-\deleted{
-We explain composition requirements before introducing 
-interfaces. To 
-enable seamless composition, every \uprogram should be enable invoke 
-another \uprogram with a uniform interface. A a caller halts its 
-execution for the packet, puts the packet and the data related to it 
-into the callee's input buffer, callee executes and puts all the 
-resultant packets into its output buffer. The caller fetches 
-proceesed packets from the callee's output buffer and continues 
-execution.} 
+\uarch allows to program its dataplane using composition of two 
+types of \upipelines, \emph{Simple} and \emph{Compound}. The simple 
+type provides a basic model for processing, in which a single packet 
+is processed by parser followed by match-action control and 
+finally, deparser. From a single packet, a simple type of \upipeline 
+may generate multiple packets that are individually processed 
+in isolation of others by the same \upipeline, whereas the compound 
+type of \upipelines can process multiple copies of a packet in the 
+same context with different instances of \upipelines 
+(\cref{fig:pipe-types}).
 
-\hs{
-Micro-Pipe ---> one-to-many similar to orchestration-pipe-control\\
-Micro-Pipe can be thought of as it allows replicate entire pipeline 
- (code replication). every instance of the pipeline has the same code.
- \\
-orch-> allows to replicates packets only, and allows to execute 
-different \upipelines on each copy.
-}
+\uarch exposes three interfaces, \texttt{Unicast}, \texttt{Multicast} 
+and \texttt{Orchestration}, to express composition of its pipelines. 
+Every interface is associated with a type of \upipelines. To 
+implement an interface programmers need to specify behaviour for all 
+the processing-blocks of the associated type of \upipelines. By 
+implementing an interface, programmer can declare a \uprogram having 
+run-time behavior with an interface for composition. The distinct 
+interface types provides explicit information about behavior of 
+\uprograms to users. \hse{about 'clean' interface, can we 
+use clean word?}
 
-\uarch provides three interface types, \texttt{Unicast}, 
-\texttt{Multicast} and \texttt{Orchestration}.
-Each type provides distinct run-time behavior and 
-declarations of processing-blocks (\cref{fig:msa-interfaces}).
-The processing-blocks in an interface type is modelled by a logical 
-pipeline type, Micro or Orchestration, (\cref{fig:msa-pipelines}).
+To comply with the model shown in \cref{fig:uswitch}, 
+\uswitch implicitly performs few operations while invoking 
+\uprograms. \uswitch fetches an element from logical input buffer 
+for the \uprograms with \texttt{Unicast} or \texttt{Multicast} 
+interface but for the ones with \texttt{Orchestration}, from the 
+input buffer in their run-time parameters. \uswitch performs 
+necessary queuing operation for the \uprograms with \texttt{Unicast} 
+interface.
+
+
+
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\linewidth]{upipe-types}
   \caption{Types of \uarch pipelines}
   \label{fig:pipe-types}
 \end{figure}
-
-\begin{figure}[ht]
-    \centering
-    \begin{subfigure}{0.59\linewidth}
-        \centering
-        \includegraphics[trim=0 482 692 0, 
-clip,scale=0.45]{msa-pipeline}
-        \caption{Micro}
-%         \label{subfig:micro}
-    \end{subfigure}\vline
-    \begin{subfigure}{0.41\linewidth}
-        \centering
-        \includegraphics[trim=0 480 805 
-0,clip,scale=0.45]{micro-orchestration-pipeline}
-        \caption{Orchestration}
-%         \label{subfig:orchestration}
-    \end{subfigure}
-\caption{\uarch Pipelines}
-\label{fig:msa-pipelines}
 \begin{lstlisting}[frame=none]
-Unicast<H,M,I,O,IO> (pkt p, inout sm_t sm, es_t es, in I i_param, out O o_param, inout IO io_param) {}
-Multicast<H,M,I,O>(pkt p, in sm_t sm, es_t es, in I i_param, out_buf<O> ob)
-Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {}
+Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, 
+  in I i_param, out O o_param, inout IO io_param);
+Multicast<H,M,I,O> (pkt p, in sm_t sm, es_t es, 
+  in I i_param, out_buf<O> ob);
+Orchestration<I,O> (in_buf<I> ib, out_buf<O> ob);
 \end{lstlisting}
-\caption{\uarch Interfaces with run-time signatures}
-\label{fig:msa-interfaces}
-\end{figure}
 
-\hse{ 
-TODO: Why Orchestration and Micro.\\
-Why 3 interfaces? \\
-Their Apply calls \\
-Micro pipeline models a sequence of processing blocks for 
-a packet, where as Orchestration pipeline models only a control 
-block. These distinctions are made to manage the complexity of 
-\ucomp, but note that }
+
+
 
 % \uarch allows programmers to write multiple implementations of 
 % the same interface type to define multiple \upackages with 
@@ -810,6 +791,7 @@ enum meta_t {
 \end{minipage}\vline
 \hfill\begin{minipage}[t]{.35\textwidth}
 \begin{lstlisting}[frame=none]
+/* Multicast  Extern object*/
 extern mc_engine {
   mc_engine();
   void set_mc_group(GroupId_t gid);
@@ -865,12 +847,11 @@ To model a packet as a part of an element of the buffers in
 \uswitch's programming model (\cref{fig:uswitch}), \uarch declares an 
 extern object, \texttt{pkt} (\cref{fig:micro-switch-architecture}.
 The \texttt{pkt} instance, in parameters of every processing-block, 
-is 
-supplied by \uswitch.
-Also, \uswitch allows to create compile-time copies of packets 
-by declaring \texttt{pkt} instances and initializing them using the 
-\texttt{copy\_from} method. \hse{..in implementation of the control 
-block of only the orchestration pipeline}
+is  supplied by \uswitch. Also, \uswitch allows to create 
+compile-time copies of packets by declaring \texttt{pkt} instances 
+and initializing them using the \texttt{copy\_from} method in 
+implementation of the control block of only the orchestration 
+pipeline.
 
 % The \texttt{copy\_from} method initializes its caller instance with 
 % content of \texttt{pa} without modifying the argument.
@@ -1142,46 +1123,65 @@ facilitate nested invocation of \upackages with multicast interface.
 \section{MicroP4 Compiler (\ucomp)}
 \label{sec:compiler}
 
-The constructs of \uarch and programming model of the 
-logical target \uswitch, together, allow writing modular \uprograms  
-that are specific to the logical target. So, to transform these 
-programs into a single dataplane prorgam for a given target, 
-we design \ucomp. It composes all the \uprogram dependent on by the 
-\texttt{main} porgram and translates the composed program 
-for a specified target architecture. We explain its design and key 
-transformations that enables composition and complements \uarch and 
-\uswitch to realizes portable and modular programming.
+The logical constructs of the \uarch and the programming model 
+for the \uswitch, together, allow writing modular \uprograms that are 
+\uswitch-specific. So, to transform \uprograms into a single prorgam 
+for a given target, we develop \ucomp. In this section, we explain 
+its design and key transformations that enables composition and 
+complements \uarch and \uswitch to realize portable and modular 
+programming. 
 
-\hse{CONT}
-
+\subsection{Design}
+\ucomp extends P4C, thereby follows P4C's modular design having 
+\emph{Frontend, Midend and Backend}. 
+\tightparbf{Frontend:} generates \ucomp specific IR, \ucomp-IR. It 
+performs basic checks (e.g., Type Checking) and simple IR 
+transformation. It generates reusable libraries by serializing the 
+\ucomp-IR.
 \begin{figure}[tbh]
   \centering
   \includegraphics[width=\linewidth]{workflow}
   \caption{Workflow for building dataplanes in \ulang}
   \label{fig:workflow}
 \end{figure}
-\ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
-It synthesizes new parser and deparser for the main package.
-The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
-For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
-Programs may increase or decrease size of packets, therefore, the estimated size of byte-stack can be greater than extract-length.
-The synthesized deparser emits all valid one-byte headers from the byte-stack.
+\tightparbf{Midend} composes \uprograms by homogenizing their 
+processing-blocks. For that, it performs static analysis and 
+transforms the parsers-deparsers into match-action control blocks. 
+Also, in case of compile-time replication, it extracts 
+packet-processing code for every replica and prepares processing 
+schedule. The Midend passes are independent to target architectures, 
+focusing on composition. 
+\tightparbf{Backend} passes are specific to a target architecture. 
+They transform the \ucomp-IR, comprising only control blocks with 
+\uarch-specific constructs, to the target architecture-specific IR.
+It maps the control blocks to the ones declared by pipeline node of 
+the target while translating \uarch-specific constructs to the 
+target architecture-specific ones.
 
 
-We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
-\ucomp executes transformed parsers and deparsers in the match-action stages using the byte-stack.
-For each program, \ucomp creates metadata variables, called \texttt{field-variables} for the header fields used in the program's control block.
-The header fields are substituted with the metadata variables in control blocks of the program.
-\ucomp discards types and instances of the headers of each package.
-\ucomp synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
-\texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related \emph{valid} metadata variable.
-Execution of parsers in match-action stages copy values from the appropriate locations in the byte-stack to the variables.
-It also updates valid metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
 
+% \ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
+% It synthesizes new parser and deparser for the main package.
+% The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
+% For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
+% Programs may increase or decrease size of packets, therefore, the estimated size of byte-stack can be greater than extract-length.
+% The synthesized deparser emits all valid one-byte headers from the byte-stack.
+% 
 
-\hs{TODO: say Simple parser is a parser without stacks and variable-length header. 
-Section \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. Section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
-
+% We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
+% \ucomp executes transformed parsers and deparsers in the match-action stages using the byte-stack.
+% For each program, \ucomp creates metadata variables, called \texttt{field-variables} for the header fields used in the program's control block.
+% The header fields are substituted with the metadata variables in control blocks of the program.
+% \ucomp discards types and instances of the headers of each package.
+% \ucomp synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
+% \texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related \emph{valid} metadata variable.
+% Execution of parsers in match-action stages copy values from the appropriate locations in the byte-stack to the variables.
+% It also updates valid metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
+% 
+% 
+% \hs{TODO: say Simple parser is a parser without stacks and variable-length header. 
+% Section \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. Section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
+% 
 
 \subsection{Extract Length and Byte-Stack Size}
 \label{subsection:extract-length-and-byte-stack-size}
