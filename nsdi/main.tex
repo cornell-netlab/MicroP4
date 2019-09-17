@@ -37,57 +37,54 @@ lower-level architectures implemented by real target devices.
 Over the last decade, the synergistic development of packet-processing
 hardware and software has fundamentally changed how networks are built
 and operated. Hardware platforms such as
-RMT~\cite{bosshart2013forwarding} provide tremendous flexibility for
+RMT~\cite{bosshart2013forwarding} offer tremendous flexibility for
 customizing the forwarding plane without having to fabricate new
 chips, while languages such as P4~\cite{bosshart2014p4, p4lang} enable
-programmers to describe rich packet-processing functions in terms of
-high-level abstractions such as parsers and match-action tables.
+specifying rich packet-processing functions in terms of high-level
+abstractions such as parsers and match-action tables.
 
-In order to support different kinds of targets (e.g., software
-switches, ASICs, FPGAs, etc.), P4 allows programmable and
-fixed-function blocks to be arranged into different layouts as
-specified by an architecture declaration. For example, the Portable
-Switch Architecture (PSA)~\cite{psa} models a switch with a
-programmable parser, programmable ingress pipeline, fixed-function
-scheduler and queues, programmable egress pipeline, and programmable
-deparser (Figure \ref{subfig:psa-model}).  PSA programs supply P4 code
-for each programmable block.  P4 also allows to specify
-target-specific features and data as a part of the target's
-architecture declaration.  PSA programs can use features and data
-specific to the architecture in the code for programmable block.
-While this design allows the language to flexibly accommodate a wide
-range of targets, it also creates a tight coupling between programs
-and architectures, which makes it difficult to write programs in a
-compositional manner or reuse common code fragments in different
-programs.
+To support different kinds of targets (e.g., software switches, ASICs,
+FPGAs, etc.), P4 allows programmable and fixed-function blocks to be
+arranged into different layouts as specified by an architecture
+declaration. For example, the Portable Switch Architecture
+(PSA)~\cite{psa} models a switch with a programmable parser,
+programmable ingress pipeline, fixed-function scheduler and queues,
+programmable egress pipeline, and programmable deparser (Figure
+\ref{subfig:psa-model}). However, while this design allows the
+language to flexibly accommodate a wide range of targets, it also
+creates a tight coupling between programs and architectures, which
+makes it difficult to write programs in a compositional manner or
+reuse common code fragments in different programs.
 
 For example, \texttt{switch.p4}~\cite{switch.p4} handles several dozen
-different protocols and functions (e.g., L2 switching, L3 routing,
-tunneling, etc.,). But the code is written against a global collection
-of metadata and parsed headers. To use the code in \texttt{switch.p4}
-to implement an Ethernet switch, it would be necessary to detangle the
-L2-specific functionality from the extraneous code in the rest of the
-program. Without a detailed understanding of the overall structure of
-the top-level program, it is difficult or impossible to reuse code
-fragments at finer granularity.
+different protocols and functions (e.g., Ethernet switching, IPv4 and
+IPv6 routing, tunneling, etc.,). But the code is written against a
+global collection of metadata and parsed headers as well as standard
+metadata defined by the architecture. To use the code in
+\texttt{switch.p4} to implement a stand-alone Ethernet switch, it
+would be necessary to detangle the Ethernet-specific functionality
+from the extraneous code in the rest of the program. Without a
+detailed understanding of the overall structure of the top-level
+program, it is difficult or impossible to reuse code fragments at
+finer granularity.
 
 Consider a simple scenario with two code fragments, as shown in
-\cref{fig:l2.p4,fig:ipv4.p4}. The first code fragment, \texttt{l2},
-parses the ethernet header, and modifies the ethernet addresses using
-the next hop (\texttt{nh\_id}), which is supplied as an argument, and
-finally deparses the packet. The second code fragment, \texttt{ipv4},
-parses the IPv4 header, uses longest-prefix matching to determine the
-next hop, decrements the \texttt{ttl} field and, finally, deparses the
-packet.  Note that neither \texttt{ipv4} nor \texttt{l2} is a complete
-packet-processing program: the former does not generate a functionally
-correct packets, while the latter is parameterized on the next hop and
-so does not specify forwarding behavior. However, we could use
-\texttt{l2} with any other routing scheme (e.g., IPv6, MPLS, etc.) to
-obtain a valid program.
+\cref{fig:ether.p4,fig:ipv4.p4}. The first code fragment, \texttt{ether},
+parses the Ethernet header, and modifies the source and destination
+addresses using the next hop (\texttt{nh\_id}), which is supplied as
+an argument, and finally deparses the packet. The second code
+fragment, \texttt{ipv4}, parses the IPv4 header, uses longest-prefix
+matching to determine the next hop, decrements the \texttt{ttl} field
+and, finally, deparses the packet. Note that neither \texttt{ipv4} nor
+\texttt{ether} is a complete packet-processing program: the former does
+not generate a functionally correct packets, while the latter is
+parameterized on the next hop and so does not specify forwarding
+behavior. However, we could use \texttt{ether} with any other routing
+scheme (e.g., IPv6, MPLS, etc.) to obtain a valid program.
 
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none, escapechar=!]
-// l2.p4: parse and process only L2 header
+// ether.p4: parse and process only Ethernet header
 parser P(packet_in pin, out hdr_t ph) {
   state start { pin.extract(ph.eth); }
 }
@@ -110,7 +107,7 @@ control D(packet_out po, in hdr_t ph) {
 }
 \end{lstlisting}
 \caption{Ethernet Processing}
-\label{fig:l2.p4}
+\label{fig:ether.p4}
 \end{figure}
 
 \begin{figure}[ht]
@@ -339,9 +336,9 @@ expressed in different sub-languages and abstract machines, a P4
 program lacks a uniform or compatible interface between
 packet-processing modules. This prevents modules to be composed
 together to build larger programs. Going back to the earlier example,
-in \cref{fig:l2.p4,fig:ipv4.p4}, ideally we would like to execute the
+in \cref{fig:ether.p4,fig:ipv4.p4}, ideally we would like to execute the
 \texttt{ipv4} module (parser and control blocks) right before applying
-\texttt{forward\_tbl} in \texttt{l2}'s \texttt{Pipe} control block so
+\texttt{forward\_tbl} in \texttt{ether}'s \texttt{Pipe} control block so
 that \texttt{nh\_id} is available in \texttt{forward\_tbl}. But the
 existing P4 model does not support such composition.
 
@@ -394,13 +391,13 @@ significant rewrite.
 \tightpar{Modular:} Individual dataplane functionality for processing
 packets can be developed in an independent manner agnostic of the
 target as well as other dataplane functions. For example, one should
-be able to write modules for L2 and L3 processing in an independent
+be able to write modules for Etheernet and IPv4 processing in an independent
 manner.
 
 \tightpar{Composable:} Modules for individual dataplane functions can
 be composed together in custom ways to express complex dataplane
-processing. For example, in \cref{fig:l2.p4,fig:ipv4.p4}, one should
-be able to compose \texttt{ipv4} with \texttt{l2}, or replace
+processing. For example, in \cref{fig:ether.p4,fig:ipv4.p4}, one should
+be able to compose \texttt{ipv4} with \texttt{ether}, or replace
 \texttt{ipv4} with modules for IPv6, MPLS etc. as needed.
 
 
@@ -598,8 +595,8 @@ with \ulang and \ucomp in two stages:
   \item composing modules and compiling dataplane for a target.
 \end{enumerate*}
 Users write individual modules for specific processing---for
-example, \texttt{L2.\ulang} in \cref{fig:compile-module} performs only
-ethernet processing similar to \cref{fig:l2.p4}.
+example, \texttt{ether.\ulang} in \cref{fig:compile-module} performs only
+ethernet processing similar to \cref{fig:ether.p4}.
 \cref{fig:compile-module} shows the first stage of compiling where
 \ucomp compiles a module into \uarch-specific IR.  During this, \ucomp
 transforms parser and deparser blocks into match-action control. This
@@ -607,7 +604,7 @@ transformation unifies the abstract-machines for packet-processing,
 thus allowing seamless transfer of execution control within and across
 modules and enables composition. In the second phase, users compose
 the modules together to build a dataplane---e.g., in
-\cref{fig:compile-to-target}, \texttt{main.\ulang} composes L2 and L3
+\cref{fig:compile-to-target}, \texttt{main.\ulang} composes Ethernet and IPv4
 modules to build a modular router. Further, based on the specified
 target device, the compiler also generates the dataplane configuration
 specific to the device through a sequence of intermediate steps
@@ -1575,7 +1572,7 @@ interfaces for modules to exchange data. These can be used to compose
 built a modular router by composing together independent modules
 responsible for processing each layer. For example,
 \cref{fig:modular-router} shows how we compose modules for processing
-the L2 and L3 headers.
+the Ethernet and IPv4 headers.
 % Figure \ref{fig:incremental-development} shows an example of incremental development, which adds SRH processing to support SRv6 in the network.
 % \begin{figure}[!h]
 % \begin{subfigure}[b]{\linewidth}
