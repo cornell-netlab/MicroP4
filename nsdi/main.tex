@@ -674,24 +674,29 @@ expressiveness using two main constructs:
 \begin{enumerate*}[label=(\roman*)]
   \item \emph{\upipelines} and interfaces for writing \ulang programs
     (\cref{sec:pipelines}) and
-  \item \emph{logical externs} used to express special processing in a
-    target-agnostic manner (\cref{sec:logical-externs}).
+  \item \emph{logical externs} to express special processing of
+    packets in a target-agnostic manner (\cref{sec:logical-externs}).
 \end{enumerate*}
 
 
 \subsection{\upipelines and Interfaces}
 \label{sec:pipelines}
-\uarch allows to program its dataplane using composition of two 
-types of \upipelines, \emph{Simple} and \emph{Compound}. The simple 
-type provides a basic model for processing, in which a single packet 
-is processed by parser followed by match-action control and 
-finally, deparser. From a single packet, a simple type of \upipeline 
-may generate multiple packets that are individually processed 
-in isolation of others by the same \upipeline, whereas the compound 
-type of \upipelines can process multiple copies of a packet in the 
-same context with different instances of \upipelines 
-(\cref{fig:pipe-types}).
-
+\uarch models the dataplane as composed of two types of \upipelines:
+\emph{linear} and \emph{orchestration} as shown in
+\cref{fig:pipe-types}. A linear \upipeline models processing a single
+input packet through a linear set of stages: parser, match-action
+control, and deparser.  As output, it may generate multiple packets
+for a single input, but each packet is processed by the same code. In
+contrast, an orchestration \upipeline can process multiple copies of a
+packet in different user-defined ways. A combination of these
+\upipelines enables expressing a wide range of packet-processing
+behavior.
+\begin{figure}[!tbp]
+  \centering
+  \includegraphics[width=0.8\linewidth]{upipe-types}
+  \caption{Types of \uarch pipelines}
+  \label{fig:pipe-types}
+\end{figure}
 \uarch exposes three interfaces, \texttt{Unicast}, \texttt{Multicast} 
 and \texttt{Orchestration}, to express composition of its pipelines. 
 Every interface is associated with a type of \upipelines. To 
@@ -714,12 +719,7 @@ interface.
 
 
 
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{upipe-types}
-  \caption{Types of \uarch pipelines}
-  \label{fig:pipe-types}
-\end{figure}
+
 \begin{lstlisting}[frame=none]
 Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, 
   in I i_param, out O o_param, inout IO io_param);
