@@ -1144,21 +1144,57 @@ transformation. It generates reusable libraries by serializing the
   \caption{Workflow for building dataplanes in \ulang}
   \label{fig:workflow}
 \end{figure}
-\tightparbf{Midend} composes \uprograms by homogenizing their 
-processing-blocks. For that, it performs static analysis and 
-transforms the parsers-deparsers into match-action control blocks. 
-Also, in case of compile-time replication, it extracts 
-packet-processing code for every replica and prepares processing 
-schedule. The Midend passes are independent to target architectures, 
-focusing on composition. 
-\tightparbf{Backend} passes are specific to a target architecture. 
-They transform the \ucomp-IR, comprising only control blocks with 
-\uarch-specific constructs, to the target architecture-specific IR.
-While mapping the control blocks to the ones declared by pipeline 
-model of the target architecture, it translates \uarch-specific 
-logical constructs to the target specific ones.
+\tightparbf{Midend} passes perform transformations for two goals. \par
+\textbf{Goal 1 :} Compose \uprograms by homogenizing their 
+processing-blocks. For that, it first performs static analysis to 
+compute \texttt{operational-region} of the \uprogram on packets' 
+byte-streams.
+Then, it synthesizes a stack of one byte header, called 
+\emph{byte-stack}, large enough to hold operational region. 
+Finally, considering this byte-stack as a packet it transforms the 
+parsers-deparsers into match-action control blocks. \par
+\textbf{Goal 2 :} In case of compile-time replication, extract 
+packet-processing code for every packet instance and prepares 
+processing schedule. The Midend passes are independent to target 
+architectures, focusing on composition. At the end of the midend 
+passes \ucomp-IR contains only control blocks having \uarch-specific 
+constructs. 
+\tightparbf{Backend} passes transform the \ucomp-IR to the IR of a 
+specified target architecture. While mapping the control blocks to 
+the ones exposed the target architecture, it translates 
+\uarch-specific logical constructs to the target specific 
+ones. Moreover, it synthesizes required parser and deparser blocks 
+for dataplane pipeline model of target architecture. The backend is a 
+target architecture-specific.
 
 
+
+\subsection{\ucomp Midend}
+We give a brief overview of the midend passes to achieve above 
+mentioned goals and then elaborate on only the key transformation 
+passes.
+
+\hs{Rearranging}
+1. reduction to parser without variable-length header and  header 
+stacks. and point to appendix.\\
+2. analysis: split the analysis. say that why maximum increase and 
+decrease in packet size are important metric. And say because of 
+emit call semantics we had to do this jargon.\\
+3. parser to MAT \\
+4. Deparser to MAT (may be not needed, can be 3-4 statements in 
+parser to MAT)
+5. Packet processing schedule: brief and point to appendix.
+% First, the midend replaces header stacks and variable-length header 
+% with multiple instances of headers, creating parsers in all the 
+% \uprogram without cycles and variable-length extraction.
+% Next, it performs static-analysis to midend determine two important 
+% metrics, $(1)$ the maximum number of bytes, called 
+% \emph{extract-length}, to be extracted to execute the composed 
+% \uprogram and $(2)$ the size of byte-stack required to hold the 
+% extracted bytes and any new header instance that may be inserted into 
+% the packet.
+% Third, it transforms (de)parser blocks into match-action control 
+% blocks.
 
 % \ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
 % It synthesizes new parser and deparser for the main package.
@@ -1183,10 +1219,15 @@ logical constructs to the target specific ones.
 % Section \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. Section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
 % 
 
-\subsection{Extract Length and Byte-Stack Size}
+\subsubsection{Extract Length and Byte-Stack Size}
 \label{subsection:extract-length-and-byte-stack-size}
-As \ulang allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
-\ucomp performs symbolic execution to evaluates extract-length and byte-stack size of every callee package in every control path in the CFG of the caller's control block.
+% As \ulang allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
+
+% We perform recursive analysis to extract-length and byte-stack size 
+% of a \uprogram. 
+\ucomp performs symbolic execution to compute extract-length and 
+byte-stack size of every callee \uprogram in every control path the 
+caller's control block.
 
 
 The symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph.
@@ -1255,7 +1296,7 @@ Finally, we define byte-stack size of a package $a$, $\mathcal{B}s_{a}$ (\ref{by
 For the example shown in Figure \ref{fig:sequential-callees}, the byte-stack size of the caller is 98, 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
 
 
-\subsection{Parser To Match-Action Table}
+\subsubsection{Parser To Match-Action Table}
 \label{subsection:parser-to-match-action-table}
 \begin{figure*}[!ht]
     \begin{subfigure}[b]{0.25\linewidth}
@@ -2125,16 +2166,17 @@ size 3.
 \ulang allows programmers to define variable-length header types, 
 however it imposes a constraint that their variable-length fields must 
 contain integer number of bytes at run-time.
-% \ucomp splits header type containing fixed and variable-length 
+\ucomp splits header type containing fixed and variable-length 
 fields into multiple types, where each type contains either 
 fixed-length fields or the variable-length field.
 \ucomp transforms every parser state with two-argument extract method 
 call, used to extract variable-length header, into a sub-parser.
 It splits the header type of the instance in the first argument into 
-multiple types, where each type contains either fixed-length fields or 
+multiple header types, where each type contains either fixed-length 
+fields or 
 the variable-length field.
 Every state in the sub-parser extracts a fixed-number of bytes from 
-the packet bit stream.
+the packet byte stream.
 The sub-parser contains a state having the second argument 
 (variableFieldSize) as the expression in its select statement.
 The select statement has case-list enumerating all possible values up 
