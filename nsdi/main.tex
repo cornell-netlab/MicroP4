@@ -69,27 +69,29 @@ program, it is difficult or impossible to reuse code fragments at
 finer granularity.
 
 Consider a simple scenario with two code fragments, as shown in
-\cref{fig:ether.p4,fig:ipv4.p4}. The first code fragment, \texttt{ether},
-parses the Ethernet header, and modifies the source and destination
-addresses using the next hop (\texttt{nh\_id}), which is supplied as
-an argument, and finally deparses the packet. The second code
-fragment, \texttt{ipv4}, parses the IPv4 header, uses longest-prefix
-matching to determine the next hop, decrements the \texttt{ttl} field
-and, finally, deparses the packet. Note that neither \texttt{ipv4} nor
-\texttt{ether} is a complete packet-processing program: the former does
-not generate a functionally correct packets, while the latter is
-parameterized on the next hop and so does not specify forwarding
-behavior. However, we could use \texttt{ether} with any other routing
-scheme (e.g., IPv6, MPLS, etc.) to obtain a valid program.
+\cref{fig:ether.p4,fig:ipv4.p4}. The first code fragment,
+\texttt{ether}, parses the Ethernet header, and modifies the source
+and destination addresses using the next hop (\texttt{h}), which is
+supplied as an argument, and finally deparses the packet. The second
+code fragment, \texttt{ipv4}, parses the IPv4 header, uses
+longest-prefix matching to determine the next hop, decrements the
+\texttt{ttl} field, and finally deparses the packet. Note that neither
+\texttt{ether} nor \texttt{ipv4} specifies a complete
+packet-processing program: the latter is parameterized on the next hop
+and so does not specify forwarding behavior, while the latter does not
+generate a valid packet---at least, not one that is well-formed
+according to the standard networking stacks implemented by end hosts.
+However, we could use \texttt{ether} with any routing scheme (e.g.,
+IPv6, MPLS, etc.) to obtain a complete program.
 
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none, escapechar=!]
-// ether.p4: parse and process only Ethernet header
+//ether.p4: parse and process Ethernet
 parser P(packet_in pin, out hdr_t ph) {
   state start { pin.extract(ph.eth); }
 }
-control Pipe(inout hdr_t ph, inout sm_t sm,
-             in bit<16> !\colorbox{mygray}{nh\_id}!) {
+control C(inout hdr_t ph, inout sm_t sm,
+          in bit<16> !\colorbox{mygray}{h}!) {
   action drop () {}
   action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
     ph.eth.dstMac = dest_mac;
@@ -97,7 +99,7 @@ control Pipe(inout hdr_t ph, inout sm_t sm,
     sm.out_port = port;
   }
   table forward_tbl {
-    key = { nh_id : exact; }
+    key = { h : exact; }
     actions = { forward; drop; }
   }
   apply { forward_tbl.apply(); }
@@ -112,7 +114,7 @@ control D(packet_out po, in hdr_t ph) {
 
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none, escapechar=!]
-// ipv4.p4: parse and process only IPv4 header
+//ipv4.p4: parse and process IPv4
 struct meta_t { bit<16> type; }
 parser P(packet_in pin, out hdr_t ph) {
   state start {
@@ -120,10 +122,10 @@ parser P(packet_in pin, out hdr_t ph) {
     transition accept;
   }
 }
-control Pipe(inout hdr_t ph, out bit<16> !\colorbox{mygray}{nh\_id}!, inout sm_t sm) {
-  action process(bit<16> nh) {
+control C(inout hdr_t ph, out bit<16> !\colorbox{mygray}{h}!, inout sm_t sm) {
+  action process(bit<16> n) {
     ph.ipv4.ttl = ph.ipv4.ttl - 1;
-    nh_id = nh; // setting out param
+    h = n; // set out param
   }
   table ipv4_lpm_tbl {
     key = { ph.ipv4.dstAddr : lpm; }
@@ -138,6 +140,8 @@ control D(packet_out po, in hdr_t ph) {
 \caption{IPv4 processing}
 \label{fig:ipv4.p4}
 \end{figure}
+
+\jnf{Abrupt transition here}
 
 %% The current ecosystem of programmable data plane enforces programmers
 %% to write code amenable to the target device's data plane architecture
@@ -912,9 +916,9 @@ to read value, populated by the target, for every such field.
 /* router.p4 */
 // package type declaration of !{\color{commentcolor}{\uprograms for protocols}}! 
 !\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, 
-    out bit<16> nh_id);
+    out bit<16> h);
 !\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
-    out bit<16> nh_id);
+    out bit<16> h);
 // implement unicast interface for router package
 parser P(extractor ex, pkt p, out empty_ht h, inout data_t d) {
   state start { transition accept; }
@@ -952,7 +956,7 @@ control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
     es.set_out_port(port);
   }
   table forward_tbl {
-    key = { nh_id : exact; } 
+    key = { h : exact; } 
     actions = { forward; drop; }
   }
   apply {
@@ -1609,7 +1613,7 @@ the Ethernet and IPv4 headers.
 % \begin{lstlisting}[frame=none, escapechar=!]
 % 0x86DD : { 
 %   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}!
-%   ipv6_i.apply(p, sm, es, nh_id);
+%   ipv6_i.apply(p, sm, es, h);
 % }
 % \end{lstlisting}
 % \caption{Extending \texttt{router} \uprogram}
@@ -1631,7 +1635,7 @@ from \cref{subfig:router-main} as follows:
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
-  ipv6_i.apply(p, sm, es, nh_id);
+  ipv6_i.apply(p, sm, es, h);
 }
 \end{lstlisting}
 The snippets shows how we can integrate SRv6 without touching any
