@@ -594,20 +594,21 @@ with \ulang and \ucomp in two stages:
   \item compiling individual modules and
   \item composing modules and compiling dataplane for a target.
 \end{enumerate*}
-Users write individual modules for specific processing---for
-example, \texttt{ether.\ulang} in \cref{fig:compile-module} performs only
+Users write individual modules for specific processing---for example,
+\texttt{ether.\ulang} in \cref{fig:compile-module} performs only
 ethernet processing similar to \cref{fig:ether.p4}.
 \cref{fig:compile-module} shows the first stage of compiling where
-\ucomp compiles a module into \uarch-specific IR.  During this, \ucomp
-transforms parser and deparser blocks into match-action control. This
-transformation unifies the abstract-machines for packet-processing,
-thus allowing seamless transfer of execution control within and across
-modules and enables composition. In the second phase, users compose
-the modules together to build a dataplane---e.g., in
-\cref{fig:compile-to-target}, \texttt{main.\ulang} composes Ethernet and IPv4
-modules to build a modular router. Further, based on the specified
-target device, the compiler also generates the dataplane configuration
-specific to the device through a sequence of intermediate steps
+\ucomp compiles a module into \uarch-specific IR.   In the second
+phase, users can link different modules together to build a
+dataplane---e.g., in \cref{fig:compile-to-target},
+\texttt{main.\ulang} composes Ethernet and IPv4 modules to build a
+modular router. During this, \ucomp transforms parser and deparser
+blocks of each module into match-action control. This transformation
+unifies the abstract-machines for packet-processing, thus allowing
+seamless transfer of execution control within and across modules and
+enables composition. Further, based on the specified target device,
+the compiler also generates the dataplane configuration specific to
+the device through a sequence of intermediate steps
 (\cref{sec:compiler}).
 
 
