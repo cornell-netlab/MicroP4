@@ -4,13 +4,11 @@
 
 \begin{document}
 \date{}
-% <<<<<<< Updated upstream
-% \title{\Large \bf \ulang: Towards Portable, Modular and Composable Dataplane Programs}
-% =======
-\title{\Large \bf Reusing Dataplane Programs Using \ulang}
-% >>>>>>> Stashed changes
-\author{{\rm Paper \#XXX}\\ Anonymous author(s)}
+\title{\Large \bf Composing Dataplane Programs}
+\author{{\rm NSDI '20 Submission \#XXX}}
 \maketitle
+
+\vspace*{-3em}
 
 \begin{abstract}
 Domain-specific languages such as P4 enable flexible and efficient
@@ -22,16 +20,14 @@ libraries of code that can be reused across many different programs.
 
 To address this challenge, we present the design and implementation of
 a logical target, MicroP4 (\uswitch), that decouples P4 programs from
-lower-leverl, architecture-specific constructs and naturally supports composition.
-We present the design of the higher-level architecture (\uarch),
-which models \uswitch and abstracts away from hardware-level details without sacrificing
-expressiveness. Using realistic examples, we show how \uswitch enables
-modular programming and composition, and we present an implementation
-of the \ucomp compiler that generates code for lower-level
-architectures which are implemented by real target devices.
+lower-level, architecture-specific constructs and naturally supports
+composition. We present the design of a higher-level architecture
+(\uarch) that abstracts away from hardware-level details without
+sacrificing expressiveness. Using realistic examples, we show how
+\uswitch enables modular programming and composition, and we present
+an implementation of the \ucomp compiler that generates code for the
+lower-level architectures implemented by real target devices.
 \end{abstract}
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% INTRODUCTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
