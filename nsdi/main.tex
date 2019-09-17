@@ -611,64 +611,71 @@ specific to the device through a sequence of intermediate steps
 (\cref{sec:compiler}).
 
 
-\deleted{
-\ulang extends P4 and allows programmers to define \texttt{package}
-types, declare their instances and invoke them using the built-in
-\texttt{apply} method. This allows to hide implementation of package
-types and reuse them using run-time parameters of their interfaces.
-Programmers can use sub-languages of P4 for parser and control blocks
-to implement interfaces.  \ucomp homogenizes abstract-machines of
-programmable blocks by transforming parser and deparser blocks into
-match-action control blocks.
-Each \uprogram specializes a generic interface. The run-time 
-interfaces enable easy reuse and hide implementation detail of the 
-\uprograms, facilitating modular and incremental development. Using 
-logical data plane model of \uarch, programmers can develop modular 
-P4 code which is specific to \uarch. We design and develop MicroP4 
-Compiler (\ucomp) to compile and transform \uprogram for 
-architectures of real target devices, making \uprograms agnostic of 
-architectures of real-targets. Programmer can use \ucomp to $(1)$ 
-Create compiled libraries of \uprograms along with their control 
-plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of 
-main instance and transform the program for a specified architecture 
-of a real-target.
-If the given source file does not contain an instance named, \ucomp 
-generates a library by compiling it to an Intermediate Representation 
-(IR) in json format (Figure \ref{subfig:module-compilation}). It also 
-generates architecture-independent control-plane APIs, P4Runtime 
-\cite{p4runtime} files. If the source file contains \emph{main} 
-instance, it links all the supplied libraries and transforms the 
-\uprogram of main instance for a given architecture (Figure 
-\ref{subfig:compilation-to-target-architecture}). Programmers can 
-include files containing definitions of data types (e.g., struct 
-types 
-of in and out parameters) used in run-time interfaces of \uprogram in 
-libraries. \ucomp compiler generates either source P4 code for the 
-specified architecture or an executable with architecture-specific CP 
-APIs.
-}
+% \deleted{
+% \ulang extends P4 and allows programmers to define \texttt{package}
+% types, declare their instances and invoke them using the built-in
+% \texttt{apply} method. This allows to hide implementation of package
+% types and reuse them using run-time parameters of their interfaces.
+% Programmers can use sub-languages of P4 for parser and control blocks
+% to implement interfaces.  \ucomp homogenizes abstract-machines of
+% programmable blocks by transforming parser and deparser blocks into
+% match-action control blocks.
+% Each \uprogram specializes a generic interface. The run-time 
+% interfaces enable easy reuse and hide implementation detail of the 
+% \uprograms, facilitating modular and incremental development. Using 
+% logical data plane model of \uarch, programmers can develop modular 
+% P4 code which is specific to \uarch. We design and develop MicroP4 
+% Compiler (\ucomp) to compile and transform \uprogram for 
+% architectures of real target devices, making \uprograms agnostic of 
+% architectures of real-targets. Programmer can use \ucomp to $(1)$ 
+% Create compiled libraries of \uprograms along with their control 
+% plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of 
+% main instance and transform the program for a specified architecture 
+% of a real-target.
+% If the given source file does not contain an instance named, \ucomp 
+% generates a library by compiling it to an Intermediate Representation 
+% (IR) in json format (Figure \ref{subfig:module-compilation}). It also 
+% generates architecture-independent control-plane APIs, P4Runtime 
+% \cite{p4runtime} files. If the source file contains \emph{main} 
+% instance, it links all the supplied libraries and transforms the 
+% \uprogram of main instance for a given architecture (Figure 
+% \ref{subfig:compilation-to-target-architecture}). Programmers can 
+% include files containing definitions of data types (e.g., struct 
+% types 
+% of in and out parameters) used in run-time interfaces of \uprogram in 
+% libraries. \ucomp compiler generates either source P4 code for the 
+% specified architecture or an executable with architecture-specific CP 
+% APIs.
+% }
 
-\deleted{\ucomp perform static analysis to estimate possible packet 
-sizes required to process all the transformed \uprograms in 
-match-action control blocks of target architecture's pipeline.
-\ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
-It allocates and schedules code of transformed \uprograms to control 
-blocks of the target architecture's pipeline model while satisfying 
-constraints posed by hardware details.}
+% \deleted{\ucomp perform static analysis to estimate possible packet 
+% sizes required to process all the transformed \uprograms in 
+% match-action control blocks of target architecture's pipeline.
+% \ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
+% It allocates and schedules code of transformed \uprograms to control 
+% blocks of the target architecture's pipeline model while satisfying 
+% constraints posed by hardware details.}
+
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO Switch Architecture%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Micro Switch Architecture}
+\section{\uswitch Architecture (\uarch)}
 \label{sec:architecture}
-In this section, we explain \uarch's logical constructs enabling the 
-programming model (\cref{fig:uswitch}) for the \uswitch. We designed 
-the constructs that are amenable to the \ucomp translations for 
-portability without compromising on expressiveness. In 
-\cref{sec:pipelines}, we explain \upipelines and interfaces 
-programmers require to implement in order to declare \uprogram types. 
-\cref{sec:logical-externs} explains a set of logical externs, which 
-can be used to express packet-processing functionality in \uprograms.
+In this section, we describe \uarch: the logical architecture for
+\uswitch with which \ulang programs are written. \uarch enables
+writing portable and composable programs without limiting
+expressiveness using two main constructs:
+\begin{enumerate*}[label=(\roman*)]
+  \item \emph{\upipelines} and interfaces for writing \ulang programs
+    (\cref{sec:pipelines}) and
+  \item \emph{logical externs} used to express special processing in a
+    target-agnostic manner (\cref{sec:logical-externs}).
+\end{enumerate*}
 
 
 \subsection{\upipelines and Interfaces}
