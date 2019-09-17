@@ -60,14 +60,20 @@
 
 \node (parser) at (0,0) [rectangle, draw, minimum height=1cm, text centered, text width=4em,anchor=west] {\large parser};
 \node (upipe) at (2.0,0) [rectangle, draw, minimum height=1cm, text centered, text width=8em,anchor=west] {};
-\node (upipetext) at (upipe.south) [minimum height=0.5cm, text centered, text width=8em,anchor=north] {\large $\mu$-pipe control};
+\node (upipetext) at (upipe.south) [minimum height=0.5cm, text centered, text width=12em,anchor=north] {\large linear $\mu$-pipeline};
 \node (deparser) at (5.5,0) [rectangle, draw, minimum height=1cm, text centered, text width=4em,anchor=west] {\large deparser};
 
 \node (opipe) at (1.5,-2) [rectangle, draw, minimum height=1cm, text centered, text width=12em,anchor=west] {};
-\node (opipetext) at (opipe.south) [minimum height=0.5cm, text centered, text width=16em,anchor=north] {\large orchestration-pipe control};
+\node (opipetext) at (opipe.south) [minimum height=0.5cm, text centered, text width=16em,anchor=north] {\large orchestration $\mu$-pipeline};
 
-\node () at (-1,-1) [minimum height=0.5cm, color=gray, text centered, text width=1em,anchor=east] {buffer};
-\node () at (8,-1) [minimum height=0.5cm, color=gray, text centered, text width=1em,anchor=east] {buffer};
+\node () at (2.8,0) [rectangle, fill=gray, opacity=0.1, minimum height=9mm, text centered, text width=5em,anchor=west] {};
+
+\node () at (2.8,-1.7) [rectangle, fill=blue, opacity=0.2, minimum height=1mm, text centered, text width=7em,anchor=west] {};
+\node () at (2.8,-2) [rectangle, fill=gray, opacity=0.2, minimum height=1mm, text centered, text width=7em,anchor=west] {};
+\node () at (2.8,-2.3) [rectangle, fill=red, opacity=0.2, minimum height=1mm, text centered, text width=7em,anchor=west] {};
+
+\node () at (-1,-1) [minimum height=0.5cm, color=gray, text centered, text width=1em,anchor=east] {\large buffer};
+\node () at (8,-1) [minimum height=0.5cm, color=gray, text centered, text width=1em,anchor=east] {\large buffer};
 
 \path [line, -, dotted] (0,-1.1) -- (7,-1.1);
 

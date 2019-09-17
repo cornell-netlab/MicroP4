@@ -598,96 +598,109 @@ with \ulang and \ucomp in two stages:
   \item compiling individual modules and
   \item composing modules and compiling dataplane for a target.
 \end{enumerate*}
-Users write individual modules for specific processing---for
-example, \texttt{ether.\ulang} in \cref{fig:compile-module} performs only
+Users write individual modules for specific processing---for example,
+\texttt{ether.\ulang} in \cref{fig:compile-module} performs only
 ethernet processing similar to \cref{fig:ether.p4}.
 \cref{fig:compile-module} shows the first stage of compiling where
-\ucomp compiles a module into \uarch-specific IR.  During this, \ucomp
-transforms parser and deparser blocks into match-action control. This
-transformation unifies the abstract-machines for packet-processing,
-thus allowing seamless transfer of execution control within and across
-modules and enables composition. In the second phase, users compose
-the modules together to build a dataplane---e.g., in
-\cref{fig:compile-to-target}, \texttt{main.\ulang} composes Ethernet and IPv4
-modules to build a modular router. Further, based on the specified
-target device, the compiler also generates the dataplane configuration
-specific to the device through a sequence of intermediate steps
+\ucomp compiles a module into \uarch-specific IR.   In the second
+phase, users can link different modules together to build a
+dataplane---e.g., in \cref{fig:compile-to-target},
+\texttt{main.\ulang} composes Ethernet and IPv4 modules to build a
+modular router. During this, \ucomp transforms parser and deparser
+blocks of each module into match-action control. This transformation
+unifies the abstract-machines for packet-processing, thus allowing
+seamless transfer of execution control within and across modules and
+enables composition. Further, based on the specified target device,
+the compiler also generates the dataplane configuration specific to
+the device through a sequence of intermediate steps
 (\cref{sec:compiler}).
 
 
-\deleted{
-\ulang extends P4 and allows programmers to define \texttt{package}
-types, declare their instances and invoke them using the built-in
-\texttt{apply} method. This allows to hide implementation of package
-types and reuse them using run-time parameters of their interfaces.
-Programmers can use sub-languages of P4 for parser and control blocks
-to implement interfaces.  \ucomp homogenizes abstract-machines of
-programmable blocks by transforming parser and deparser blocks into
-match-action control blocks.
-Each \uprogram specializes a generic interface. The run-time 
-interfaces enable easy reuse and hide implementation detail of the 
-\uprograms, facilitating modular and incremental development. Using 
-logical data plane model of \uarch, programmers can develop modular 
-P4 code which is specific to \uarch. We design and develop MicroP4 
-Compiler (\ucomp) to compile and transform \uprogram for 
-architectures of real target devices, making \uprograms agnostic of 
-architectures of real-targets. Programmer can use \ucomp to $(1)$ 
-Create compiled libraries of \uprograms along with their control 
-plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of 
-main instance and transform the program for a specified architecture 
-of a real-target.
-If the given source file does not contain an instance named, \ucomp 
-generates a library by compiling it to an Intermediate Representation 
-(IR) in json format (Figure \ref{subfig:module-compilation}). It also 
-generates architecture-independent control-plane APIs, P4Runtime 
-\cite{p4runtime} files. If the source file contains \emph{main} 
-instance, it links all the supplied libraries and transforms the 
-\uprogram of main instance for a given architecture (Figure 
-\ref{subfig:compilation-to-target-architecture}). Programmers can 
-include files containing definitions of data types (e.g., struct 
-types 
-of in and out parameters) used in run-time interfaces of \uprogram in 
-libraries. \ucomp compiler generates either source P4 code for the 
-specified architecture or an executable with architecture-specific CP 
-APIs.
-}
+% \deleted{
+% \ulang extends P4 and allows programmers to define \texttt{package}
+% types, declare their instances and invoke them using the built-in
+% \texttt{apply} method. This allows to hide implementation of package
+% types and reuse them using run-time parameters of their interfaces.
+% Programmers can use sub-languages of P4 for parser and control blocks
+% to implement interfaces.  \ucomp homogenizes abstract-machines of
+% programmable blocks by transforming parser and deparser blocks into
+% match-action control blocks.
+% Each \uprogram specializes a generic interface. The run-time 
+% interfaces enable easy reuse and hide implementation detail of the 
+% \uprograms, facilitating modular and incremental development. Using 
+% logical data plane model of \uarch, programmers can develop modular 
+% P4 code which is specific to \uarch. We design and develop MicroP4 
+% Compiler (\ucomp) to compile and transform \uprogram for 
+% architectures of real target devices, making \uprograms agnostic of 
+% architectures of real-targets. Programmer can use \ucomp to $(1)$ 
+% Create compiled libraries of \uprograms along with their control 
+% plane APIs, $(2)$ Link all the \uprograms used in the \uprogram of 
+% main instance and transform the program for a specified architecture 
+% of a real-target.
+% If the given source file does not contain an instance named, \ucomp 
+% generates a library by compiling it to an Intermediate Representation 
+% (IR) in json format (Figure \ref{subfig:module-compilation}). It also 
+% generates architecture-independent control-plane APIs, P4Runtime 
+% \cite{p4runtime} files. If the source file contains \emph{main} 
+% instance, it links all the supplied libraries and transforms the 
+% \uprogram of main instance for a given architecture (Figure 
+% \ref{subfig:compilation-to-target-architecture}). Programmers can 
+% include files containing definitions of data types (e.g., struct 
+% types 
+% of in and out parameters) used in run-time interfaces of \uprogram in 
+% libraries. \ucomp compiler generates either source P4 code for the 
+% specified architecture or an executable with architecture-specific CP 
+% APIs.
+% }
 
-\deleted{\ucomp perform static analysis to estimate possible packet 
-sizes required to process all the transformed \uprograms in 
-match-action control blocks of target architecture's pipeline.
-\ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
-It allocates and schedules code of transformed \uprograms to control 
-blocks of the target architecture's pipeline model while satisfying 
-constraints posed by hardware details.}
+% \deleted{\ucomp perform static analysis to estimate possible packet 
+% sizes required to process all the transformed \uprograms in 
+% match-action control blocks of target architecture's pipeline.
+% \ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
+% It allocates and schedules code of transformed \uprograms to control 
+% blocks of the target architecture's pipeline model while satisfying 
+% constraints posed by hardware details.}
+
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO Switch Architecture%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Micro Switch Architecture}
+\section{\uswitch Architecture (\uarch)}
 \label{sec:architecture}
-In this section, we explain \uarch's logical constructs enabling the 
-programming model (\cref{fig:uswitch}) for the \uswitch. We designed 
-the constructs that are amenable to the \ucomp translations for 
-portability without compromising on expressiveness. In 
-\cref{sec:pipelines}, we explain \upipelines and interfaces 
-programmers require to implement in order to declare \uprogram types. 
-\cref{sec:logical-externs} explains a set of logical externs, which 
-can be used to express packet-processing functionality in \uprograms.
+In this section, we describe \uarch: the logical architecture for
+\uswitch with which \ulang programs are written. \uarch enables
+writing portable and composable programs without limiting
+expressiveness using two main constructs:
+\begin{enumerate*}[label=(\roman*)]
+  \item \emph{\upipelines} and interfaces for writing \ulang programs
+    (\cref{sec:pipelines}) and
+  \item \emph{logical externs} to express special processing of
+    packets in a target-agnostic manner (\cref{sec:logical-externs}).
+\end{enumerate*}
 
 
 \subsection{\upipelines and Interfaces}
 \label{sec:pipelines}
-\uarch allows to program its dataplane using composition of two 
-types of \upipelines, \emph{Simple} and \emph{Compound}. The simple 
-type provides a basic model for processing, in which a single packet 
-is processed by parser followed by match-action control and 
-finally, deparser. From a single packet, a simple type of \upipeline 
-may generate multiple packets that are individually processed 
-in isolation of others by the same \upipeline, whereas the compound 
-type of \upipelines can process multiple copies of a packet in the 
-same context with different instances of \upipelines 
-(\cref{fig:pipe-types}).
-
+\uarch models the dataplane as composed of two types of \upipelines:
+\emph{linear} and \emph{orchestration} as shown in
+\cref{fig:pipe-types}. A linear \upipeline models processing a single
+input packet through a linear set of stages: parser, match-action
+control, and deparser.  As output, it may generate multiple packets
+for a single input, but each packet is processed by the same code. In
+contrast, an orchestration \upipeline can process multiple copies of a
+packet in different user-defined ways. A combination of these
+\upipelines enables expressing a wide range of packet-processing
+behavior.
+\begin{figure}[!tbp]
+  \centering
+  \includegraphics[width=0.8\linewidth]{upipe-types}
+  \caption{Types of \uarch pipelines}
+  \label{fig:pipe-types}
+\end{figure}
 \uarch exposes three interfaces, \texttt{Unicast}, \texttt{Multicast} 
 and \texttt{Orchestration}, to express composition of its pipelines. 
 Every interface is associated with a type of \upipelines. To 
@@ -710,12 +723,7 @@ interface.
 
 
 
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{upipe-types}
-  \caption{Types of \uarch pipelines}
-  \label{fig:pipe-types}
-\end{figure}
+
 \begin{lstlisting}[frame=none]
 Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, 
   in I i_param, out O o_param, inout IO io_param);
@@ -1148,21 +1156,57 @@ transformation. It generates reusable libraries by serializing the
   \caption{Workflow for building dataplanes in \ulang}
   \label{fig:workflow}
 \end{figure}
-\tightparbf{Midend} composes \uprograms by homogenizing their 
-processing-blocks. For that, it performs static analysis and 
-transforms the parsers-deparsers into match-action control blocks. 
-Also, in case of compile-time replication, it extracts 
-packet-processing code for every replica and prepares processing 
-schedule. The Midend passes are independent to target architectures, 
-focusing on composition. 
-\tightparbf{Backend} passes are specific to a target architecture. 
-They transform the \ucomp-IR, comprising only control blocks with 
-\uarch-specific constructs, to the target architecture-specific IR.
-While mapping the control blocks to the ones declared by pipeline 
-model of the target architecture, it translates \uarch-specific 
-logical constructs to the target specific ones.
+\tightparbf{Midend} passes perform transformations for two goals. \par
+\textbf{Goal 1 :} Compose \uprograms by homogenizing their 
+processing-blocks. For that, it first performs static analysis to 
+compute \texttt{operational-region} of the \uprogram on packets' 
+byte-streams.
+Then, it synthesizes a stack of one byte header, called 
+\emph{byte-stack}, large enough to hold operational region. 
+Finally, considering this byte-stack as a packet it transforms the 
+parsers-deparsers into match-action control blocks. \par
+\textbf{Goal 2 :} In case of compile-time replication, extract 
+packet-processing code for every packet instance and prepares 
+processing schedule. The Midend passes are independent to target 
+architectures, focusing on composition. At the end of the midend 
+passes \ucomp-IR contains only control blocks having \uarch-specific 
+constructs. 
+\tightparbf{Backend} passes transform the \ucomp-IR to the IR of a 
+specified target architecture. While mapping the control blocks to 
+the ones exposed the target architecture, it translates 
+\uarch-specific logical constructs to the target specific 
+ones. Moreover, it synthesizes required parser and deparser blocks 
+for dataplane pipeline model of target architecture. The backend is a 
+target architecture-specific.
 
 
+
+\subsection{\ucomp Midend}
+We give a brief overview of the midend passes to achieve above 
+mentioned goals and then elaborate on only the key transformation 
+passes.
+
+\hs{Rearranging}
+1. reduction to parser without variable-length header and  header 
+stacks. and point to appendix.\\
+2. analysis: split the analysis. say that why maximum increase and 
+decrease in packet size are important metric. And say because of 
+emit call semantics we had to do this jargon.\\
+3. parser to MAT \\
+4. Deparser to MAT (may be not needed, can be 3-4 statements in 
+parser to MAT)
+5. Packet processing schedule: brief and point to appendix.
+% First, the midend replaces header stacks and variable-length header 
+% with multiple instances of headers, creating parsers in all the 
+% \uprogram without cycles and variable-length extraction.
+% Next, it performs static-analysis to midend determine two important 
+% metrics, $(1)$ the maximum number of bytes, called 
+% \emph{extract-length}, to be extracted to execute the composed 
+% \uprogram and $(2)$ the size of byte-stack required to hold the 
+% extracted bytes and any new header instance that may be inserted into 
+% the packet.
+% Third, it transforms (de)parser blocks into match-action control 
+% blocks.
 
 % \ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
 % It synthesizes new parser and deparser for the main package.
@@ -1187,10 +1231,15 @@ logical constructs to the target specific ones.
 % Section \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. Section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
 % 
 
-\subsection{Extract Length and Byte-Stack Size}
+\subsubsection{Extract Length and Byte-Stack Size}
 \label{subsection:extract-length-and-byte-stack-size}
-As \ulang allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
-\ucomp performs symbolic execution to evaluates extract-length and byte-stack size of every callee package in every control path in the CFG of the caller's control block.
+% As \ulang allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
+
+% We perform recursive analysis to extract-length and byte-stack size 
+% of a \uprogram. 
+\ucomp performs symbolic execution to compute extract-length and 
+byte-stack size of every callee \uprogram in every control path the 
+caller's control block.
 
 
 The symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph.
@@ -1259,7 +1308,7 @@ Finally, we define byte-stack size of a package $a$, $\mathcal{B}s_{a}$ (\ref{by
 For the example shown in Figure \ref{fig:sequential-callees}, the byte-stack size of the caller is 98, 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
 
 
-\subsection{Parser To Match-Action Table}
+\subsubsection{Parser To Match-Action Table}
 \label{subsection:parser-to-match-action-table}
 \begin{figure*}[!ht]
     \begin{subfigure}[b]{0.25\linewidth}
@@ -1300,32 +1349,25 @@ default_action : set_parser_error();
 % P4 parser blocks describe parse graphs as state machines.
 % Real target devices contain programmable parser module that can be programmed using parse graphs.
 % From the design of programmable parser \cite{6665172}, we make following observations.
-Programmable parsers \cite{6665172} are implemented as finite state machines using buffer, Ternary Content-Addressable Memories (TCAM) and Action RAM. 
-TCAM matches values of current state, fields or variables to identify next state.
-Based on the match, headers are copied from byte stream followed by current state update.
+Programmable parsers \cite{6665172} are implemented as finite state machines (FSM) using buffer, Ternary Content-Addressable Memories (TCAM) and Action RAM. 
+TCAM matches and processes actions and copy packet header state by state. Once the current state fields have been matched the next state is identified and the state header bytes are copied.  
 Programmable parsers essentially perform repeated match-action operations.
 % Network packets are of finite length, hence they can be parsed in a finite number of ways.
-Successful parsing of a packet is essentially finding a match for a finite number of bytes from a finite set of values.
-Every path enumerated by symbolic execution identifies possible byte locations to match for extracting a set of headers instances.
+%Successful parsing of a packet is essentially finding a match for a finite number of bytes from a finite set of values.
+Every state path identifies possible byte locations to match for extracting a set of headers instances.
 We leverage match capability of TCAM in match-action stages to match simultaneously all possible byte locations pertaining to every path from start to the accept state.
-The action associated with the matched entry copies values from the appropriate locations in the byte-stack to local metadata synthesized for used header fields. 
+The final executed action associated with the matched entry copies values from the appropriate locations in the byte-stack to local metadata synthesized for used header fields. In general, we consider that parser state may use any metadata or variable to transit to the next state see Figure \ref{subfig:parser-symbolic-execution}. 
 
-We describe transformation of parser to match-action control block using the example shown in figure \ref{subfig:parser}.
-The parser has four states to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14, 20, 40 and 20 bytes, respectively.
-In general, we consider that parser state may use any metadata or variable to transit to next state. 
-As an example, \emph{tcp} state transits to the accept state based on value (0xFF) of \texttt{var\_y} variable which is updated by either \emph{ipv4} or \emph{ipv6} states.
-The symbolic execution of the parser computes two possibles paths from the start state to the accept state.
-It also computes byte locations for header (e.g., eth.ethType, ipv6.nexthdr, ipv4.protocol) fields used in select expressions of states in the path.
-If the select expression depends on local variables, it performs Forward Substitution \cite{Padua:1986:ACO:7902.7904} on every path to eliminate data dependency.
-Figure \ref{subfig:parser-symbolic-execution} shows evaluated parser states and two paths generated by symbolic execution with forward substitution.
-Every extract method-call statement is transformed into assignments from the byte-stack to field-variables associated with the header instance passed as an argument to the method-call.
-In addition, valid metadata variable pertaining to the header instance is set.
-We synthesize match-key using union of the select expressions in all the states on every path.
+For example, the parser's FSM in Figure \ref{subfig:parser} has four states to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14, 20, 40 and 20 bytes, respectively. The symbolic execution of the parser first identifies two possibles paths from the start state to the accept state and  then replaces matching header fields (e.g., eth.ethType, ipv6.nexthdr, ipv4.protocol) with their identified byte locations, figure \ref{subfig:parser-symbolic-execution}.
+%As an example, \emph{tcp} state transits to the accept state based on value (0xFF) of \texttt{var\_y} variable which is updated by either \emph{ipv4} or \emph{ipv6} states.
+%If the select expression depends on local variables, it performs Forward Substitution \cite{Padua:1986:ACO:7902.7904} on every path to eliminate data dependency.
+%Figure \ref{subfig:parser-symbolic-execution} shows evaluated parser states and two paths generated by symbolic execution with forward substitution.
+%Every extract method-call statement is transformed into assignments from the byte-stack to field-variables associated with the header instance passed as an argument to the method-call.
+%In addition, valid metadata variable pertaining to the header instance is set.
+Once the execution paths and the matched byte location have been identified, the parser synthesizes the match-key set using the union of the select expressions in all the states on every path Figure \ref{subfig:parser-mat} line 1-3.
 The match-key also comprises valid bit flag of the last byte extracted on every path to consider packet-length in the byte-stack.
-For each path, we synthesize an action (e.g., \texttt{cp\_eth\_ipv4\_tcp} in Figure \ref{subfig:parser-mat}) comprising assignment statements in all the states on the path.
-We create a match-action entry for every path using case values in select expressions and the action synthesized for the path.
-For example, in the first entry shown in Figure \ref{subfig:parser-mat}, x0800, x6, xFF are match-values for the first, third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp headers.
-The second and the forth keys can have any values, hence they are matched with don't care values.
+Then, for each path, ($i$) an action is synthesized(e.g., \texttt{cp\_eth\_ipv4\_tcp} in Figure \ref{subfig:parser-mat} line 4) comprising all the assignment statements of the path states, and a match-action entry is created by using the matching fields values to match the path select keys and the other remaining fields are set to don't care values.
+For example, in the first entry shown in Figure \ref{subfig:parser-mat}, x0800, x6, xFF are match-values for the first, third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp headers and the second and forth keys are matched with don't care values.
 
 
 
@@ -2136,16 +2178,17 @@ size 3.
 \ulang allows programmers to define variable-length header types, 
 however it imposes a constraint that their variable-length fields must 
 contain integer number of bytes at run-time.
-% \ucomp splits header type containing fixed and variable-length 
+\ucomp splits header type containing fixed and variable-length 
 fields into multiple types, where each type contains either 
 fixed-length fields or the variable-length field.
 \ucomp transforms every parser state with two-argument extract method 
 call, used to extract variable-length header, into a sub-parser.
 It splits the header type of the instance in the first argument into 
-multiple types, where each type contains either fixed-length fields or 
+multiple header types, where each type contains either fixed-length 
+fields or 
 the variable-length field.
 Every state in the sub-parser extracts a fixed-number of bytes from 
-the packet bit stream.
+the packet byte stream.
 The sub-parser contains a state having the second argument 
 (variableFieldSize) as the expression in its select statement.
 The select statement has case-list enumerating all possible values up 
