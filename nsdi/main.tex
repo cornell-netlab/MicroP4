@@ -562,7 +562,6 @@ externs and metadata to facilitate use of packet-processing features
 such as multicast, cloning, etc. that are not part of the core P4
 language but supported by actual target devices.
 
-
 \begin{figure}[!tbp]
   \begin{subfigure}{\linewidth}
     \centering
@@ -685,6 +684,8 @@ expressiveness using two main constructs:
 
 \subsection{\upipelines and Interfaces}
 \label{sec:pipelines}
+
+\tightpar{\upipeline.}%
 \uarch models the dataplane as composed of two types of \upipelines:
 \emph{linear} and \emph{orchestration} as shown in
 \cref{fig:pipe-types}. A linear \upipeline models processing a single
@@ -698,41 +699,45 @@ behavior.
 \begin{figure}[!tbp]
   \centering
   \includegraphics[width=0.8\linewidth]{upipe-types}
-  \caption{Types of \uarch pipelines}
+  \caption{Types of \uarch pipelines: linear and orchestration}
   \label{fig:pipe-types}
 \end{figure}
-\uarch exposes three interfaces, \texttt{Unicast}, \texttt{Multicast} 
-and \texttt{Orchestration}, to express composition of its pipelines. 
-Every interface is associated with a type of \upipelines. To 
-implement an interface programmers need to specify behaviour for all 
-the processing-blocks of the associated type of \upipelines. By 
-implementing an interface, programmer can declare a \uprogram having 
-run-time behavior with an interface for composition. The distinct 
-interface types provides explicit information about behavior of 
-\uprograms to users. \hse{about 'clean' interface, can we 
-use clean word?}
 
-To comply with the model shown in \cref{fig:uswitch}, 
-\uswitch implicitly performs few operations while invoking 
-\uprograms. \uswitch fetches an element from logical input buffer 
-for the \uprograms with \texttt{Unicast} or \texttt{Multicast} 
-interface but for the ones with \texttt{Orchestration}, from the 
-input buffer in their run-time parameters. \uswitch performs 
-necessary queuing operation for the \uprograms with \texttt{Unicast} 
-interface.
+\tightpar{Interfaces.}%
+To build a \uprogram by composing \upipelines, \uarch provides three
+types of interfaces: \texttt{Unicast}, \texttt{Multicast} and
+\texttt{Orchestration}.  \texttt{Unicast} and \texttt{Multicast} can
+be used by linear \upipelines, while \texttt{Orchestration} is used by
+orchestration \upipelines. These interfaces specialize the logical
+buffers that pipelines use for input and output
+(\cref{fig:pipe-types})---e.g., a linear \upipeline that writes
+multiple packets may use a \texttt{Multicast} interface to specialize
+its output buffer. Implementing interfaces for each \upipeline in a
+\uprogram also automatically declares the run-time interface for the
+\uprogram---this is useful for composing \uprograms.
 
-
+The following snippet shows the signature of these interfaces while
+\cref{fig:micro-switch-architecture} shows declarations of types---such
+as \texttt{pkt}, \texttt{sm\_t}, etc.---used in the signature.
 
 
 \begin{lstlisting}[frame=none]
-Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, 
+Unicast<I,O,IO> (pkt p, inout sm_t sm, es_t es, 
   in I i_param, out O o_param, inout IO io_param);
-Multicast<H,M,I,O> (pkt p, in sm_t sm, es_t es, 
+Multicast<I,O> (pkt p, in sm_t sm, es_t es, 
   in I i_param, out_buf<O> ob);
 Orchestration<I,O> (in_buf<I> ib, out_buf<O> ob);
 \end{lstlisting}
 
-
+To implement the execution model shown in \cref{fig:uswitch}, \uswitch
+implicitly performs a few operations while invoking \uprograms. For
+instance, note that \texttt{Unicast}'s signature does not have any
+buffer in its parameters, while \texttt{Orchestration} needs two
+buffers as arguments. So, \uswitch fetches an element from an implicit
+logical input buffer for \uprograms with \texttt{Unicast} or
+\texttt{Multicast} interface, while for \uprograms with
+\texttt{Orchestration} interface, it fetches the elements from the
+specified input buffer.
 
 
 % \uarch allows programmers to write multiple implementations of 
@@ -767,11 +772,6 @@ Orchestration<I,O> (in_buf<I> ib, out_buf<O> ob);
 % or multicast interface.
 % Similarly, Orchestration interface is associated with 
 % Orchestration pipeline.
-
-\cref{fig:micro-switch-architecture} shows declarations of types 
-(\texttt{pkt}, \texttt{sm\_t}, \texttt{es\_t}, \texttt{in\_buf} 
-and \texttt{out\_buf}) used in the above mentioned interfaces and 
-some other important constructs.
 
 
 \begin{figure*}
