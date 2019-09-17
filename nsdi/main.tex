@@ -456,8 +456,8 @@ components:
 %% Give an overview of our approach, tying to the above discussion
 %% Do not go into specific details yet.
 
-To achieve our goals, portable, modular and composable dataplane
-programming, without disrupting the existing workflow for P4, we
+To achieve our goals of portable, modular and composable dataplane
+programming without disrupting the existing workflow for P4, we
 introduce the \ulang framework. \ulang implements the above insights
 using three main components:
 \begin{enumerate*}[label=(\roman*)]
@@ -474,35 +474,26 @@ target architecture for which the \ulang programs should be
 translated. This decouples programs from target architectures while
 keeping the workflow very simple and intuitive.
 
+\uarch raises the dataplane programming abstraction from
+target-specific pipelines in a way that enables writing modular code
+with a common interface that hides implementation details. A module
+receives a complete or partial packet along with certain metadata,
+processes it as needed, and sends out one or more packets along with
+metadata. Thus, each module can be developed independently. Modules
+communicate with each other through a well-defined compatible
+interface---a logical buffer introduced by \uswitch.  With this,
+\uswitch abstracts away the details of dataplane pipelines of real
+targets. To express special processing, such as packet replication, in
+\ulang modules, \uarch introduces \emph{logical externs}.
 
-% \hs{TODO: start with: \uarch raises the level of abstraction for 
-% packet-processing from mere RMT based primitives to dataplane 
-% pipeline model of target architectures. Therefor handling portability 
-% problem. shorten to 3-4 sentence para}
-\hs{TODO:shorten it}
-\uarch provides a set of constructs to write modular code having a
-common interface that hides the implementation of packet-processing
-within each module. A module can be thought of receiving a complete or
-partial packet along with certain metadata, process it as needed, and
-send out one or more packets along with some metadata. Thus, each
-module can be developed independently. Modules can pass information or
-call each other through a well-defined compatible interface---caller
-write packets and metadata to a logical input buffer for the callee.
-By introducing these logical buffers, \uswitch abstracts away the
-details of dataplane pipelines of real targets. \uarch also provides a
-way to express special processing (e.g., packet replication) by
-introducing logical externs that each module may use.
-
-\ucomp compiles \ulang code for a specified target architecture
-while conforming to the constraints of the target device in two main steps.
+\ucomp compiles \ulang programs for a specified target while
+conforming to the constraints of the target device in two main steps.
 First, \ucomp compiles the program to a \uarch-specific Intermediate
-Representation (IR). It transforms all programmable blocks into
-match-action control blocks, thus homogenizing abstract machine for
-each block. This allows for a natural transfer of execution-control
-across modules, enabling composition and facilitating code reuse.
-In the second step, it translates all control blocks and
-\uarch-specific constructs into the control blocks and constructs
-exposed by the target architecture.
+Representation (IR). It homogenizes the abstract machine for each
+block by transforming all programmable blocks into match-action units.
+This enables natural transfer of execution-control across modules, as
+well as code reuse and composition. In the second step, \ucomp
+translates the IR into a configuration specific to the target.
 
 \deleted{The logical pipeline models defined in \uarch do not completely
 eliminate heterogeneity in packet-processing blocks (parser,
