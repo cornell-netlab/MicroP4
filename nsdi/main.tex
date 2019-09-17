@@ -450,7 +450,6 @@ components:
 \end{enumerate*}
 
 
-
 \subsection{Overview of our approach}
 \label{sec:overview}
 %% Give an overview of our approach, tying to the above discussion
@@ -459,12 +458,12 @@ components:
 To achieve our goals of portable, modular and composable dataplane
 programming without disrupting the existing workflow for P4, we
 introduce the \ulang framework. \ulang implements the above insights
-using three main components:
+using two main components:
 \begin{enumerate*}[label=(\roman*)]
-  \item \uswitch: an intermediate logical device
-  \item \uarch: an architecture for the logical device, and
+  \item \uarch: an architecture for an intermediate logical device
+    called \uswitch (\cref{sec:architecture}) and
   \item \ucomp: a compiler that translates \ulang programs into real
-    target code.
+    target code (\cref{sec:compiler}).
 \end{enumerate*}
 
 Users write dataplane programs using an extended P4 language which
@@ -518,16 +517,16 @@ compiler, \ucomp, to address these aspects.
 \section{The \ulang framework}
 \label{sec:microp4}
 %% Describe each component of microP4
-Now, we describe each component of \ulang which enable our goals for
-dataplane programming.
+Now, we describe each component of \ulang to show how \ulang achieves
+our goals for dataplane programming.
 
 \paragraph{\uswitch.}
 \uswitch is an intermediate logical target with an abstract
-programming model. It is designed to provide a high-level abstraction
-that enables modular programming for dataplane without compromising on
-the expressiveness.  It does so by allowing to write modules that
-implement fine-grained packet processing and defining interfaces to
-compose these modules.
+programming model. It is designed to provide a high-level dataplane
+abstraction that enables modular programming without compromising
+expressiveness to process packets. It does so by allowing to write
+modules that implement fine-grained packet processing and defining
+interfaces to compose these modules.
 \begin{figure}[htb]
     \centering
     \includegraphics[width=\linewidth]{uswitch-model}
@@ -536,17 +535,17 @@ compose these modules.
 \end{figure}
 
 \uswitch models each packet-processing module as a self-contained
-\hse{black-box} execution unit, called a \emph{\uprogram}, and
-executes it using the model shown in \cref{fig:uswitch}. A \uprogram
-takes as input: a packet byte-stream, intrinsic metadata and arguments
-for user-defined parameters. As output, it generates byte-streams,
-metadata, and return values corresponding to one or more packets. Such
-a model hides implementation details, such as headers types,
-user-defined metadata and programmable blocks, of a \uprogram from
+execution unit, called a \emph{\uprogram}, and executes it using the
+model shown in \cref{fig:uswitch}. A \uprogram takes as input: a
+packet byte-stream, metadata and arguments for user-defined
+parameters. As output, it generates byte-streams, metadata, and return
+values corresponding to one or more packets. Such a model hides
+implementation details---such as header types, local state,
+user-defined metadata and match-action tables---of a \uprogram from
 other \uprograms.  \uswitch fetches an element from a logical input
 buffer for each \uprogram, executes the \uprogram and writes one or
 more elements to the logical output buffer, which acts as input for
-another. Note that these buffers only exist in the abstraction and do
+another. Note that these buffers exist only in the abstraction and do
 not represent buffers in real target devices.
 
 \paragraph{\uswitch Architecture (\uarch).}
@@ -555,62 +554,79 @@ To write portable \uprograms, we define \uswitch Architecture
 pipelines, called \emph{\upipeline}, where each \upipeline implements
 a part of the complete packet processing on the device. A \upipeline
 may map to one or more \uprograms. Each \upipeline is associated with
-a \uarch interface, which specifies run-time parameters in a generic
+a \uarch interface which specifies run-time parameters in a generic
 way and declares programmable blocks required to be implemented for
-the pipeline. In order 
-% TODO: essence is not accurate here. In 3rd section, we would like 
-% to have formal words
-\refine{to capture the essence of packet-processing} and
-expose a minimal interface, \upipelines comprise of only programmable
-packet-processing blocks such as parser, match-action control blocks
-and deparser. In addition, to abstract away from target-specific
-constructs, \uarch defines \emph{logical} externs and metadata to
-facilitate use of packet-processing features such as multicast,
-cloning, etc. that are not part of P4 language but supported by
-architectures of real-targets. Programmers can use the logical externs
-to use such features.
+the pipeline. In order to capture the fundamentals of
+packet-processing and expose a minimal interface, \upipelines comprise
+of only programmable blocks such as parser,
+match-action control and deparser. In addition, to abstract
+away from target-specific constructs, \uarch provides \emph{logical}
+externs and metadata to facilitate use of packet-processing features
+such as multicast, cloning, etc. that are not part of the core P4
+language but supported by actual target devices.
 
-\begin{figure}[tbh]
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{compilation-module.pdf}
-         \caption{Module Compilation}
-         \label{subfig:module-compilation}
-    \end{subfigure}
-    \begin{subfigure}{\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{compilation-main.pdf}
-        \caption{Compilation to a Target Architecture}
-        \label{subfig:compilation-to-target-architecture}
-    \end{subfigure}
-    \caption{Compiling \uprograms}
+
+\begin{figure}[!tbp]
+  \begin{subfigure}{\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{compilation-module.pdf}
+    \caption{Compiling a \ulang module into IR.}
+    \label{fig:compile-module}
+  \end{subfigure}
+  \begin{subfigure}{\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{compilation-main.pdf}
+    \caption{Compiling a \ulang program with other modules for a
+    target.}
+    \label{fig:compile-to-target}
+  \end{subfigure}
+  \caption{Compiling \uprograms}
+  \label{fig:compiler-workflow}
 \end{figure}
 
+\paragraph{\ulang and Compiler (\ucomp).}%
+\ulang extends P4 and allows users to write libraries of independent
+packet-processing modules, declare their instances and invoke the
+instances using a built-in \texttt{apply} method. This allows to hide
+implementation of a module and reuse them using run-time parameters of
+their interfaces. Note that \ulang programs are written in a
+target-agnostic manner using logical constructs of \uarch. To use
+\ulang for a given target device, we need to generate configurations
+specific for that target. For this, we present the \ulang compiler,
+\ucomp.
 
-\paragraph{\ulang and Compiler (\ucomp).}
-To enable programmers to hide implementations and develop 
-independent \uprograms, \ulang extends P4 with a construct 
-that allows programmers to declare custom types, called \upackage, by 
-implementing interfaces declared in \uarch. \upackages 
-have in-built \texttt{apply} method that can be used to invoke their 
-instance by supplying run-time parameters specified by their 
-interfaces.
-\hs{TODO: cont}
+\cref{fig:compiler-workflow} gives an example of building a dataplane
+with \ulang and \ucomp in two stages:
+\begin{enumerate*}[label=(\roman*)]
+  \item compiling individual modules and
+  \item composing modules and compiling dataplane for a target.
+\end{enumerate*}
+Users write individual modules for specific processing---for
+example, \texttt{L2.\ulang} in \cref{fig:compile-module} performs only
+ethernet processing similar to \cref{fig:l2.p4}.
+\cref{fig:compile-module} shows the first stage of compiling where
+\ucomp compiles a module into \uarch-specific IR.  During this, \ucomp
+transforms parser and deparser blocks into match-action control. This
+transformation unifies the abstract-machines for packet-processing,
+thus allowing seamless transfer of execution control within and across
+modules and enables composition. In the second phase, users compose
+the modules together to build a dataplane---e.g., in
+\cref{fig:compile-to-target}, \texttt{main.\ulang} composes L2 and L3
+modules to build a modular router. Further, based on the specified
+target device, the compiler also generates the dataplane configuration
+specific to the device through a sequence of intermediate steps
+(\cref{sec:compiler}).
 
-% \ucomp extends current P4 language and allows programmers to define 
-% \texttt{package} types, declare their instances and invoke them using 
-% the built-in \texttt{apply} method.
-% This allows to hide implementation of package types and reuse them 
-% using run-time parameters of their interfaces.
-% Programmers can use sub-languages of P4 for parser and control blocks 
-% to implement interfaces.
-% \ucomp homogenizes abstract-machines of programmable blocks by 
-% transforming parser and deparser blocks into match-action control 
-% blocks. This transformation unifies the abstract-machines for 
-% packet-processing allowing seamless transfer of execution control 
-% across \uprograms.
 
 \deleted{
+\ulang extends P4 and allows programmers to define \texttt{package}
+types, declare their instances and invoke them using the built-in
+\texttt{apply} method. This allows to hide implementation of package
+types and reuse them using run-time parameters of their interfaces.
+Programmers can use sub-languages of P4 for parser and control blocks
+to implement interfaces.  \ucomp homogenizes abstract-machines of
+programmable blocks by transforming parser and deparser blocks into
+match-action control blocks.
 Each \uprogram specializes a generic interface. The run-time 
 interfaces enable easy reuse and hide implementation detail of the 
 \uprograms, facilitating modular and incremental development. Using 
@@ -639,7 +655,7 @@ specified architecture or an executable with architecture-specific CP
 APIs.
 }
 
-\sout{\ucomp perform static analysis to estimate possible packet 
+\deleted{\ucomp perform static analysis to estimate possible packet 
 sizes required to process all the transformed \uprograms in 
 match-action control blocks of target architecture's pipeline.
 \ucomp synthesizes P4 code for parser and deparer blocks of target architecture's pipeline to extract and emit required number of bytes from and to packet.
