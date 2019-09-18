@@ -117,7 +117,6 @@ const IR::Node* DeparserConverter::preorder(IR::P4Control* deparser) {
         prune();
         return deparser;
     }
-    LOG3("is deparser true");
     auto param = deparser->getApplyParameters()->getParameter(0);
     paketOutParamName = param->name.name;
 
@@ -177,6 +176,7 @@ const IR::Node* DeparserConverter::postorder(IR::P4Control* deparser) {
     controlVar.clear();
     keyElementLists.clear();
     keyValueEmitOffsets.clear();
+    LOG3("return deparser");
     return deparser;
 }
 
