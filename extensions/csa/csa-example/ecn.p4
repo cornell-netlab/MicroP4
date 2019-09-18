@@ -6,9 +6,9 @@
 #include"csa.p4"
 #include"common.p4"
 
-struct ecn_meta_t { }
+#define TABLE_SIZE 1024
 
-const bit<19> ECN_THRESHOLD = 10;
+struct ecn_meta_t { }
 
 header ethernet_h {
     bit<96> unused;
@@ -36,7 +36,7 @@ struct ecn_hdr_t {
   ipv4_h ipv4;
 }
 
-cpackage ecn : implements CSASwitch<external_meta_t, empty_t, empty_t, 
+cpackage ecn : implements CSASwitch<empty_t, external_meta_t, empty_t, 
 									ecn_hdr_t, ecn_meta_t, empty_t> {
 									
   parser csa_parser(packet_in pin, out ecn_hdr_t parsed_hdr, 

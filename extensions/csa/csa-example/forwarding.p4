@@ -6,6 +6,8 @@
 #include"csa.p4"
 #include"common.p4"
 
+#define TABLE_SIZE 1024
+
 header ethernet_h {
   bit<48> dstAddr;
   bit<48> srcAddr;

@@ -6,6 +6,8 @@
 #include"csa.p4"
 #include"common.p4"
 
+#define TABLE_SIZE 1024
+
 struct l3_meta_t { 
  bit<32> next_hop;}
 
