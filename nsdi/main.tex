@@ -1021,27 +1021,6 @@ receives the value of \texttt{nh\_id} and continues processing by
 applying \texttt{forward\_tbl}.
 
 
-\paragraph{Input/Output Buffers.}
-Representative to logical buffers in programming model for \uswitch, 
-\uarch declares \texttt{in\_buf} and \texttt{out\_buf} externs. 
-Programmers can use them to invoke other programs in implementation 
-of 
-the control block of the \texttt{Orchestration} interface. As 
-\uswitch does not allow to fetch multiple packets at time from input 
-buffer, the \texttt{in\_buf} extern has \texttt{dequeue} method that 
-can be used only by the \uswitch. However, programmers can 
-instantiate 
-the extern and use them to pass as arguments to other 
-\upackages. The \texttt{out\_buf} extern has, \texttt{enqueue} 
-and \texttt{merge}, methods to store packets processed by callee 
-\upackages. In addition, it provides \texttt{to\_in\_buf} to move the 
-elements of the caller to the instance of \texttt{in\_buf} type
-passed as the argument. Note, the \texttt{mc\_buf} extern allows to 
-store parsed headers, unlike \texttt{in\_buf} and \texttt{out\_buf} 
-externs. It is designed to be used along with \texttt{mc\_engine} to 
-express multicast packet-processing, where as \texttt{in\_buf} and 
-\texttt{out\_buf} are designed for generic composition interface.
-
 
 \paragraph{Multicast Extern.}
 To avoid compromising expressiveness of \uprograms, \uswitch models 
@@ -1107,6 +1086,25 @@ facilitate nested invocation of \upackages with multicast interface.
 
 
 
+
+\paragraph{Input/Output Buffers.}
+Corresponding to the logical buffers in \uswitch's model
+(\cref{fig:uswitch}), \uarch declares \texttt{in\_buf} and
+\texttt{out\_buf} externs. These are used to invoke other programs
+from within the control block of an \texttt{Orchestration} \upipeline.
+As \uswitch restricts fetching multiple packets simultaneously
+from the input buffer, \texttt{in\_buf}'s \texttt{dequeue} method
+can be used only  the \uswitch. However, programmers can use them to
+pass as arguments to other modules. \texttt{out\_buf} exposes
+\texttt{enqueue} and \texttt{merge} methods to buffer packets
+processed by the callee program. to move elements to an
+\texttt{in\_buf} instance, which is passed as the argument, users
+can use \texttt{to\_in\_buf} . Additionally, the \texttt{mc\_buf}
+extern allows to store parsed headers, unlike \texttt{in\_buf} and
+\texttt{out\_buf}. It is designed to be used along with
+\texttt{mc\_engine} to express multicast packet-processing, where as
+\texttt{in\_buf} and \texttt{out\_buf} are designed for generic
+composition interface.
 
 % \begin{figure}[htb]
 % \begin{lstlisting}[frame=none, escapechar=!]
