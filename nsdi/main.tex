@@ -850,20 +850,20 @@ extern void recirculate<D>(in D data);
 
 \subsection{Logical Externs}
 \label{sec:logical-externs}
-\uarch's logical externs provide a way to represent packets and
-metadata as well as express packet-processing functions in a
-target-agnostic manner. These generic constructs are mapped to
-target-specific constructs eventually.
+\uarch's logical externs  enable representing packets and metadata as
+well as expressing packet-processing functions in a target-agnostic
+manner. These generic constructs, shown in
+\cref{fig:micro-switch-architecture}, are mapped to target-specific
+constructs eventually.
 
 \tightparbf{Packet Extern.}
-To represent a packet as a buffer element in \uswitch's model
-(\cref{fig:uswitch}), \uarch provides an extern called \texttt{pkt}
-(\cref{fig:micro-switch-architecture}). \uarch's \texttt{extractor}
-and \texttt{emitter} externs allow operations to modify a \texttt{pkt}
-instance. Users can also instantiate and initialize new \texttt{pkt}
-instances using \texttt{copy\_from} method. While a \texttt{pkt} needs
-to be initialized, \texttt{emitter} and \texttt{emitter} do not need
-to be initialized.
+\uarch allows representing a packet as a byte-array through an extern
+called \texttt{pkt}. Users can also instantiate and initialize new
+\texttt{pkt} instances using \texttt{copy\_from} method.  To allow
+modifications on a \texttt{pkt} instance, \uarch's provides the
+\texttt{extractor} and \texttt{emitter} externs.
+% While a \texttt{pkt} needs to be initialized, \texttt{emitter}
+% and \texttt{extractor} do not need to be initialized.
 
 % The \texttt{pkt} instance, in parameters of every processing-block, is
 % supplied by \uswitch. Also, \uswitch allows to create compile-time
@@ -882,24 +882,24 @@ to be initialized.
 % parameters in parser and deparser declarations of \texttt{Unicast} 
 % and \texttt{Multicast} interfaces. 
 
-\tightparbf{Correlated Intrinsic Metadata.}
-Due to requirement from network monitoring and debugging applications,
-architectures of real targets usually provide intrinsic per-packet 
-metadata that are correlated. e.g., to measure every packet's queuing 
-latency through the device, the timestamps required to compute 
-queuing latency can be measured only after the packet's out port is 
-finalized and packet is enqueued in appropriate queue.
+\tightparbf{Intrinsic Metadata and Constraints.}
+Architectures of actual targets usually provide intrinsic per-packet
+metadata with certain constraints on their usage---e.g.,
+\texttt{output\_port} cannot be changed in the PSA's egress pipeline
+to meet the packet scheduler's requirements~\cite{psa}.
 
-To capture such dependency among intrinsic metadata, \uarch provides 
-a stateful extern, \texttt{es\_t}. The extern exposes methods to 
-access correlated intrinsic metadata. In addition, \uarch declares an 
-enumerator, called \texttt{meta\_t}. Each value in the enumerator 
-associated with a immutable intrinsic metadata populated only by the 
-target for every packet (e.g., \texttt{IN\_TIMESTAMP}, 
-\texttt{OUT\_TIMESTAMP} etc). The \texttt{es\_t} extern declares a 
-method (\texttt{get\_value}), parameterized on the enum, that allows 
-to read value, populated by the target, for every such field.
-
+To use such metadata and also to capture any constraints, \uarch
+provides an extern, \texttt{es\_t}, and an enumerator,
+\texttt{meta\_t}. \texttt{meta\_t} maps \uarch's metadata to
+target-specific metadata---each value in the enumerator maps to an
+immutable intrinsic metadata field specific to the target, for
+example, \texttt{ingress\_timestamp}. Note that \texttt{meta\_t} needs
+to be defined for each target architecture in \ucomp's backend
+(\cref{sec:compiler}), which also enforces any constraints on
+metadata. To access a metadata's value, set by the target, in a
+program, \texttt{es\_t} provides a method \texttt{get\_value}, which
+is parameterized on \texttt{meta\_t}.
+% The extern exposes methods to access correlated intrinsic metadata. 
 % For example \texttt{set\_out\_port} and \texttt{get\_out\_port} 
 % allow, respectively, sets and gets output port for the packet.
 % \uarch defines intrinsic metadata for the logical target \uswitch.
