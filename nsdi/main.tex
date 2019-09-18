@@ -931,8 +931,8 @@ is parameterized on \texttt{meta\_t}.
 \begin{lstlisting}[frame=none, escapechar=!]
 /* !{l3.\ulang}! */
 // !{\color{commentcolor}{\uprograms for L3 protocols}}! 
-ipv6(pkt p, im_t im, out bit<16> h);
-ipv4(pkt p, im_t im, out bit<16> h);
+ipv6(pkt p, im_t im, out bit<16> nh_id);
+ipv4(pkt p, im_t im, out bit<16> nh_id);
 // implement unicast interface for L3 program
 !\colorbox{green!10}{program L3 : implements Unicast<>}! {
   parser P(extractor ex, pkt p, out empty_ht h, inout data_t d) {
@@ -999,17 +999,18 @@ parser, control blocks and declarations of \uprograms.}
 % We illustrate modular programming and composition using the logical 
 % constructs introduced till now.
 
-\paragraph{Example: Modular Router Using \texttt{Unicast} interface.}
-\cref{subfig:router} shows code snippet of a \upackage, 
-\texttt{router}, implementing the \texttt{Unicast} interface type 
-along with the declarations of \upackages \texttt{ipv6} and 
-\texttt{ipv4}.\footnotemark[\value{footnote}] In 
-\texttt{router.p4}, \texttt{ipv4} and \texttt{ipv6}, each declare 
-a user-defined parameter, \texttt{nh\_id}, as a part of run-time 
-parameters with packet and intrinsic metadata. The 
-\texttt{router} (in \texttt{main.p4}) declares an additional 
-parameter, \texttt{type}. Such user-define parameters allow to pass 
-data across \upackages, providing great flexibility for composition.
+\tightpar{Example: Modular router using \texttt{Unicast} interface and
+externs.}
+\cref{subfig:router} shows a program, \texttt{l3.\ulang}, that
+implements the \texttt{Unicast} interface and processes IPv4 and IPv6
+headers.\footnotemark[\value{footnote}] Both \texttt{ipv4} and
+\texttt{ipv6} declare a user-defined parameter, \texttt{nh\_id} as a
+part of run-time parameters along with packet \texttt{p} and intrinsic
+metadata \texttt{im}. \texttt{ModularRouter} (in
+\cref{subfig:router-main})
+declares an additional parameter, \texttt{type}. Such user-define
+parameters allow to pass data across \upackages, providing great
+flexibility for composition.
 
 The \texttt{ModularRouter} \uprogram in 
 \cref{subfig:router-main}, parses the ethernet header and invokes 
