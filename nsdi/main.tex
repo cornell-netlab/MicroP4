@@ -719,10 +719,8 @@ as \texttt{pkt}, \texttt{sm\_t}, etc.---used in the signature.
 
 
 \begin{lstlisting}[frame=none]
-Unicast<I,O,IO> (pkt p, inout sm_t sm, es_t es, 
-  in I i_param, out O o_param, inout IO io_param);
-Multicast<I,O> (pkt p, in sm_t sm, es_t es, 
-  in I i_param, out_buf<O> ob);
+Unicast<I,O,IO> (pkt p, im_t im, in I i_param, out O o_param, inout IO io_param);
+Multicast<I,O> (pkt p, im_t im, in I i_param, out_buf<O> ob);
 Orchestration<I,O> (in_buf<I> ib, out_buf<O> ob);
 \end{lstlisting}
 
@@ -770,6 +768,12 @@ specified input buffer.
 % Similarly, Orchestration interface is associated with 
 % Orchestration pipeline.
 
+% /* standard metadata */
+% struct sm_t { 
+%   bit<16> pkt_len;
+%   bit<8> in_port;
+% }
+
 
 \begin{figure*}
 \begin{minipage}[t]{.38\textwidth}
@@ -785,29 +789,28 @@ extern emitter {
 }
 \end{lstlisting}
 \end{minipage}\vline
-\hfill\begin{minipage}[t]{.22\textwidth}
+\hfill
+\begin{minipage}[t]{.22\textwidth}
 \begin{lstlisting}[frame=none]
-/* standard metadata */
-struct sm_t { 
-  bit<16> pkt_len;
-  bit<8> in_port;
-}
+/* enum used to map to target-specific metadata */
 enum meta_t {
   IN_TIMESTAMP,
-  OUT_TIMESTAMP 
+  OUT_TIMESTAMP,
+  IN_PORT, PKT_LEN,
+  ...
 }
 \end{lstlisting}
 \end{minipage}\vline
 \hfill\begin{minipage}[t]{.35\textwidth}
 \begin{lstlisting}[frame=none]
-/* Multicast  Extern object*/
+/* Multicast Extern object*/
 extern mc_engine {
   mc_engine();
   void set_mc_group(GroupId_t gid);
-  apply(es_t, out PktInstId_t);
+  apply(im_t, out PktInstId_t);
   
   set_buf(out_buf<O>);
-  apply(pkt, out sm_t, es_t, out O);  
+  apply(pkt, im_t, out O);  
 }
 \end{lstlisting}
 \end{minipage}
@@ -818,26 +821,26 @@ extern extractor { /* Data Extraction */
   void extract<H>(pkt p, out H hdr, in bit<32> size);
   H lookahead<H>();
 }
-extern es_t {/* Correlated intrinsic metadata */
+extern im_t {/* Correlated intrinsic metadata */
   void set_out_port(in bit<8>);
   bit<8> get_out_port();
   bit<32> get_value(in meta_t ft);
-  void copy_from(es_t es);
+  void copy_from(im_t im);
 }
 \end{lstlisting}
 \end{minipage}\vline
 \hfill\noindent\begin{minipage}[t]{0.52\textwidth}
 \begin{lstlisting}[frame=none]
 extern in_buf<I> { // used only by architecture
-  dequeue(pkt, out sm_t, es_t, out I);
+  dequeue(pkt, es_t, out I);
 }
 extern out_buf<O> {
-  enqueue(pkt p, in sm_t sm, es_t es, in O out_args);
+  enqueue(pkt p, im_t im, in O out_args);
   void to_in_buf(in_buf<O>);
   void merge(out_buf<O>);
 }
 extern mc_buf<H, O> {
-  enqueue(pkt, in H, in sm_t, es_t, in O);
+  enqueue(pkt, in H, es_t, in O);
 }
 extern void recirculate<D>(in D data);
 \end{lstlisting}
@@ -927,73 +930,71 @@ is parameterized on \texttt{meta\_t}.
 \begin{figure*}[!ht]
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
-/* router.p4 */
-// package type declaration of !{\color{commentcolor}{\uprograms for protocols}}! 
-!\colorbox{mygray}{ipv6}!(pkt p, inout sm_t sm, es_t es, 
-    out bit<16> h);
-!\colorbox{mygray}{ipv4}!(pkt p, inout sm_t sm, es_t es, 
-    out bit<16> h);
-// implement unicast interface for router package
-parser P(extractor ex, pkt p, out empty_ht h, inout data_t d) {
-  state start { transition accept; }
-}
-control C(pkt p, inout empty_ht h, inout sm_t sm, es_t e, 
-!\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!) {
-  apply {
-    switch (!\colorbox{mygray}{type}!) {
-      0x0800:!\colorbox{mygray}{ipv4\_i.apply(p, sm, e, nh\_id);}!
-      0x86DD:!\colorbox{mygray}{ipv6\_i.apply(p, sm, e, nh\_id);}!
-    }
+/* !{l3.\ulang}! */
+// !{\color{commentcolor}{\uprograms for L3 protocols}}! 
+ipv6(pkt p, im_t im, out bit<16> h);
+ipv4(pkt p, im_t im, out bit<16> h);
+// implement unicast interface for L3 program
+!\colorbox{green!10}{program L3 : implements Unicast<>}! {
+  parser P(extractor ex, pkt p, out empty_ht h, inout data_t d) {
+    state start { transition accept; }
   }
-}
-control D(emitter em, pkt p, in empty_ht h) {
-  apply { }
-}
-!{\subcaption[]{router \uprogram}\label{subfig:router}}!
-/* main.p4 */
-!\colorbox{mygray}{router}!(pkt p, inout sm_t sm, es_t es, 
-!\colorbox{mygray}{out bit<16> nh\_id, inout bit<16> type}!);
+  control C(pkt p, inout empty_ht h, im_t im,
+      out bit<16> !\colorbox{mygray}{nh\_id}!, inout bit<16> !\colorbox{mygray}{type}!) {
+    ipv4() !\colorbox{red!10}{ipv4\_i}!; ipv6() !\colorbox{red!10}{ipv6\_i}!; // instantiation
+    apply { switch (!\colorbox{mygray}{type}!) { // out arg: nh_id
+        0x0800:!\colorbox{red!10}{ipv4\_i}!.apply(p, im, !\colorbox{mygray}{nh\_id}!);
+        0x86DD:!\colorbox{red!10}{ipv6\_i}!.apply(p, im, !\colorbox{mygray}{nh\_id}!);
+    } }
+  }
+  control D(emitter em, pkt p, in empty_ht h) {
+    apply { }
+  }
+}    // L3 program sets the next hop (nh_id)
+!{\subcaption[]{l3.\ulang implements IPv4 and IPv6}\label{subfig:router}}!
+/* !{modular\_router.\ulang}! uses L3 program */
+!\colorbox{green!10}{L3}!(pkt p, im_t im, 
+out bit<16> !\colorbox{mygray}{nh\_id}!, inout bit<16> !\colorbox{mygray}{type}!);
 \end{lstlisting}
 \end{minipage}\hspace{-4pt}\vline
 \hfill\begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
+!\colorbox{green!10}{program ModularRouter : implements Unicast<>}! {
 parser P(extractor ex, pkt p, out hdr_t h) {
   state start {
     ex.extract(p, h.eth); transition accept;
   }
 }
-control C(pkt p, inout hdr_t h, inout sm_t sm, es_t es) {
-  !\colorbox{mygray}{bit<16> nh\_id; router() route; }!
-  action drop () {}           
+control C(pkt p, inout hdr_t h, im_t im) { // p is partial pkt without L2 header
+  bit<16> !\colorbox{mygray}{nh\_id;}! !\colorbox{green!10}{L3()}! !\colorbox{red!10}{l3\_i; }!
+  action drop () {}
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstMac = dmac; h.eth.srcMac = smac;
-    es.set_out_port(port);
+    !\colorbox{blue!10}{es}!.set_out_port(port); // setting metadata
   }
-  table forward_tbl {
-    key = { h : exact; } 
+  table forward_tbl { // L2 forwarding, needs nh_id
+    key = { nh_id : exact; } 
     actions = { forward; drop; }
   }
-  apply {
-    !\colorbox{mygray}{route.apply(p, sm, es, nh\_id, 
-h.eth.etherType);}!
-    forward_tbl.apply(); 
+  apply { // invoke L3 to get nh_id
+    !\colorbox{red!10}{l3\_i}!.apply(p, im, !\colorbox{mygray}{nh\_id}!, !\colorbox{mygray}{h.eth.etherType}!);
+    forward_tbl.apply(); // use nh_id in forward_tbl
   }
 }
 control D(emitter em, pkt p, in hdr_t h) {
   apply { em.emit(p, h.eth); }
 }
+}
 ModularRouter(P, C, D) main;
 \end{lstlisting}
 % 0x8847:!\colorbox{mygray}{mpls\_i.apply(p, sm, es);}!
-\subcaption[]{ModularRouter \uprogram with main 
-instance}\label{subfig:router-main}
+\subcaption[]{Modular Router \uprogram composes L2 and L3 routing.}\label{subfig:router-main}
 \end{minipage}
 \caption[]{Modular Router using \uarch \footnotemark}
 \label{fig:modular-router}
 \end{figure*}
 \footnotetext{For brevity, we have skipped the unused parameters in 
-parser, control blocks and \upackage type declarations of 
-\uprograms.}
+parser, control blocks and declarations of \uprograms.}
 
 
 % We illustrate modular programming and composition using the logical 
@@ -1052,7 +1053,7 @@ the control blocks while implementing the \texttt{Multicast}
 interface 
 (shown below).
 \begin{lstlisting}[frame=none, escapechar=!]
-control mc(pkt p, hdr_t h, sm_t s, es_t e, 
+control mc(pkt p, hdr_t h, es_t e, 
 !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
   !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
   !\colorbox{mygray}{out\_t oa;}! // some out args
@@ -1067,7 +1068,7 @@ control mc(pkt p, hdr_t h, sm_t s, es_t e,
     MulticastRouting.apply();
     !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
     mac.apply();
-    !\colorbox{mygray}{hb.enqueue(h, sm, es, oa);}!
+    !\colorbox{mygray}{hb.enqueue(h, im, oa);}!
   }
 }
 \end{lstlisting}
@@ -1125,7 +1126,7 @@ facilitate nested invocation of \upackages with multicast interface.
 %     MulticastRouting.apply();
 %     !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
 %     mac.apply();
-%     !\colorbox{mygray}{hb.enqueue(h, sm, es, oa);}!
+%     !\colorbox{mygray}{hb.enqueue(h,  es, oa);}!
 %   }
 % }
 % \end{lstlisting}
@@ -1843,7 +1844,7 @@ the Ethernet and IPv4 headers.
 %   state parse_routing_hdr { ... }
 %   state parse_srh { ... }
 % }
-% control C(pkt p, inout srv_ht h, inout sm_t sm, es_t es) {
+% control C(pkt p, inout srv_ht h, im_t im) {
 %   apply { // copy next segment address from h.sr to h.ipv6.destAddr}
 % }
 % control D(emitter em, pkt p, in srv_ht h) {
@@ -1882,7 +1883,7 @@ from \cref{subfig:router-main} as follows:
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
   !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
-  ipv6_i.apply(p, sm, es, h);
+  ipv6_i.apply(p, im, h);
 }
 \end{lstlisting}
 The snippets shows how we can integrate SRv6 without touching any
@@ -1980,17 +1981,17 @@ following snippet illustrates creating a copy of parameter \texttt{pk}
 and \texttt{e} using the method.
 \begin{lstlisting}[frame=none]
 struct e_t {}; // empty type
-sflow(pkt, inout sm_t, es_t);// Implements Unicast 
-control con(pkt pk, inout sm_t s, es_t e, 
+sflow(pkt, es_t);// Implements Unicast 
+control con(pkt pk, es_t e, 
     out_buf<e_t> ob) { // `ob' holds out packets
-  pkt pk2;  es_t e2;  sm_t s2;
+  pkt pk2;  es_t e2;
   in_buf<e_t> ib; // in_buffer for another module
   apply {
     pk2.copy_from(pk); // copying
-    e2.copy_from(e); s2 = s; // copying
-    sflow.apply(pk2, s2, e2); // sflow on copy
-    ob.enqueue(pk, s, e); // puting original in ob
-    ob.enqueue(pk2, s2, e2); // copy in ob
+    e2.copy_from(e); // copying
+    sflow.apply(pk2, e2); // sflow on copy
+    ob.enqueue(pk, e); // puting original in ob
+    ob.enqueue(pk2, e2); // copy in ob
     ob.to_in_buf(ib); // moves all elements to ib
     modular_router_orch.apply(ib, ob);
   }
@@ -2168,7 +2169,7 @@ their runtime behavior.
 %   apply(es_t, out PacketInstanceId_t);
 %   
 %   set_buf(out_buf<O>);
-%   apply(pkt, out sm_t, es_t, out O);  
+%   apply(pkt, es_t, out O);  
 % }
 % \end{lstlisting}
 % \end{minipage}
@@ -2183,22 +2184,22 @@ their runtime behavior.
 %   void set_out_port(in bit<8>);
 %   bit<8> get_out_port();
 %   bit<32> get_value(in meta_t ft);
-%   void copy_from(es_t es);
+%   void copy_from(im_t im);
 % }
 % \end{lstlisting}
 % \end{minipage}\vline
 % \hfill\noindent\begin{minipage}[t]{0.57\textwidth}
 % \begin{lstlisting}[frame=none]
 % extern in_buf<I> { // used only by architecture
-%   dequeue(pkt, out sm_t, es_t, out I);
+%   dequeue(pkt, es_t, out I);
 % }
 % extern out_buf<O> {
-%   enqueue(pkt p, in sm_t sm, es_t es, in O out_args);
+%   enqueue(pkt p, im_t im, in O out_args);
 %   void to_in_buf(in_buf<O>);
 %   void merge(out_buf<O>);
 % }
 % extern mc_buf<H, O> {
-%   enqueue(pkt, in H, in sm_t, es_t, in O);
+%   enqueue(pkt, in H, es_t, in O);
 % }
 % extern void recirculate();
 % \end{lstlisting}
@@ -2238,7 +2239,7 @@ their runtime behavior.
 %   void set_out_port(in bit<8>);
 %   bit<8> get_out_port();
 %   bit<32> get_value(in meta_t ft);
-%   void copy_from(es_t es);
+%   void copy_from(im_t im);
 % }
 % \end{lstlisting}
 % \caption{\texttt{es\_t} extern}
@@ -2249,21 +2250,21 @@ their runtime behavior.
 % \begin{lstlisting}[frame=none]
 % extern in_buf<I> {
 %   // used by architecture only
-%   dequeue(pkt, out sm_t, es_t, out I);
+%   dequeue(pkt, es_t, out I);
 % }
 % extern out_buf<O> {
-%   enqueue(pkt p, in sm_t sm, es_t es, in O out_args);
+%   enqueue(pkt p, im_t im, in O out_args);
 %   void to_in_buf(in_buf<O>);
 %   void merge(out_buf<O>);
 % }
 % extern mc_buf<H, O> {
-%   enqueue(pkt, in H, in sm_t, es_t, in O);
+%   enqueue(pkt, in H, es_t, in O);
 % }
 % \end{lstlisting}
 % \caption{Buffer Representation}
 % \label{fig:pkt-buf}
 % \end{figure}
-% dequeue(pkt, out H, out sm_t, es_t, out O);
+% dequeue(pkt, out H, es_t, out O);
 
 % \begin{figure}[h]
 % \begin{lstlisting}[frame=none]
@@ -2274,7 +2275,7 @@ their runtime behavior.
 %   apply(es_t, out PacketInstanceId_t);
 %   
 %   set_buf(out_buf<O>);
-%   apply(pkt, out sm_t, es_t, out O);  
+%   apply(pkt, es_t, out O);  
 % }
 % \end{lstlisting}
 % \caption{Multicast Extern}
@@ -2304,7 +2305,7 @@ their runtime behavior.
 %     MulticastRouting.apply();
 %     !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
 %     mac.apply();
-%     hb.enqueue(h, sm, es, oa);
+%     hb.enqueue(h, sm, im, oa);
 %   }
 % }
 % \end{lstlisting}
@@ -2315,21 +2316,21 @@ their runtime behavior.
 \begin{figure*}[h]
 \begin{lstlisting}[frame=none]
 // Unicast
-Unicast<H,M,I,O,IO>(pkt p, inout sm_t sm, es_t es, in I in_param, out O out_param, inout IO inout_param) {
-  parser u_parser(extractor ex, pkt p, out H hdr, inout M meta, inout sm_t sm, in I in_param, inout IO inout_param);
-  control u_control(pkt p, inout H hdr, inout M m, inout sm_t sm, es_t es, in I in_param, out O out_param, inout IO inout_param);
+Unicast<H,M,I,O,IO>(pkt p, im_t im, in I in_param, out O out_param, inout IO inout_param) {
+  parser u_parser(extractor ex, pkt p, out H hdr, inout M meta, in I in_param, inout IO inout_param);
+  control u_control(pkt p, inout H hdr, inout M m, im_t im, in I in_param, out O out_param, inout IO inout_param);
   control u_deparser(emitter em, pkt p, in H hdr);                             
 }
 
 // Multicast
-Multicast<H,M,I,O>(pkt p, in sm_t sm, es_t es, in I in_param, out_buf<O> ob) {
-  parser m_parser(extractor ex, pkt p, out H hdr, inout M meta, in I in_param, inout sm_t sm);
-  control m_control(pkt p, inout H hdr, inout M meta, inout sm_t sm, es_t es, inout I in_param, mc_buf<H,O> mob);
+Multicast<H,M,I,O>(pkt p, im_t im, in I in_param, out_buf<O> ob) {
+  parser m_parser(extractor ex, pkt p, out H hdr, inout M meta, in I in_param);
+  control m_control(pkt p, inout H hdr, inout M meta, im_t im, inout I in_param, mc_buf<H,O> mob);
   control m_deparser(emitter em, pkt p, in H hdr);
 }
 
 Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {                         
-  control o_control(pkt p, inout sm_t sm, es_t es, in I in_param, out_buf<O> ob);
+  control o_control(pkt p, im_t im, in I in_param, out_buf<O> ob);
 }    
 \end{lstlisting}
 \caption{Interfaces declares in \uarch}
@@ -2442,26 +2443,26 @@ entries in the transformed match-action table of the parser.
 \begin{figure}[!h]
 \begin{lstlisting}[frame=none]
 struct e_t {};  struct h_t { ... };
-prog(pkt, inout sm_t, es_t, out h_t);
-test(pkt, inout sm_t, es_t, out h_t);
-log(pkt, inout sm_t, es_t, in h_t, in h_t);
-control validate(pkt p, inout sm_t s, es_t e, out_buf<e_t> ob) {
+prog(pkt, es_t, out h_t);
+test(pkt, es_t, out h_t);
+log(pkt, es_t, in h_t, in h_t);
+control validate(pkt p, es_t e, out_buf<e_t> ob) {
           pkt pt, pm;  es_t et, em;  
-/*slice*/ sm_t st, sm; h_t hp, ht;
+/*slice*/ h_t hp, ht;
 /*  #  */ apply {
 /*  1  */   pm.copy_from(p); // c1
-/*  1  */   em.copy_from(e); sm = s;
+/*  1  */   em.copy_from(e);
 /*  3  */   pt.copy_from(p); // c3 
-/*  3  */   et.copy_from(e); st = s;
-/* 2,1 */   prog.apply(p, s, e, hp); 
-/* 3,1 */   test.apply(pt, st, et, ht); 
+/*  3  */   et.copy_from(e);
+/* 2,1 */   prog.apply(p, e, hp); 
+/* 3,1 */   test.apply(pt, et, ht); 
 /*  1  */   if (hp != ht) {
-/*  1  */     log.apply(pm, sm, em, hp, ht);
-/*  1  */     ob.enqueue(pm, sm, em);
+/*  1  */     log.apply(pm, em, hp, ht);
+/*  1  */     ob.enqueue(pm, em);
 /*  1  */   }
-/*  3  */   smt.drop = true;
-/*  2  */   ob.enqueue(p, sm, e);
-/*  3  */   ob.enqueue(pt, smt, et);
+/*  3  */   et.set_out_port(DROP);
+/*  2  */   ob.enqueue(p, e);
+/*  3  */   ob.enqueue(pt, et);
           }
        }
 \end{lstlisting}
