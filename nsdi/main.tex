@@ -1006,20 +1006,19 @@ implements the \texttt{Unicast} interface and processes IPv4 and IPv6
 headers.\footnotemark[\value{footnote}] Both \texttt{ipv4} and
 \texttt{ipv6} declare a user-defined parameter, \texttt{nh\_id} as a
 part of run-time parameters along with packet \texttt{p} and intrinsic
-metadata \texttt{im}. \texttt{ModularRouter} (in
-\cref{subfig:router-main})
-declares an additional parameter, \texttt{type}. Such user-define
-parameters allow to pass data across \upackages, providing great
-flexibility for composition.
+metadata \texttt{im}. Similarly, \texttt{L3} exposes another
+parameter, \texttt{type}.  Such user-defined parameters allow flexible
+passing of data across modules for composition.
 
-The \texttt{ModularRouter} \uprogram in 
-\cref{subfig:router-main}, parses the ethernet header and invokes 
-(highlighted code) the instance \texttt{route} by calling 
-\texttt{apply} method. The method call is supplied with the partial 
-packet `\texttt{p}', without ehternet header. The \texttt{router} 
-package uses its \texttt{type} parameter to invoke an instance of 
-appropriate routing protocol package. As a result, it populates 
-\texttt{nh\_id} parameter passed as an \texttt{out} argument.
+\texttt{ModularRouter}, in \cref{subfig:router-main}, parses the
+ethernet header and invokes an instance of L3, by calling
+\texttt{l3\_i.apply()}. It passes a partial packet `\texttt{p}',
+without the ethernet header, to \texttt{L3}.  \texttt{L3}, in turn,
+uses the \texttt{type} argument to invoke an instance of the
+appropriate protocol---IPv4 or IPv6---which populates \texttt{nh\_id}
+parameter passed as an \texttt{out} argument. \texttt{ModularRouter}
+receives the value of \texttt{nh\_id} and continues processing by
+applying \texttt{forward\_tbl}.
 
 
 \paragraph{Input/Output Buffers.}
