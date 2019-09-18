@@ -1166,14 +1166,13 @@ transformation. It generates reusable libraries by serializing the
 \textbf{Goal 1 :} Compose \uprograms by homogenizing their 
 processing-blocks. For that, it first performs static analysis to 
 compute \texttt{operational-region} for the \uprogram on packets' 
-byte-streams.
-Then, it synthesizes a stack of one byte header, called 
+byte-streams. Then, it synthesizes a stack of one byte header, called 
 \emph{byte-stack}, large enough to hold bytes in operational-region. 
 Finally, considering this byte-stack as a packet it transforms the 
 parsers-deparsers into match-action control blocks. \par
-\textbf{Goal 2 :} In case of compile-time replication, extract 
-packet-processing code for every packet instance and prepares 
-processing schedule. \\
+\textbf{Goal 2 :} Preprocessing for backends. In case of 
+compile-time replication, extract packet-processing code for every 
+packet instance and prepares processing schedule. \\
 The Midend passes are independent to target 
 architectures, focusing on composition and pre-processing for the
 backend passes. At the end of the midend passes \ucomp-IR contains 
@@ -1205,18 +1204,18 @@ analysis}.
 
 
 The simplified \uprograms allows to analyse minimum and 
-maximum bytes extracted by the parsers and emitted by the deparsers 
-in. These metrics are used to compute operational-region for 
-the main \uprogram (discussed in 
-\cref{subsubsection:static-analysis}).
+maximum bytes extracted by the parsers and emitted by the deparsers. 
+These metrics are used to compute operational-region for 
+the main \uprogram as discussed in 
+\cref{subsubsection:static-analysis}.
 
 Having a stack of bytes storing packets' operational-region allows 
-to synthesise code that performs parse and deparse packets in control 
-blocks. The next midend pass performs these transformations 
-to homogenize all processing blocks to control blocks 
-(\cref{subsection:parser-to-match-action-table}).
-Naturally, the main \uprogram is also transformed to a control 
-block that invokes other ones.
+to synthesize match-action code that parses and deparses packets in 
+control blocks. Following static-analysis, the midend performs these 
+transformations on \ucomp-IR to homogenize all processing blocks to 
+control blocks (\cref{subsection:parser-to-match-action-table}).
+Naturally, the main \uprogram node in \ucomp-IR is also transformed 
+to a control block that invokes other ones.
 
 Finally, if the main \uprogram is dependent on a \uprogram 
 implementing \texttt{Orchestration} interface, the final midend pass 
@@ -1596,6 +1595,28 @@ originally declared in the \uprogram.
 % We add an assignment statement to set visit variable associated with the parser state.
 
 
+\subsubsection{Preprocessing for \ucomp-backends}
+After homogenizing packet processing blocks, the midend eliminates 
+any use of logical buffer interfaces from \uprograms without 
+compile-time replication. For the \uprogram that use compile-time 
+replication of packet and intrinsic metadata to express multi-packet 
+processing, the midend prepares Packet-Processing Schedule (PPS) 
+graph for the \uprogram. Every node is a PPS graph captures the 
+\uprogram's sub-program, called \texttt{thread}, that processes only 
+one packet instance. The edges within PPS represents dependencies 
+among the packet-processing threads.
+To prepare PPS by extracting sub-program, we construct 
+Program Dependence Graph (PDG) \cite{Ferrante:1987:PDG:24039.24041} 
+from the \uprogram-IR and perform \emph{slicing} that is defined based 
+on a variant of \emph{program slice} 
+\cite{Weiser:1981:PS:800078.802557}.
+We define our slicing criteria based on the semantics of logical 
+externs, \texttt{pkt}, \texttt{in\_buf} and \texttt{out\_buf}, along 
+with \texttt{apply} method exposed by interfaces of \uarch. We 
+describe in-depth approach in 
+\cref{subsubsection:packet-processing-schedule}.
+
+
 
 
 
@@ -1609,23 +1630,11 @@ originally declared in the \uprogram.
 % program a given target architecture.
 
 
-\subsection{Transformation to Target Architecture}
-\ucomp's backend transforms all the control blocks by $(1)$ translating \uarch-specific constructs to target-specific ones and $(2)$ allocating the control blocks to the ones in target pipeline model.
-\uarch-specific constructs are higher-level abstraction for fixed-function packet-processing blocks and functions in target architecture.
-\uarch's externs, \texttt{es\_t} and \texttt{mc\_engine}, provide abstraction for constraint on intrinsic metadata and fixed-function block, packet replication engine.
-The \texttt{copy\_from} methods of \uarch's externs (\texttt{pkt}, \texttt{es\_t}) are abstraction for compile-time replication of packet.
-Programmers can create multiple copies of packets and intrinsic metadata in implementation of the control blocks of orchestration interface to describe multi-packet processing.
-In control blocks of orchestration interface, \ucomp realizes multi-packet processing by identifying a packet-processing sub-graph, called a \emph{thread}, for every initialization (\texttt{copy\_from} method call) statement of a \texttt{pkt} instance.
-Then, it prepares \emph{Packet-Processing Schedule} (PPS) of the threads and allocates thread code to packet-processing blocks of the target's pipeline model.
-Some target architectures may impose constraint that PPSs must be serializable.
-If \ucomp fails to find a serial PPS, it raises a compilation error for such targets. 
-% To translate the \uarch-specific constructs, \ucomp partitions and allocates the match-action control blocks to programmable-blocks in pipeline models of the target architecture.
+\subsection{\ucomp Backend}
+In this section, we discuss only about mapping control blocks to 
+target architecture-specific pipeline model.
 
-
-
-
-
-\subsubsection{Allocation to Target Architecture}
+\tightparbf{Allocation to Target Architecture}
 \label{subsubsection:allocation-to-target-architecture}
 Finally \ucomp translates \uarch's constructs to intrinsic metadata and extern provided by the target architecture.
 \ucomp visits PPS nodes in topological order to map threads and cps on target architecture.
@@ -2122,6 +2131,10 @@ them to build larger programs while supporting a range of devices.
 \appendix
 \section{Declarations in \uarch}
 \label{appendix:section:micro-switch-architecture}
+We describe exact declarations of \texttt{Unicast}, 
+\texttt{Multicast} and \texttt{Orchestration} interfaces along with 
+their runtime behavior. 
+
 % \begin{figure*}[h]
 % \begin{minipage}[t]{.35\textwidth}
 % \begin{lstlisting}[frame=none]
@@ -2319,7 +2332,7 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
   control o_control(pkt p, inout sm_t sm, es_t es, in I in_param, out_buf<O> ob);
 }    
 \end{lstlisting}
-\caption{Programmable Blocks for Interfaces}
+\caption{Interfaces declares in \uarch}
 \label{fig:programmable-blocks-for-interfaces}
 \end{figure*}
 
@@ -2338,13 +2351,10 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 
 
 
-
-
-\section{Transformation To Simple Parser}
-\label{subsection:header-stacks-variable-length-headers}
+\section{\ucomp Midend Transformations}
 
 \subsection{Header Stack Transformation}
-\label{section:header-stack-transformation}
+\label{subsection:header-stack-transformation}
 \ulang allows to use of header stacks with their size known at 
 compile-time. 
 \ucomp replaces every header stack instance with multiple instances of 
@@ -2374,7 +2384,7 @@ size 3.
 
 
 \subsection{Header Stack Transformation}
-\label{section:header-stack-transformation}
+\label{subsection:header-stack-transformation}
 \ulang allows programmers to define variable-length header types, 
 however it imposes a constraint that their variable-length fields must 
 contain integer number of bytes at run-time.
@@ -2424,15 +2434,11 @@ entries in the transformed match-action table of the parser.
 
 
 
-\section{\ucomp}
+
 \subsection{Packet-Processing Schedule}
 \label{subsubsection:packet-processing-schedule}
-\hs{TODO: this Section \ref{subsubsection:packet-processing-schedule} 
-will move out of paper of in appendix. In that scenario, modify  above 
-para to hint convincing solution to reader}
 
 
-\label{subsubsection:packet-processing-schedule}
 \begin{figure}[!h]
 \begin{lstlisting}[frame=none]
 struct e_t {};  struct h_t { ... };
