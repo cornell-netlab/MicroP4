@@ -1128,28 +1128,29 @@ transformation. It generates reusable libraries by serializing the
   \caption{Workflow for building dataplanes in \ulang}
   \label{fig:workflow}
 \end{figure}
-\tightparbf{Midend} passes perform transformations for two goals. \par
-\textbf{Goal 1 :} Compose \uprograms by homogenizing their 
+\tightparbf{Midend} performs two major transformations. \par
+\textbf{First}, to compose \uprograms by homogenizing their 
 processing-blocks. For that, it first performs static analysis to 
 compute \texttt{operational-region} for the \uprogram on packets' 
 byte-streams. Then, it synthesizes a stack of one byte header, called 
 \emph{byte-stack}, large enough to hold bytes in operational-region. 
 Finally, considering this byte-stack as a packet it transforms the 
-parsers-deparsers into match-action control blocks. \par
-\textbf{Goal 2 :} Preprocessing for backends. In case of 
-compile-time replication, extract packet-processing code for every 
+parsers-deparsers into match-action control blocks.
+
+\textbf{Second,} to preprocess for the backends. In case of 
+compile-time replication, extracts packet-processing code for every 
 packet instance and prepares processing schedule. \\
 The Midend passes are independent to target 
 architectures, focusing on composition and pre-processing for the
 backend passes. At the end of the midend passes \ucomp-IR contains 
 only control blocks having \uarch-specific constructs. 
-\tightparbf{Backend} passes transform the \ucomp-IR to the IR of a 
-specified target architecture. While mapping the control blocks to 
-the ones exposed the target architecture, it translates 
-\uarch-specific logical constructs to the target specific 
-ones. Moreover, it synthesizes required parser and deparser blocks 
-for dataplane pipeline model of target architecture. The backend is a 
-target architecture-specific.
+
+\tightparbf{Backend} transformation are for two goals.\par
+\textbf{First,} to allocate control blocks to the target's pipeline 
+model while translating to and respecting constraints on its 
+intrinsic metadata. \\ \textbf{Second,} to synthesizes required 
+parser and deparser blocks in target's pipeline model. 
+The backend is a specific to a target  architecture.
 
 
 
@@ -1597,13 +1598,29 @@ describe in-depth approach in
 
 
 \subsection{\ucomp Backend}
-In this section, we discuss only about mapping control blocks to 
-target architecture-specific pipeline model.
+% The backend of \ucomp transforms \ucomp-IR into the target 
+% architecture specific IR by $(1)$ mapping control blocks to 
+% target architecture-specific pipeline model, $(2)$ translating 
+% intrinsic metdata of \uarch to architecture-specific metadata and 
+% $(3)$ generating parser-deparser blocks exposed by the target
+% architecture.
+
+The backend of \ucomp understands semantics of pipeline model and 
+constraints on intrinsic metadata of target architecture. In addition, 
+it uses the mapping between the metadata of two architectures to 
+translate constraints imposed by the target architecture on its 
+intrinsic metadata.
+It allocates the control blocks of \uarch-IR while respecting the 
+constraints to the processing blocks exposed by the target 
+architecture. During allocation, it also translates the intrinsic 
+metadata.
+
 
 \tightparbf{Allocation to Target Architecture}
 \label{subsubsection:allocation-to-target-architecture}
-Finally \ucomp translates \uarch's constructs to intrinsic metadata and extern provided by the target architecture.
-\ucomp visits PPS nodes in topological order to map threads and cps on target architecture.
+
+
+\ucomp visits PPS nodes in topological order to map thread
 It simultaneously partitions all the sub-programs represented by each thread node located at the same topological order in PPS.
 It allocates the partitions to packet-processing block according to pipeline model of the target architecture.
 
@@ -1635,7 +1652,9 @@ We can perform similar transformation for other architectures like PSA using app
 % We enforce this condition by instrumenting thread code with an if-conditional statement.
 % At the end of each thread, next thread-id is set.
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Implementation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Implementation}
 \label{sec:implementation}
