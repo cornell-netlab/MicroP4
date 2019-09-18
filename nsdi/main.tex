@@ -714,9 +714,10 @@ its output buffer. Implementing interfaces for each \upipeline in a
 \uprogram---this is useful for composing \uprograms.
 
 The following snippet shows the signature of these interfaces while
-\cref{fig:micro-switch-architecture} shows declarations of types---such
-as \texttt{pkt}, \texttt{sm\_t}, etc.---used in the signature.
-
+\cref{fig:micro-switch-architecture} shows declarations of
+types---such as \texttt{pkt}, \texttt{sm\_t}, etc.---used in the
+signature and \cref{fig:modular-router} shows an example of using the
+\texttt{Unicast} interface.
 
 \begin{lstlisting}[frame=none]
 Unicast<I,O,IO> (pkt p, im_t im, in I i_param, out O o_param, inout IO io_param);
@@ -783,16 +784,15 @@ extern pkt { /* packet representation */
   unsigned length;
   void copy_from(pkt pa);
 }
-/* packet reassembler */
-extern emitter {
+extern emitter { /* packet assembler */
   void emit<H>(pkt p, in H hdr);
 }
 \end{lstlisting}
 \end{minipage}\vline
 \hfill
-\begin{minipage}[t]{.22\textwidth}
+\begin{minipage}[t]{.24\textwidth}
 \begin{lstlisting}[frame=none]
-/* enum used to map to target-specific metadata */
+/* enum to map to target-specific metadata */
 enum meta_t {
   IN_TIMESTAMP,
   OUT_TIMESTAMP,
@@ -803,12 +803,11 @@ enum meta_t {
 \end{minipage}\vline
 \hfill\begin{minipage}[t]{.35\textwidth}
 \begin{lstlisting}[frame=none]
-/* Multicast Extern object*/
+/* Multicast extern object*/
 extern mc_engine {
   mc_engine();
   void set_mc_group(GroupId_t gid);
   apply(im_t, out PktInstId_t);
-  
   set_buf(out_buf<O>);
   apply(pkt, im_t, out O);  
 }
@@ -892,7 +891,7 @@ metadata with certain constraints on their usage---e.g.,
 to meet the packet scheduler's requirements~\cite{psa}.
 
 To use such metadata and also to capture any constraints, \uarch
-provides an extern, \texttt{es\_t}, and an enumerator,
+provides an extern, \texttt{im\_t}, and an enumerator,
 \texttt{meta\_t}. \texttt{meta\_t} maps \uarch's metadata to
 target-specific metadata---each value in the enumerator maps to an
 immutable intrinsic metadata field specific to the target, for
@@ -900,7 +899,7 @@ example, \texttt{ingress\_timestamp}. Note that \texttt{meta\_t} needs
 to be defined for each target architecture in \ucomp's backend
 (\cref{sec:compiler}), which also enforces any constraints on
 metadata. To access a metadata's value, set by the target, in a
-program, \texttt{es\_t} provides a method \texttt{get\_value}, which
+program, \texttt{im\_t} provides a method \texttt{get\_value}, which
 is parameterized on \texttt{meta\_t}.
 % The extern exposes methods to access correlated intrinsic metadata. 
 % For example \texttt{set\_out\_port} and \texttt{get\_out\_port} 
