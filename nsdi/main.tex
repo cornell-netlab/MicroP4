@@ -1165,18 +1165,19 @@ transformation. It generates reusable libraries by serializing the
 \tightparbf{Midend} passes perform transformations for two goals. \par
 \textbf{Goal 1 :} Compose \uprograms by homogenizing their 
 processing-blocks. For that, it first performs static analysis to 
-compute \texttt{operational-region} of the \uprogram on packets' 
+compute \texttt{operational-region} for the \uprogram on packets' 
 byte-streams.
 Then, it synthesizes a stack of one byte header, called 
-\emph{byte-stack}, large enough to hold operational region. 
+\emph{byte-stack}, large enough to hold bytes in operational-region. 
 Finally, considering this byte-stack as a packet it transforms the 
 parsers-deparsers into match-action control blocks. \par
 \textbf{Goal 2 :} In case of compile-time replication, extract 
 packet-processing code for every packet instance and prepares 
-processing schedule. The Midend passes are independent to target 
-architectures, focusing on composition. At the end of the midend 
-passes \ucomp-IR contains only control blocks having \uarch-specific 
-constructs. 
+processing schedule. \\
+The Midend passes are independent to target 
+architectures, focusing on composition and pre-processing for the
+backend passes. At the end of the midend passes \ucomp-IR contains 
+only control blocks having \uarch-specific constructs. 
 \tightparbf{Backend} passes transform the \ucomp-IR to the IR of a 
 specified target architecture. While mapping the control blocks to 
 the ones exposed the target architecture, it translates 
@@ -1188,20 +1189,44 @@ target architecture-specific.
 
 
 \subsection{\ucomp Midend}
-We give a brief overview of the midend passes to achieve above 
-mentioned goals and then elaborate on only the key transformation 
+We give a brief overview of the transformation passes of the midend 
+to achieve its design goals. Then, we elaborate on only the crucial 
 passes.
 
-\hs{Rearranging}
-1. reduction to parser without variable-length header and  header 
-stacks. and point to appendix.\\
-2. analysis: split the analysis. say that why maximum increase and 
-decrease in packet size are important metric. And say because of 
-emit call semantics we had to do this jargon.\\
-3. parser to MAT \\
-4. Deparser to MAT (may be not needed, can be 3-4 statements in 
-parser to MAT)
-5. Packet processing schedule: brief and point to appendix.
+The midend begins with linking \ucomp-IRs of all the \uprograms 
+composed in the main \uprogram. Then, it performs two transformations 
+on every \uprogram, $(1)$ to convert every header stack instance into 
+a set of header instances, $(2)$ to convert every \texttt{extract} 
+method call parsing a variable-length header to a sub-parser that 
+uses only fixed-length extractions to parse the header. These 
+transformations convert the parse graph into a Directed Acyclic Graph 
+(DAG), simplifying the \uprograms for the next pass, \emph{static 
+analysis}.
+
+
+The simplified \uprograms allows to analyse minimum and 
+maximum bytes extracted by the parsers and emitted by the deparsers 
+in. These metrics are used to compute operational-region for 
+the main \uprogram (discussed in 
+\cref{subsubsection:static-analysis}).
+
+Having a stack pf bytes storing packets' operational-region allows 
+to synthesise code that performs parse and deparse packets in control 
+blocks. The next midend pass performs these transformations 
+to homogenize all processing blocks to control blocks 
+(\cref{subsection:parser-to-match-action-table}).
+Naturally, the main \uprogram is also transformed to a control 
+block that invokes other ones.
+
+Finally, if the main \uprogram is dependent on a \uprogram 
+implementing \texttt{Orchestration} interface, the final midend pass 
+extracts processing code for every packet instance in the \uprogram. 
+In additions, it prepares an execution schedule to capture 
+interaction among processing of packet instances.
+
+
+
+
 % First, the midend replaces header stacks and variable-length header 
 % with multiple instances of headers, creating parsers in all the 
 % \uprogram without cycles and variable-length extraction.
@@ -1214,31 +1239,48 @@ parser to MAT)
 % Third, it transforms (de)parser blocks into match-action control 
 % blocks.
 
-% \ucomp transforms parsers and deparsers of the main and callee package types into match-action control blocks.
+% \ucomp transforms parsers and deparsers of the main and callee 
+% package types into match-action control blocks.
 % It synthesizes new parser and deparser for the main package.
-% The synthesized parser accepts every packet with length greater than the minimum length, called \emph{min-packet-size}, derived by static-analysis of the program.
-% For every accepted packet, the synthesized parser at most extracts a fixed number, called \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, of one-byte headers.
-% Programs may increase or decrease size of packets, therefore, the estimated size of byte-stack can be greater than extract-length.
-% The synthesized deparser emits all valid one-byte headers from the byte-stack.
+% The synthesized parser accepts every packet with length greater than 
+% the minimum length, called \emph{min-packet-size}, derived by 
+% static-analysis of the program. For every accepted packet, the 
+% synthesized parser at most extracts a fixed number, called 
+% \emph{extract-length}, of bytes to a stack, called \emph{byte-stack}, 
+% of one-byte headers. Programs may increase or decrease size of 
+% packets, therefore, the estimated size of byte-stack can be greater 
+% than extract-length. The synthesized deparser emits all valid 
+% one-byte headers from the byte-stack.
 % 
+% We perform compile-time analysis of parser, control and deparser 
+% blocks to estimate min-packet-size, extract-length and the size of 
+% byte-stack to process packets, as explained in section 
+% \ref{subsection:extract-length-and-byte-stack-size}. \ucomp executes 
+% transformed parsers and deparsers in the match-action stages using the 
+% byte-stack. For each program, \ucomp creates metadata variables, 
+% called \texttt{field-variables} for the header fields used in the 
+% program's control block. The header fields are substituted with the 
+% metadata variables in control blocks of the program. \ucomp discards 
+% types and instances of the headers of each package. \ucomp 
+% synthesizes a single bit \emph{valid} metadata variable for each 
+% header instance to record its presence in the packet. 
+% \texttt{setValid} and \texttt{setInvalid} method-call statements of 
+% every header instance is replaced with assignments on the related 
+% \emph{valid} metadata variable. Execution of parsers in match-action 
+% stages copy values from the appropriate locations in the byte-stack to 
+% the variables. It also updates valid metadata variables which are 
+% later used by the deparser to copy back field-variables to byte-stack.
+%  
+% 
+% Section \ref{subsection:parser-to-match-action-table} discuss about 
+% converting simple parser into a match-action table. Section 
+% \ref{subsection:header-stacks-variable-length-headers} converts 
+% parsers with header stacks or variable-length header into simple 
+% parser}
+ 
 
-% We perform compile-time analysis of parser, control and deparser blocks to estimate min-packet-size, extract-length and the size of byte-stack to process packets, as explained in section \ref{subsection:extract-length-and-byte-stack-size}. 
-% \ucomp executes transformed parsers and deparsers in the match-action stages using the byte-stack.
-% For each program, \ucomp creates metadata variables, called \texttt{field-variables} for the header fields used in the program's control block.
-% The header fields are substituted with the metadata variables in control blocks of the program.
-% \ucomp discards types and instances of the headers of each package.
-% \ucomp synthesizes a single bit \emph{valid} metadata variable for each header instance to record its presence in the packet.
-% \texttt{setValid} and \texttt{setInvalid} method-call statements of every header instance is replaced with assignments on the related \emph{valid} metadata variable.
-% Execution of parsers in match-action stages copy values from the appropriate locations in the byte-stack to the variables.
-% It also updates valid metadata variables which are later used by the deparser to copy back field-variables to byte-stack.
-% 
-% 
-% \hs{TODO: say Simple parser is a parser without stacks and variable-length header. 
-% Section \ref{subsection:parser-to-match-action-table} discuss about converting simple parser into a match-action table. Section \ref{subsection:header-stacks-variable-length-headers} converts parsers with header stacks or variable-length header into simple parser}
-% 
-
-\subsubsection{Extract Length and Byte-Stack Size}
-\label{subsection:extract-length-and-byte-stack-size}
+\subsubsection{Static Analysis}
+\label{subsubsection:static-analysis}
 % As \ulang allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
 
 % We perform recursive analysis to extract-length and byte-stack size 
@@ -2150,9 +2192,11 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 
 
 
-\subsection{Transformation To Simple Parser}
-% \subsection{Header Stacks \& Variable-Length Headers}
+\section{Transformation To Simple Parser}
 \label{subsection:header-stacks-variable-length-headers}
+
+\subsection{Header Stack Transformation}
+\label{section:header-stack-transformation}
 \ulang allows to use of header stacks with their size known at 
 compile-time. 
 \ucomp replaces every header stack instance with multiple instances of 
@@ -2181,6 +2225,8 @@ size 3.
 \texttt{hs1 = hs0} and \texttt{hs0.setInvalid()}.
 
 
+\subsection{Header Stack Transformation}
+\label{section:header-stack-transformation}
 \ulang allows programmers to define variable-length header types, 
 however it imposes a constraint that their variable-length fields must 
 contain integer number of bytes at run-time.
