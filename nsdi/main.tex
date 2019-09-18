@@ -1210,7 +1210,7 @@ in. These metrics are used to compute operational-region for
 the main \uprogram (discussed in 
 \cref{subsubsection:static-analysis}).
 
-Having a stack pf bytes storing packets' operational-region allows 
+Having a stack of bytes storing packets' operational-region allows 
 to synthesise code that performs parse and deparse packets in control 
 blocks. The next midend pass performs these transformations 
 to homogenize all processing blocks to control blocks 
@@ -1278,83 +1278,137 @@ interaction among processing of packet instances.
 % parsers with header stacks or variable-length header into simple 
 % parser}
  
-
+% TODO: mention recursion at right place in limitations. We do not 
+% allow it by compile-time check. 
 \subsubsection{Static Analysis}
 \label{subsubsection:static-analysis}
-% As \ulang allows nested calls of package instances, evaluation of extract-length and byte-stack size is a recursive process.
-
-% We perform recursive analysis to extract-length and byte-stack size 
-% of a \uprogram. 
-\ucomp performs symbolic execution to compute extract-length and 
-byte-stack size of every callee \uprogram in every control path the 
-caller's control block.
-
-
-The symbolic execution of a parser block enumerates every possible path from the start to the accept state in the parse graph.
-For every path, it computes total number of bytes extracted by \texttt{extract} method call statements.
-The \texttt{extract} method call statements on a path are evaluated by increasing the number of extracted bytes by size of the header instance specified in the argument.
-We define the length of a path $x$ in the parse graph a package $a$'s parser, $lp_{a}(x)$, as total number of bytes extracted from the start to the accept state.
-And, the extract-length of a package $a$'s parser is defined as the longest path in its parse graph, as shown in (\ref{extract-length-parser}).
-Programs' extract-lengths also depend on their callees in their control blocks.
-For a package $a$'s control block, we define the extract-length, $lc_{a}(x)$, of a control path $x$ as the maximum number of bytes required to process all the callees in the path.
-The extract-length of the package $a$'s control block is defined as longest path in the CFG (\ref{extract-length-control}).
-\begin{align}
-E_{p}(a)\; =& \; \max_{x}\left\{lp_{a}(x)\right\} \label{extract-length-parser} \\
-E_{c}(a)\; =& \; \max_{x}\left\{lc_{a}(x)\right\} \label{extract-length-control} \\
-\mathcal{E}l(a)\; =& \; E_{p}(a) + E_{c}(a) \label{extract-length-program}
-\end{align}
-A package $a$'s extract-length, $\mathcal{E}l(a)$, is sum of extract-lengths of its parser and control block.
-It is necessary to discuss increase and decrease in packet size, before we explain our approach to estimate extract-length of a control path ($lc_{a}(x)$) and byte-stack size for a package.
+The static analysis compute three main metrics. $(1)$ the  
+\emph{extract-length}, the maximum number of bytes required to extract 
+for executing all the \uprograms in match-action control blocks, 
+$(2)$ size of the byte-stack to hold new header instances added during 
+the execution and $(3)$ \emph{min-packet-size}, the minimum size of 
+packets that can be accepted. These metrics are recursively computed 
+for every \uprogram as \uswitch's programming model allows to invoke 
+one \uprogram from another. 
 
 
+To compute the metrics for a \uprogram $a$, we first symbolically 
+execute its parser and compute extract-length for the parser, called 
+$El_{p}(a)$, as maximum number of bytes extracted by the parser to 
+reach accept state. However, \uprogram' extract-lengths also depend 
+on their callees. Therefore, for the control block, we define the 
+extract-length, $E_{c}(a)$, as maximum number of bytes extracted 
+during execution of one of its control paths.
+In the same control path, multiple callees may be invoked. we define 
+the extract-length, $lc_{a}(x)$, of a control path $x$ as the maximum 
+number of bytes required to process all the callees in the path. The
+\uprogram's extract-length, $\mathcal{E}l(a)$, is sum of 
+extract-lengths of its parser and control block.
+The byte-stack size for the \uprogram may be different than its 
+extract-length, because it may have increase and decrease size of the 
+packet. 
+% The extract-length of the \uprogram $a$'s control block is defined as 
+% longest path in the CFG (\ref{extract-length-control}).
+% \begin{align}
+% E_{p}(a)\; =& \; \max_{x}\left\{lp_{a}(x)\right\} \label{extract-length-parser} \\
+% E_{c}(a)\; =& \; \max_{x}\left\{lc_{a}(x)\right\} \label{extract-length-control} \\
+% \mathcal{E}l(a)\; =& \; E_{p}(a) + E_{c}(a) \label{extract-length-program}
+% \end{align}
 
-To estimate maximum decrease on a control path, we consider that a packet contains all the header instances which are set to valid or invalid on the path.
-The rationale behind considering this scenario is, if a packet already has a header instance, setting it to valid will not impact size. However, setting it to invalid will decrease the packet size.
-Similarly for maximum increase, we consider that a packet does not contain any header instance that is set to valid or invalid on the path. 
-We evaluate header instances' \texttt{setValid} and \texttt{setInvalid} method call statements on every path in the CFG of the control block.
-We denote increase and decrease in packet size on a path $x$ in the CFG of control block of a package $a$ using $i_{a}(x)$ and $d_{a}(x)$, respectively.
-Similarly, $\Delta(a)$ and $\delta(a)$ denote maximum increase and decrease in packet size by a package $a$.
-$i_{a}(x)$, as defined in (\ref{increase-path}), is the sum of $(1)$ sizes of all the header instances for which the control path has \texttt{setValid} methods call statements and $(2)$ maximum increase in packet size by every callee package $cp$ on the path.
+% It is necessary to discuss increase and decrease in packet size, 
+% before we explain our approach to estimate extract-length of a control 
+% path ($lc_{a}(x)$) and byte-stack size for a \uprogram.
+
+
+
+To estimate maximum decrease on a control path, we consider that a 
+packet contains all the header instances which are set to valid or 
+invalid on the control path. The rationale behind considering this 
+scenario is, if a packet already has a header instance, setting it to 
+valid will not impact size. However, setting it to invalid will 
+decrease the packet size.
+Similarly for maximum increase, we consider that a packet does not 
+contain any header instance that is set to valid or invalid on the 
+path. We symbolically execute theh control block by evaluating all 
+the  \texttt{setValid} and \texttt{setInvalid} method calls.
+We denote increase and decrease in packet size on a control path $x$ 
+using $i_{a}(x)$ and $d_{a}(x)$, respectively. Similarly, $\Delta(a)$ 
+and $\delta(a)$ for the entire \uprogram $a$. $i_{a}(x)$ (in 
+(\ref{increase-path})) is the sum of $(1)$ sizes of all the header 
+instances invoking \texttt{setValid} calls and $(2)$ maximum increase 
+in packet size by every callee \uprogram $cp$ on the path.
 Similarly, $d_{a}(x)$ is computed as show in (\ref{decrease-path}).
-% $d_{p}(x)$ is the sum of $(1)$ sizes of all the header instances for which control path \texttt{setInvalid} methods call statements and $(2)$ maximum decrease in packet size by all every callee program $cp$ on the path as shown in \ref{decrease-path}.
+% $d_{p}(x)$ is the sum of $(1)$ sizes of all the header instances for 
+% which control path \texttt{setInvalid} methods call statements and 
+% $(2)$ maximum decrease in packet size by all every callee program $cp$ 
+% on the path as shown in \ref{decrease-path}.
 \begin{align}
 i_{a}(x)\; =& \; \sum_{H.setValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \Delta(cp) \label{increase-path} \\
 d_{a}(x)\; =& \; \sum_{H.setInValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \delta(cp) \label{decrease-path}
 \end{align}
-The header instances which are not emitted by the deparser but extracted by the parser of a package decrease their packet's size. 
-$d_{p}(x)$ is incremented by the size of such header instances for every path $x$.
-We define maximum increase $\Delta(a)$ and decrease $\delta(a)$ in packet size by a package $a$ as shown in (\ref{increase}) and (\ref{decrease}), respectively.
-\begin{align}
-\Delta(a)\; =& \; \max_{x} \left\{ i_{a}(x) \right\} \label{increase} \\
-\delta(a)\; =& \; \max_{x} \left\{ d_{a}(x) \right\} \label{decrease}
-\end{align}
+The header instances that are not emitted by the deparser but 
+extracted by the parser decrease packets' size. $d_{a}(x)$ is 
+incremented by the size of such header instances for every path $x$.
+By the \uprogram $a$, we compute maximum increase $\Delta(a) = 
+\max_{x} \left\{ i_{a}(x) \right\} $ and decrease $\delta(a) = 
+\max_{x} \left\{ d_{a}(x) \right\}$.
+% as shown in (\ref{increase}) and (\ref{decrease}), respectively.
+% \begin{align}
+% \Delta(a)\; =& \; \max_{x} \left\{ i_{a}(x) \right\} \label{increase} \\
+% \delta(a)\; =& \; \max_{x} \left\{ d_{a}(x) \right\} \label{decrease}
+% \end{align}
 
-% Callee packages may parse and deparse packets, thereby, increase or decrease size of packets.
-% Caller packages must extract sufficient number of bytes to process callees' parsers. Also, Callers must have byte-stack size large enough to process their own deparsers along with callees'.
+% Callee \uprograms may parse and deparse packets, thereby, increase 
+% or decrease size of packets.
+% Caller \uprograms must extract sufficient number of bytes to process 
+% callees' parsers. Also, Callers must have byte-stack size large enough 
+% to process their own deparsers along with callees'.
 
-Now, we define the extract-length ($lc_{a}(x)$) of a control path $x$ in the CFG of package a $a$'s control block as a function of the callees' extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet size ($\delta(cp)$).
-Let's assume that a control path $x$ invokes N number of callee packages in increasing order of their numbers. 
-The $i$the callee may decrease the size of packet resulting in available bytes lesser than parser extract-length of (i+1)th callee package ($E_{p}(i+1)$).
-Figure \ref{fig:sequential-callees} shows the execution scenario of two callee packages invoked in the same control path in the CFG of a caller's control block.
-The ipv6 and ipv4 states in the parsers of callee1 and callee2 transit to the accept state.
-There are two control paths in the control block of callee1. One invalidates mpls header instance and another sets a new header (ipv4) to valid.
-A control path of the first callee removes the mpls header from the packet, thereby, decreasing the packet size by four bytes.
-The subsequent callee extracts eth, IPv6 and IPv4 headers from the packet.
-\ucomp parser should extract 78 bytes to process $(1)$ removal of mpls header by the first callee and $(2)$ the logest path (eth-IPv6-IPv4) in the parse-graph of the subsequent callee package.
+% TODO : in figure, legend bold letters for accept state. control path
+Now, we define the extract-length ($lc_{a}(x)$) for a path 
+$x$ in the \uprogram $a$'s control block as a function of 
+the callees' extract-length ($\mathcal{E}l(cp)$) and maximum decrease 
+in packet size ($\delta(cp)$). Let's assume that a control path $x$ 
+invokes N number of callees in increasing order of their numbers. 
+The $i$the callee may decrease packets' size, thus reducing available 
+bytes lesser than the extract-length of p(i+1)th callee's parser ( 
+\uprogram ($E_{p}(i+1)$).
+\cref{fig:sequential-callees} shows this execution scenario.
+% of two callee \uprograms invoked in the same control path in the CFG 
+% of a caller's control block. The ipv6 and ipv4 states in the 
+% parsers of callee1 and callee2 transit to the accept state. There are 
+% two control paths in the control block of callee1. One invalidates 
+% mpls header instance and another sets a new header (ipv4) to valid.
+A control path of the callee1 removes the mpls header from the 
+packet, decreasing the packet size by four bytes.
+The callee2 extracts eth, IPv6 and IPv4 headers from the packet. 
+78 bytes are required to process $(1)$ removal of mpls header by the 
+callee1 and $(2)$ the longest path (eth-IPv6-IPv4) in the 
+parse-graph of the callee2.
 \begin{figure}[!h]
     \centering
     \includegraphics[trim=0 396 487 0, clip,scale=0.5]{sequential-callees}
     \caption{Multiple Callees in a control path}
     \label{fig:sequential-callees}
 \end{figure}
-Therefore, we take into account extract-length of every callee package's parser along with maximum decrease in packet size by the callee's predecessors in the control path $x$ to compute $lc_{a}(x)$, as shown in (\ref{extract-length-control-path}).
+Therefore, we take into account extract-length of every callee 
+\uprogram's parser along with maximum decrease in packet size by the 
+callee's predecessors in the control path $x$ to compute $lc_{a}(x)$, 
+as shown in (\ref{extract-length-control-path}).
 \begin{align}
 lc_{a}(x) \; =& \; \max_{p} \left\{ \left( \sum_{i=0}^{i<p} \delta(i) \right)+ \mathcal{E}l(p) \right\},&p \in [0,N] \label{extract-length-control-path} \\
 \mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-package}
 \end{align}
-Finally, we define byte-stack size of a package $a$, $\mathcal{B}s_{a}$ (\ref{byte-stack-size-package}), as the sum of its extract-length and maximum increase in packet size.
-For the example shown in Figure \ref{fig:sequential-callees}, the byte-stack size of the caller is 98, 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
+Finally, we define the byte-stack size for the \uprogram $a$, 
+$\mathcal{B}s_{a}$ (\ref{byte-stack-size-package}), as the sum of its 
+extract-length and maximum increase in packet size.
+For the example shown in Figure \ref{fig:sequential-callees}, the 
+byte-stack size for the caller is 98.
+% 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
 
+We perfrom analysis to compute the min-packet-size as 
+the minimum number of bytes required to extract a packet by the 
+caller's parser or among every possible first callee's parser.
 
 \subsubsection{Parser To Match-Action Table}
 \label{subsection:parser-to-match-action-table}
@@ -1394,27 +1448,66 @@ default_action : set_parser_error();
 \label{fig:parser-to-control-block-transformation}
 \end{figure*}
 
-% P4 parser blocks describe parse graphs as state machines.
-% Real target devices contain programmable parser module that can be programmed using parse graphs.
-% From the design of programmable parser \cite{6665172}, we make following observations.
-Programmable parsers \cite{6665172} are implemented as finite state machines (FSM) using buffer, Ternary Content-Addressable Memories (TCAM) and Action RAM. 
-TCAM matches and processes actions and copy packet header state by state. Once the current state fields have been matched the next state is identified and the state header bytes are copied.  
-Programmable parsers essentially perform repeated match-action operations.
-% Network packets are of finite length, hence they can be parsed in a finite number of ways.
-%Successful parsing of a packet is essentially finding a match for a finite number of bytes from a finite set of values.
-Every state path identifies possible byte locations to match for extracting a set of headers instances.
-We leverage match capability of TCAM in match-action stages to match simultaneously all possible byte locations pertaining to every path from start to the accept state.
-The final executed action associated with the matched entry copies values from the appropriate locations in the byte-stack to local metadata synthesized for used header fields. In general, we consider that parser state may use any metadata or variable to transit to the next state see Figure \ref{subfig:parser-symbolic-execution}. 
+% P4 parser blocks describe parse graphs as state machines. Real 
+% target devices contain programmable parser module that can be 
+% programmed using parse graphs. 
+From the design of programmable parser \cite{6665172}, we 
+observe that programmable parsers essentially perform repeated 
+match-action operations.
+% Programmable parsers \cite{6665172} are implemented as finite state 
+% machines (FSM) using buffer, Ternary Content-Addressable Memories 
+% (TCAM) and Action RAM. TCAM matches and processes actions and copy 
+% packet header state by  state. Once thecurrent state fields have been 
+% matched the next state is identified and the state header bytes are 
+% copied.  
+% Network packets are of finite length, hence they can be parsed in a 
+% finite number of ways. Successful parsing of a packet is essentially 
+% finding a match for a finite number of bytes from a finite set of 
+% values. Every state path identifies possible byte locations to match 
+% for extracting a set of headers instances. We leverage match 
+% capability of TCAM in match-action stages to match simultaneously all 
+% possible byte locations pertaining to every path from start to the 
+% accept state. The final executed action associated with the matched 
+% entry copies values from the appropriate locations in the byte-stack 
+% to local metadata synthesized for used header fields. In general, we 
+% consider that parser state may use any metadata or variable  to 
+% transit to the next state see Figure 
+% \ref{subfig:parser-symbolic-execution}. 
+Having the operational-region in byte-stack, we can perform these 
+match-action operations simultaneously by leveraging  TCMs in 
+match-action control blocks.
 
-For example, the parser's FSM in Figure \ref{subfig:parser} has four states to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14, 20, 40 and 20 bytes, respectively. The symbolic execution of the parser first identifies two possibles paths from the start state to the accept state and  then replaces matching header fields (e.g., eth.ethType, ipv6.nexthdr, ipv4.protocol) with their identified byte locations, figure \ref{subfig:parser-symbolic-execution}.
-%As an example, \emph{tcp} state transits to the accept state based on value (0xFF) of \texttt{var\_y} variable which is updated by either \emph{ipv4} or \emph{ipv6} states.
-%If the select expression depends on local variables, it performs Forward Substitution \cite{Padua:1986:ACO:7902.7904} on every path to eliminate data dependency.
-%Figure \ref{subfig:parser-symbolic-execution} shows evaluated parser states and two paths generated by symbolic execution with forward substitution.
-%Every extract method-call statement is transformed into assignments from the byte-stack to field-variables associated with the header instance passed as an argument to the method-call.
-%In addition, valid metadata variable pertaining to the header instance is set.
-Once the execution paths and the matched byte location have been identified, the parser synthesizes the match-key set using the union of the select expressions in all the states on every path Figure \ref{subfig:parser-mat} line 1-3.
-The match-key also comprises valid bit flag of the last byte extracted on every path to consider packet-length in the byte-stack.
-Then, for each path, ($i$) an action is synthesized(e.g., \texttt{cp\_eth\_ipv4\_tcp} in Figure \ref{subfig:parser-mat} line 4) comprising all the assignment statements of the path states, and a match-action entry is created by using the matching fields values to match the path select keys and the other remaining fields are set to don't care values.
+For example, the parser's FSM in \cref{subfig:parser} has four 
+states to extract standard Ethernet, IPv4, IPv6 and TCP headers of 
+size 14, 20, 40 and 20 bytes, respectively. The symbolic execution of 
+the parser first identifies two possibles paths from the start state 
+to the accept state and then replaces matching header fields (e.g., 
+eth.ethType, ipv6.nexthdr, ipv4.protocol) with their identified byte 
+locations(\cref{subfig:parser-symbolic-execution}).
+% As an example, \emph{tcp} state transits to the accept state based 
+% on value (0xFF) of \texttt{var\_y} variable which is updated by 
+% either \emph{ipv4} or \emph{ipv6} states. If the select expression 
+% depends on local variables, it performs Forward Substitution 
+% \cite{Padua:1986:ACO:7902.7904} on every path to eliminate data 
+% dependency. Figure \ref{subfig:parser-symbolic-execution} shows 
+% evaluated parser states and two paths generated by symbolic execution 
+% with forward substitution. Every extract method-call statement is 
+% transformed into assignments from the byte-stack to field-variables 
+% associated with the header instance passed as an argument to the 
+% method-call.In addition, valid metadata variable pertaining to the 
+% header instance is set.
+Using these byte locations on byte-stack as keys, the parser 
+synthesizes the match-key set using the union of the select 
+expressions in all the evaluated states on every path 
+\cref{subfig:parser-mat}. The match-key also comprises valid bit flag 
+of the last byte extracted on every path to consider packet-length in 
+the byte-stack. Then, for each path, ($i$) an action is 
+synthesized(e.g., \texttt{cp\_eth\_ipv4\_tcp} in 
+\cref{subfig:parser-mat}) comprising all the assignment statements of 
+the path states. A match-action entry is created by pairing 
+appropriate key-set values and action for every path.
+% by using the case fields values to match the path select keys and 
+% the other remaining fields are set to don't care values.
 For example, in the first entry shown in Figure \ref{subfig:parser-mat}, x0800, x6, xFF are match-values for the first, third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp headers and the second and forth keys are matched with don't care values.
 
 
@@ -1434,12 +1527,13 @@ For example, in the first entry shown in Figure \ref{subfig:parser-mat}, x0800, 
 % We add an assignment statement to set visit variable associated with the parser state.
 
 
-
-
 \subsection{Deparser To Match-Action Table:}
 \label{subsection:deparser-to-match-action-table}
-The deparser blocks of \uarch's pipelines are the control blocks with emitter as one of the parameters.
-\ucomp replaces the \texttt{emitter} instance's \texttt{emit} method-call statements with match-action table to transform deparser into normal match-action control blocks.
+The deparser blocks of \uarch's pipelines are the control blocks 
+with emitter as one of the parameters. \ucomp replaces the 
+\texttt{emitter} instance's \texttt{emit} method-call statements with 
+match-action table to transform deparser into normal match-action 
+control blocks.
 The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
 The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
 In case of increase in packet size, byte-stack is always large enough to hold new headers.
