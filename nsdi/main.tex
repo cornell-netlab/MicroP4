@@ -1410,7 +1410,7 @@ We perfrom analysis to compute the min-packet-size as
 the minimum number of bytes required to extract a packet by the 
 caller's parser or among every possible first callee's parser.
 
-\subsubsection{Parser To Match-Action Table}
+\subsubsection{Parser-Deparser To Match-Action Tables}
 \label{subsection:parser-to-match-action-table}
 \begin{figure*}[!ht]
     \begin{subfigure}[b]{0.25\linewidth}
@@ -1451,7 +1451,8 @@ default_action : set_parser_error();
 % P4 parser blocks describe parse graphs as state machines. Real 
 % target devices contain programmable parser module that can be 
 % programmed using parse graphs. 
-From the design of programmable parser \cite{6665172}, we 
+\tightparbf{Parser.} From the design of programmable parser 
+\cite{6665172}, we 
 observe that programmable parsers essentially perform repeated 
 match-action operations.
 % Programmable parsers \cite{6665172} are implemented as finite state 
@@ -1503,15 +1504,83 @@ expressions in all the evaluated states on every path
 of the last byte extracted on every path to consider packet-length in 
 the byte-stack. Then, for each path, ($i$) an action is 
 synthesized(e.g., \texttt{cp\_eth\_ipv4\_tcp} in 
-\cref{subfig:parser-mat}) comprising all the assignment statements of 
-the path states. A match-action entry is created by pairing 
-appropriate key-set values and action for every path.
+\cref{subfig:parser-mat}) comprising all the assignment statements 
+to copy only required header fields. A match-action 
+entry is created by pairing appropriate key-set values and action for 
+every path.
 % by using the case fields values to match the path select keys and 
 % the other remaining fields are set to don't care values.
-For example, in the first entry shown in Figure \ref{subfig:parser-mat}, x0800, x6, xFF are match-values for the first, third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp headers and the second and forth keys are matched with don't care values.
+For example, in the first entry shown in Figure 
+\ref{subfig:parsermat}, x0800, x6, xFF are match-values for the first, 
+third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp 
+headers and the second and forth keys are matched with don't care 
+values.
+
+The midend transforms header fields used in the control block 
+of every \uprogram to necessary metadata called, 
+\emph{field-variables}, that are copied from byte-stack by the 
+transformed parser, now mathcal-action table, in the synthesised 
+actions. The field-variables include valid flag for header instances.
 
 
+% \subsubsection{Deparser To Match-Action Table:}
+% \label{subsection:deparser-to-match-action-table}
 
+% The deparser blocks of \uarch's pipelines are the control blocks 
+% with emitter as one of the parameters. \ucomp replaces the 
+% \texttt{emitter} instance's \texttt{emit} method-call 
+% statements with match-action table to transform deparser into 
+% normal match-action control blocks.
+% The match-action table copies back field-variables to appropriate 
+% locations in byte-stack based on values of valid metadata variables 
+% associated with header instances. 
+% The control block of the pipeline may set or reset validity 
+% of header 
+% instances and, thereby, modifying the size of the packet.
+% In case of increase in packet size, byte-stack is always 
+% large enough 
+% to hold new headers.
+% If a deparser decreases the packet size, subsequent parsers may set 
+% \texttt{packet\_too\_short} error only if packet-length on the 
+% wireis less than the extract-length and greater than the 
+% min-packet-size for % the main package.
+
+
+% The midend transforms the deparser of the program to a 
+% match-action table that copies back fields variables to byte-stack.
+% The match-action table copies back field-variables to appropriate 
+% locations in byte-stack based on values of valid metadata variables 
+% associated with header instances.
+% The symbolic execution of a deparser derives the emit order of header 
+% instances in the block.
+% Using the size of header instances and the emit order, we compute 
+% offsets in byte-stack to copy back field-variables and to insert new 
+% header fields.
+% The match key comprises valid metadata variables associated with each 
+% header instance in the package.
+% For every possible combination of valid headers, we synthesize a 
+% series of operations on byte-stack as an action to copy 
+% field-variables and to move data in byte-stack.
+\tightparbf{Deparser.}Using the emit order of header instances and 
+number of bytes extracted by the parser of the \uprogram, the midend 
+synthesises match-key and actions to copy back field-variables at 
+appropriate location in byte-stack.
+The control block of a \uprogram may set or reset validity of 
+header instances and, thereby, modify the size of the packet. In case 
+of increase in packet size, byte-stack is always large enough to hold 
+new headers. The control block of callee1 shown in Figure 
+\ref{fig:sequential-callees} invalidates the mpls header from packets 
+if the execution follows a particular control path.
+Recall that, the synthesized parser extracts 78 bytes in the 
+stack. If the execution follows control path invalidating mpls 
+header, 60 bytes following the header should be moved up by the offset 
+of 4 in the stack. The synthesized action performs in-place copy of 
+these 60 bytes. It invalidates the last 4 bytes. 
+% If the control block execution sets ipv4 header instance to valid, 
+% bytes after the ipv6 header are pushed down by the offset of 20 to 
+% insert ipv4 header instance.
+Note, the midend removes all the header type and their instances 
+originally declared in the \uprogram.
 
 % The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
 % The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
@@ -1527,32 +1596,17 @@ For example, in the first entry shown in Figure \ref{subfig:parser-mat}, x0800, 
 % We add an assignment statement to set visit variable associated with the parser state.
 
 
-\subsection{Deparser To Match-Action Table:}
-\label{subsection:deparser-to-match-action-table}
-The deparser blocks of \uarch's pipelines are the control blocks 
-with emitter as one of the parameters. \ucomp replaces the 
-\texttt{emitter} instance's \texttt{emit} method-call statements with 
-match-action table to transform deparser into normal match-action 
-control blocks.
-The match-action table copies back field-variables to appropriate locations in byte-stack based on values of valid metadata variables associated with header instances. 
-The control block of the pipeline may set or reset validity of header instances and, thereby, modifying the size of the packet.
-In case of increase in packet size, byte-stack is always large enough to hold new headers.
-If a deparser decreases the packet size, subsequent parsers may set \texttt{packet\_too\_short} error only if packet-length on the wire is less than the extract-length and greater than the min-packet-size for the main package.
-
-The symbolic execution of a deparser derives the emit order of header instances in the block.
-Using the size of header instances and the emit order, we compute offsets in byte-stack to copy back field-variables and to insert new header fields.
-The match key comprises valid metadata variables associated with each header instance in the package.
-For every possible combination of valid headers, we synthesize a series of operations on byte-stack as an action to copy field-variables and to move data in byte-stack.
-The control block of callee1 shown in Figure \ref{fig:sequential-callees} invalidates the mpls header from packets if the execution follows a particular control path.
-Recall that, the parser synthesized by \ucomp extracts 78 bytes in the stack.
-If the execution follows control path invalidating mpls header, 60 bytes following the header should be moved up by the offset of 4 in the stack.
-The synthesized action performs in-place copy of these 60 bytes. It invalidates the last 4 bytes.
-If the control block execution sets ipv4 header instance to valid, bytes after the ipv6 header are pushed down by the offset of 20 to insert ipv4 header instance.
 
 
-By the end of the midend passes, \ucomp transforms parser and deparser blocks of every package into match-action control blocks, homogenizing abstract-machine of the main package and realizing transition of execution control across callee packages.
-However, control blocks of the packages still contain \uarch-specific constructs.
-Next, we discuss backend of \ucomp that further transforms the control blocks to create a packet-processing program a given target architecture.
+
+% By the end of the midend passes, \ucomp transforms parser and 
+% deparser blocks of every package into match-action control blocks, 
+% homogenizing abstract-machine of the main package and realizing 
+% transition of execution control across callee packages.
+% However, control blocks of the packages still contain  
+% \uarch-specificconstructs. Next, we discuss backend of \ucomp that 
+% further transforms the control blocks to create a packet-processing 
+% program a given target architecture.
 
 
 \subsection{Transformation to Target Architecture}
