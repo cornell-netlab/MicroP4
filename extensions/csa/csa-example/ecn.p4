@@ -7,7 +7,6 @@
 #include"common.p4"
 
 struct ecn_meta_t { }
-struct empty_t { }
 
 const bit<19> ECN_THRESHOLD = 10;
 
@@ -44,8 +43,6 @@ cpackage ecn : implements CSASwitch<external_meta_t, empty_t, empty_t,
                 inout ecn_meta_t meta, 
                 inout csa_standard_metadata_t standard_metadata){
     state start {
-      // This is a sample metadata update.
-      meta.if_index = (bit<8>)standard_metadata.ingress_port;
       transition parse_ethernet;
     }
     
@@ -65,25 +62,23 @@ cpackage ecn : implements CSASwitch<external_meta_t, empty_t, empty_t,
   control csa_pipe(inout ecn_hdr_t parsed_hdr, inout ecn_meta_t meta,
                  inout csa_standard_metadata_t standard_metadata, egress_spec es) {
    
-    action set_ecn{
-    	hdr.ipv4.ecn = 3;
+    action set_ecn() {
+    	parsed_hdr.ipv4.ecn = 3;
     }
     table ecn_tbl{
     	key = {
-    		hdr.ipv4.ecn : exact;
-    		standard_metadata.enq_qdepth: ternary;
+    		parsed_hdr.ipv4.ecn : exact;
     	}
-    	action = {
+    	actions = {
     		set_ecn;
     	}
-    	entries = {
-    	8w0o1: set_ecn();
-    	8w0o2: set_ecn();
+    	const entries = {
+    	    8w0o1: set_ecn();
+    	    8w0o2: set_ecn();
     	}
     }
     
     apply {
-  		if (standard_metadata.enq_qdepth >= ECN_THRESHOLD){
       		ecn_tbl.apply();
     }
   }

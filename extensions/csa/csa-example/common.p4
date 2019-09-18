@@ -2,24 +2,27 @@
  * Author: Myriana Rifai
  * Email: myriana.rifai@nokia-bell-labs.com
  */
+#include <core.p4>
+#include <csa.p4>
+
+struct empty_t {}
+struct external_meta_t {
+  bit<32> next_hop;
+} 
+
+cpackage l2(csa_packet_in pin, csa_packet_out po,
+                inout csa_standard_metadata_t sm, egress_spec es,
+                      in external_meta_t in_meta, out empty_t out_meta,
+                      inout empty_t inout_meta) (/*ctor parameters*/);
+
+cpackage l3(csa_packet_in pin, csa_packet_out po, 
+                inout csa_standard_metadata_t sm, egress_spec es,
+                in empty_t in_meta, out external_meta_t out_meta,
+                inout empty_t inout_meta) (/*ctor parameters*/);
+
+cpackage ecn(csa_packet_in pin, csa_packet_out po, 
+                inout csa_standard_metadata_t sm, egress_spec es,
+                in empty_t in_meta, out external_meta_t out_meta,
+                inout empty_t inout_meta) (/*ctor parameters*/);
 
 
-struct empty_t { }
-
-struct swtrace_inout_t {
-  bit<4> ipv4_ihl;
-  bit<16> ipv4_total_len;
-}
-
-
-l2 (csa_packet_in p, inout csa_standard_metadata_t csm, es_t es, in empty_t a, out empty_t oa, inout empty_t ioa);
-
-l3 (csa_packet_in p, inout csa_standard_metadata_t csm, es_t es, in empty_t a, out empty_t oa, inout empty_t ioa);
-
-
-ecn (csa_packet_in p, inout csa_standard_metadata_t csm, es_t es, in empty_t ia, out empty_t oa, 
-    inout empty_t ioa);
-
-
-swtrace (csa_packet_in p, inout csa_standard_metadata_t csm, es_t es, in empty_t ia, out empty_t oa, 
-    inout swtrace_inout_t ioa);
