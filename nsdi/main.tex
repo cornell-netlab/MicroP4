@@ -1022,56 +1022,24 @@ applying \texttt{forward\_tbl}.
 
 
 
-\paragraph{Multicast Extern.}
-To avoid compromising expressiveness of \uprograms, \uswitch models 
-packet replication at run-time using an extern, \texttt{mc\_engine}, 
-declared in \uarch. The \texttt{mc\_engine} can be instantiated 
-inside 
-the control blocks while implementing the \texttt{Multicast} 
-interface 
-(shown below).
-\begin{lstlisting}[frame=none, escapechar=!]
-control mc(pkt p, hdr_t h, es_t e, 
-!\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
-  !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
-  !\colorbox{mygray}{out\_t oa;}! // some out args
-  action replicate(GroupId_t gid) {
-    !\colorbox{mygray}{mce.set\_mc\_group(gid);}!
-  }
-  table MulticastRouting{ key = { ... } 
-    actions = { replicate; }
-  }
-  table mac{ ...}
-  apply {
-    MulticastRouting.apply();
-    !\colorbox{mygray}{mce.apply(es, id);}!//similar to C's fork
-    mac.apply();
-    !\colorbox{mygray}{hb.enqueue(h, im, oa);}!
-  }
-}
-\end{lstlisting}
-The control block of \texttt{Multicast} provides 
-\texttt{mc\_buf} as one of the parameters to store copies of parsed 
-headers, unparsed packet, intrinsic metadata and argument data 
-related 
-to the packet. 
-% Programmers can use \texttt{set\_mc\_group} method in 
-% actions or apply blocks to set a replication group for the packet.
-To create copies of the packet, programmers can invoke the 
-two-arguments \texttt{apply} method. Logically, at run-time the call 
-spawns number of \upipelines, each processing one replica, according 
-to CP configurations. In every \upipeline, all the reachable 
-statements from the call are executed by the replica. The two 
-parameters passes required information (\texttt{es\_t} and 
-\texttt{PktInstId\_t}) for each replica.
-% first argument provides an instance of 
-% \texttt{es\_t} having out port already set for the replica of the 
-% packet.
-% The second argument having \texttt{out} direction provides packet 
-% instance id to identify the replica.
-Due to space constraint, we skip the detail description of two more 
-methods, \texttt{set\_buf} and four-arguments \texttt{apply}, which 
-facilitate nested invocation of \upackages with multicast interface. 
+
+
+
+
+\tightparbf{Multicast Extern.}
+To express programs that need packet replication, \uarch provides the
+\texttt{mc\_engine} extern. It can be instantiated inside a control
+block while implementing the \texttt{Multicast} interface as shown in
+the listing in \cref{app:multicast}.  To store copies of parsed
+headers, unparsed packet, metadata and other data related to a packet,
+\texttt{Multicast} provides a buffer (of type \texttt{mc\_buf},
+explained next) as one of the parameters.  Users can create copies of
+a packet by invoking \texttt{mc\_engine}'s \texttt{apply} method.
+Logically, this can be thought of as spawning multiple \upipelines,
+each processing one packet replica, according to specified
+configurations. In each \upipeline, all reachable statements from the
+call are executed.
+For a detailed description of other methods, see \cref{app:multicast}.
 
 % For example, had \texttt{ipv4} and 
 % \texttt{ipv6} implemented using multicast interface, the 
@@ -1099,7 +1067,7 @@ pass as arguments to other modules. \texttt{out\_buf} exposes
 \texttt{enqueue} and \texttt{merge} methods to buffer packets
 processed by the callee program. to move elements to an
 \texttt{in\_buf} instance, which is passed as the argument, users
-can use \texttt{to\_in\_buf} . Additionally, the \texttt{mc\_buf}
+can use \texttt{to\_in\_buf}. Additionally, the \texttt{mc\_buf}
 extern allows to store parsed headers, unlike \texttt{in\_buf} and
 \texttt{out\_buf}. It is designed to be used along with
 \texttt{mc\_engine} to express multicast packet-processing, where as
@@ -2341,10 +2309,39 @@ Orchestration<I,O>(in_buf<I> ib, out_buf<O> ob) {
 
 
 
+\section{Multicast extern}
+\label{app:multicast}
+\begin{lstlisting}[frame=none, escapechar=!]
+control mc(pkt p, hdr_t h, im_t im,
+    !\colorbox{mygray}{mc\_buf<hdr\_t, out\_t> hb}!) {
+  !\colorbox{mygray}{mc\_engine mce;}!  PktInstId_t id; 
+  !\colorbox{mygray}{out\_t oa;}! // some out args
+  action replicate(GroupId_t gid) {
+    !\colorbox{mygray}{mce.set\_mc\_group(gid);}!
+  }
+  table MulticastRouting{ key = { ... } 
+    actions = { replicate; }
+  }
+  table mac{ ...}
+  apply {
+    MulticastRouting.apply();
+    !\colorbox{mygray}{mce.apply(im, id);}!//similar to C's fork
+    mac.apply();
+    !\colorbox{mygray}{hb.enqueue(h, im, oa);}!
+  }
+}
+\end{lstlisting}
+The two arguments to \texttt{apply} pass required information
+(\texttt{im\_t} and \texttt{PktInstId\_t}) for each replica. The first
+argument provides an instance of \texttt{im\_t} having out port
+already set for the replica of the packet.  The second argument having
+\texttt{out} direction provides packet instance id to identify the
+replica.
 
-
-
-
+The methods \texttt{set\_buf} and \texttt{apply (pkt, im\_t, out O)}
+facilitate nested invocation of \upackages with multicast interface.
+Programmers can use \texttt{set\_mc\_group} method in actions or apply
+blocks to set a replication group for the packet.
 
 
 
