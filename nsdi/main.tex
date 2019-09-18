@@ -1609,12 +1609,12 @@ The backend of \ucomp understands semantics of pipeline model and
 constraints on intrinsic metadata of target architecture. In addition, 
 it uses the mapping between the metadata of two architectures to 
 translate constraints imposed by the target architecture on its 
-intrinsic metadata.
-It allocates the control blocks of \uarch-IR while respecting the 
-constraints to the processing blocks exposed by the target 
-architecture. During allocation, it also translates the intrinsic 
-metadata.
-
+intrinsic metadata. It allocates the control blocks in \uarch-IR 
+while respecting the constraints to the processing blocks exposed by 
+the target architecture. During the allocation pass, it also 
+translates the intrinsic metadata. Finally, it uses metrics computed 
+by \emph{static-analysis} in the midend to synthesise target-specific 
+parser and deparser blocks.
 
 \tightparbf{Allocation to Target Architecture}
 \label{subsubsection:allocation-to-target-architecture}
