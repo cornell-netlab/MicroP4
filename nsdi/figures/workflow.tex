@@ -36,26 +36,37 @@
   \tikzstyle{empty}=[]
     \begin{tikzpicture}[node distance=5em, auto]
       % Place nodes
-      \node (source) [textbox] {source};
-      \node (frontend) [block, text width=4.2em, right of=source,] {Frontend};
-      \node (box) [block, right of=frontend, text width=22em, node distance=6em, minimum height=10ex,anchor=west] {};
-      \node (linking) [block, right of=frontend, node distance=9em] {linking};
-      \node (static) [block, right of=linking, node distance=6em] {static analysis};
-      \node (transformation) [block, right of=static, text width=8em, node distance=8em] {transformation to match-action control};
-      \node (targetspecific) at ($(transformation.south east)+(0,-1)$)
-        [block, text width=12em, anchor=east] {target-specific extern translation \& code allocation};
-      \node (targetcode) [textbox, text width=10em, left of=targetspecific, node distance=14em] {target architecture-specific source};
-      \node (backend) at ($(targetspecific.south)+(0,-0.3)$) [empty] {backend pass};
+      \node (source) [textbox] {$\mu$P4 source};
+      \node (frontend) [block, text width=4em, right of=source,] {frontend pass};
+
+      \node (box) [block, dashed, right of=frontend, text width=28em, node distance=6em, minimum height=10ex,anchor=west] {};
+      \node (box2) at ($(box.east)+(0.2,0)$) [block, dashed, text width=21em, minimum height=10ex,anchor=west] {};
+
+      \node (linking)at ($(frontend.east)+(1.5,0)$) [block, anchor=west] {linking};
+      \node (static) [block, right of=linking, node distance=5.5em] {static analysis};
+      \node (transformation) at ($(static.east)+(0.5,0)$) [block, text width=8em, anchor=west] {transformation to match-action control};
+      \node (preprocessing) at ($(transformation.east)+(0.5,0)$) [block, text width=6em, anchor=west] {preprocessing for backend};
+
+      \node (targetspecific) at ($(preprocessing.east)+(0.8,0)$) [block, text width=11em, anchor=west] {target-specific  translation \& control-block allocation};
+      \node (parse) at ($(targetspecific.east)+(0.5,0)$) [block, text width=7em, anchor=west] {parser/deparser synthesis};
+
+      \node (targetcode) at ($(box2.east)+(0.4,0)$) [textbox, text width=7em, anchor=west] {target architecture-specific source (arch-IR)};
+
+      \node (midendlabeel) at ($(box.north)+(0,0.2)$) [empty] {midend pass};
+      \node (backendlabeel) at ($(box2.north)+(0,0.2)$) [empty] {backend pass};
 
 
-      \node (library) at ($(linking.north)+(0,0.4)$) [textbox, anchor=south,text width=10em] {library modules};
+      \node (library) at ($(linking.north)+(0,0.4)$) [textbox, anchor=south,text width=16em] {library modules ($\mu$P4C-IR)};
       % Draw edges
       \path [line] (source) -- (frontend);
-      \path [line] (frontend) -- (box) node[midway]{$\mu$P4C-IR};
+      \path [line] (frontend) -- (linking) node[midway]{$\mu$P4C-IR};
       \path [line] (linking) -- (static);
       \path [line] (static) -- (transformation);
-      \path [line] (box.east) -- ($(box.east)+(0.5,0)$) -- ($(targetspecific.east)+(0.88,0)$) -- (targetspecific.east);
-      \path [line] (targetspecific) -- (targetcode);
+      \path [line] (transformation) -- (preprocessing);
+      \path [line,-] (preprocessing) -- (box.east);
+      \path [line] (box.east) -- (targetspecific.west);
+      \path [line] (targetspecific) -- (parse);
+      \path [line] (parse) -- (targetcode);
       \path [line] (library) -- (linking);
 
     \end{tikzpicture}

@@ -1128,12 +1128,12 @@ target architecture. We focus on key transformations that enable
 composition and complement \uarch to realize portable and modular
 programming.
 
-\begin{figure}[tbh]
+\begin{figure*}[tbh]
   \centering
   \includegraphics[width=\linewidth]{workflow}
   \caption{Workflow for building dataplanes in \ulang. \todo{update}}
   \label{fig:workflow}
-\end{figure}
+\end{figure*}
 
 \subsection{\ucomp Design Overview}
 \label{sec:compiler-design}
@@ -1381,10 +1381,10 @@ Now, we define the extract-length, $lc_{a}(x)$, for a path $x$ in the
 \uprogram $a$'s control block as a function of the callees'
 extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet
 size ($\delta(cp)$). Let's assume that a control path $x$ invokes N
-callees in increasing order.  The $i$\textsuperscript{th} callee may
-decrease a packet's size and reduce the available bytes to be less
-than the extract-length of $(i+1)$\textsuperscript{th} callee's parser
-($El_{p}(i+1)$).  \cref{fig:sequential-callees} shows such a scenario.
+callees in increasing order. \cref{fig:sequential-callees} shows such
+a scenario.
+%and reduce the available bytes to be less than the extract-length
+% of $(i+1)$\textsuperscript{th} callee's parser ($El_{p}(i+1)$).  
 % of two callee \uprograms invoked in the same control path in the CFG 
 % of a caller's control block. The ipv6 and ipv4 states in the 
 % parsers of callee1 and callee2 transit to the accept state. There are 
@@ -1396,34 +1396,37 @@ than the extract-length of $(i+1)$\textsuperscript{th} callee's parser
     \caption{Multiple callees in a control path}
     \label{fig:sequential-callees}
 \end{figure}
-A control path of \texttt{callee1} removes the \texttt{mpls} header
-from the packet, decreasing the packet size by 4 bytes.
-\texttt{callee2} extracts \texttt{eth}, \texttt{ipv6} and
-\texttt{ipv4} headers from the packet. So, 78 bytes are required to
+The $i$\textsuperscript{th} callee may decrease a packet's
+size---e.g., a control path of \texttt{callee1} removes the
+\texttt{mpls} header, decreasing the size by 4
+bytes.  \texttt{callee2} extracts \texttt{eth}, \texttt{ipv6} and
+\texttt{ipv4} headers from the packet. So, to
 process
 \begin{enumerate*}[label=(\roman*)]
-  \item removal of \texttt{mpls} header by \texttt{callee1} and
-  \item the longest path (eth-IPv6-IPv4) in the parse-graph of
-    \texttt{callee2}.
+  \item removal of 4-byte \texttt{mpls} header by \texttt{callee1} and
+  \item extraction of maximum bytes (74-byte \texttt{eth-IPv6-IPv4})
+    in the parse-graph of \texttt{callee2},
 \end{enumerate*}
-Therefore, we take into account the extract-length of every callee's
+4+74=78 bytes are required.
+So, we take into account the extract-length of every callee's
 parser along with the maximum decrease in packet size by the callee's
 predecessors in the control path $x$ to compute $lc_{a}(x)$,
 as shown in \cref{extract-length-control-path}.
 \begin{align}
-lc_{a}(x) \; =& \; \max_{p} \left\{ \left( \sum_{i=0}^{i<p} \delta(i) \right)+ \mathcal{E}l(p) \right\},&p \in [0,N] \label{extract-length-control-path} \\
+lc_{a}(x) \; =& \; \max_{cp} \left\{ \left( \sum_{i=0}^{i<cp} \delta(i) \right)+ El(cp) \right\},&cp \in [0,N] \label{extract-length-control-path} \\
 \mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-package}
 \end{align}
 Finally, we define the byte-stack size for a \uprogram $a$,
 $\mathcal{B}s_{a}$  as the sum of its extract-length and maximum
 increase in packet size as shown in \cref{byte-stack-size-package}.
 For the example in \cref{fig:sequential-callees}, the byte-stack size
-for the caller is 98.
+for the caller is 98 (= 78 $El$(\texttt{callee2}) + 20 for increase in
+\texttt{callee1}).
 % 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
-
-We perform analysis to compute the min-packet-size as 
-the minimum number of bytes required to extract a packet by the 
-caller's parser or among every possible first callee's parser.
+We perform similar analysis for \textit{min-packet-size}. But, we skip
+the details for brevity.
+% dthe minimum number of bytes required to extract a packet.
+% by the caller's parser or among every possible first callee's parser.
 
 \subsubsection{Parser and Deparser To Match-Action Tables}
 \label{subsection:parser-to-match-action-table}
@@ -1497,10 +1500,9 @@ For example, the parser's FSM in \cref{subfig:parser} has four states
 to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14,
 20, 40 and 20 bytes, respectively. Symbolic execution of the parser
 first identifies two possibles paths from the start state to the
-accept state and then, it replaces the matching header fields---e.g.,
-\texttt{eth.ethType}, \texttt{ipv6.nexthdr},
-\texttt{ipv4.protocol}---with their identified byte locations
-(\cref{subfig:parser-symbolic-execution}).
+accept state and then, it replaces the header fields in each path---e.g., \texttt{eth.ethType}, \texttt{ipv6.nexthdr},
+\texttt{ipv4.protocol}---with their corresponding locations in the
+byte-stack (\cref{subfig:parser-symbolic-execution}).
 % As an example, \emph{tcp} state transits to the accept state based 
 % on value (0xFF) of \texttt{var\_y} variable which is updated by 
 % either \emph{ipv4} or \emph{ipv6} states. If the select expression 
@@ -1513,16 +1515,16 @@ accept state and then, it replaces the matching header fields---e.g.,
 % associated with the header instance passed as an argument to the 
 % method-call.In addition, valid metadata variable pertaining to the 
 % header instance is set.
-Using these locations on the byte-stack as keys, the parser
-synthesizes the match-key set using the union of the select
-expressions in all the evaluated states on every path
-\cref{subfig:parser-mat}. The match-key also comprises the valid bit
-flag of the last byte extracted on every path to consider
-packet-length in the byte-stack. Then, for each path, we synthesize an
+Using these locations on the byte-stack as keys (\cref{subfig:parser-symbolic-execution}), \ucomp
+synthesizes a match-key as the union of the \texttt{select}
+expressions in all the evaluated states on each path in symbolic
+execution (\cref{subfig:parser-mat}). The match-key also comprises the
+valid bit flag of the last byte extracted on every path to verify the
+packet-length. Then, for each path, we synthesize an
 action---e.g., \texttt{cp\_eth\_ipv4\_tcp} in
-\cref{subfig:parser-mat}---comprising all the assignment statements to
-copy only the required header fields. A match-action entry is created
-by pairing appropriate key-set values and action for every path.
+\cref{subfig:parser-mat}---comprising assignment statements to copy
+only the required header fields. A match-action entry is created by
+pairing appropriate match-key values and action for each path.
 % by using the case fields values to match the path select keys and 
 % the other remaining fields are set to don't care values.
 For example, in the first entry shown in \cref{subfig:parser-mat},
