@@ -8,7 +8,7 @@
 
 #define TABLE_SIZE 1024
 
-struct ecn_meta_t { }
+struct filter_meta_t { }
 
 header ethernet_h {
     bit<96> unused;
@@ -31,16 +31,22 @@ header ipv4_h {
   bit<32> dstAddr; 
 }
 
-struct ecn_hdr_t {
+header tcp_h {
+  bit<16> srcPort;
+  bit<16> dstPort;
+  bit<128> unused;
+}
+struct filter_hdr_t {
   ethernet_h ethernet;
   ipv4_h ipv4;
+  tcp_h tcp;
 }
 
-cpackage ecn : implements CSASwitch<empty_t, external_meta_t, empty_t, 
-									ecn_hdr_t, ecn_meta_t, empty_t> {
+cpackage filter : implements CSASwitch<empty_t, external_meta_t, empty_t, 
+									filter_hdr_t, filter_meta_t, empty_t> {
 									
-  parser csa_parser(packet_in pin, out ecn_hdr_t parsed_hdr, 
-                inout ecn_meta_t meta, 
+  parser csa_parser(packet_in pin, out filter_hdr_t parsed_hdr, 
+                inout filter_meta_t meta, 
                 inout csa_standard_metadata_t standard_metadata){
     state start {
       transition parse_ethernet;
@@ -55,38 +61,46 @@ cpackage ecn : implements CSASwitch<empty_t, external_meta_t, empty_t,
     
     state parse_ipv4 {
       pin.extract(parsed_hdr.ipv4);
-      transition accept;
+       transition select(parsed_hdr.ipv4.protocol) {
+                0b0110: parse_tcp;
+                _ : accept;
+            }
     }
+	state parse_tcp {
+      pin.extract(parsed_hdr.tcp);
+       transition accept;
+    }    
   }
 
-  control csa_pipe(inout ecn_hdr_t parsed_hdr, inout ecn_meta_t meta,
+  control csa_pipe(inout filter_hdr_t parsed_hdr, inout filter_meta_t meta,
                  inout csa_standard_metadata_t standard_metadata, egress_spec es) {
    
-    action set_ecn() {
-    	parsed_hdr.ipv4.ecn = 3;
-    }
-    table ecn_tbl{
+   action drop_action() {
+            standard_metadata.drop_flag = true;
+       }
+    table filter_tbl{
     	key = {
-    		parsed_hdr.ipv4.ecn : exact;
+    		parsed_hdr.tcp.srcPort : exact;
     	}
     	actions = {
-    		set_ecn;
+    		drop_action;
     	}
     	const entries = {
-    	    8w0o1: set_ecn();
-    	    8w0o2: set_ecn();
+    	     16w0x0050: drop_action();
+    	     16w0x1F90: drop_action();
     	}
     }
     
     apply {
-      		ecn_tbl.apply();
+      		filter_tbl.apply();
     }
   }
 
-  control csa_deparser(packet_out po, in ecn_hdr_t parsed_hdr) {
+  control csa_deparser(packet_out po, in filter_hdr_t parsed_hdr) {
     apply {
       po.emit(parsed_hdr.ethernet); 
-      po.emit(parsed_hdr.ipv4); 
+      po.emit(parsed_hdr.ipv4);
+      po.emit(parsed_hdr.tcp);  
     }
   }
 }

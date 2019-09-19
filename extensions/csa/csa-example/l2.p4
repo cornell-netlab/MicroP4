@@ -24,7 +24,7 @@ struct L2_my_metadata_t {
   bit<32> next_hop;
 }
 
-cpackage Layer2 : implements CSASwitch<external_meta_t, empty_t, empty_t, 
+cpackage l2 : implements CSASwitch<external_meta_t, empty_t, empty_t, 
                                        L2_parsed_headers_t, L2_my_metadata_t,
                                        empty_t> {
 
