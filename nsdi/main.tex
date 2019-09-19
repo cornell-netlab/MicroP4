@@ -2135,39 +2135,45 @@ emiiter.emit(p, testHdr);
 
 
 \subsection{Advanced Processing}
-Many applications---e.g., mirroring, statistics collector such as
-sFlow and NetFlow, packet history based telemetry as in
-NetSight~\cite{179783}, testing mechanisms such as differential
+Many applications---e.g., mirroring~\cite{rasley2014planck},
+statistics collector such as NetFlow and
+sFlow~\cite{panchen2001inmon}, packet history based telemetry as in
+NetSight~\cite{179783}, and differential
 testing~\cite{Zheng:2018:PLV:3281411.3281436}---require selectively
-creating copies of packets and processing the copies in a different
-manner. \ulang enables such processing through its \texttt{copy\_from}
-method in \texttt{pkt} and \texttt{es} externs of \uarch. The
-following snippet illustrates creating a copy of parameter \texttt{pk}
-and \texttt{e} using the method.
+creating copies of packets and processing the copies in different
+manners. \ulang enables such processing through
+\texttt{Orchestration}, \texttt{copy\_from} method in \texttt{pkt},
+and \texttt{im} externs. The following snippet illustrates creating a
+copy of a packet \texttt{pk} and differential processing.
 \begin{lstlisting}[frame=none]
 struct e_t {}; // empty type
-sflow(pkt, es_t);// Implements Unicast 
-control con(pkt pk, es_t e, 
+sflow(pkt, im_t);// sFlow implements Unicast
+control con(pkt pk, im_t md, 
     out_buf<e_t> ob) { // `ob' holds out packets
-  pkt pk2;  es_t e2;
+  pkt pk2;  im_t md2;
   in_buf<e_t> ib; // in_buffer for another module
   apply {
     pk2.copy_from(pk); // copying
-    e2.copy_from(e); // copying
-    sflow.apply(pk2, e2); // sflow on copy
-    ob.enqueue(pk, e); // puting original in ob
-    ob.enqueue(pk2, e2); // copy in ob
+    md2.copy_from(md); // copying
+    sflow.apply(pk2, md2); // sflow on copy
+    ob.enqueue(pk, md); // puting original in ob
+    ob.enqueue(pk2, md2); // copy in ob
     ob.to_in_buf(ib); // moves all elements to ib
     modular_router_orch.apply(ib, ob);
   }
-}
+} // inside an Orchestration pipeline
 \end{lstlisting}
-The \texttt{sflow} module processes the copy of the packet and
-metadata.  Then, the original packet as well as the processed copy are
-queued into the output buffer \texttt{ob}. \texttt{to\_in\_buf} moves
-the contents of \texttt{ob} to another buffer, \texttt{ib}, and resets
+The \texttt{sflow} module processes a copy of the packet and metadata.
+Then, the original packet as well as the processed copy are queued
+into an output buffer \texttt{ob}. \texttt{to\_in\_buf} moves the
+contents of \texttt{ob} to another buffer, \texttt{ib}, and resets
 \texttt{ob}. Finally, the \texttt{modular\_router\_orch} routes
 packets between modules.
+
+
+
+
+
 
 \subsection{Experience Composing \uprograms}
 \Cref{tab:loc-of-composed} shows line of P4 code generated for 
