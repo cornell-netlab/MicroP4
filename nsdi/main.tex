@@ -1447,15 +1447,15 @@ the details for brevity.
     \end{subfigure}
     \begin{subfigure}[b]{.47\linewidth}
     \centering
-    \begin{lstlisting}[frame=none]
-key = { b[12]++b[13]:exact; // rest Ternary
-  b[20]; b[23]; meta.data1; meta.data2;
+    \begin{lstlisting}[frame=none, escapechar=!]
+key = { !\color{parser-red}{b[12]++b[13]}!:exact; // rest Ternary
+  !\color{parser-red}{b[20]}!; !\color{parser-red}{b[23]}!; !\color{parser-red}{meta.data1}!; !\color{parser-red}{meta.data2}!;
   b[53].isValid(); b[73].isValid();}
 actions = { cp_eth_ipv4_tcp;
   cp_eth_ipv6_tcp; set_parser_error;}
 const entries = {
-  (x0800,_,x6,_,xFF,1,_):cp_eth_ipv4_tcp();
-  (x86DD,x6,_,xFF,_,_,1):cp_eth_ipv6_tcp();
+  (!\color{parser-green}{x0800}!,_,!\color{parser-green}{x6}!,_,!\color{parser-green}{xFF}!,1,_):cp_eth_ipv4_tcp();
+  (!\color{parser-green}{x86DD}!,!\color{parser-green}{x6}!,_,!\color{parser-green}{xFF}!,_,_,1):cp_eth_ipv6_tcp();
 }
 default_action : set_parser_error();
 \end{lstlisting}
