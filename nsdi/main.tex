@@ -969,7 +969,7 @@ control C(pkt p, inout hdr_t h, im_t im) { // p is partial pkt without L2 header
   action drop () {}
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstMac = dmac; h.eth.srcMac = smac;
-    !\colorbox{blue!10}{es}!.set_out_port(port); // setting metadata
+    !\colorbox{blue!10}{im}!.set_out_port(port); // setting metadata
   }
   table forward_tbl { // L2 forwarding, needs nh_id
     key = { nh_id : exact; } 
@@ -1123,55 +1123,69 @@ composition interface.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO P4 Compiler %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{MicroP4 Compiler (\ucomp)}
+\section{\ulang Compiler (\ucomp)}
 \label{sec:compiler}
+In this section, we explain the design of \ucomp: a compiler that
+transforms \ulang programs, which are \uarch-specific, for a specified
+target architecture. We focus on key transformations that enable
+composition and complement \uarch to realize portable and modular
+programming.
 
-The logical constructs of the \uarch and the programming model 
-for the \uswitch, together, allow writing modular \uprograms that are 
-\uswitch-specific. So, to transform \uprograms into a single prorgam 
-for a given target, we develop \ucomp. In this section, we explain 
-its design and key transformations that enables composition and 
-complements \uarch and \uswitch to realize portable and modular 
-programming. 
-
-\subsection{Design}
-\ucomp extends P4C, thereby follows P4C's modular design having 
-\emph{Frontend, Midend and Backend}. 
-\tightparbf{Frontend:} generates \ucomp specific IR, \ucomp-IR. It 
-performs basic checks (e.g., Type Checking) and simple IR 
-transformation. It generates reusable libraries by serializing the 
-\ucomp-IR.
 \begin{figure}[tbh]
   \centering
   \includegraphics[width=\linewidth]{workflow}
-  \caption{Workflow for building dataplanes in \ulang}
+  \caption{Workflow for building dataplanes in \ulang. \todo{update}}
   \label{fig:workflow}
 \end{figure}
-\tightparbf{Midend} performs two major transformations. \par
-\textbf{First}, to compose \uprograms by homogenizing their 
-processing-blocks. For that, it first performs static analysis to 
-compute \texttt{operational-region} for the \uprogram on packets' 
-byte-streams. Then, it synthesizes a stack of one byte header, called 
-\emph{byte-stack}, large enough to hold bytes in operational-region. 
-Finally, considering this byte-stack as a packet it transforms the 
-parsers-deparsers into match-action control blocks.
 
-\textbf{Second,} to preprocess for the backends. In case of 
-compile-time replication, extracts packet-processing code for every 
-packet instance and prepares processing schedule. \\
-The Midend passes are independent to target 
-architectures, focusing on composition and pre-processing for the
-backend passes. At the end of the midend passes \ucomp-IR contains 
-only control blocks having \uarch-specific constructs. 
+\subsection{\ucomp Design Overview}
+\label{sec:compiler-design}
+\ucomp builds on the P4 reference compiler, \texttt{p4c}~\cite{p4c},
+and has a modular design consisting of three phases: \emph{frontend},
+\emph{midend} and \emph{backend}. \cref{fig:workflow} shows an
+overview of \ucomp's phases.
 
-\tightparbf{Backend} transformation are for two goals.\par
-\textbf{First,} to allocate control blocks to the target's pipeline 
-model while translating to and respecting constraints on its 
-intrinsic metadata. \\ \textbf{Second,} to synthesizes required 
-parser and deparser blocks in target's pipeline model. 
-The backend is a specific to a target  architecture.
+\tightparbf{Frontend.}%
+The frontend transforms \ulang programs into \ucomp-specific
+intermediate representation (\ucomp-IR). It performs basic checks like
+type-checking at the source-level. As output, it generates reusable
+libraries by serializing the \ucomp-IR.
 
+\tightparbf{Midend.}%
+\ucomp's midend is responsible of two main transformations:
+\begin{enumerate*}[label=(\roman*)]
+  \item homogenizing processing blocks to enable composition and
+  \item preprocessing for backend pass.
+\end{enumerate*}
 
+To compose \uprograms by homogenizing their processing blocks, first,
+it performs static analysis of the \uprogram to compute the
+``operational-region''---i.e., the region of a packet's byte-stream
+that the program needs to access. Then, it synthesizes a stack of
+one-byte headers, called a \emph{byte-stack}, large enough to store
+the operational-region. Finally, considering this byte-stack as a
+packet it transforms any (de)parsers into homogeneous match-action
+control blocks.
+
+To preprocess for the backend, in case of compile-time replication,
+\ucomp's midend extracts packet-processing code for every packet
+instance and prepares a processing schedule.
+
+The midend passes are agnostic to target architectures, and focus on
+composition and pre-processing for the backend passes. At the end of
+the midend passes, the \ucomp-IR contains only control blocks having
+\uarch-specific constructs.
+
+\tightparbf{Backend.}%
+\ucomp's backend, which is specific to a target architecture, has two
+goals:
+\begin{enumerate*}[label=(\roman*)]
+  \item to translate and allocate control blocks to the target's
+    dataplane pipeline while respecting any constraints on metadata
+    and
+  \item to synthesize any required parser and deparser blocks in
+    the target's pipeline model.
+\end{enumerate*}
 
 \subsection{\ucomp Midend}
 We give a brief overview of the transformation passes of the midend 
