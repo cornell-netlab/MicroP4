@@ -1970,16 +1970,16 @@ profiles.
 \label{sec:evaluation}
 To test the expressiveness and composability of \ulang, we have
 implemented a set of applications in \ulang. We present a subset of
-these to illustrate some novel ways in which  we can compose dataplane
+these to illustrate some novel ways in which  we can compose \ulang
 programs to build real applications.
 
 \subsection{Composing Packet-Processing Layers}
 \label{subsection:composing-packet-processing-layers}
-Packets are usually structured into layers of protocols headers, where
-each layer is specialized for a specific role and has a specific
-layout. Therefore, writing modules for processing a layer or a set of
-layers is a natural and desired way to develop dataplane programs as
-these modules can be developed incrementally, composed together, and
+Packets are structured into layers of protocols headers with 
+specific layout, where each layer is specialized for a specific role. 
+Therefore, writing modules for processing one or more layers 
+is a natural way to build applications as these modules can 
+be developed incrementally, composed together, and
 reused.
 \tightparbf{Layered Modularity.}
 \uarch's generic interfaces allows programmers to define custom
