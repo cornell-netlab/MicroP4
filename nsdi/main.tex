@@ -1740,44 +1740,38 @@ PSA using appropriate mapping on \texttt{meta\_t} and FSM.
 \section{Implementation}
 \label{sec:implementation}
 We have implemented \ucomp by extending the open-source P4 reference
-compiler, \texttt{p4c}~\cite{p4c}. \deleted{For any P4-specific 
-components, our implementation conforms to the P4-16 
-specification~\cite{p4lang}.} In
-addition to the frontend extension needed to support \ulang programs,
-\ucomp's midend and backend implementation comprises of
-\textasciitilde 6,000 LoCs. As supporting a target architecture
-requires an architecture-specific backend, our current prototype
-includes a backend for \texttt{v1model}~\cite{v1model.p4}. To support
-other targets, \ucomp's can be extended with the corresponding
-backend. We have made our implementation available under an
-open-source
+compiler, \texttt{p4c}~\cite{p4c}. In addition to frontend extensions
+for \ulang's syntax, \ucomp's midend and backend comprise
+\textasciitilde 6,000 LoCs. As supporting a target requires an
+architecture-specific backend, our prototype includes a backend for
+\texttt{v1model}~\cite{v1model.p4}. To support other targets, \ucomp's
+can be extended with the corresponding backend. We have made our
+implementation available under an open-source
 license\footnote{\url{https://github.com/anonymized-for-review}}.
 
-In the rest of this section, we focus on the following questions.
+In the rest of this section, we focus on:
 \begin{enumerate*}[label=(\roman*)]
-  \item How different are \ulang programs (\cref{sec:comparison})?
-  \item How can we support new targets (\cref{sec:new-target})?
-  \item What are the overheads of \ulang (\cref{sec:overheads})?
-  \item What are the limitations of \ulang (\cref{sec:limitations})?
+  \item the differences with P4 (\cref{sec:comparison}),
+  \item supporting new targets in \ucomp (\cref{sec:new-target}),
+  \item the overheads (\cref{sec:overheads})
+  \item and limitations of \ulang (\cref{sec:limitations}).
 \end{enumerate*}
 
 
 \subsection{Comparison with P4}
 \label{sec:comparison}
-One of our goals is also to keep the changes to the syntax and grammar
-of P4 minimal so that users familiar with P4 can easily adopt \ulang.
-We briefly highlight subtle differences in \ulang compared to P4-16.
-First, \ulang allows defining custom package types that enable hiding
-the implementation of a packet-processing function and exposing an
-interface to reuse the code. This enables modular development of
-\ulang programs. Second, \uarch defines interfaces to encapsulate a
-set of programmable blocks so that the logical dataplane pipeline can
-be extended. Third, \uarch uses explicit information passing between
-modules in contrast to implicit global sharing of metadata in P4.
-Finally, instead of using target-specific constructs, programmers use
-logical \uarch constructs. Apart from these, \ulang conforms to the
-semantics of other P4-16 constructs such as externs, control, parser
-blocks, etc.
+One of our goals is to keep the changes to P4-16 syntax and grammar
+minimal so that users familiar with P4-16 can easily adopt \ulang. We
+briefly describe these differences. First, \ulang allows defining
+custom package types that hide the implementation of a
+packet-processing and exposing an interface to reuse the code. Second,
+\uarch defines interfaces to encapsulate a set of programmable blocks
+so that the logical dataplane pipeline can be extended. Third, \uarch
+uses explicit information passing between modules in contrast to
+implicit global sharing of metadata in P4.  Finally, instead of using
+target-specific constructs, programmers use logical \uarch constructs.
+Apart from these, \ulang conforms to the semantics of other P4-16
+constructs such as externs, control, parser blocks, etc.
 
 \deleted{Essentially, package types are associated runtime behavior,
 unlike P4-16's specification. ... (\texttt{pkt}, \texttt{extractor}
