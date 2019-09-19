@@ -1428,20 +1428,20 @@ We perform analysis to compute the min-packet-size as
 the minimum number of bytes required to extract a packet by the 
 caller's parser or among every possible first callee's parser.
 
-\subsubsection{Parser-Deparser To Match-Action Tables}
+\subsubsection{Parser and Deparser To Match-Action Tables}
 \label{subsection:parser-to-match-action-table}
 \begin{figure*}[!ht]
     \begin{subfigure}[b]{0.25\linewidth}
         \centering
         \includegraphics[trim=4 270 596 0, clip,scale=0.37]{parser-transformation-example}    
-        \caption{An example P4 Parser}
+        \caption{An example P4 parser}
         \label{subfig:parser}
     \end{subfigure}
     \begin{subfigure}[b]{0.26\linewidth}
         \centering
         \includegraphics[trim=0 285 794 0, clip,scale=0.37]{parser-example-se-1}
         \includegraphics[trim=0 285 794 0, clip,scale=0.37]{parser-example-se-2}
-        \caption{Parser Symbolic Execution}
+        \caption{Symbolic execution of the parser}
         \label{subfig:parser-symbolic-execution}
     \end{subfigure}
     \begin{subfigure}[b]{.47\linewidth}
@@ -1459,20 +1459,20 @@ const entries = {
 default_action : set_parser_error();
 \end{lstlisting}
 \vspace*{-10pt}
-\caption{Match-Action Control Block}
+\caption{Parser converted to match-action control}
 \label{subfig:parser-mat}
 \end{subfigure}
-\caption{Parser to Control Block Transformation}
+\caption{Example illustrating parser to control block transformation
+by \ucomp.}
 \label{fig:parser-to-control-block-transformation}
 \end{figure*}
 
 % P4 parser blocks describe parse graphs as state machines. Real 
 % target devices contain programmable parser module that can be 
 % programmed using parse graphs. 
-\tightparbf{Parser.} From the design of programmable parser 
-\cite{6665172}, we 
-observe that programmable parsers essentially perform repeated 
-match-action operations.
+\tightparbf{Parser.}%
+A close look at the design of programmable parsers reveals that they
+essentially perform repeated match-action operations~\cite{6665172}.
 % Programmable parsers \cite{6665172} are implemented as finite state 
 % machines (FSM) using buffer, Ternary Content-Addressable Memories 
 % (TCAM) and Action RAM. TCAM matches and processes actions and copy 
@@ -1492,17 +1492,18 @@ match-action operations.
 % consider that parser state may use any metadata or variable  to 
 % transit to the next state see Figure 
 % \ref{subfig:parser-symbolic-execution}. 
-Having the operational-region in byte-stack, we can perform these 
-match-action operations simultaneously by leveraging  TCMs in 
+So, with the operational-region in byte-stack, we can perform these
+match-action operations simultaneously by leveraging  TCAMs in
 match-action control blocks.
 
-For example, the parser's FSM in \cref{subfig:parser} has four 
-states to extract standard Ethernet, IPv4, IPv6 and TCP headers of 
-size 14, 20, 40 and 20 bytes, respectively. The symbolic execution of 
-the parser first identifies two possibles paths from the start state 
-to the accept state and then replaces matching header fields (e.g., 
-eth.ethType, ipv6.nexthdr, ipv4.protocol) with their identified byte 
-locations(\cref{subfig:parser-symbolic-execution}).
+For example, the parser's FSM in \cref{subfig:parser} has four states
+to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14,
+20, 40 and 20 bytes, respectively. Symbolic execution of the parser
+first identifies two possibles paths from the start state to the
+accept state and then, it replaces the matching header fields---e.g.,
+\texttt{eth.ethType}, \texttt{ipv6.nexthdr},
+\texttt{ipv4.protocol}---with their identified byte locations
+(\cref{subfig:parser-symbolic-execution}).
 % As an example, \emph{tcp} state transits to the accept state based 
 % on value (0xFF) of \texttt{var\_y} variable which is updated by 
 % either \emph{ipv4} or \emph{ipv6} states. If the select expression 
@@ -1515,30 +1516,28 @@ locations(\cref{subfig:parser-symbolic-execution}).
 % associated with the header instance passed as an argument to the 
 % method-call.In addition, valid metadata variable pertaining to the 
 % header instance is set.
-Using these byte locations on byte-stack as keys, the parser 
-synthesizes the match-key set using the union of the select 
-expressions in all the evaluated states on every path 
-\cref{subfig:parser-mat}. The match-key also comprises valid bit flag 
-of the last byte extracted on every path to consider packet-length in 
-the byte-stack. Then, for each path, ($i$) an action is 
-synthesized(e.g., \texttt{cp\_eth\_ipv4\_tcp} in 
-\cref{subfig:parser-mat}) comprising all the assignment statements 
-to copy only required header fields. A match-action 
-entry is created by pairing appropriate key-set values and action for 
-every path.
+Using these locations on the byte-stack as keys, the parser
+synthesizes the match-key set using the union of the select
+expressions in all the evaluated states on every path
+\cref{subfig:parser-mat}. The match-key also comprises the valid bit
+flag of the last byte extracted on every path to consider
+packet-length in the byte-stack. Then, for each path, we synthesize an
+action---e.g., \texttt{cp\_eth\_ipv4\_tcp} in
+\cref{subfig:parser-mat}---comprising all the assignment statements to
+copy only the required header fields. A match-action entry is created
+by pairing appropriate key-set values and action for every path.
 % by using the case fields values to match the path select keys and 
 % the other remaining fields are set to don't care values.
-For example, in the first entry shown in Figure 
-\ref{subfig:parsermat}, x0800, x6, xFF are match-values for the first, 
-third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp 
-headers and the second and forth keys are matched with don't care 
-values.
+For example, in the first entry shown in \cref{subfig:parser-mat},
+x0800, x6, xFF are match-values for the first, third and fifth keys to
+parse byte-stack as ethernet, IPv4 and TCP headers and the second and
+fourth keys are matched with don't care values.
 
-The midend transforms header fields used in the control block 
-of every \uprogram to necessary metadata called, 
-\emph{field-variables}, that are copied from byte-stack by the 
-transformed parser, now mathcal-action table, in the synthesised 
-actions. The field-variables include valid flag for header instances.
+The midend transforms header fields used in the control block of every
+\uprogram to necessary metadata called, \emph{field-variables}, that
+are copied from  byte-stack by the transformed parser, now
+match-action table, in the synthesised actions. The field-variables
+include a valid flag for header instances.
 
 
 % \subsubsection{Deparser To Match-Action Table:}
@@ -1579,25 +1578,25 @@ actions. The field-variables include valid flag for header instances.
 % For every possible combination of valid headers, we synthesize a 
 % series of operations on byte-stack as an action to copy 
 % field-variables and to move data in byte-stack.
-\tightparbf{Deparser.}Using the emit order of header instances and 
-number of bytes extracted by the parser of the \uprogram, the midend 
-synthesises match-key and actions to copy back field-variables at 
-appropriate location in byte-stack.
-The control block of a \uprogram may set or reset validity of 
-header instances and, thereby, modify the size of the packet. In case 
-of increase in packet size, byte-stack is always large enough to hold 
-new headers. The control block of callee1 shown in Figure 
-\ref{fig:sequential-callees} invalidates the mpls header from packets 
-if the execution follows a particular control path.
-Recall that, the synthesized parser extracts 78 bytes in the 
-stack. If the execution follows control path invalidating mpls 
-header, 60 bytes following the header should be moved up by the offset 
-of 4 in the stack. The synthesized action performs in-place copy of 
-these 60 bytes. It invalidates the last 4 bytes. 
+\tightparbf{Deparser.}%
+Using the emit order of header instances and number of bytes extracted
+by the parser of the \uprogram, the midend synthesises match-key and
+actions to copy back field-variables at appropriate location in
+byte-stack.  The control block of a \uprogram may set or reset
+validity of header instances and, thereby, modify the size of the
+packet. In case of increase in packet size, byte-stack is always large
+enough to hold new headers. The control block of \texttt{callee1}
+shown in \cref{fig:sequential-callees} invalidates the \texttt{mpls}
+header from packets if the execution follows a particular control
+path. Recall that the synthesized parser extracts 78 bytes in the
+stack. If the execution follows control path invalidating
+\texttt{mpls} header, 60 bytes following the header should be moved up
+by an offset of 4 in the stack. The synthesized action performs
+in-place copy of these 60 bytes and invalidates the last 4 bytes.
 % If the control block execution sets ipv4 header instance to valid, 
 % bytes after the ipv6 header are pushed down by the offset of 20 to 
 % insert ipv4 header instance.
-Note, the midend removes all the header type and their instances 
+Note that the midend removes all the header type and their instances 
 originally declared in the \uprogram.
 
 % The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
