@@ -969,7 +969,7 @@ control C(pkt p, inout hdr_t h, im_t im) { // p is partial pkt without L2 header
   action drop () {}
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstMac = dmac; h.eth.srcMac = smac;
-    !\colorbox{blue!10}{im}!.set_out_port(port); // setting metadata
+    !\colorbox{blue!10}{es}!.set_out_port(port); // setting metadata
   }
   table forward_tbl { // L2 forwarding, needs nh_id
     key = { nh_id : exact; } 
@@ -1123,112 +1123,91 @@ composition interface.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO P4 Compiler %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{\ulang Compiler (\ucomp)}
+\section{MicroP4 Compiler (\ucomp)}
 \label{sec:compiler}
-In this section, we explain the design of \ucomp: a compiler that
-transforms \ulang programs, which are \uarch-specific, for a specified
-target architecture. We focus on key transformations that enable
-composition and complement \uarch to realize portable and modular
-programming.
 
+The logical constructs of the \uarch and the programming model 
+for the \uswitch, together, allow writing modular \uprograms that are 
+\uswitch-specific. So, to transform \uprograms into a single prorgam 
+for a given target, we develop \ucomp. In this section, we explain 
+its design and key transformations that enables composition and 
+complements \uarch and \uswitch to realize portable and modular 
+programming. 
+
+\subsection{Design}
+\ucomp extends P4C, thereby follows P4C's modular design having 
+\emph{Frontend, Midend and Backend}. 
+\tightparbf{Frontend:} generates \ucomp specific IR, \ucomp-IR. It 
+performs basic checks (e.g., Type Checking) and simple IR 
+transformation. It generates reusable libraries by serializing the 
+\ucomp-IR.
 \begin{figure}[tbh]
   \centering
   \includegraphics[width=\linewidth]{workflow}
-  \caption{Workflow for building dataplanes in \ulang. \todo{update}}
+  \caption{Workflow for building dataplanes in \ulang}
   \label{fig:workflow}
 \end{figure}
+\tightparbf{Midend} performs two major transformations. \par
+\textbf{First}, to compose \uprograms by homogenizing their 
+processing-blocks. For that, it first performs static analysis to 
+compute \texttt{operational-region} for the \uprogram on packets' 
+byte-streams. Then, it synthesizes a stack of one byte header, called 
+\emph{byte-stack}, large enough to hold bytes in operational-region. 
+Finally, considering this byte-stack as a packet it transforms the 
+parsers-deparsers into match-action control blocks.
 
-\subsection{\ucomp Design Overview}
-\label{sec:compiler-design}
-\ucomp builds on the P4 reference compiler, \texttt{p4c}~\cite{p4c},
-and has a modular design consisting of three phases: \emph{frontend},
-\emph{midend} and \emph{backend}. \cref{fig:workflow} shows an
-overview of \ucomp's phases.
+\textbf{Second,} to preprocess for the backends. In case of 
+compile-time replication, extracts packet-processing code for every 
+packet instance and prepares processing schedule. \\
+The Midend passes are independent to target 
+architectures, focusing on composition and pre-processing for the
+backend passes. At the end of the midend passes \ucomp-IR contains 
+only control blocks having \uarch-specific constructs. 
 
-\tightparbf{Frontend.}%
-The frontend transforms \ulang programs into \ucomp-specific
-intermediate representation (\ucomp-IR). It performs basic checks like
-type-checking at the source-level. As output, it generates reusable
-libraries by serializing the \ucomp-IR.
-
-\tightparbf{Midend.}%
-\ucomp's midend is responsible of two main transformations:
-\begin{enumerate*}[label=(\roman*)]
-  \item homogenizing processing blocks to enable composition and
-  \item preprocessing for backend pass.
-\end{enumerate*}
-
-To compose \uprograms by homogenizing their processing blocks, first,
-it performs static analysis of the \uprogram to compute the
-``operational-region''---i.e., the region of a packet's byte-stream
-that the program needs to access. Then, it synthesizes a stack of
-one-byte headers, called a \emph{byte-stack}, large enough to store
-the operational-region. Finally, considering this byte-stack as a
-packet it transforms any (de)parsers into homogeneous match-action
-control blocks.
-
-To preprocess for the backend, in case of compile-time replication,
-\ucomp's midend extracts packet-processing code for every packet
-instance and prepares a processing schedule.
-
-The midend passes are agnostic to target architectures, and focus on
-composition and pre-processing for the backend passes. At the end of
-the midend passes, the \ucomp-IR contains only control blocks having
-\uarch-specific constructs.
-
-\tightparbf{Backend.}%
-\ucomp's backend, which is specific to a target architecture, has two
-goals:
-\begin{enumerate*}[label=(\roman*)]
-  \item to translate and allocate control blocks to the target's
-    dataplane pipeline while respecting any constraints on metadata
-    and
-  \item to synthesize any required parser and deparser blocks in
-    the target's pipeline model.
-\end{enumerate*}
+\tightparbf{Backend} transformation are for two goals.\par
+\textbf{First,} to allocate control blocks to the target's pipeline 
+model while translating to and respecting constraints on its 
+intrinsic metadata. \\ \textbf{Second,} to synthesizes required 
+parser and deparser blocks in target's pipeline model. 
+The backend is a specific to a target  architecture.
 
 
 
 \subsection{\ucomp Midend}
-\label{sec:compiler-midend}
-We present a brief overview of the transformation passes of the
-midend. Then, we elaborate on only the crucial passes.
+We give a brief overview of the transformation passes of the midend 
+to achieve its design goals. Then, we elaborate on only the crucial 
+passes.
 
-The midend begins with linking the \ucomp-IRs of all the \uprograms
-that need to be composed to build the dataplane. Then, it performs
-two transformations on every \uprogram:
-\begin{enumerate*}[label=(\roman*)]
-  \item convert each header-stack instance into a set of header
-    instances and
-  \item convert each \texttt{extract} method call parsing a
-    variable-length header to a sub-parser that uses only fixed-length
-    extractions to parse the header.
-\end{enumerate*}
-These transformations convert the parse graph into a Directed Acyclic
-Graph (DAG), simplifying the \uprograms for the next pass, which
-performs \emph{static analysis}.
+The midend begins with linking \ucomp-IRs of all the \uprograms 
+composed in the main \uprogram. Then, it performs two transformations 
+on every \uprogram, $(1)$ to convert every header stack instance into 
+a set of header instances, $(2)$ to convert every \texttt{extract} 
+method call parsing a variable-length header to a sub-parser that 
+uses only fixed-length extractions to parse the header. These 
+transformations convert the parse graph into a Directed Acyclic Graph 
+(DAG), simplifying the \uprograms for the next pass, \emph{static 
+analysis}.
 
-\tightpar{Static analysis.} The simplified \uprograms allow computing
-minimum and maximum bytes that are extracted by the parsers and
-emitted by the deparsers. These values, in turn, are used to compute
-the operational-region for the composed program and store it in a
-byte-stack (\cref{subsubsection:static-analysis}).
 
-Having a byte-stack storing packets' operational-region allows to
-synthesize a match-action table that can parse and deparse packets.
-Following static analysis, the midend performs these transformations
-on \ucomp-IR to homogenize all processing blocks to match-action
+The simplified \uprograms allows to analyse minimum and 
+maximum bytes extracted by the parsers and emitted by the deparsers. 
+These metrics are used to compute operational-region for 
+the main \uprogram as discussed in 
+\cref{subsubsection:static-analysis}.
+
+Having a stack of bytes storing packets' operational-region allows 
+to synthesize match-action code that parses and deparses packets in 
+control blocks. Following static-analysis, the midend performs these 
+transformations on \ucomp-IR to homogenize all processing blocks to 
 control blocks (\cref{subsection:parser-to-match-action-table}).
-Naturally, the ``main'' \uprogram---i.e. the one composing together
-different \uprograms---in \ucomp-IR is also transformed to a control
-block that invokes other ones.
+Naturally, the main \uprogram node in \ucomp-IR is also transformed 
+to a control block that invokes other ones.
 
-Finally, if the main \uprogram is dependent on a \uprogram that
-implements \texttt{Orchestration} interface, the final midend pass
-extracts processing code for every packet instance created during
-\texttt{Orchestration} in the \uprogram. In addition, it prepares an
-execution schedule to capture interaction among processing of packet
-instances.
+Finally, if the main \uprogram is dependent on a \uprogram 
+implementing \texttt{Orchestration} interface, the final midend pass 
+extracts processing code for every packet instance in the \uprogram. 
+In additions, it prepares an execution schedule to capture 
+interaction among processing of packet instances.
 
 
 
@@ -1288,35 +1267,31 @@ instances.
 % allow it by compile-time check. 
 \subsubsection{Static Analysis}
 \label{subsubsection:static-analysis}
-\ucomp performs static analysis to compute three values:
-\begin{enumerate*}[label=(\roman*)]
-  \item \emph{extract-length}: the maximum number of bytes that needed
-    to be extracted from a packet to execute all the \uprograms in
-    match-action control blocks,
-  \item size of the byte-stack needed to store new header instances
-    that may be added during processing and
-  \item \emph{min-packet-size}, the minimum size of packets that may
-    be accepted.
-\end{enumerate*}
-These values are computed recursively for every \uprogram as
-\uswitch's programming model allows invoking one \uprogram from
-another.
+The static analysis compute three main metrics. $(1)$ the  
+\emph{extract-length}, the maximum number of bytes required to extract 
+for executing all the \uprograms in match-action control blocks, 
+$(2)$ size of the byte-stack to hold new header instances added during 
+the execution and $(3)$ \emph{min-packet-size}, the minimum size of 
+packets that can be accepted. These metrics are recursively computed 
+for every \uprogram as \uswitch's programming model allows to invoke 
+one \uprogram from another. 
 
-To compute these values for a \uprogram, $a$, we first symbolically
-execute its parser and compute the extract-length for the parser,
-$El_{p}(a)$, as the maximum number of bytes extracted by the parser to
-reach the \textit{accept} state. A \uprogram's extract-length also
-depends on its callees. So, for a control block, we define the
-extract-length, $E_{c}(a)$, as the maximum number of bytes extracted
-during execution of one of its control paths. In the same control
-path, multiple callees may be invoked. We define the extract-length,
-$lc_{a}(x)$, of a control path $x$ as the maximum number of bytes
-required to process all the callees in $x$. The \uprogram's
-extract-length, $\mathcal{E}l(a)$, is the sum of extract-lengths of
-its parser and control blocks. The size of the byte-stack needed for a
-\uprogram may differ from its extract-length as a packet's size may
-increase or decrease during processing.
 
+To compute the metrics for a \uprogram $a$, we first symbolically 
+execute its parser and compute extract-length for the parser, called 
+$El_{p}(a)$, as maximum number of bytes extracted by the parser to 
+reach accept state. However, \uprogram' extract-lengths also depend 
+on their callees. Therefore, for the control block, we define the 
+extract-length, $E_{c}(a)$, as maximum number of bytes extracted 
+during execution of one of its control paths.
+In the same control path, multiple callees may be invoked. we define 
+the extract-length, $lc_{a}(x)$, of a control path $x$ as the maximum 
+number of bytes required to process all the callees in the path. The
+\uprogram's extract-length, $\mathcal{E}l(a)$, is sum of 
+extract-lengths of its parser and control block.
+The byte-stack size for the \uprogram may be different than its 
+extract-length, because it may have increase and decrease size of the 
+packet. 
 % The extract-length of the \uprogram $a$'s control block is defined as 
 % longest path in the CFG (\ref{extract-length-control}).
 % \begin{align}
@@ -1331,40 +1306,35 @@ increase or decrease during processing.
 
 
 
-To estimate the maximum decrease in a control path, we consider the
-case when a packet contains all the header instances which are set to
-valid or invalid in the path. The rationale for using this case is
-that if a packet already has a header instance, setting it to invalid
-will decrease the packet size, but setting it to valid is a no-op.
-Similarly for maximum increase, we consider that a packet does not
-contain any header instance that is set to valid or invalid on the
-path. Then, we symbolically execute the control block by evaluating
-all the \texttt{setValid} and \texttt{setInvalid} invocations.  We
-denote increase and decrease in packet size on a control path $x$ with
-$i_{a}(x)$ and $d_{a}(x)$, respectively. Similarly, $\Delta(a)$ and
-$\delta(a)$ denote increase and decrease for the entire \uprogram $a$.
-\cref{increase-path} expresses $i_{a}(x)$ as the sum of
-\begin{enumerate*}[label=(\roman*)]
-  \item sizes of all the header instances on which \texttt{setValid}
-    is done and
-  \item maximum increase in packet size by every callee \uprogram,
-    $cp$, in the path.
-\end{enumerate*}
-Similarly, we compute $d_{a}(x)$ as show in \cref{decrease-path}.
+To estimate maximum decrease on a control path, we consider that a 
+packet contains all the header instances which are set to valid or 
+invalid on the control path. The rationale behind considering this 
+scenario is, if a packet already has a header instance, setting it to 
+valid will not impact size. However, setting it to invalid will 
+decrease the packet size.
+Similarly for maximum increase, we consider that a packet does not 
+contain any header instance that is set to valid or invalid on the 
+path. We symbolically execute theh control block by evaluating all 
+the  \texttt{setValid} and \texttt{setInvalid} method calls.
+We denote increase and decrease in packet size on a control path $x$ 
+using $i_{a}(x)$ and $d_{a}(x)$, respectively. Similarly, $\Delta(a)$ 
+and $\delta(a)$ for the entire \uprogram $a$. $i_{a}(x)$ (in 
+(\ref{increase-path})) is the sum of $(1)$ sizes of all the header 
+instances invoking \texttt{setValid} calls and $(2)$ maximum increase 
+in packet size by every callee \uprogram $cp$ on the path.
+Similarly, $d_{a}(x)$ is computed as show in (\ref{decrease-path}).
 % $d_{p}(x)$ is the sum of $(1)$ sizes of all the header instances for 
 % which control path \texttt{setInvalid} methods call statements and 
 % $(2)$ maximum decrease in packet size by all every callee program $cp$ 
 % on the path as shown in \ref{decrease-path}.
 \begin{align}
-  i_{a}(x)\; =& \; \sum_{\mathtt{H.setValid()} \in x} sizeof(H) +
-  \sum_{\mathtt{cp.apply()} \in x} \Delta(cp) \label{increase-path} \\
-  d_{a}(x)\; =& \; \sum_{\mathtt{H.setInValid()} \in x} sizeof(H) +
-  \sum_{\mathtt{cp.apply()} \in x} \delta(cp) \label{decrease-path}
+i_{a}(x)\; =& \; \sum_{H.setValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \Delta(cp) \label{increase-path} \\
+d_{a}(x)\; =& \; \sum_{H.setInValid() \in x} sizeof(H) + \sum_{cp.apply()\in x} \delta(cp) \label{decrease-path}
 \end{align}
-Header instances that are not emitted by the deparser but extracted by
-the parser decrease a packet's size. So, we increment $d_{a}(x)$ by
-the size of such header instances for every path $x$.
-For a \uprogram, $a$, we compute the maximum increase $\Delta(a) = 
+The header instances that are not emitted by the deparser but 
+extracted by the parser decrease packets' size. $d_{a}(x)$ is 
+incremented by the size of such header instances for every path $x$.
+By the \uprogram $a$, we compute maximum increase $\Delta(a) = 
 \max_{x} \left\{ i_{a}(x) \right\} $ and decrease $\delta(a) = 
 \max_{x} \left\{ d_{a}(x) \right\}$.
 % as shown in (\ref{increase}) and (\ref{decrease}), respectively.
@@ -1380,99 +1350,96 @@ For a \uprogram, $a$, we compute the maximum increase $\Delta(a) =
 % to process their own deparsers along with callees'.
 
 % TODO : in figure, legend bold letters for accept state. control path
-Now, we define the extract-length, $lc_{a}(x)$, for a path $x$ in the
-\uprogram $a$'s control block as a function of the callees'
-extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet
-size ($\delta(cp)$). Let's assume that a control path $x$ invokes N
-callees in increasing order.  The $i$\textsuperscript{th} callee may
-decrease a packet's size and reduce the available bytes to be less
-than the extract-length of $(i+1)$\textsuperscript{th} callee's parser
-($El_{p}(i+1)$).  \cref{fig:sequential-callees} shows such a scenario.
+Now, we define the extract-length ($lc_{a}(x)$) for a path 
+$x$ in the \uprogram $a$'s control block as a function of 
+the callees' extract-length ($\mathcal{E}l(cp)$) and maximum decrease 
+in packet size ($\delta(cp)$). Let's assume that a control path $x$ 
+invokes N number of callees in increasing order of their numbers. 
+The $i$the callee may decrease packets' size, thus reducing available 
+bytes lesser than the extract-length of p(i+1)th callee's parser ( 
+\uprogram ($E_{p}(i+1)$).
+\cref{fig:sequential-callees} shows this execution scenario.
 % of two callee \uprograms invoked in the same control path in the CFG 
 % of a caller's control block. The ipv6 and ipv4 states in the 
 % parsers of callee1 and callee2 transit to the accept state. There are 
 % two control paths in the control block of callee1. One invalidates 
 % mpls header instance and another sets a new header (ipv4) to valid.
-\begin{figure}[!tbp]
+A control path of the callee1 removes the mpls header from the 
+packet, decreasing the packet size by four bytes.
+The callee2 extracts eth, IPv6 and IPv4 headers from the packet. 
+78 bytes are required to process $(1)$ removal of mpls header by the 
+callee1 and $(2)$ the longest path (eth-IPv6-IPv4) in the 
+parse-graph of the callee2.
+\begin{figure}[!h]
     \centering
     \includegraphics[trim=0 396 487 0, clip,scale=0.5]{sequential-callees}
-    \caption{Multiple callees in a control path}
+    \caption{Multiple Callees in a control path}
     \label{fig:sequential-callees}
 \end{figure}
-A control path of \texttt{callee1} removes the \texttt{mpls} header
-from the packet, decreasing the packet size by 4 bytes.
-\texttt{callee2} extracts \texttt{eth}, \texttt{ipv6} and
-\texttt{ipv4} headers from the packet. So, 78 bytes are required to
-process
-\begin{enumerate*}[label=(\roman*)]
-  \item removal of \texttt{mpls} header by \texttt{callee1} and
-  \item the longest path (eth-IPv6-IPv4) in the parse-graph of
-    \texttt{callee2}.
-\end{enumerate*}
-Therefore, we take into account the extract-length of every callee's
-parser along with the maximum decrease in packet size by the callee's
-predecessors in the control path $x$ to compute $lc_{a}(x)$,
-as shown in \cref{extract-length-control-path}.
+Therefore, we take into account extract-length of every callee 
+\uprogram's parser along with maximum decrease in packet size by the 
+callee's predecessors in the control path $x$ to compute $lc_{a}(x)$, 
+as shown in (\ref{extract-length-control-path}).
 \begin{align}
 lc_{a}(x) \; =& \; \max_{p} \left\{ \left( \sum_{i=0}^{i<p} \delta(i) \right)+ \mathcal{E}l(p) \right\},&p \in [0,N] \label{extract-length-control-path} \\
 \mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-package}
 \end{align}
-Finally, we define the byte-stack size for a \uprogram $a$,
-$\mathcal{B}s_{a}$  as the sum of its extract-length and maximum
-increase in packet size as shown in \cref{byte-stack-size-package}.
-For the example in \cref{fig:sequential-callees}, the byte-stack size
-for the caller is 98.
+Finally, we define the byte-stack size for the \uprogram $a$, 
+$\mathcal{B}s_{a}$ (\ref{byte-stack-size-package}), as the sum of its 
+extract-length and maximum increase in packet size.
+For the example shown in Figure \ref{fig:sequential-callees}, the 
+byte-stack size for the caller is 98.
 % 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
 
-We perform analysis to compute the min-packet-size as 
+We perfrom analysis to compute the min-packet-size as 
 the minimum number of bytes required to extract a packet by the 
 caller's parser or among every possible first callee's parser.
 
-\subsubsection{Parser and Deparser To Match-Action Tables}
+\subsubsection{Parser-Deparser To Match-Action Tables}
 \label{subsection:parser-to-match-action-table}
 \begin{figure*}[!ht]
     \begin{subfigure}[b]{0.25\linewidth}
         \centering
         \includegraphics[trim=4 270 596 0, clip,scale=0.37]{parser-transformation-example}    
-        \caption{An example P4 parser}
+        \caption{An example P4 Parser}
         \label{subfig:parser}
     \end{subfigure}
     \begin{subfigure}[b]{0.26\linewidth}
         \centering
         \includegraphics[trim=0 285 794 0, clip,scale=0.37]{parser-example-se-1}
         \includegraphics[trim=0 285 794 0, clip,scale=0.37]{parser-example-se-2}
-        \caption{Symbolic execution of the parser}
+        \caption{Parser Symbolic Execution}
         \label{subfig:parser-symbolic-execution}
     \end{subfigure}
     \begin{subfigure}[b]{.47\linewidth}
     \centering
-    \begin{lstlisting}[frame=none]
-key = { b[12]++b[13]:exact; // rest Ternary
-  b[20]; b[23]; meta.data1; meta.data2;
-  b[53].isValid(); b[73].isValid();}
+    \begin{lstlisting}[frame=none, escapechar=!]
+key = { !{\color{parser-red}{b[12]++b[13]}!:exact; // rest Ternary
+  !{\color{parser-red}{b[20]; b[23]; meta.data1; meta.data2;}!
+  b[53].isValid(); b[73].isValid();} // length
 actions = { cp_eth_ipv4_tcp;
   cp_eth_ipv6_tcp; set_parser_error;}
-const entries = {
-  (x0800,_,x6,_,xFF,1,_):cp_eth_ipv4_tcp();
-  (x86DD,x6,_,xFF,_,_,1):cp_eth_ipv6_tcp();
+const entries = {  
+(!{\color{parser-green}{x0800}!,_,!{\color{parser-green}{x6}!,_,!{\color{parser-green}{xFF}!,1, _):cp_eth_ipv4_tcp();
+(!{\color{parser-green}{x86DD,x6}!,_,!{\color{parser-green}{xFF}!,_,_,1):cp_eth_ipv6_tcp();
 }
 default_action : set_parser_error();
 \end{lstlisting}
 \vspace*{-10pt}
-\caption{Parser converted to match-action control}
+\caption{Match-Action Control Block}
 \label{subfig:parser-mat}
 \end{subfigure}
-\caption{Example illustrating parser to control block transformation
-by \ucomp.}
+\caption{Parser to Control Block Transformation}
 \label{fig:parser-to-control-block-transformation}
 \end{figure*}
 
 % P4 parser blocks describe parse graphs as state machines. Real 
 % target devices contain programmable parser module that can be 
 % programmed using parse graphs. 
-\tightparbf{Parser.}%
-A close look at the design of programmable parsers reveals that they
-essentially perform repeated match-action operations~\cite{6665172}.
+\tightparbf{Parser.} From the design of programmable parser 
+\cite{6665172}, we 
+observe that programmable parsers essentially perform repeated 
+match-action operations.
 % Programmable parsers \cite{6665172} are implemented as finite state 
 % machines (FSM) using buffer, Ternary Content-Addressable Memories 
 % (TCAM) and Action RAM. TCAM matches and processes actions and copy 
@@ -1492,18 +1459,17 @@ essentially perform repeated match-action operations~\cite{6665172}.
 % consider that parser state may use any metadata or variable  to 
 % transit to the next state see Figure 
 % \ref{subfig:parser-symbolic-execution}. 
-So, with the operational-region in byte-stack, we can perform these
-match-action operations simultaneously by leveraging  TCAMs in
+Having the operational-region in byte-stack, we can perform these 
+match-action operations simultaneously by leveraging  TCMs in 
 match-action control blocks.
 
-For example, the parser's FSM in \cref{subfig:parser} has four states
-to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14,
-20, 40 and 20 bytes, respectively. Symbolic execution of the parser
-first identifies two possibles paths from the start state to the
-accept state and then, it replaces the matching header fields---e.g.,
-\texttt{eth.ethType}, \texttt{ipv6.nexthdr},
-\texttt{ipv4.protocol}---with their identified byte locations
-(\cref{subfig:parser-symbolic-execution}).
+For example, the parser's FSM in \cref{subfig:parser} has four 
+states to extract standard Ethernet, IPv4, IPv6 and TCP headers of 
+size 14, 20, 40 and 20 bytes, respectively. The symbolic execution of 
+the parser first identifies two possibles paths from the start state 
+to the accept state and then replaces matching header fields (e.g., 
+eth.ethType, ipv6.nexthdr, ipv4.protocol) with their identified byte 
+locations(\cref{subfig:parser-symbolic-execution}).
 % As an example, \emph{tcp} state transits to the accept state based 
 % on value (0xFF) of \texttt{var\_y} variable which is updated by 
 % either \emph{ipv4} or \emph{ipv6} states. If the select expression 
@@ -1516,28 +1482,30 @@ accept state and then, it replaces the matching header fields---e.g.,
 % associated with the header instance passed as an argument to the 
 % method-call.In addition, valid metadata variable pertaining to the 
 % header instance is set.
-Using these locations on the byte-stack as keys, the parser
-synthesizes the match-key set using the union of the select
-expressions in all the evaluated states on every path
-\cref{subfig:parser-mat}. The match-key also comprises the valid bit
-flag of the last byte extracted on every path to consider
-packet-length in the byte-stack. Then, for each path, we synthesize an
-action---e.g., \texttt{cp\_eth\_ipv4\_tcp} in
-\cref{subfig:parser-mat}---comprising all the assignment statements to
-copy only the required header fields. A match-action entry is created
-by pairing appropriate key-set values and action for every path.
+Using these byte locations on byte-stack as keys, the parser 
+synthesizes the match-key set using the union of the select 
+expressions in all the evaluated states on every path 
+\cref{subfig:parser-mat}. The match-key also comprises valid bit flag 
+of the last byte extracted on every path to consider packet-length in 
+the byte-stack. Then, for each path, ($i$) an action is 
+synthesized(e.g., \texttt{cp\_eth\_ipv4\_tcp} in 
+\cref{subfig:parser-mat}) comprising all the assignment statements 
+to copy only required header fields. A match-action 
+entry is created by pairing appropriate key-set values and action for 
+every path.
 % by using the case fields values to match the path select keys and 
 % the other remaining fields are set to don't care values.
-For example, in the first entry shown in \cref{subfig:parser-mat},
-x0800, x6, xFF are match-values for the first, third and fifth keys to
-parse byte-stack as ethernet, IPv4 and TCP headers and the second and
-fourth keys are matched with don't care values.
+For example, in the first entry shown in Figure 
+\ref{subfig:parsermat}, x0800, x6, xFF are match-values for the first, 
+third and fifth keys to parse byte-stack as ehternet, ipv4 and tcp 
+headers and the second and forth keys are matched with don't care 
+values.
 
-The midend transforms header fields used in the control block of every
-\uprogram to necessary metadata called, \emph{field-variables}, that
-are copied from  byte-stack by the transformed parser, now
-match-action table, in the synthesised actions. The field-variables
-include a valid flag for header instances.
+The midend transforms header fields used in the control block 
+of every \uprogram to necessary metadata called, 
+\emph{field-variables}, that are copied from byte-stack by the 
+transformed parser, now mathcal-action table, in the synthesised 
+actions. The field-variables include valid flag for header instances.
 
 
 % \subsubsection{Deparser To Match-Action Table:}
@@ -1578,25 +1546,25 @@ include a valid flag for header instances.
 % For every possible combination of valid headers, we synthesize a 
 % series of operations on byte-stack as an action to copy 
 % field-variables and to move data in byte-stack.
-\tightparbf{Deparser.}%
-Using the emit order of header instances and number of bytes extracted
-by the parser of the \uprogram, the midend synthesises match-key and
-actions to copy back field-variables at appropriate location in
-byte-stack.  The control block of a \uprogram may set or reset
-validity of header instances and, thereby, modify the size of the
-packet. In case of increase in packet size, byte-stack is always large
-enough to hold new headers. The control block of \texttt{callee1}
-shown in \cref{fig:sequential-callees} invalidates the \texttt{mpls}
-header from packets if the execution follows a particular control
-path. Recall that the synthesized parser extracts 78 bytes in the
-stack. If the execution follows control path invalidating
-\texttt{mpls} header, 60 bytes following the header should be moved up
-by an offset of 4 in the stack. The synthesized action performs
-in-place copy of these 60 bytes and invalidates the last 4 bytes.
+\tightparbf{Deparser.}Using the emit order of header instances and 
+number of bytes extracted by the parser of the \uprogram, the midend 
+synthesises match-key and actions to copy back field-variables at 
+appropriate location in byte-stack.
+The control block of a \uprogram may set or reset validity of 
+header instances and, thereby, modify the size of the packet. In case 
+of increase in packet size, byte-stack is always large enough to hold 
+new headers. The control block of callee1 shown in Figure 
+\ref{fig:sequential-callees} invalidates the mpls header from packets 
+if the execution follows a particular control path.
+Recall that, the synthesized parser extracts 78 bytes in the 
+stack. If the execution follows control path invalidating mpls 
+header, 60 bytes following the header should be moved up by the offset 
+of 4 in the stack. The synthesized action performs in-place copy of 
+these 60 bytes. It invalidates the last 4 bytes. 
 % If the control block execution sets ipv4 header instance to valid, 
 % bytes after the ipv6 header are pushed down by the offset of 20 to 
 % insert ipv4 header instance.
-Note that the midend removes all the header type and their instances
+Note, the midend removes all the header type and their instances 
 originally declared in the \uprogram.
 
 % The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
@@ -1614,23 +1582,25 @@ originally declared in the \uprogram.
 
 
 \subsubsection{Preprocessing for \ucomp-backends}
-After homogenizing packet processing blocks, the midend eliminates any
-use of logical buffers from \uprograms without compile-time
-replication. If the \uprograms uses compile-time replication of packet
-and intrinsic metadata to express multi-packet processing, the midend
-prepares a \emph{Packet-Processing Schedule (PPS)} graph for the
-\uprogram. A node in a PPS graph captures the \uprogram's sub-program,
-called \texttt{thread}, that processes only one packet instance. An
-edge within a PPS represents dependencies among the packet-processing
-threads. To prepare a PPS by extracting sub-programs, we construct a
-Program Dependence Graph (PDG) \cite{Ferrante:1987:PDG:24039.24041}
-from the \uprogram-IR and perform \emph{slicing} that is defined based
-on a variant of \emph{program slice}
-\cite{Weiser:1981:PS:800078.802557}. We define our slicing criteria
-based on the semantics of logical externs, \texttt{pkt},
-\texttt{in\_buf} and \texttt{out\_buf}, along with \texttt{apply}
-method exposed by interfaces of \uarch. See
-\cref{subsubsection:packet-processing-schedule} for more details.
+After homogenizing packet processing blocks, the midend eliminates 
+any use of logical buffer interfaces from \uprograms without 
+compile-time replication. For the \uprogram that use compile-time 
+replication of packet and intrinsic metadata to express multi-packet 
+processing, the midend prepares Packet-Processing Schedule (PPS) 
+graph for the \uprogram. Every node is a PPS graph captures the 
+\uprogram's sub-program, called \texttt{thread}, that processes only 
+one packet instance. The edges within PPS represents dependencies 
+among the packet-processing threads.
+To prepare PPS by extracting sub-program, we construct 
+Program Dependence Graph (PDG) \cite{Ferrante:1987:PDG:24039.24041} 
+from the \uprogram-IR and perform \emph{slicing} that is defined based 
+on a variant of \emph{program slice} 
+\cite{Weiser:1981:PS:800078.802557}.
+We define our slicing criteria based on the semantics of logical 
+externs, \texttt{pkt}, \texttt{in\_buf} and \texttt{out\_buf}, along 
+with \texttt{apply} method exposed by interfaces of \uarch. We 
+describe in-depth approach in 
+\cref{subsubsection:packet-processing-schedule}.
 
 
 
@@ -1657,57 +1627,64 @@ method exposed by interfaces of \uarch. See
 
 
 
-\ucomp's backend understands semantics of the pipeline model and
-constraints on intrinsic metadata of the specified target
-architecture. In addition, it uses the mapping between the metadata of
-two architectures to capture constraints imposed by the target
-architecture on its intrinsic metadata. It allocates the control
-blocks in \uarch-IR while respecting the constraints to the processing
-blocks exposed by the target architecture. During the allocation pass,
-it also translates the intrinsic metadata.
+The backend of \ucomp understands semantics of pipeline model and 
+constraints on intrinsic metadata of target architecture. In addition, 
+it uses the mapping between the metadata of two architectures to 
+capture constraints imposed by the target architecture on its 
+intrinsic metadata. It allocates the control blocks in \uarch-IR 
+while respecting the constraints to the processing blocks exposed by 
+the target architecture. During the allocation pass, it also 
+translates the intrinsic metadata.
 
 % Finally, it uses metrics computed 
 % by \emph{static-analysis} in the midend to synthesise target-specific 
 % parser and deparser blocks. 
 
 
-\tightparbf{Allocation to Target Architecture.}%
-In case of packet-processing code with packet-replication, every
-backend visits PPS nodes in topological order to map packet-processing
-threads. It simultaneously allocates all the sub-programs represented
-by every thread node located at the same topological order in PPS. In
-the absence of packet-replication, it allocates packet-processing code
-of a single thread. To allocate a thread on the target architecture's
-pipeline, \ucomp performs required \emph{partitioning} transformation
-on the thread's PDG. Next, we explain the partitioning for single
+\tightparbf{Allocation to Target Architecture}
+
+
+In case of packet-processing code with packet-replication, every 
+backend visits PPS nodes in topological order to map 
+packet-processing threads. It simultaneously allocates all the 
+sub-programs represented by every thread node located at the same 
+topological order in PPS. In absence of packet-replication, it 
+allocates packet-processing code of a single thread.
+To allocate a thread on the target architecture's pipeline, \ucomp 
+performs required \emph{partitioning} transformation on the 
+thread's PDG. Next, we explain the partitioning for single 
 thread on v1model architecture for simple\_switch target.
 
-\ucomp's backend for v1model maintains a FSM with two
-states---ingress and egress. The FSM captures constraints on the usage
-of \texttt{egress\_spec}, \texttt{egress\_port} and queuing metadata
-in the ingress and egress blocks. Each state represents a set of
-assertions to be verified on visit of every program statement in PDG
-of a thread. For example, in the ingress state, the graph traversal
-asserts that every visited statement is NOT a \texttt{im\_t}'s
-\texttt{get\_value} method call statement that have an argument
-\texttt{meta\_t} value mapping to intrinsic metadata (e.g.,
-enq\_timestamp) not available in ingress block.  If an assertion
-associated with a state fails, the program statement is marked and not
-visited. State transition occurs when the graph traversal can not be
-continued due to absence of unmarked and not-visited nodes. At this
-point, \ucomp splits the thread PDG into two PDGs of visited and
-non-visited program statements. Also, the FSM transits to egress
-state.  In the egress state, the graph traversal asserts every that
-visited statement is not a method call of \texttt{get\_egress\_port}
-in \texttt{im\_t} object.
-% We perform trivial translation of method calls of \uarch's extern with corresponding method calls of target architecture.
 
-The partitions may have edges representing control dependencies
-between the partitions. Also, partitions may share live local
-variables. \ucomp synthesizes \emph{partition-metadata} to convert
-control dependencies into data dependencies and convert live variable
-to user metadata. It synthesizes the partition-metadata and live
-variables as user-metadata parameter between ingress and egress
+The backend for v1model maintains a finite state machine with two 
+states, named ingress and egress. The FSM captures constraints on 
+usage of egress\_spec, egress\_port and queuing metadata in ingress 
+and egress blocks. Each state represents a set of assertions to be 
+verified on visit of every program statement in PDG of a thread. 
+For example, In the ingress state, the graph traversal asserts that 
+every visited statement is NOT a \texttt{im\_t}'s \texttt{get\_value} 
+method call statement that have an argument \texttt{meta\_t} value 
+mapping to intrinsic metadata (e.g., enq\_timestamp) not available in 
+ingress block.
+If an assertion associated with a state fails, the program 
+statement is marked and not visited.
+State transition occurs when the graph traversal can not be continued 
+due to absence of unmarked and not-visited nodes.
+At this point, \ucomp splits the thread PDG into two PDGs of visited 
+and non-visited program statements. Also, the FSM transits to 
+egress state.
+In the egress state, the graph traversal asserts every that visited 
+statement is not a method call of \texttt{get\_egress\_port} in 
+\texttt{im\_t} object.
+% We perform trivial translation of method calls of \uarch's extern 
+with corresponding method calls of target architecture.
+
+The partitions may have edges representing control dependencies 
+between the partitions. Also, partitions may share live local 
+variables. \ucomp synthesizes \emph{partition-metadata} to convert 
+control dependencies into data dependencies and convert live variable 
+to user metadata. It synthesizes the partition-metadata and live 
+variables as user-metadata parameter between ingress and egress 
 control block to restore execution state.
 % Finally, {copy\_from} method calls of \texttt{pkt} instances are 
 % replaced for v1model with \texttt{clone3} and \texttt{recirculate} or 
@@ -1736,15 +1713,16 @@ PSA using appropriate mapping on \texttt{meta\_t} and FSM.
 \section{Implementation}
 \label{sec:implementation}
 We have implemented \ucomp by extending the open-source P4 reference
-compiler, \texttt{p4c}~\cite{p4c}. For any P4-specific components, our
-implementation conforms to the P4-16 specification~\cite{p4lang}. In
+compiler, \texttt{p4c}~\cite{p4c}. \deleted{For any P4-specific 
+components, our implementation conforms to the P4-16 
+specification~\cite{p4lang}.} In
 addition to the frontend extension needed to support \ulang programs,
 \ucomp's midend and backend implementation comprises of
 \textasciitilde 6,000 LoCs. As supporting a target architecture
 requires an architecture-specific backend, our current prototype
 includes a backend for \texttt{v1model}~\cite{v1model.p4}. To support
 other targets, \ucomp's can be extended with the corresponding
-backend. Finally, we have made our implementation available under an
+backend. We have made our implementation available under an
 open-source
 license\footnote{\url{https://github.com/anonymized-for-review}}.
 
@@ -1761,7 +1739,7 @@ In the rest of this section, we focus on the following questions.
 \label{sec:comparison}
 One of our goals is also to keep the changes to the syntax and grammar
 of P4 minimal so that users familiar with P4 can easily adopt \ulang.
-We briefly highlight major differences in \ulang compared to P4-16.
+We briefly highlight subtle differences in \ulang compared to P4-16.
 First, \ulang allows defining custom package types that enable hiding
 the implementation of a packet-processing function and exposing an
 interface to reuse the code. This enables modular development of
@@ -1785,17 +1763,19 @@ and \texttt{emitter}) compared to ones defined in P4 core library
 
 \subsection{Supporting New Target Architectures}
 \label{sec:new-target}
-\ucomp's frontend and midend translate \ulang programs into \uarch IR
+\deleted{\ucomp's frontend and midend translate \ulang programs into 
+\uarch IR
 and perform certain optimizations. They do not perform any
-target-specific translations. \ucomp's backend
-(\cref{subsubsection:allocation-to-target-architecture}) is
+target-specific translations.} As described in 
+\cref{sec:compiler}, \ucomp's only backend
+(\cref{subsection:micro-backend}) is
 target-specific as it translates the target-independent \uarch IR into
-a configuration for the specified target. Specifically, it maps
-intrinsic metadata of \uarch to that of the target architecture. For
-this, it needs target architecture-specific mappings for fields and
-methods corresponding to \texttt{sm\_t}, \texttt{es\_t} and
-\texttt{mc\_engine}. These mappings are used for translation. The
-backend transforms the IR to conform programmable blocks and externs
+a P4 program for the specified target. Because it maps
+intrinsic metadata of \uarch to that of the target architecture, it 
+needs target architecture-specific mappings for metadata and
+methods corresponding to \texttt{meta\_t}, \texttt{im\_t}, 
+\texttt{es\_t} and \texttt{mc\_engine}. These mappings are used for 
+translation. The backend transforms the IR to conform pipeline model
 declared in the target architecture. Additionally, if the midend of
 the target's compiler is available, \ucomp backend can pass the IR to
 target compiler's midend to generate executable for the target.
@@ -1807,7 +1787,7 @@ target-specific constructs. Our implementation provides an example of
 how to do this for \texttt{v1model}.
 
 
-\subsection{Discussion on Overheads}
+\subsection{Discussion on Resource Utilization}
 \label{sec:overheads}
 While \ulang focuses on developing abstractions and compiler
 techniques to enable target-agnostic reuse of programs, the
@@ -1815,10 +1795,10 @@ transformation to target-specific configuration may introduce resource
 overheads. We discuss some of the possible sources of overheads and
 opportunities for optimization.
 
-\subsubsection{Hardware Resource Consumption}
+\subsubsection{Resources in Re-configurable Switches}
 \ucomp performs static analysis of \ulang programs to estimate the
-size of byte-stack needed
-(\cref{subsection:extract-length-and-byte-stack-size}) and synthesizes
+size of byte-stack needed (\cref{subsubsection:static-analysis}) and 
+synthesizes
 a (de)parser to extract/emit bytes from the packet
 (\cref{subsection:parser-to-match-action-table}). It transforms
 user-defined (de)parser into a match-action table executed in
@@ -1845,15 +1825,16 @@ extract-length for the caller is 78, and additional 20 bytes are
 required for the ipv4 header set by \texttt{callee1}.  If we consider
 the case without \texttt{setValid} and \texttt{setInValid} in
 \texttt{callee1} , the required size of byte-stack is $max(54, 74) =
-74$. In this scenario, the caller's byte-stack header would consume
-less space in PHV compared to \texttt{mp}'s headers. Of course, this
-naive analysis considers overheads at the source-level. A smart
+74$. In this scenario, the caller's byte-stack header would have 
+lower global utilization of PHV compared to \texttt{mp}'s 
+headers. Of course, this naive analysis considers overheads at the 
+source-level. A smart
 target-specific compiler can optimize the PHV needed for \texttt{mp},
 and we believe similar optimizations can be performed for \ulang.
 \ucomp indeed introduces new local variables within control blocks.
 For example, it removes all header instances and creates local
 variables for header fields accessed in control blocks. This may
-increase the resources needed at each stage in the hardware.
+increase the local utilization of PHV in the hardware stages.
 
 % \ucomp indeed introduces new local variables within control blocks.
 % For example, it removes all header instances and creates local
@@ -1867,7 +1848,7 @@ increase the resources needed at each stage in the hardware.
 
 
 \tightparbf{2. Number of Match-Action Hardware Stages.}%
-RMT-based devices have limited number of pipeline stages to execution
+RMT-based devices have limited number of pipeline stages to execute
 match-action tables. The transformations by \ucomp introduce an extra table
 for each (de)parser. As multiple tables can fit in a single stage, and
 each new table is relatively small, the overhead on resources is modest
@@ -1910,7 +1891,7 @@ While \ulang enables us to achieve our goals of portable, modular and
 composable dataplane programming, our current implementation of \ucomp
 has certain limitations. These limitations do not affect modularity
 and composability, but slightly limits the portability of
-packet-processing code.
+dataplane programs.
 
 \tightparbf{Stateful memories.}
 Many applications require stateful processing of packets. To support
@@ -2038,7 +2019,7 @@ from \cref{subfig:router-main} as follows:
 
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
-  !\colorbox{mygray}{srv6\_i.apply(p, im);}! // copies next segment address from SRH header's list to IPv6's destAddr field
+  !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
   ipv6_i.apply(p, im, h);
 }
 \end{lstlisting}
@@ -2080,13 +2061,13 @@ and \emph{override} composition from CoVisor~\cite{188954}.
 % \end{lstlisting}
 \begin{lstlisting}[frame=none, escapechar=!]
 // Sequential: Firewall -> Routing -> INT
-firewall.apply(p, im);
-if (im.drop == false) {
-  modular_router.apply(p, im);
+firewall.apply(p, sm, es);
+if (sm.drop == false) {
+  modular_router.apply(p, sm, es);
   // Override: routing decision
-  elephant_flow_routing.apply(p, im);
+  elephant_flow_routing.apply(p, sm, es);
 }
-p4_int.apply(p, im);
+p4_int.apply(p, sm, es);
 \end{lstlisting}
 
 First, a packet is processed by the \texttt{firewall} module, which
@@ -2113,9 +2094,9 @@ operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
 extractor.extract(p, testHdr);
 // Inside control block, the `p` w/o testHdr
 if (h.testHdr.testFlag == 1)
-  test_prog.apply(p, im);
+  test_prog.apply(p, sm, es);
 else
-  prod_prog.apply(p, im)
+  prod_prog.apply(p, sm, es)
 // deparser puts back the test header
 emiiter.emit(p, testHdr);
 \end{lstlisting}
@@ -2137,17 +2118,17 @@ following snippet illustrates creating a copy of parameter \texttt{pk}
 and \texttt{e} using the method.
 \begin{lstlisting}[frame=none]
 struct e_t {}; // empty type
-sflow(pkt, im_t);// Implements Unicast 
-control con(pkt pk, im_t im, 
+sflow(pkt, es_t);// Implements Unicast 
+control con(pkt pk, es_t e, 
     out_buf<e_t> ob) { // `ob' holds out packets
-  pkt pk2;  im_t im2;
+  pkt pk2;  es_t e2;
   in_buf<e_t> ib; // in_buffer for another module
   apply {
     pk2.copy_from(pk); // copying
-    im2.copy_from(im); // copying
-    sflow.apply(pk2, im2); // sflow on copy
-    ob.enqueue(pk, im); // puting original in ob
-    ob.enqueue(pk2, im2); // copy in ob
+    e2.copy_from(e); // copying
+    sflow.apply(pk2, e2); // sflow on copy
+    ob.enqueue(pk, e); // puting original in ob
+    ob.enqueue(pk2, e2); // copy in ob
     ob.to_in_buf(ib); // moves all elements to ib
     modular_router_orch.apply(ib, ob);
   }
@@ -2160,8 +2141,33 @@ the contents of \texttt{ob} to another buffer, \texttt{ib}, and resets
 \texttt{ob}. Finally, the \texttt{modular\_router\_orch} routes
 packets between modules.
 
-\subsection{Experience composing programs}
-\todo{Add a table showing composition of different packet-processing functions.}
+\subsection{Experience Composing \uprograms}
+\Cref{tab:loc-of-composed} shows line of P4 code generated for 
+v1model \cite{v1model.p4} architecture of BMv2 target. The huge 
+number of lines, even for two \uprograms, is a result of 
+byte-level match-action tables generated by \ucomp.
+
+\begin{table}[htb]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+  \hline
+  \textbf{\uprograms} & \multicolumn{6}{|c|}{\textbf{Composition}} \\ 
+\hline
+  l2 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark 
+& \checkmark  \\ \hline
+  ipv4 & \checkmark &  & \checkmark & \checkmark &  \checkmark & 
+\checkmark  \\ \hline
+  ipv6 &  & \checkmark &  &   &  &  \\  \hline
+  ecn &  &  & \checkmark &  &  & \checkmark  \\ \hline
+  firewall &  &  &  & \checkmark &  & \checkmark  \\ \hline
+  nat &  &  &  &  & \checkmark & \checkmark \\
+  \hline \hline
+  \textbf{P4 LoC} & 656 & 684 & 879 & 1084 & 1068 & 1693 \\ \hline 
+\end{tabular}
+\caption{P4 LoC of composed \uprograms for v1model}
+\label{tab:loc-of-composed}
+\end{center}
+\end{table}
 
 
 \section{Related Work}
@@ -2191,12 +2197,14 @@ mechanism, invoking dataplane programs, to allow
 programmers to reuse fine-grained packet-processing code and define 
 custom composition operators.Reuse of dataplane program poses 
 challenge of portability. In this aspect, our framework is orthogonal 
-to PSA. PSA exposes a dataplane model that target device must 
-realise. Instead, we focus on abstraction that programmers should use 
-for portability.
+to PSA \cite{psa}. PSA exposes a dataplane model that target device 
+must realise. Instead, we focus on abstraction that programmers should 
+use for portability.
 
-Our work is more inline with the Click Modular Router 
-\cite{Kohler:2000:CMR:354871.354874}.
+Conceptually, the design of \uarch resembles more with the Click 
+Modular Router\cite{Kohler:2000:CMR:354871.354874} than PSA. The 
+Click is targeted for on general purpose compute machines which is a 
+completely different packet-processing paradigm than RMT.
 
 
 \section{Conclusion}
