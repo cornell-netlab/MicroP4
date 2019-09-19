@@ -2166,11 +2166,38 @@ packets between modules.
 
 \section{Related Work}
 \label{sec:related-work}
-Frenetic Pyretic NetCore, NetKat CoVisor
+Over the last decade, there has been a great effort in programmable 
+networks to compose network policies (Pyretic 
+\cite{180291}, NetKat \cite{Anderson:2014:NSF:2535838.2535862} ), 
+controllers (Frenetic \cite{2034812}, Corybantic 
+\cite{Mogul:2013:CTM:2535771.2535795} Flowbricks \cite{6980389}, 
+CoVisor \cite{188954}) and  dataplane (Hyper4 
+\cite{Hancock:2016:HUP:2999572.2999607}, HyperV \cite{8038396}, 
+P4Visor \cite{Zheng:2018:PLV:3281411.3281436}), 
+because, networks are complex to manage and configure 
+without having a modular approach.
 
-PSA
+The work on composing control plane and static policy focus on 
+defining a set of composition operators that can be used process 
+packet using multiple application without race-conditions and 
+inconsistencies. This approach suits to control plane programs as 
+they are complete network programs and process packets end-to-end, in 
+contrast of  dataplane programs which are partial and configured by 
+control plane programs.
+Prior work on dataplane composition has focused on defining 
+composition operators based on use cases that process packets 
+end-to-end. Our work significant differs as we enable the fundamental 
+mechanism, invoking dataplane programs, to allow 
+programmers to reuse fine-grained packet-processing code and define 
+custom composition operators.Reuse of dataplane program poses 
+challenge of portability. In this aspect, our framework is orthogonal 
+to PSA. PSA exposes a dataplane model that target device must 
+realise. Instead, we focus on abstraction that programmers should use 
+for portability.
 
-P4Visor, Hyper4 HyperV
+Our work is more inline with the Click Modular Router 
+\cite{Kohler:2000:CMR:354871.354874}.
+
 
 \section{Conclusion}
 Dataplane programs are evolving to be complex and diverse with novel
