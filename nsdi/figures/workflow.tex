@@ -30,7 +30,7 @@
 
 \begin{document}
 
-\tikzstyle{block}=[rectangle, draw, fill=white!10, minimum height=6ex,text width=4em, text centered, inner sep=1pt]
+\tikzstyle{block}=[rectangle, draw, fill=white, minimum height=6ex,text width=4em, text centered, inner sep=1pt]
 \tikzstyle{textbox}=[text width=2em, text centered, text width=3em]
   \tikzstyle{line}=[draw, very thick, color=black!75, -latex']
   \tikzstyle{empty}=[]
@@ -39,18 +39,19 @@
       \node (source) [textbox] {$\mu$P4 source};
       \node (frontend) [block, text width=4em, right of=source,] {frontend pass};
 
-      \node (box) [block, dashed, right of=frontend, text width=28em, node distance=6em, minimum height=10ex,anchor=west] {};
+      \node (box) [block, dashed, right of=frontend, text width=25.5em, node distance=6em, minimum height=10ex,anchor=west] {};
       \node (box2) at ($(box.east)+(0.2,0)$) [block, dashed, text width=21em, minimum height=10ex,anchor=west] {};
 
       \node (linking)at ($(frontend.east)+(1.5,0)$) [block, anchor=west] {linking};
       \node (static) [block, right of=linking, node distance=5.5em] {static analysis};
-      \node (transformation) at ($(static.east)+(0.5,0)$) [block, text width=8em, anchor=west] {transformation to match-action control};
-      \node (preprocessing) at ($(transformation.east)+(0.5,0)$) [block, text width=6em, anchor=west] {preprocessing for backend};
+      \node (transformation) at ($(static.east)+(0.4,0)$) [block, text width=6.5em, anchor=west] {transformation to match-action control};
+      \node (preprocessing) at ($(transformation.east)+(0.5,0)$) [block, text width=5.5em, anchor=west] {preprocessing for backend};
 
-      \node (targetspecific) at ($(preprocessing.east)+(0.8,0)$) [block, text width=11em, anchor=west] {target-specific  translation \& control-block allocation};
+      \node (targetspecific) at ($(preprocessing.east)+(0.7,0)$) [block, text width=11em, anchor=west] {target-specific  translation \& control-block allocation};
       \node (parse) at ($(targetspecific.east)+(0.5,0)$) [block, text width=7em, anchor=west] {parser/deparser synthesis};
 
-      \node (targetcode) at ($(box2.east)+(0.4,0)$) [textbox, text width=7em, anchor=west] {target architecture-specific source (arch-IR)};
+      \node (targetcode) at ($(box2.east)+(0.4,0)$) [textbox, text
+        width=7em, anchor=west, inner sep=-2pt] {target architecture-specific code (arch-IR)};
 
       \node (midendlabeel) at ($(box.north)+(0,0.2)$) [empty] {midend pass};
       \node (backendlabeel) at ($(box2.north)+(0,0.2)$) [empty] {backend pass};
