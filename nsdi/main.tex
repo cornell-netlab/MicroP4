@@ -1980,20 +1980,19 @@ programs to build real applications.
 
 \subsection{Composing Packet-Processing Layers}
 \label{subsection:composing-packet-processing-layers}
-Packets are structured into layers of protocols headers with 
-specific layout, where each layer is specialized for a specific role. 
-Therefore, writing modules for processing one or more layers 
-is a natural way to build applications as these modules can 
-be developed incrementally, composed together, and
-reused.
+Packets are structured into layers of protocols headers with specific
+layouts, where each layer is specialized for a specific role.  So,
+writing modules for processing one or more layers is a natural way to
+build applications as these modules can be developed incrementally,
+composed together, and reused.
 \tightparbf{Layered Modularity.}
 \uarch's generic interfaces allows programmers to define custom
 interfaces for modules to exchange data. These can be used to compose
-\ulang modules for packet-processing layers. To demonstrate this, we
+\ulang modules for different network layers. To demonstrate this, we
 built a modular router by composing together independent modules
 responsible for processing each layer. For example,
-\cref{fig:modular-router} shows how we compose modules for processing
-the Ethernet and IPv4 headers.
+\cref{fig:modular-router} shows how we can compose modules for
+processing the L2 (Ethernet) and and L3 (IPv4) headers.
 % Figure \ref{fig:incremental-development} shows an example of incremental development, which adds SRH processing to support SRv6 in the network.
 % \begin{figure}[!h]
 % \begin{subfigure}[b]{\linewidth}
@@ -2051,7 +2050,7 @@ from \cref{subfig:router-main} as follows:
 
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
-  !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
+  !\colorbox{mygray}{srv6\_i.apply(p, im, h);}! // copies next segment address from SRH header's list to IPv6's destAddr field
   ipv6_i.apply(p, im, h);
 }
 \end{lstlisting}
@@ -2061,14 +2060,13 @@ other module used in the router.
 
 
 
-\subsection{Composing Dataplane Programs of NFs}
+\subsection{Composing Network Functions (NFs)}
 \label{subsection:composing-dataplane-programs-of-NFs}
-
-Many network functions (NFs), such as firewall and NAT, process
-complete packets across protocol layers. Operators often need to
-deploy such programs on devices using different combinations and as
-specified by some policy. To enable this, prior work on dataplane
-composition, such as P4Bricks~\cite{soni:hal-01632431} and
+Many network functions (NFs) such as firewall and intrusion detection
+process complete packets across protocol layers. Operators often need
+to deploy such programs on devices using various combinations as per
+some policy. To enable this, prior work on dataplane composition, such
+as P4Bricks~\cite{soni:hal-01632431} and
 P4Visor~\cite{Zheng:2018:PLV:3281411.3281436}, and virtualization,
 such as HyPer4~\cite{Hancock:2016:HUP:2999572.2999607} and
 HyperV~\cite{8038396}, define operators based on certain use cases.
@@ -2077,9 +2075,9 @@ HyperV~\cite{8038396}, define operators based on certain use cases.
 P4 constructs such as conditionals.
 
 \tightparbf{Composition Operators.}%
-The following \ulang snippet from the implementation of orchestration
-interface shows an example of how one can express \emph{sequential}
-and \emph{override} composition from CoVisor~\cite{188954}.
+The following \ulang snippet shows an example of how one can express
+\emph{sequential} and \emph{override} composition operators from
+CoVisor~\cite{188954}.
 % \begin{lstlisting}[frame=none, escapechar=!]
 % // Sequential: Firewall -> Routing
 % firewall.apply(p, sm, es);
@@ -2093,29 +2091,27 @@ and \emph{override} composition from CoVisor~\cite{188954}.
 % \end{lstlisting}
 \begin{lstlisting}[frame=none, escapechar=!]
 // Sequential: Firewall -> Routing -> INT
-firewall.apply(p, sm, es);
-if (sm.drop == false) {
-  modular_router.apply(p, sm, es);
+firewall.apply(p, im);
+if (im.drop == false) {
+  modular_router.apply(p, im);
   // Override: routing decision
-  elephant_flow_routing.apply(p, sm, es);
+  elephant_flow_routing.apply(p, im);
 }
-p4_int.apply(p, sm, es);
+p4_int.apply(p, im);
 \end{lstlisting}
-
 First, a packet is processed by the \texttt{firewall} module, which
 may decide to drop it after analysing one or more headers. Otherwise,
-the packet is routed.  While routing,
-\texttt{elephant\_flow\_routing} may override normal routing if
-the packet belongs to a large flow. Finally,
-\texttt{p4\_int} updates the INT (In-band Network Telemetry)
+the packet is routed.  While routing, \texttt{elephant\_flow\_routing}
+may override normal routing if the packet belongs to a large flow.
+Finally, \texttt{p4\_int} updates the INT (In-band Network Telemetry)
 \cite{Kim2015InbandNT, p4int} header with the appropriate data. Note
 that even though \uarch does not have a notion of ingress and egress
 pipelines, it declares intrinsic metadata which can be mapped to INT
-data at the appropriate location. For example, \emph{ingress
-timestamp} of INT is mapped to \ulang's \texttt{IN\_TIMESTAMP}. When
-compiling for a target such as \texttt{v1model}, \ucomp partitions the
-composed pipeline and allocates \texttt{p4\_int} to the egress
-pipeline of the architecture.
+data at the appropriate location in target pipeline. For example,
+\emph{ingress timestamp} of INT is mapped to \ulang's
+\texttt{IN\_TIMESTAMP}. When compiling for a target such as
+\texttt{v1model}, \ucomp partitions the composed pipeline and
+allocates \texttt{p4\_int} to the egress pipeline.
 
 Another interesting example of composition is the \texttt{A-B Testing}
 operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
@@ -2126,9 +2122,9 @@ operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
 extractor.extract(p, testHdr);
 // Inside control block, the `p` w/o testHdr
 if (h.testHdr.testFlag == 1)
-  test_prog.apply(p, sm, es);
+  test_prog.apply(p, im);
 else
-  prod_prog.apply(p, sm, es)
+  prod_prog.apply(p, im)
 // deparser puts back the test header
 emiiter.emit(p, testHdr);
 \end{lstlisting}
