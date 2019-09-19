@@ -1101,6 +1101,25 @@ composition interface.
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% MICRO P4 Compiler %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1675,6 +1694,7 @@ In the rest of this section, we focus on the following questions.
 \begin{enumerate*}[label=(\roman*)]
   \item How different are \ulang programs (\cref{sec:comparison})?
   \item How can we support new targets (\cref{sec:new-target})?
+  \item What are the overheads of \ulang (\cref{sec:overheads})?
   \item What are the limitations of \ulang (\cref{sec:limitations})?
 \end{enumerate*}
 
@@ -1727,6 +1747,100 @@ Thus, to support a new target architecture, we need to provide
 \ucomp's backend with a mapping from \uarch's logical constructs to
 target-specific constructs. Our implementation provides an example of
 how to do this for \texttt{v1model}.
+
+
+\subsection{Discussion on Overheads}
+\label{sec:overheads}
+While \ulang focuses on developing abstractions and compiler
+techniques to enable target-agnostic reuse of programs, the
+transformation to target-specific configuration may introduce resource
+overheads. We discuss some of the possible sources of overheads and
+opportunities for optimization.
+
+\subsubsection{Hardware Resource Consumption}
+\ucomp performs static analysis of \ulang programs to estimate the
+size of byte-stack needed
+(\cref{subsection:extract-length-and-byte-stack-size}) and synthesizes
+a (de)parser to extract/emit bytes from the packet
+(\cref{subsection:parser-to-match-action-table}). It transforms
+user-defined (de)parser into a match-action table executed in
+hardware. We discuss its overhead on two crucial resources in
+RMT-based devices.
+
+
+\tightparbf{1. Packet Header Vector (PHV)} stores parsed headers,
+metadata and other data through the pipeline. The size of \ulang
+byte-stack directly impacts PHV consumption in the same way as size of
+parsed headers of monolithic P4 programs. As these remain in scope and
+live through all hardware stages, we term such utilization of PHV as
+\emph{global usage}. Variables and user-defined metadata used within a
+control block also consume PHV, but may not live and consume PHV
+at all hardware stages. We term such utilization as \emph{local usage}.
+
+To illustrate and compare global usage, consider the example from
+\cref{fig:sequential-callees} and a monolithic P4 version of the
+caller, say \texttt{mp}. As \texttt{mp}'s parser is a union of all
+parsers, the total size of headers to execute \texttt{mp} would be 98
+(=\texttt{eth}+\texttt{mpls}+\texttt{ipv6}+2 \texttt{ipv4}) bytes.
+This is the same as that required for \ulang's byte-stack---the
+extract-length for the caller is 78, and additional 20 bytes are
+required for the ipv4 header set by \texttt{callee1}.  If we consider
+the case without \texttt{setValid} and \texttt{setInValid} in
+\texttt{callee1} , the required size of byte-stack is $max(54, 74) =
+74$. In this scenario, the caller's byte-stack header would consume
+less space in PHV compared to \texttt{mp}'s headers. Of course, this
+naive analysis considers overheads at the source-level. A smart
+target-specific compiler can optimize the PHV needed for \texttt{mp},
+and we believe similar optimizations can be performed for \ulang.
+\ucomp indeed introduces new local variables within control blocks.
+For example, it removes all header instances and creates local
+variables for header fields accessed in control blocks. This may
+increase the resources needed at each stage in the hardware.
+
+% \ucomp indeed introduces new local variables within control blocks.
+% For example, it removes all header instances and creates local
+% variables for header fields accessed in control blocks. one stage
+% combined, global and local, usages exceeds PHV capacity, allocation of
+% match-action tables to hardware stages would play significant role in
+% fitting composed program on pipeline.  Our current implementation of
+% \ucomp translates to v1model architecture for \texttt{simple\_switch}
+% target.
+% As a part of future work, we will analyze these two aspects, global and local, PHV consumption for real hardware like Tofino \cite{tofino}.
+
+
+\tightparbf{2. Number of Match-Action Hardware Stages.}%
+RMT-based devices have limited number of pipeline stages to execution
+match-action tables. The transformations by \ucomp introduce an extra table
+for each (de)parser. As multiple tables can fit in a single stage, and
+each new table is relatively small, the overhead on resources is modest
+but requires careful placement of tables~\cite{jose2015compiling}.
+
+Further, \ucomp greatly simplifies the complexity of (de)parser
+circuits in hardware as \ucomp accepts all packet with size greater
+than min-packet-size and extract bytes up to extract-length estimated
+by static-analysis. In fact, this can be implemented with a simple
+simple counter-based design.
+
+% However, as the parser consumes only 1-2\% of chip-area, the gain may not be significant to trade for usage of match-action stages in hardware pipeline. 
+% Therefore, further optimization would be required to reduce consumption of match-action stages.\\
+
+\tightpar{Optimization.} In cases described in
+\cref{subsection:composing-dataplane-programs-of-NFs}, execution of
+the match-action table of transformed deparser is followed by another
+transformed-parser. As these tables contain static entries, creating a
+single table based on their cross-product can reduce the overhead on
+match-action stages.
+
+
+
+
+% \subsubsection{Compilation Time}
+% We are yet to test \ucomp on extensive set of programs and in composition scenario to conclude on compilation time.
+% However, the selective symbolic-execution results in well-know path explosion problem for programs with high branching factor.
+% Hence, \ucomp's compile-time analysis can result in significantly huge compilation time.\\
+% \textbf{Optimization:}
+% We only evaluate method calls of header types, extractor and emitter during symbolic-executable allowing to spawn lightweight threads for parallel execution.
+% Further, the computations for extract-length and byte-stack size of \uprograms are highly recursively, therefore they can be avoided by storing and reusing the values during compilation with libraries.
 
 
 
@@ -1988,106 +2102,12 @@ the contents of \texttt{ob} to another buffer, \texttt{ib}, and resets
 \texttt{ob}. Finally, the \texttt{modular\_router\_orch} routes
 packets between modules.
 
-
-
-
-
-\subsection{Discussion on Overheads}
-While \ulang focuses on developing abstractions and compiler
-techniques to enable target-agnostic reuse of programs, the
-transformation to target-specific configuration may introduce resource
-overheads. We discuss some of the possible sources of overheads and
-opportunities for optimization.
-
-\subsubsection{Hardware Resource Consumption}
-\ucomp performs static analysis of \ulang programs to estimate the
-size of byte-stack needed
-(\cref{subsection:extract-length-and-byte-stack-size}) and synthesizes
-a (de)parser to extract/emit bytes from the packet
-(\cref{subsection:parser-to-match-action-table}). It transforms
-user-defined (de)parser into a match-action table executed in
-hardware. We discuss its overhead on two crucial resources in
-RMT-based devices.
-
-
-\tightparbf{1. Packet Header Vector (PHV)} stores parsed headers,
-metadata and other data through the pipeline. The size of \ulang
-byte-stack directly impacts PHV consumption in the same way as size of
-parsed headers of monolithic P4 programs. As these remain in scope and
-live through all hardware stages, we term such utilization of PHV as
-\emph{global usage}. Variables and user-defined metadata used within a
-control block also consume PHV, but may not live and consume PHV
-at all hardware stages. We term such utilization as \emph{local usage}.
-
-To illustrate and compare global usage, consider the example from
-\cref{fig:sequential-callees} and a monolithic P4 version of the
-caller, say \texttt{mp}. As \texttt{mp}'s parser is a union of all
-parsers, the total size of headers to execute \texttt{mp} would be 98
-(=\texttt{eth}+\texttt{mpls}+\texttt{ipv6}+2 \texttt{ipv4}) bytes.
-This is the same as that required for \ulang's byte-stack---the
-extract-length for the caller is 78, and additional 20 bytes are
-required for the ipv4 header set by \texttt{callee1}.  If we consider
-the case without \texttt{setValid} and \texttt{setInValid} in
-\texttt{callee1} , the required size of byte-stack is $max(54, 74) =
-74$. In this scenario, the caller's byte-stack header would consume
-less space in PHV compared to \texttt{mp}'s headers. Of course, this
-naive analysis considers overheads at the source-level. A smart
-target-specific compiler can optimize the PHV needed for \texttt{mp},
-and we believe similar optimizations can be performed for \ulang.
-\ucomp indeed introduces new local variables within control blocks.
-For example, it removes all header instances and creates local
-variables for header fields accessed in control blocks. This may
-increase the resources needed at each stage in the hardware.
-
-% \ucomp indeed introduces new local variables within control blocks.
-% For example, it removes all header instances and creates local
-% variables for header fields accessed in control blocks. one stage
-% combined, global and local, usages exceeds PHV capacity, allocation of
-% match-action tables to hardware stages would play significant role in
-% fitting composed program on pipeline.  Our current implementation of
-% \ucomp translates to v1model architecture for \texttt{simple\_switch}
-% target.
-% As a part of future work, we will analyze these two aspects, global and local, PHV consumption for real hardware like Tofino \cite{tofino}.
-
-
-\tightparbf{2. Number of Match-Action Hardware Stages.}%
-RMT-based devices have limited number of pipeline stages to execution
-match-action tables. The transformations by \ucomp introduce an extra table
-for each (de)parser. As multiple tables can fit in a single stage, and
-each new table is relatively small, the overhead on resources is modest
-but requires careful placement of tables~\cite{jose2015compiling}.
-
-Further, \ucomp greatly simplifies the complexity of (de)parser
-circuits in hardware as \ucomp accepts all packet with size greater
-than min-packet-size and extract bytes up to extract-length estimated
-by static-analysis. In fact, this can be implemented with a simple
-simple counter-based design.
-
-% However, as the parser consumes only 1-2\% of chip-area, the gain may not be significant to trade for usage of match-action stages in hardware pipeline. 
-% Therefore, further optimization would be required to reduce consumption of match-action stages.\\
-
-\tightpar{Optimization.} In cases described in
-\cref{subsection:composing-dataplane-programs-of-NFs}, execution of
-the match-action table of transformed deparser is followed by another
-transformed-parser. As these tables contain static entries, creating a
-single table based on their cross-product can reduce the overhead on
-match-action stages.
-
-
-
-
-% \subsubsection{Compilation Time}
-% We are yet to test \ucomp on extensive set of programs and in composition scenario to conclude on compilation time.
-% However, the selective symbolic-execution results in well-know path explosion problem for programs with high branching factor.
-% Hence, \ucomp's compile-time analysis can result in significantly huge compilation time.\\
-% \textbf{Optimization:}
-% We only evaluate method calls of header types, extractor and emitter during symbolic-executable allowing to spawn lightweight threads for parallel execution.
-% Further, the computations for extract-length and byte-stack size of \uprograms are highly recursively, therefore they can be avoided by storing and reusing the values during compilation with libraries.
-
+\subsection{Experience composing programs}
+\todo{Add a table showing composition of different packet-processing functions.}
 
 
 \section{Related Work}
-
+\label{sec:related-work}
 Frenetic Pyretic NetCore, NetKat CoVisor
 
 PSA
