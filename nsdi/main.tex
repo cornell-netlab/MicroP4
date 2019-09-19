@@ -1784,26 +1784,20 @@ and \texttt{emitter}) compared to ones defined in P4 core library
 
 \subsection{Supporting New Target Architectures}
 \label{sec:new-target}
-\deleted{\ucomp's frontend and midend translate \ulang programs into 
-\uarch IR
-and perform certain optimizations. They do not perform any
-target-specific translations.} As described in 
-\cref{sec:compiler}, \ucomp's only backend
-(\cref{subsection:micro-backend}) is
-target-specific as it translates the target-independent \uarch IR into
-a P4 program for the specified target. Because it maps
-intrinsic metadata of \uarch to that of the target architecture, it 
-needs target architecture-specific mappings for metadata and
-methods corresponding to \texttt{meta\_t}, \texttt{im\_t}, 
-\texttt{es\_t} and \texttt{mc\_engine}. These mappings are used for 
-translation. The backend transforms the IR to conform pipeline model
-declared in the target architecture. Additionally, if the midend of
-the target's compiler is available, \ucomp backend can pass the IR to
-target compiler's midend to generate executable for the target.
-Otherwise, \ucomp synthesizes P4 source code from the IR.
-
-Thus, to support a new target architecture, we need to provide
-\ucomp's backend with a mapping from \uarch's logical constructs to
+\deleted{\ucomp's frontend and midend translate \ulang programs into
+\uarch IR and perform certain optimizations. They do not perform any
+target-specific translations.} \ucomp's  backend
+(\cref{subsection:micro-backend}) is the only target-specific
+component as it translates \uarch-IR into a P4 program for a
+specified target. As it maps metadata of \uarch to that of the target,
+it needs target architecture-specific mappings for metadata and
+methods corresponding to \texttt{meta\_t}, \texttt{im\_t} and
+\texttt{mc\_engine} for translation. The backend transformation needs
+to conform to the pipeline model declared of the target. Further, if
+the midend of the target's compiler is available, \ucomp's backend can
+pass the IR to target compiler's midend to generate executable for the
+target. Thus, to support a new target, we need to provide \ucomp's
+backend with a mapping from \uarch's logical constructs to
 target-specific constructs. Our implementation provides an example of
 how to do this for \texttt{v1model}.
 
