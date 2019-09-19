@@ -1596,7 +1596,7 @@ in-place copy of these 60 bytes and invalidates the last 4 bytes.
 % If the control block execution sets ipv4 header instance to valid, 
 % bytes after the ipv6 header are pushed down by the offset of 20 to 
 % insert ipv4 header instance.
-Note that the midend removes all the header type and their instances 
+Note that the midend removes all the header type and their instances
 originally declared in the \uprogram.
 
 % The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
@@ -1614,25 +1614,23 @@ originally declared in the \uprogram.
 
 
 \subsubsection{Preprocessing for \ucomp-backends}
-After homogenizing packet processing blocks, the midend eliminates 
-any use of logical buffer interfaces from \uprograms without 
-compile-time replication. For the \uprogram that use compile-time 
-replication of packet and intrinsic metadata to express multi-packet 
-processing, the midend prepares Packet-Processing Schedule (PPS) 
-graph for the \uprogram. Every node is a PPS graph captures the 
-\uprogram's sub-program, called \texttt{thread}, that processes only 
-one packet instance. The edges within PPS represents dependencies 
-among the packet-processing threads.
-To prepare PPS by extracting sub-program, we construct 
-Program Dependence Graph (PDG) \cite{Ferrante:1987:PDG:24039.24041} 
-from the \uprogram-IR and perform \emph{slicing} that is defined based 
-on a variant of \emph{program slice} 
-\cite{Weiser:1981:PS:800078.802557}.
-We define our slicing criteria based on the semantics of logical 
-externs, \texttt{pkt}, \texttt{in\_buf} and \texttt{out\_buf}, along 
-with \texttt{apply} method exposed by interfaces of \uarch. We 
-describe in-depth approach in 
-\cref{subsubsection:packet-processing-schedule}.
+After homogenizing packet processing blocks, the midend eliminates any
+use of logical buffers from \uprograms without compile-time
+replication. If the \uprograms uses compile-time replication of packet
+and intrinsic metadata to express multi-packet processing, the midend
+prepares a \emph{Packet-Processing Schedule (PPS)} graph for the
+\uprogram. A node in a PPS graph captures the \uprogram's sub-program,
+called \texttt{thread}, that processes only one packet instance. An
+edge within a PPS represents dependencies among the packet-processing
+threads. To prepare a PPS by extracting sub-programs, we construct a
+Program Dependence Graph (PDG) \cite{Ferrante:1987:PDG:24039.24041}
+from the \uprogram-IR and perform \emph{slicing} that is defined based
+on a variant of \emph{program slice}
+\cite{Weiser:1981:PS:800078.802557}. We define our slicing criteria
+based on the semantics of logical externs, \texttt{pkt},
+\texttt{in\_buf} and \texttt{out\_buf}, along with \texttt{apply}
+method exposed by interfaces of \uarch. See
+\cref{subsubsection:packet-processing-schedule} for more details.
 
 
 
@@ -1659,64 +1657,57 @@ describe in-depth approach in
 
 
 
-The backend of \ucomp understands semantics of pipeline model and 
-constraints on intrinsic metadata of target architecture. In addition, 
-it uses the mapping between the metadata of two architectures to 
-capture constraints imposed by the target architecture on its 
-intrinsic metadata. It allocates the control blocks in \uarch-IR 
-while respecting the constraints to the processing blocks exposed by 
-the target architecture. During the allocation pass, it also 
-translates the intrinsic metadata.
+\ucomp's backend understands semantics of the pipeline model and
+constraints on intrinsic metadata of the specified target
+architecture. In addition, it uses the mapping between the metadata of
+two architectures to capture constraints imposed by the target
+architecture on its intrinsic metadata. It allocates the control
+blocks in \uarch-IR while respecting the constraints to the processing
+blocks exposed by the target architecture. During the allocation pass,
+it also translates the intrinsic metadata.
 
 % Finally, it uses metrics computed 
 % by \emph{static-analysis} in the midend to synthesise target-specific 
 % parser and deparser blocks. 
 
 
-\tightparbf{Allocation to Target Architecture}
-
-
-In case of packet-processing code with packet-replication, every 
-backend visits PPS nodes in topological order to map 
-packet-processing threads. It simultaneously allocates all the 
-sub-programs represented by every thread node located at the same 
-topological order in PPS. In absence of packet-replication, it 
-allocates packet-processing code of a single thread.
-To allocate a thread on the target architecture's pipeline, \ucomp 
-performs required \emph{partitioning} transformation on the 
-thread's PDG. Next, we explain the partitioning for single 
+\tightparbf{Allocation to Target Architecture.}%
+In case of packet-processing code with packet-replication, every
+backend visits PPS nodes in topological order to map packet-processing
+threads. It simultaneously allocates all the sub-programs represented
+by every thread node located at the same topological order in PPS. In
+the absence of packet-replication, it allocates packet-processing code
+of a single thread. To allocate a thread on the target architecture's
+pipeline, \ucomp performs required \emph{partitioning} transformation
+on the thread's PDG. Next, we explain the partitioning for single
 thread on v1model architecture for simple\_switch target.
 
+\ucomp's backend for v1model maintains a FSM with two
+states---ingress and egress. The FSM captures constraints on the usage
+of \texttt{egress\_spec}, \texttt{egress\_port} and queuing metadata
+in the ingress and egress blocks. Each state represents a set of
+assertions to be verified on visit of every program statement in PDG
+of a thread. For example, in the ingress state, the graph traversal
+asserts that every visited statement is NOT a \texttt{im\_t}'s
+\texttt{get\_value} method call statement that have an argument
+\texttt{meta\_t} value mapping to intrinsic metadata (e.g.,
+enq\_timestamp) not available in ingress block.  If an assertion
+associated with a state fails, the program statement is marked and not
+visited. State transition occurs when the graph traversal can not be
+continued due to absence of unmarked and not-visited nodes. At this
+point, \ucomp splits the thread PDG into two PDGs of visited and
+non-visited program statements. Also, the FSM transits to egress
+state.  In the egress state, the graph traversal asserts every that
+visited statement is not a method call of \texttt{get\_egress\_port}
+in \texttt{im\_t} object.
+% We perform trivial translation of method calls of \uarch's extern with corresponding method calls of target architecture.
 
-The backend for v1model maintains a finite state machine with two 
-states, named ingress and egress. The FSM captures constraints on 
-usage of egress\_spec, egress\_port and queuing metadata in ingress 
-and egress blocks. Each state represents a set of assertions to be 
-verified on visit of every program statement in PDG of a thread. 
-For example, In the ingress state, the graph traversal asserts that 
-every visited statement is NOT a \texttt{im\_t}'s \texttt{get\_value} 
-method call statement that have an argument \texttt{meta\_t} value 
-mapping to intrinsic metadata (e.g., enq\_timestamp) not available in 
-ingress block.
-If an assertion associated with a state fails, the program 
-statement is marked and not visited.
-State transition occurs when the graph traversal can not be continued 
-due to absence of unmarked and not-visited nodes.
-At this point, \ucomp splits the thread PDG into two PDGs of visited 
-and non-visited program statements. Also, the FSM transits to 
-egress state.
-In the egress state, the graph traversal asserts every that visited 
-statement is not a method call of \texttt{get\_egress\_port} in 
-\texttt{im\_t} object.
-% We perform trivial translation of method calls of \uarch's extern 
-with corresponding method calls of target architecture.
-
-The partitions may have edges representing control dependencies 
-between the partitions. Also, partitions may share live local 
-variables. \ucomp synthesizes \emph{partition-metadata} to convert 
-control dependencies into data dependencies and convert live variable 
-to user metadata. It synthesizes the partition-metadata and live 
-variables as user-metadata parameter between ingress and egress 
+The partitions may have edges representing control dependencies
+between the partitions. Also, partitions may share live local
+variables. \ucomp synthesizes \emph{partition-metadata} to convert
+control dependencies into data dependencies and convert live variable
+to user metadata. It synthesizes the partition-metadata and live
+variables as user-metadata parameter between ingress and egress
 control block to restore execution state.
 % Finally, {copy\_from} method calls of \texttt{pkt} instances are 
 % replaced for v1model with \texttt{clone3} and \texttt{recirculate} or 
