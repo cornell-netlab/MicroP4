@@ -1916,8 +1916,8 @@ match-action stages.
 While \ulang enables us to achieve our goals of portable, modular and
 composable dataplane programming, our current implementation of \ucomp
 has certain limitations. These limitations do not affect modularity
-and composability, but slightly limits the portability of
-dataplane programs.
+and composability, but slightly limit the portability of dataplane
+programs.
 
 \tightparbf{Stateful memories.}
 Many applications require stateful processing of packets. To support
@@ -1925,7 +1925,7 @@ these, architectures provide various constructs to maintain state in
 the dataplane---e.g., PSA provides counters, meters and registers.
 Currently, \uarch doesn't provide a portable abstraction for such
 constructs. So, while a \ulang program can still use these constructs
-for stateful packet processing, it limits the program's portability
+for stateful packet processing, it cannot be ported automatically
 across architectures which differ in these constructs.
 
 \tightparbf{Switch CPU-dataplane interface.}
@@ -1937,14 +1937,13 @@ programmers have to use target-specific constructs such as
 \tightparbf{Device capabilities.}
 Target devices support match-action tables with a fixed set of match
 capabilities---such as exact, LPM, ternary, and range. \ulang requires
-a target to support all match types used in a program and \ucomp does
+a target to support all match kinds used in a program and \ucomp does
 not transform across different match kinds as it requires translating
 table entries at runtime. For example, translating a range match entry
 for a target that supports only exact match requires enumerating the
-range at runtime.  Our focus is on abstractions and transformations at
-compile-time. Similarly, \ulang cannot automatically synthesize
-implementations for new checksum computations, action selector, action
-profiles.
+range at runtime, while our focus is on compile-time abstractions.
+Similarly, \ulang cannot automatically synthesize implementations for
+new checksum computations, action selector, and action profiles.
 
 % There exist unified mechanism and abstraction (Control Plane APIs) to configurable data plane from control plane.
 % However, data plane program still lacks an abstract to send data or packets to control plane.
