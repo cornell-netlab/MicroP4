@@ -22,7 +22,7 @@ cpackage router : implements OrchestrationSwitch<empty_t, empty_t, empty_t,
 
         external_meta_t arg;
 
-        l2() layer2;
+        Layer2() layer2;
         l3() layer3;
         ecn() ecnlayer;
         csa_packet_out() ecn_po;
