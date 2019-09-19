@@ -1187,41 +1187,49 @@ goals:
     the target's pipeline model.
 \end{enumerate*}
 
+
+
+
 \subsection{\ucomp Midend}
-We give a brief overview of the transformation passes of the midend 
-to achieve its design goals. Then, we elaborate on only the crucial 
-passes.
+\label{sec:compiler-midend}
+We present a brief overview of the transformation passes of the
+midend. Then, we elaborate on only the crucial passes.
 
-The midend begins with linking \ucomp-IRs of all the \uprograms 
-composed in the main \uprogram. Then, it performs two transformations 
-on every \uprogram, $(1)$ to convert every header stack instance into 
-a set of header instances, $(2)$ to convert every \texttt{extract} 
-method call parsing a variable-length header to a sub-parser that 
-uses only fixed-length extractions to parse the header. These 
-transformations convert the parse graph into a Directed Acyclic Graph 
-(DAG), simplifying the \uprograms for the next pass, \emph{static 
-analysis}.
+The midend begins with linking the \ucomp-IRs of all the \uprograms
+that need to be composed to build the dataplane. Then, it performs
+two transformations on every \uprogram:
+\begin{enumerate*}[label=(\roman*)]
+  \item convert each header-stack instance into a set of header
+    instances and
+  \item convert each \texttt{extract} method call parsing a
+    variable-length header to a sub-parser that uses only fixed-length
+    extractions to parse the header.
+\end{enumerate*}
+These transformations convert the parse graph into a Directed Acyclic
+Graph (DAG), simplifying the \uprograms for the next pass, which
+performs \emph{static analysis}.
 
+\tightpar{Static analysis.} The simplified \uprograms allow computing
+minimum and maximum bytes that are extracted by the parsers and
+emitted by the deparsers. These values, in turn, are used to compute
+the operational-region for the composed program and store it in a
+byte-stack (\cref{subsubsection:static-analysis}).
 
-The simplified \uprograms allows to analyse minimum and 
-maximum bytes extracted by the parsers and emitted by the deparsers. 
-These metrics are used to compute operational-region for 
-the main \uprogram as discussed in 
-\cref{subsubsection:static-analysis}.
-
-Having a stack of bytes storing packets' operational-region allows 
-to synthesize match-action code that parses and deparses packets in 
-control blocks. Following static-analysis, the midend performs these 
-transformations on \ucomp-IR to homogenize all processing blocks to 
+Having a byte-stack storing packets' operational-region allows to
+synthesize a match-action table that can parse and deparse packets.
+Following static analysis, the midend performs these transformations
+on \ucomp-IR to homogenize all processing blocks to match-action
 control blocks (\cref{subsection:parser-to-match-action-table}).
-Naturally, the main \uprogram node in \ucomp-IR is also transformed 
-to a control block that invokes other ones.
+Naturally, the ``main'' \uprogram---i.e. the one composing together
+different \uprograms---in \ucomp-IR is also transformed to a control
+block that invokes other ones.
 
-Finally, if the main \uprogram is dependent on a \uprogram 
-implementing \texttt{Orchestration} interface, the final midend pass 
-extracts processing code for every packet instance in the \uprogram. 
-In additions, it prepares an execution schedule to capture 
-interaction among processing of packet instances.
+Finally, if the main \uprogram is dependent on a \uprogram that
+implements \texttt{Orchestration} interface, the final midend pass
+extracts processing code for every packet instance created during
+\texttt{Orchestration} in the \uprogram. In addition, it prepares an
+execution schedule to capture interaction among processing of packet
+instances.
 
 
 
