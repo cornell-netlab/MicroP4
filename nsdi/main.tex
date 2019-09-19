@@ -1652,6 +1652,10 @@ method exposed by interfaces of \uarch. See
 % program a given target architecture.
 
 
+
+
+
+
 \subsection{\ucomp Backend}
 \label{subsection:micro-backend}
 % The backend of \ucomp transforms \ucomp-IR into the target 
@@ -1694,38 +1698,41 @@ states---ingress and egress. The FSM captures constraints on the usage
 of \texttt{egress\_spec}, \texttt{egress\_port} and queuing metadata
 in the ingress and egress blocks. Each state represents a set of
 assertions to be verified on visit of every program statement in 
-the Control Flow Graph of a thread. 
-
-For example, in the ingress 
-state, the graph traversal
-asserts that every visited statement is NOT a \texttt{im\_t}'s
-\texttt{get\_value} method call statement that have an argument
-\texttt{meta\_t} value mapping to intrinsic metadata (e.g.,
-enq\_timestamp) not available in ingress block.  If an assertion
+the Control Flow Graph (CFG) of the thread. For example, in the 
+ingress state, the graph traversal asserts that every visited 
+statement is NOT a \texttt{im\_t}'s \texttt{get\_value} method call 
+statement that have an argument (a value of \texttt{meta\_t}) mapped 
+to intrinsic metadata (e.g.,enq\_timestamp) not available in ingress 
+block.  If an assertion
 associated with a state fails, the program statement is marked and not
 visited. State transition occurs when the graph traversal can not be
 continued due to absence of unmarked and not-visited nodes. At this
-point, \ucomp splits the thread PDG into two PDGs of visited and
-non-visited program statements. Also, the FSM transits to egress
+point, \ucomp creates two sub-graphs of the thread CFG, one having 
+visited and another having non-visited program statements. Also, the 
+FSM transits to egress
 state.  In the egress state, the graph traversal asserts every that
 visited statement is not a method call of \texttt{get\_egress\_port}
 in \texttt{im\_t} object.
 % We perform trivial translation of method calls of \uarch's extern with corresponding method calls of target architecture.
 
-The partitions may have edges representing control dependencies
-between the partitions. Also, partitions may share live local
-variables. \ucomp synthesizes \emph{partition-metadata} to convert
+The nodes in two sub-graphs can be connected by edges 
+representing control dependencies between the sub-graphs. Also, 
+there may be data dependency (sharing live local variables). \ucomp 
+synthesizes \emph{partition-metadata} to convert
 control dependencies into data dependencies and convert live variable
-to user metadata. It synthesizes the partition-metadata and live
-variables as user-metadata parameter between ingress and egress
-control block to restore execution state.
+to user metadata. It synthesizes user-metadata parameter between 
+ingress and egress control block as the partition-metadata and live
+variables to restore execution state.
 % Finally, {copy\_from} method calls of \texttt{pkt} instances are 
 % replaced for v1model with \texttt{clone3} and \texttt{recirculate} or 
 % by synthesizing multicast session while setting appropriate thread-id 
 % in user-defined metadata.
+We can perform similar allocations for other architectures like 
+PSA using appropriate mapping on \texttt{meta\_t} and creating an 
+FSM that captures PSA constraints.
 
-We can perform similar transformation for other architectures like 
-PSA using appropriate mapping on \texttt{meta\_t} and FSM.
+
+
 
 
 
