@@ -14,7 +14,7 @@ const bit<19> ECN_THRESHOLD = 10;
 header ipv4_h {
   bit<4> version;
   bit<4> ihl;
-  bit<6> diffserv;
+  bit<8> diffserv;
   bit<8> ecn;
   bit<16> totalLen;
   bit<16> identification;
