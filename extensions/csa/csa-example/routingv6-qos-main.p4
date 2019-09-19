@@ -23,7 +23,7 @@ cpackage routerqos : implements OrchestrationSwitch<empty_t, empty_t, empty_t,
         external_meta_t arg;
 
         l2() layer2;
-        ipv4l3() ipv4layer;
+        ipv4() ipv4layer;
         ecn() ecnlayer;
         csa_packet_out() ecn_po;
         csa_packet_out() ipv4_po;
