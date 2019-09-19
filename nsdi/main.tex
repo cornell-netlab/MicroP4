@@ -1124,10 +1124,10 @@ composition interface.
 \section{\ulang Compiler (\ucomp)}
 \label{sec:compiler}
 In this section, we explain the design of \ucomp: a compiler that
-transforms \ulang programs, which are \uarch-specific, for a specified
-target architecture. We focus on key transformations that enable
-composition and complement \uarch to realize portable and modular
-programming.
+transforms \ulang programs \deleted{, which are \uarch-specific,} for 
+a specified target architecture. We focus on key transformations that 
+enable composition and help \uarch to realize portable and 
+modular programming.
 
 \begin{figure*}[tbh]
   \centering
@@ -1494,16 +1494,21 @@ essentially perform repeated match-action operations~\cite{6665172}.
 % transit to the next state see Figure 
 % \ref{subfig:parser-symbolic-execution}. 
 So, with the operational-region in byte-stack, we can perform these
-match-action operations simultaneously by leveraging  TCAMs in
-match-action control blocks.
+match-action operations simultaneously by leveraging  TCAMs in 
+hardware stages.
+\deleted{match-action control blocks.}
 
 For example, the parser's FSM in \cref{subfig:parser} has four states
 to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14,
 20, 40 and 20 bytes, respectively. Symbolic execution of the parser
 first identifies two possibles paths from the start state to the
 accept state and then, it replaces the header fields in each path---e.g., \texttt{eth.ethType}, \texttt{ipv6.nexthdr},
-\texttt{ipv4.protocol}---with their corresponding locations in the
-byte-stack (\cref{subfig:parser-symbolic-execution}).
+\texttt{ipv4.protocol}---with their evaluated offsets in the 
+byte-stack (\cref{subfig:parser-symbolic-execution}). Also, it 
+performs Forward Substitution \cite{Padua:1986:ACO:7902.7904} on every 
+path to eliminate anti-dependency between two states (\texttt{var\_y} 
+replaced with \texttt{meta.data1} one \texttt{meta.data2} in another).
+\deleted{corresponding locations in the byte-stack}
 % As an example, \emph{tcp} state transits to the accept state based 
 % on value (0xFF) of \texttt{var\_y} variable which is updated by 
 % either \emph{ipv4} or \emph{ipv6} states. If the select expression 
@@ -1516,12 +1521,15 @@ byte-stack (\cref{subfig:parser-symbolic-execution}).
 % associated with the header instance passed as an argument to the 
 % method-call.In addition, valid metadata variable pertaining to the 
 % header instance is set.
-Using these locations on the byte-stack as keys (\cref{subfig:parser-symbolic-execution}), \ucomp
-synthesizes a match-key as the union of the \texttt{select}
-expressions in all the evaluated states on each path in symbolic
-execution (\cref{subfig:parser-mat}). The match-key also comprises the
-valid bit flag of the last byte extracted on every path to verify the
-packet-length. Then, for each path, we synthesize an
+
+Using all the byte-stack offsets and variables used in \texttt{select} 
+expressions of states in every 
+path, (\cref{subfig:parser-symbolic-execution}), \ucomp
+synthesizes a match-key(\cref{subfig:parser-mat}). 
+For each path, to assert that packet is long enough to parse, the 
+match-key also comprises the valid bit flag of the last byte extracted 
+on the path.
+Then, for each path, we synthesize an
 action---e.g., \texttt{cp\_eth\_ipv4\_tcp} in
 \cref{subfig:parser-mat}---comprising assignment statements to copy
 only the required header fields. A match-action entry is created by
@@ -1531,13 +1539,11 @@ pairing appropriate match-key values and action for each path.
 For example, in the first entry shown in \cref{subfig:parser-mat},
 x0800, x6, xFF are match-values for the first, third and fifth keys to
 parse byte-stack as ethernet, IPv4 and TCP headers and the second and
-fourth keys are matched with don't care values.
-
-The midend transforms header fields used in the control block of every
+fourth keys are matched with don't care values. Finally, the midend 
+transforms header fields used in the control block of every
 \uprogram to necessary metadata called, \emph{field-variables}, that
-are copied from  byte-stack by the transformed parser, now
-match-action table, in the synthesised actions. The field-variables
-include a valid flag for header instances.
+are copied from byte-stack in the synthesised actions. The 
+field-variables include a valid flag for header instances. 
 
 
 % \subsubsection{Deparser To Match-Action Table:}
@@ -1581,23 +1587,23 @@ include a valid flag for header instances.
 \tightparbf{Deparser.}%
 Using the emit order of header instances and number of bytes extracted
 by the parser of the \uprogram, the midend synthesises match-key and
-actions to copy back field-variables at appropriate location in
+actions to copy back field-variables at appropriate offsets in
 byte-stack.  The control block of a \uprogram may set or reset
 validity of header instances and, thereby, modify the size of the
-packet. In case of increase in packet size, byte-stack is always large
+packet. In case of increase in size, byte-stack is always large
 enough to hold new headers. The control block of \texttt{callee1}
 shown in \cref{fig:sequential-callees} invalidates the \texttt{mpls}
-header from packets if the execution follows a particular control
+header from packets if the execution follows the particular control
 path. Recall that the synthesized parser extracts 78 bytes in the
-stack. If the execution follows control path invalidating
-\texttt{mpls} header, 60 bytes following the header should be moved up
+stack. If the execution follows the path invalidating
+\texttt{mpls} header, following 60 bytes, carrying data, are moved up 
 by an offset of 4 in the stack. The synthesized action performs
 in-place copy of these 60 bytes and invalidates the last 4 bytes.
 % If the control block execution sets ipv4 header instance to valid, 
 % bytes after the ipv6 header are pushed down by the offset of 20 to 
 % insert ipv4 header instance.
-Note that the midend removes all the header type and their instances
-originally declared in the \uprogram.
+Finally, the midend removes all the header type and their instances
+originally declared in the \uprogram by the user.
 
 % The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
 % The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
@@ -1615,7 +1621,7 @@ originally declared in the \uprogram.
 
 \subsubsection{Preprocessing for \ucomp-backends}
 After homogenizing packet processing blocks, the midend eliminates any
-use of logical buffers from \uprograms without compile-time
+use of logical buffers from \uprograms that do not use compile-time
 replication. If the \uprograms uses compile-time replication of packet
 and intrinsic metadata to express multi-packet processing, the midend
 prepares a \emph{Packet-Processing Schedule (PPS)} graph for the
@@ -1669,25 +1675,29 @@ it also translates the intrinsic metadata.
 % Finally, it uses metrics computed 
 % by \emph{static-analysis} in the midend to synthesise target-specific 
 % parser and deparser blocks. 
-
+% To allocate a thread on the target architecture's
+% pipeline, \ucomp performs required \emph{partitioning} transformation
+% on the thread's PDG.
 
 \tightparbf{Allocation to Target Architecture.}%
-In case of packet-processing code with packet-replication, every
-backend visits PPS nodes in topological order to map packet-processing
-threads. It simultaneously allocates all the sub-programs represented
-by every thread node located at the same topological order in PPS. In
-the absence of packet-replication, it allocates packet-processing code
-of a single thread. To allocate a thread on the target architecture's
-pipeline, \ucomp performs required \emph{partitioning} transformation
-on the thread's PDG. Next, we explain the partitioning for single
+In case of packet-processing code that uses packet-replication, the
+backend visits PPS nodes in topological order to 
+simultaneously allocate thread nodes that are at the 
+same level in the topological order. In the absence of 
+packet-replication, it allocates packet-processing code
+of a single thread. Next, we explain the partitioning for single
 thread on v1model architecture for simple\_switch target.
+
 
 \ucomp's backend for v1model maintains a FSM with two
 states---ingress and egress. The FSM captures constraints on the usage
 of \texttt{egress\_spec}, \texttt{egress\_port} and queuing metadata
 in the ingress and egress blocks. Each state represents a set of
-assertions to be verified on visit of every program statement in PDG
-of a thread. For example, in the ingress state, the graph traversal
+assertions to be verified on visit of every program statement in 
+the Control Flow Graph of a thread. 
+
+For example, in the ingress 
+state, the graph traversal
 asserts that every visited statement is NOT a \texttt{im\_t}'s
 \texttt{get\_value} method call statement that have an argument
 \texttt{meta\_t} value mapping to intrinsic metadata (e.g.,
