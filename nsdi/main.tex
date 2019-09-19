@@ -49,12 +49,12 @@ arranged into different layouts as specified by an architecture
 declaration. For example, the Portable Switch Architecture
 (PSA)~\cite{psa} models a switch with a programmable parser,
 programmable ingress pipeline, fixed-function scheduler and queues,
-programmable egress pipeline, and programmable deparser (Figure
-\ref{subfig:psa-model}). However, while this design allows the
-language to flexibly accommodate a wide range of targets, it also
-creates a tight coupling between programs and architectures, which
-makes it difficult to write programs in a compositional manner or
-reuse common code fragments in different programs.
+programmable egress pipeline, and programmable deparser. However,
+while this design allows the language to flexibly accommodate a wide
+range of targets, it also creates a tight coupling between programs
+and architectures, which makes it difficult to write programs in a
+compositional manner or reuse common code fragments in different
+programs.
 
 For example, \texttt{switch.p4}~\cite{switch.p4} handles several dozen
 different protocols and functions (e.g., Ethernet switching, IPv4 and
@@ -84,6 +84,27 @@ according to the standard networking stacks implemented by end hosts.
 However, we could use \texttt{ether} with any routing scheme (e.g.,
 IPv6, MPLS, etc.) to obtain a complete program.
 
+\jnf{Abrupt transition here}
+
+%% The current ecosystem of programmable data plane enforces programmers
+%% to write code amenable to the target device's data plane architecture
+%% and pipeline. Programmers write code for programmable blocks taking
+%% into account their location in pipeline rather than compilers
+%% automatically allocating code to the appropriate blocks. We believe
+%% that devices should only expose abstraction for processing blocks and
+%% the onus of code allocation to the blocks in pipeline should be on
+%% compilers for the devices.
+
+There is some prior work on modular composition of P4 programs.
+Systems such as HyPer4 \cite{Hancock:2016:HUP:2999572.2999607},
+HyperV~\cite{8038396}, and
+P4Visor~\cite{Zheng:2018:PLV:3281411.3281436} provide constructs for
+merging independent programs onto a single device. However, these
+systems only handle programs that describe end-to-end
+packet-processing functions. Hence, they lack mechanisms for enabling
+selective reuse of library code, specifying interfaces between
+modules, and facilitating inter-module communication. To write truly
+modular P4 programs, a fundamentally different approach is needed.
 \begin{figure}[ht]
 \begin{lstlisting}[frame=none, escapechar=!]
 //ether.p4: parse and process Ethernet
@@ -141,27 +162,6 @@ control D(packet_out po, in hdr_t ph) {
 \label{fig:ipv4.p4}
 \end{figure}
 
-\jnf{Abrupt transition here}
-
-%% The current ecosystem of programmable data plane enforces programmers
-%% to write code amenable to the target device's data plane architecture
-%% and pipeline. Programmers write code for programmable blocks taking
-%% into account their location in pipeline rather than compilers
-%% automatically allocating code to the appropriate blocks. We believe
-%% that devices should only expose abstraction for processing blocks and
-%% the onus of code allocation to the blocks in pipeline should be on
-%% compilers for the devices.
-
-There is some prior work on modular composition of P4 programs.
-Systems such as HyPer4 \cite{Hancock:2016:HUP:2999572.2999607},
-HyperV~\cite{8038396}, and
-P4Visor~\cite{Zheng:2018:PLV:3281411.3281436} provide constructs for
-merging independent programs onto a single device. However, these
-systems only handle programs that describe end-to-end
-packet-processing functions. Hence, they lack mechanisms for enabling
-selective reuse of library code, specifying interfaces between
-modules, and facilitating inter-module communication. To write truly
-modular P4 programs, a fundamentally different approach is needed.
 
 To this end, this paper presents the design and implementation of
 \ulang, a new architecture that provides fine-grained abstractions for
@@ -516,6 +516,13 @@ compiler, \ucomp, to address these aspects.
 %% Describe each component of microP4
 Now, we describe each component of \ulang to show how \ulang achieves
 our goals for dataplane programming.
+\begin{figure}[!tb]
+    \centering
+    \includegraphics[width=\linewidth]{uswitch-model}
+    \caption{Abstract programming model for \uswitch}
+    \label{fig:uswitch}
+\end{figure}
+
 
 \paragraph{\uswitch.}
 \uswitch is an intermediate logical target with an abstract
@@ -524,12 +531,6 @@ abstraction that enables modular programming without compromising
 expressiveness to process packets. It does so by allowing to write
 modules that implement fine-grained packet processing and defining
 interfaces to compose these modules.
-\begin{figure}[htb]
-    \centering
-    \includegraphics[width=\linewidth]{uswitch-model}
-    \caption{Abstract programming model for \uswitch}
-    \label{fig:uswitch}
-\end{figure}
 
 \uswitch models each packet-processing module as a self-contained
 execution unit, called a \emph{\uprogram}, and executes it using the
