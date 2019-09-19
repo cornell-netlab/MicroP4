@@ -2038,7 +2038,7 @@ from \cref{subfig:router-main} as follows:
 
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
-  !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
+  !\colorbox{mygray}{srv6\_i.apply(p, im);}! // copies next segment address from SRH header's list to IPv6's destAddr field
   ipv6_i.apply(p, im, h);
 }
 \end{lstlisting}
@@ -2080,13 +2080,13 @@ and \emph{override} composition from CoVisor~\cite{188954}.
 % \end{lstlisting}
 \begin{lstlisting}[frame=none, escapechar=!]
 // Sequential: Firewall -> Routing -> INT
-firewall.apply(p, sm, es);
-if (sm.drop == false) {
-  modular_router.apply(p, sm, es);
+firewall.apply(p, im);
+if (im.drop == false) {
+  modular_router.apply(p, im);
   // Override: routing decision
-  elephant_flow_routing.apply(p, sm, es);
+  elephant_flow_routing.apply(p, im);
 }
-p4_int.apply(p, sm, es);
+p4_int.apply(p, im);
 \end{lstlisting}
 
 First, a packet is processed by the \texttt{firewall} module, which
@@ -2113,9 +2113,9 @@ operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
 extractor.extract(p, testHdr);
 // Inside control block, the `p` w/o testHdr
 if (h.testHdr.testFlag == 1)
-  test_prog.apply(p, sm, es);
+  test_prog.apply(p, im);
 else
-  prod_prog.apply(p, sm, es)
+  prod_prog.apply(p, im)
 // deparser puts back the test header
 emiiter.emit(p, testHdr);
 \end{lstlisting}
@@ -2137,17 +2137,17 @@ following snippet illustrates creating a copy of parameter \texttt{pk}
 and \texttt{e} using the method.
 \begin{lstlisting}[frame=none]
 struct e_t {}; // empty type
-sflow(pkt, es_t);// Implements Unicast 
-control con(pkt pk, es_t e, 
+sflow(pkt, im_t);// Implements Unicast 
+control con(pkt pk, im_t im, 
     out_buf<e_t> ob) { // `ob' holds out packets
-  pkt pk2;  es_t e2;
+  pkt pk2;  im_t im2;
   in_buf<e_t> ib; // in_buffer for another module
   apply {
     pk2.copy_from(pk); // copying
-    e2.copy_from(e); // copying
-    sflow.apply(pk2, e2); // sflow on copy
-    ob.enqueue(pk, e); // puting original in ob
-    ob.enqueue(pk2, e2); // copy in ob
+    im2.copy_from(im); // copying
+    sflow.apply(pk2, im2); // sflow on copy
+    ob.enqueue(pk, im); // puting original in ob
+    ob.enqueue(pk2, im2); // copy in ob
     ob.to_in_buf(ib); // moves all elements to ib
     modular_router_orch.apply(ib, ob);
   }
