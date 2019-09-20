@@ -2194,8 +2194,8 @@ devices.
 \section{Declarations in \uarch}
 \label{appendix:section:micro-switch-architecture}
 We describe exact declarations of \texttt{Unicast}, 
-\texttt{Multicast} and \texttt{Orchestration} interfaces along with 
-their runtime behavior. 
+\texttt{Multicast} and \texttt{Orchestration} interfaces in 
+\cref{fig:programmable-blocks-for-interfaces}. 
 
 % \begin{figure*}[h]
 % \begin{minipage}[t]{.35\textwidth}
@@ -2564,7 +2564,8 @@ control validate(pkt p, im_t i, out_buf<e_t> ob) {
 
 
 
-If the main package has callees with orchestration interface, \ucomp 
+If the main \uprogram has callees with orchestration interface, 
+\ucomp 
 extracts packet-processing threads and PPS for control block of every callee.
 \ucomp constructs a Program Dependence Graph(PDG) 
 \cite{Ferrante:1987:PDG:24039.24041} having statements as nodes and 
