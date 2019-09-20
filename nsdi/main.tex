@@ -1117,16 +1117,16 @@ composition interface.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{\ulang Compiler (\ucomp)}
 \label{sec:compiler}
-In this section, we explain the design of \ucomp: a compiler that
-transforms \ulang programs \deleted{, which are \uarch-specific,} for 
-a specified target architecture. We focus on key transformations that 
-enable composition and help \uarch to realize portable and 
-modular programming.
+In this section, we present the design of \ucomp--a compiler that
+transforms target-agnostic \ulang programs to configurations for a
+specified target architecture---with focus on key transformations that
+enable composition.
 
-\begin{figure*}[tbh]
+\begin{figure*}[!tbh]
   \centering
   \includegraphics[width=\linewidth]{workflow}
-  \caption{Workflow for building dataplanes in \ulang. \todo{update}}
+  \caption{Overview of transformations performed in different phases
+  in \ucomp: frontend, midend, and backend.}
   \label{fig:workflow}
 \end{figure*}
 
@@ -1147,7 +1147,7 @@ libraries by serializing the \ucomp-IR.
 \ucomp's midend is responsible of two main transformations:
 \begin{enumerate*}[label=(\roman*)]
   \item homogenizing processing blocks to enable composition and
-  \item preprocessing for backend pass.
+  \item preprocessing for the backend pass.
 \end{enumerate*}
 
 To compose \uprograms by homogenizing their processing blocks, first,
@@ -1156,7 +1156,7 @@ it performs static analysis of the \uprogram to compute the
 that the program needs to access. Then, it synthesizes a stack of
 one-byte headers, called a \emph{byte-stack}, large enough to store
 the operational-region. Finally, considering this byte-stack as a
-packet it transforms any (de)parsers into homogeneous match-action
+packet, it transforms any (de)parsers into homogeneous match-action
 control blocks.
 
 To preprocess for the backend, in case of compile-time replication,
@@ -1192,11 +1192,11 @@ two transformations on every \uprogram:
 \begin{enumerate*}[label=(\roman*)]
   \item convert each header-stack instance into a set of header
     instances and
-  \item convert each \texttt{extract} method call parsing a
-    variable-length header to a sub-parser that uses only fixed-length
-    extractions to parse the header.
+  \item convert each \texttt{extract} method call that parses
+    variable-length headers to a sub-parser that uses only
+    fixed-length extractions to parse the header.
 \end{enumerate*}
-These transformations convert the parse graph into a Directed Acyclic
+These transformations convert a parse graph into a Directed Acyclic
 Graph (DAG), simplifying the \uprograms for the next pass, which
 performs \emph{static analysis}.
 
@@ -1206,17 +1206,17 @@ emitted by the deparsers. These values, in turn, are used to compute
 the operational-region for the composed program and store it in a
 byte-stack (\cref{subsubsection:static-analysis}).
 
-Having a byte-stack storing packets' operational-region allows to
+Having a byte-stack storing packets' operational-regions allows to
 synthesize a match-action table that can parse and deparse packets.
 Following static analysis, the midend performs these transformations
 on \ucomp-IR to homogenize all processing blocks to match-action
 control blocks (\cref{subsection:parser-to-match-action-table}).
 Naturally, the ``main'' \uprogram---i.e. the one composing together
 different \uprograms---in \ucomp-IR is also transformed to a control
-block that invokes other ones.
+block that invokes others.
 
 Finally, if the main \uprogram is dependent on a \uprogram that
-implements \texttt{Orchestration} interface, the final midend pass
+implements the \texttt{Orchestration} interface, the final midend pass
 extracts processing code for every packet instance created during
 \texttt{Orchestration} in the \uprogram. In addition, it prepares an
 execution schedule to capture interaction among processing of packet
@@ -1298,14 +1298,14 @@ To compute these values for a \uprogram, $a$, we first symbolically
 execute its parser and compute the extract-length for the parser,
 $El_{p}(a)$, as the maximum number of bytes extracted by the parser to
 reach the \textit{accept} state. A \uprogram's extract-length also
-depends on its callees. So, for a control block, we define the
+depends on its callees. So, for a control block, $c$, we define the
 extract-length, $E_{c}(a)$, as the maximum number of bytes extracted
-during execution of one of its control paths. In the same control
-path, multiple callees may be invoked. We define the extract-length,
+during execution of one of its control paths. In a control path,
+multiple callees may be invoked. We define the extract-length,
 $lc_{a}(x)$, of a control path $x$ as the maximum number of bytes
 required to process all the callees in $x$. The \uprogram's
-extract-length, $\mathcal{E}l(a)$, is the sum of extract-lengths of
-its parser and control blocks. The size of the byte-stack needed for a
+extract-length, $El(a)$, is the sum of extract-lengths of its parser
+and control blocks. Note that the size of the byte-stack needed for a
 \uprogram may differ from its extract-length as a packet's size may
 increase or decrease during processing.
 
@@ -1323,19 +1323,20 @@ increase or decrease during processing.
 
 
 
-To estimate the maximum decrease in a control path, we consider the
-case when a packet contains all the header instances which are set to
-valid or invalid in the path. The rationale for using this case is
-that if a packet already has a header instance, setting it to invalid
-will decrease the packet size, but setting it to valid is a no-op.
-Similarly for maximum increase, we consider that a packet does not
-contain any header instance that is set to valid or invalid on the
-path. Then, we symbolically execute the control block by evaluating
-all the \texttt{setValid} and \texttt{setInvalid} invocations.  We
-denote increase and decrease in packet size on a control path $x$ with
-$i_{a}(x)$ and $d_{a}(x)$, respectively. Similarly, $\Delta(a)$ and
-$\delta(a)$ denote increase and decrease for the entire \uprogram $a$.
-\cref{increase-path} expresses $i_{a}(x)$ as the sum of
+To estimate the maximum decrease in packet size in a control path, we
+consider the case when a packet has all the header instances
+which are set to valid or invalid in the path. The rationale for using
+this case is that if a packet already has a header instance, setting
+it to invalid will decrease the packet size, but setting it to valid
+is a no-op.  Similarly for maximum increase, we consider that a packet
+does not contain any header instance that is set to valid or invalid
+on the path. Then, we symbolically execute the control block by
+evaluating all the \texttt{setValid} and \texttt{setInvalid}
+invocations.  We denote increase and decrease in packet size on a
+control path $x$ with $i_{a}(x)$ and $d_{a}(x)$, respectively.
+Similarly, $\Delta(a)$ and $\delta(a)$ denote increase and decrease
+for the entire \uprogram $a$.  \cref{increase-path} expresses
+$i_{a}(x)$ as the sum of
 \begin{enumerate*}[label=(\roman*)]
   \item sizes of all the header instances on which \texttt{setValid}
     is done and
@@ -1372,12 +1373,11 @@ For a \uprogram, $a$, we compute the maximum increase $\Delta(a) =
 % to process their own deparsers along with callees'.
 
 % TODO : in figure, legend bold letters for accept state. control path
-Now, we define the extract-length, $lc_{a}(x)$, for a path $x$ in the
-\uprogram $a$'s control block as a function of the callees'
-extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet
-size ($\delta(cp)$). Let's assume that a control path $x$ invokes N
-callees in increasing order. \cref{fig:sequential-callees} shows such
-a scenario.
+Now, we compute the extract-length, $lc_{a}(x)$, for a path $x$ in the
+\uprogram $a$'s control block as a function of the extract-length,
+$El(cp)$, and maximum decrease in packet size, $\delta(cp)$, of
+callees (cp). Assume that a control path $x$ invokes N callees, as
+shown in \cref{fig:sequential-callees}.
 %and reduce the available bytes to be less than the extract-length
 % of $(i+1)$\textsuperscript{th} callee's parser ($El_{p}(i+1)$).  
 % of two callee \uprograms invoked in the same control path in the CFG 
@@ -1394,32 +1394,32 @@ a scenario.
 The $i$\textsuperscript{th} callee may decrease a packet's
 size---e.g., a control path of \texttt{callee1} removes the
 \texttt{mpls} header, decreasing the size by 4
-bytes.  \texttt{callee2} extracts \texttt{eth}, \texttt{ipv6} and
-\texttt{ipv4} headers from the packet. So, to
+bytes.  \texttt{callee2} extracts \texttt{eth}, \texttt{ipv4} and
+\texttt{ipv6} headers from the packet. So, to
 process
 \begin{enumerate*}[label=(\roman*)]
   \item removal of 4-byte \texttt{mpls} header by \texttt{callee1} and
-  \item extraction of maximum bytes (74-byte \texttt{eth-IPv6-IPv4})
-    in the parse-graph of \texttt{callee2},
+  \item extraction of maximum bytes (74-byte \texttt{eth-IPv4-IPv6})
+    in \texttt{callee2}'s parser,
 \end{enumerate*}
-4+74=78 bytes are required.
-So, we take into account the extract-length of every callee's
-parser along with the maximum decrease in packet size by the callee's
-predecessors in the control path $x$ to compute $lc_{a}(x)$,
-as shown in \cref{extract-length-control-path}.
+78(=4+74) bytes are required.  So, we take into account the
+extract-length of every callee's parser along with the maximum
+decrease in packet size by the callee's predecessors in the control
+path $x$ to compute $lc_{a}(x)$, as shown in
+\cref{extract-length-control-path}.
 \begin{align}
 lc_{a}(x) \; =& \; \max_{cp} \left\{ \left( \sum_{i=0}^{i<cp} \delta(i) \right)+ El(cp) \right\},&cp \in [0,N] \label{extract-length-control-path} \\
-\mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-package}
+\mathcal{B}s_{a} \; =& \; El(a) + \Delta(a) & \label{byte-stack-size-package}
 \end{align}
-Finally, we define the byte-stack size for a \uprogram $a$,
+Finally, we compute the byte-stack size for a \uprogram $a$,
 $\mathcal{B}s_{a}$  as the sum of its extract-length and maximum
 increase in packet size as shown in \cref{byte-stack-size-package}.
 For the example in \cref{fig:sequential-callees}, the byte-stack size
-for the caller is 98 (= 78 $El$(\texttt{callee2}) + 20 for increase in
-\texttt{callee1}).
+for the caller is 98 ($El$(\texttt{callee2}) =78, and 20 for increase
+in \texttt{callee1}) bytes.
 % 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
-We perform similar analysis for \textit{min-packet-size}. But, we skip
-the details for brevity.
+We perform a similar analysis for \textit{min-packet-size}. But, we
+skip the details for brevity.
 % dthe minimum number of bytes required to extract a packet.
 % by the caller's parser or among every possible first callee's parser.
 
@@ -1441,15 +1441,15 @@ the details for brevity.
     \end{subfigure}
     \begin{subfigure}[b]{.47\linewidth}
     \centering
-    \begin{lstlisting}[frame=none]
-key = { b[12]++b[13]:exact; // rest Ternary
-  b[20]; b[23]; meta.data1; meta.data2;
+    \begin{lstlisting}[frame=none, escapechar=!]
+key = { !\color{parser-red}{b[12]++b[13]}!:exact; // rest Ternary
+  !\color{parser-red}{b[20]}!; !\color{parser-red}{b[23]}!; !\color{parser-red}{meta.data1}!; !\color{parser-red}{meta.data2}!;
   b[53].isValid(); b[73].isValid();}
 actions = { cp_eth_ipv4_tcp;
   cp_eth_ipv6_tcp; set_parser_error;}
 const entries = {
-  (x0800,_,x6,_,xFF,1,_):cp_eth_ipv4_tcp();
-  (x86DD,x6,_,xFF,_,_,1):cp_eth_ipv6_tcp();
+  (!\color{parser-green}{x0800}!,_,!\color{parser-green}{x6}!,_,!\color{parser-green}{xFF}!,1,_):cp_eth_ipv4_tcp();
+  (!\color{parser-green}{x86DD}!,!\color{parser-green}{x6}!,_,!\color{parser-green}{xFF}!,_,_,1):cp_eth_ipv6_tcp();
 }
 default_action : set_parser_error();
 \end{lstlisting}
@@ -1974,20 +1974,19 @@ programs to build real applications.
 
 \subsection{Composing Packet-Processing Layers}
 \label{subsection:composing-packet-processing-layers}
-Packets are structured into layers of protocols headers with 
-specific layout, where each layer is specialized for a specific role. 
-Therefore, writing modules for processing one or more layers 
-is a natural way to build applications as these modules can 
-be developed incrementally, composed together, and
-reused.
+Packets are structured into layers of protocols headers with specific
+layouts, where each layer is specialized for a specific role.  So,
+writing modules for processing one or more layers is a natural way to
+build applications as these modules can be developed incrementally,
+composed together, and reused.
 \tightparbf{Layered Modularity.}
 \uarch's generic interfaces allows programmers to define custom
 interfaces for modules to exchange data. These can be used to compose
-\ulang modules for packet-processing layers. To demonstrate this, we
+\ulang modules for different network layers. To demonstrate this, we
 built a modular router by composing together independent modules
 responsible for processing each layer. For example,
-\cref{fig:modular-router} shows how we compose modules for processing
-the Ethernet and IPv4 headers.
+\cref{fig:modular-router} shows how we can compose modules for
+processing the L2 (Ethernet) and and L3 (IPv4) headers.
 % Figure \ref{fig:incremental-development} shows an example of incremental development, which adds SRH processing to support SRv6 in the network.
 % \begin{figure}[!h]
 % \begin{subfigure}[b]{\linewidth}
@@ -2045,7 +2044,7 @@ from \cref{subfig:router-main} as follows:
 
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
-  !\colorbox{mygray}{srv6\_i.apply(p, sm, es);}! // copies next segment address from SRH header's list to IPv6's destAddr field
+  !\colorbox{mygray}{srv6\_i.apply(p, im, h);}! // copies next segment address from SRH header's list to IPv6's destAddr field
   ipv6_i.apply(p, im, h);
 }
 \end{lstlisting}
@@ -2055,14 +2054,13 @@ other module used in the router.
 
 
 
-\subsection{Composing Dataplane Programs of NFs}
+\subsection{Composing Network Functions (NFs)}
 \label{subsection:composing-dataplane-programs-of-NFs}
-
-Many network functions (NFs), such as firewall and NAT, process
-complete packets across protocol layers. Operators often need to
-deploy such programs on devices using different combinations and as
-specified by some policy. To enable this, prior work on dataplane
-composition, such as P4Bricks~\cite{soni:hal-01632431} and
+Many network functions (NFs) such as firewall and intrusion detection
+process complete packets across protocol layers. Operators often need
+to deploy such programs on devices using various combinations as per
+some policy. To enable this, prior work on dataplane composition, such
+as P4Bricks~\cite{soni:hal-01632431} and
 P4Visor~\cite{Zheng:2018:PLV:3281411.3281436}, and virtualization,
 such as HyPer4~\cite{Hancock:2016:HUP:2999572.2999607} and
 HyperV~\cite{8038396}, define operators based on certain use cases.
@@ -2071,9 +2069,9 @@ HyperV~\cite{8038396}, define operators based on certain use cases.
 P4 constructs such as conditionals.
 
 \tightparbf{Composition Operators.}%
-The following \ulang snippet from the implementation of orchestration
-interface shows an example of how one can express \emph{sequential}
-and \emph{override} composition from CoVisor~\cite{188954}.
+The following \ulang snippet shows an example of how one can express
+\emph{sequential} and \emph{override} composition operators from
+CoVisor~\cite{188954}.
 % \begin{lstlisting}[frame=none, escapechar=!]
 % // Sequential: Firewall -> Routing
 % firewall.apply(p, sm, es);
@@ -2087,29 +2085,27 @@ and \emph{override} composition from CoVisor~\cite{188954}.
 % \end{lstlisting}
 \begin{lstlisting}[frame=none, escapechar=!]
 // Sequential: Firewall -> Routing -> INT
-firewall.apply(p, sm, es);
-if (sm.drop == false) {
-  modular_router.apply(p, sm, es);
+firewall.apply(p, im);
+if (im.drop == false) {
+  modular_router.apply(p, im);
   // Override: routing decision
-  elephant_flow_routing.apply(p, sm, es);
+  elephant_flow_routing.apply(p, im);
 }
-p4_int.apply(p, sm, es);
+p4_int.apply(p, im);
 \end{lstlisting}
-
 First, a packet is processed by the \texttt{firewall} module, which
 may decide to drop it after analysing one or more headers. Otherwise,
-the packet is routed.  While routing,
-\texttt{elephant\_flow\_routing} may override normal routing if
-the packet belongs to a large flow. Finally,
-\texttt{p4\_int} updates the INT (In-band Network Telemetry)
+the packet is routed.  While routing, \texttt{elephant\_flow\_routing}
+may override normal routing if the packet belongs to a large flow.
+Finally, \texttt{p4\_int} updates the INT (In-band Network Telemetry)
 \cite{Kim2015InbandNT, p4int} header with the appropriate data. Note
 that even though \uarch does not have a notion of ingress and egress
 pipelines, it declares intrinsic metadata which can be mapped to INT
-data at the appropriate location. For example, \emph{ingress
-timestamp} of INT is mapped to \ulang's \texttt{IN\_TIMESTAMP}. When
-compiling for a target such as \texttt{v1model}, \ucomp partitions the
-composed pipeline and allocates \texttt{p4\_int} to the egress
-pipeline of the architecture.
+data at the appropriate location in target pipeline. For example,
+\emph{ingress timestamp} of INT is mapped to \ulang's
+\texttt{IN\_TIMESTAMP}. When compiling for a target such as
+\texttt{v1model}, \ucomp partitions the composed pipeline and
+allocates \texttt{p4\_int} to the egress pipeline.
 
 Another interesting example of composition is the \texttt{A-B Testing}
 operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
@@ -2120,9 +2116,9 @@ operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
 extractor.extract(p, testHdr);
 // Inside control block, the `p` w/o testHdr
 if (h.testHdr.testFlag == 1)
-  test_prog.apply(p, sm, es);
+  test_prog.apply(p, im);
 else
-  prod_prog.apply(p, sm, es)
+  prod_prog.apply(p, im)
 // deparser puts back the test header
 emiiter.emit(p, testHdr);
 \end{lstlisting}
@@ -2133,68 +2129,82 @@ emiiter.emit(p, testHdr);
 
 
 \subsection{Advanced Processing}
-Many applications---e.g., mirroring, statistics collector such as
-sFlow and NetFlow, packet history based telemetry as in
-NetSight~\cite{179783}, testing mechanisms such as differential
+Many applications---e.g., mirroring~\cite{rasley2014planck},
+statistics collector such as NetFlow and
+sFlow~\cite{panchen2001inmon}, packet history based telemetry as in
+NetSight~\cite{179783}, and differential
 testing~\cite{Zheng:2018:PLV:3281411.3281436}---require selectively
-creating copies of packets and processing the copies in a different
-manner. \ulang enables such processing through its \texttt{copy\_from}
-method in \texttt{pkt} and \texttt{es} externs of \uarch. The
-following snippet illustrates creating a copy of parameter \texttt{pk}
-and \texttt{e} using the method.
+creating copies of packets and processing the copies in different
+manners. \ulang enables such processing through
+\texttt{Orchestration}, \texttt{copy\_from} method in \texttt{pkt},
+and \texttt{im} externs. The following snippet illustrates creating a
+copy of a packet \texttt{pk} and differential processing.
 \begin{lstlisting}[frame=none]
 struct e_t {}; // empty type
-sflow(pkt, es_t);// Implements Unicast 
-control con(pkt pk, es_t e, 
+sflow(pkt, im_t);// sFlow implements Unicast
+control con(pkt pk, im_t md, 
     out_buf<e_t> ob) { // `ob' holds out packets
-  pkt pk2;  es_t e2;
+  pkt pk2;  im_t md2;
   in_buf<e_t> ib; // in_buffer for another module
   apply {
     pk2.copy_from(pk); // copying
-    e2.copy_from(e); // copying
-    sflow.apply(pk2, e2); // sflow on copy
-    ob.enqueue(pk, e); // puting original in ob
-    ob.enqueue(pk2, e2); // copy in ob
+    md2.copy_from(md); // copying
+    sflow.apply(pk2, md2); // sflow on copy
+    ob.enqueue(pk, md); // puting original in ob
+    ob.enqueue(pk2, md2); // copy in ob
     ob.to_in_buf(ib); // moves all elements to ib
     modular_router_orch.apply(ib, ob);
   }
-}
+} // inside an Orchestration pipeline
 \end{lstlisting}
-The \texttt{sflow} module processes the copy of the packet and
-metadata.  Then, the original packet as well as the processed copy are
-queued into the output buffer \texttt{ob}. \texttt{to\_in\_buf} moves
-the contents of \texttt{ob} to another buffer, \texttt{ib}, and resets
+The \texttt{sflow} module processes a copy of the packet and metadata.
+Then, the original packet as well as the processed copy are queued
+into an output buffer \texttt{ob}. \texttt{to\_in\_buf} moves the
+contents of \texttt{ob} to another buffer, \texttt{ib}, and resets
 \texttt{ob}. Finally, the \texttt{modular\_router\_orch} routes
 packets between modules.
 
-\subsection{Experience Composing \uprograms}
-\Cref{tab:loc-of-composed} shows line of P4 code generated for 
-v1model \cite{v1model.p4} architecture of BMv2 target. The huge 
-number of lines, even for two \uprograms, is a result of 
-byte-level match-action tables generated by \ucomp.
 
-\begin{table}[htb]
+
+
+
+
+\subsection{Experience Composing \uprograms}
+We implemented a library of independent packet-processing functions in
+\ulang to test its expressiveness. To reuse these, we composed a
+subset in various ways to build new dataplane applications as shown in
+\cref{tab:loc-of-composed}. Each row corresponds to a module, and each
+column corresponds to a dataplane generated by composing the modules
+for checked rows.
+The bottom row shows the line of P4 code generated in the output of
+\ucomp when building the dataplane for  v1model~\cite{v1model.p4}
+architecture of BMv2 target.
+% The huge number of lines, even for two \uprograms, is a result of
+% byte-level match-action tables generated by \ucomp.
+
+
+\begin{table}[!htp]
 \begin{center}
 \begin{tabular}{|c|c|c|c|c|c|c|}
   \hline
-  \textbf{\uprograms} & \multicolumn{6}{|c|}{\textbf{Composition}} \\ 
+  \textbf{\ulang programs} & \multicolumn{6}{|c|}{\textbf{Composed dataplane}} \\ 
 \hline
-  l2 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark 
+  L2 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark 
 & \checkmark  \\ \hline
-  ipv4 & \checkmark &  & \checkmark & \checkmark &  \checkmark & 
+  IPv4 & \checkmark &  & \checkmark & \checkmark &  \checkmark & 
 \checkmark  \\ \hline
-  ipv6 &  & \checkmark &  &   &  &  \\  \hline
-  ecn &  &  & \checkmark &  &  & \checkmark  \\ \hline
-  firewall &  &  &  & \checkmark &  & \checkmark  \\ \hline
-  nat &  &  &  &  & \checkmark & \checkmark \\
+  IPv6 &  & \checkmark &  &   &  &  \\  \hline
+  ECN &  &  & \checkmark &  &  & \checkmark  \\ \hline
+  Firewall &  &  &  & \checkmark &  & \checkmark  \\ \hline
+  NAT &  &  &  &  & \checkmark & \checkmark \\
   \hline \hline
-  \textbf{P4 LoC} & 656 & 684 & 879 & 1084 & 1068 & 1693 \\ \hline 
+  \textbf{Target P4 LoC} & 656 & 684 & 879 & 1084 & 1068 & 1693 \\ \hline 
 \end{tabular}
-\caption{P4 LoC of composed \uprograms for v1model}
+\caption{Composing \ulang programs to build dataplanes. Bottom row
+shows LoC in the output of \ucomp for \texttt{v1model} target.}
 \label{tab:loc-of-composed}
 \end{center}
 \end{table}
-
 
 \section{Related Work}
 \label{sec:related-work}
@@ -2210,27 +2220,36 @@ because, networks are complex to manage and configure
 without having a modular approach.
 
 The work on composing control plane and static policy focus on 
-defining a set of composition operators that can be used process 
-packet using multiple application without race-conditions and 
+defining a set of composition operators that can be used to describe 
+packet-processing policies without incurring race-conditions and 
 inconsistencies. This approach suits to control plane programs as 
-they are complete network programs and process packets end-to-end, in 
-contrast of  dataplane programs which are partial and configured by 
-control plane programs.
-Prior work on dataplane composition has focused on defining 
-composition operators based on use cases that process packets 
-end-to-end. Our work significant differs as we enable the fundamental 
-mechanism, invoking dataplane programs, to allow 
-programmers to reuse fine-grained packet-processing code and define 
-custom composition operators.Reuse of dataplane program poses 
-challenge of portability. In this aspect, our framework is orthogonal 
-to PSA \cite{psa}. PSA exposes a dataplane model that target device 
-must realise. Instead, we focus on abstraction that programmers should 
-use for portability.
+each program specifies complete behavior of packets in the network or 
+on the device. Inspired form control plane compositions, prior work 
+on dataplane composition has focused on defining composition operators 
+based on use cases that process every packet in its entirety. Our work 
+significantly differs as we enable the fundamental mechanism, invoking 
+one dataplane program from another, that allows programmers to reuse 
+fine-grained packet-processing code and define custom composition 
+operators. Reuse of dataplane program poses challenge of 
+portability. In this aspect, our framework is orthogonal to PSA 
+\cite{psa}. PSA exposes a dataplane model that target device 
+must realise. Instead, we focus on abstraction that programmers can 
+use to write portable dataplane programs. \ucomp framework is inline 
+with Domino \cite{Sivaraman:2016:PTH:2934872.2934900} that 
+provides abstractions to describe stateful algorithm with reference 
+to its Banzai model and compiles them to target-specific 
+low-level microcode.
 
 Conceptually, the design of \uarch resembles more with the Click 
 Modular Router\cite{Kohler:2000:CMR:354871.354874} than PSA. The 
-Click is targeted for on general purpose compute machines which is a 
-completely different packet-processing paradigm than RMT.
+Click allows to compose packet processing modules, called 
+\emph{elements}, that can be connected together using \emph{push} or 
+\emph{pull} ports to create a directed graph. The edges of the 
+graph determines flows of the packets. Our approach slightly differs 
+here, \uarch's interfaces allows to transfer the control and data 
+along with packet. Also, the Click is software framework that is 
+targeted for general purpose compute machines, whereas \ulang 
+framework targets RMT based devices.
 
 
 \section{Conclusion}
