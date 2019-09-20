@@ -1043,7 +1043,7 @@ composition interface.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{\ulang Compiler (\ucomp)}
 \label{sec:compiler}
-In this section, we present the design of \ucomp--a compiler that
+This section presents the design of \ucomp---a compiler that
 transforms target-agnostic \ulang programs to configurations for a
 specified target architecture---with focus on key transformations that
 enable composition.
@@ -1079,7 +1079,7 @@ libraries by serializing the \ucomp-IR.
 To compose \uprograms by homogenizing their processing blocks, first,
 it performs static analysis of the \uprogram to compute the
 ``operational-region''---i.e., the region of a packet's byte-stream
-that the program needs to access. Then, it synthesizes a stack of
+that the program needs to access. It then synthesizes a stack of
 one-byte headers, called a \emph{byte-stack}, large enough to store
 the operational-region. Finally, considering this byte-stack as a
 packet, it transforms any (de)parsers into homogeneous match-action
@@ -1344,8 +1344,7 @@ For the example in \cref{fig:sequential-callees}, the byte-stack size
 for the caller is 98 ($El$(\texttt{callee2}) =78, and 20 for increase
 in \texttt{callee1}) bytes.
 % 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
-We perform a similar analysis for \textit{min-packet-size}. But, we
-skip the details for brevity.
+We perform a similar analysis for \textit{min-packet-size} but elide the details for brevity.
 % dthe minimum number of bytes required to extract a packet.
 % by the caller's parser or among every possible first callee's parser.
 
