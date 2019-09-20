@@ -2153,28 +2153,30 @@ Domino~\cite{Sivaraman:2016:PTH:2934872.2934900} which provides
 abstractions for expressing stateful algorithms using its Banzai model
 and compiles them to low-level microcode specific to the target.
 
-Conceptually, the design philosophy of \uarch resembles with the Click
+Conceptually, the design philosophy of \uarch resembles the Click
 modular router\cite{Kohler:2000:CMR:354871.354874}. Click allows
 composing packet processing modules, called \emph{elements}, that can
 be connected together using \emph{push} or \emph{pull} ports to create
-a directed graph. The edges of the graph determines flows of the
-packets. Our approach slightly differs here, \uarch's interfaces
-allows to transfer the control and data along with packet. Also, the
-Click is software framework that is targeted for general purpose
-compute machines, whereas \ulang framework targets RMT based devices.
+a directed graph. The edges of the graph determine flow of packets.
+\ulang's approach slightly differs here---\uarch's interfaces allows
+transfer of control and data along with a packet. Also, the Click is
+software framework is targeted for general purpose CPU, whereas \ulang
+targets programmable RMT-based devices.
 
 
 \section{Conclusion}
 Dataplane programs are evolving to be complex and diverse with novel
 use cases, such as those arising from in-network compute. At the same
 time, we are also starting to see a variety of target devices. So, we
-believe that the programming model must facilitate writing portable,
-modular and composable programs. To support this, we introduce \ulang
-which raises the level of abstraction from target-specific
-packet-processing pipelines and constructs. With \ulang, users can
-write target-agnostic, self-contained modules independently, and
-compose them to build larger programs while supporting a range of
-devices.
+believe that the dataplane programming model must facilitate writing
+portable, modular and composable programs. To support this, we
+introduce \ulang which raises the level of abstraction from
+target-specific packet-processing pipelines and constructs. With
+\ulang, users can write target-agnostic, self-contained modules
+independently, and compose them to build larger programs while
+supporting a range of devices. We believe that \ulang will enable
+rapid innovation in dataplane programming as users can contribute to
+and build on portable libraries for packet-processing.
 
 
 
