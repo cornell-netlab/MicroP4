@@ -2127,56 +2127,60 @@ shows LoC in the output of \ucomp for \texttt{v1model} target.}
 \end{center}
 \end{table}
 
+\balance
 \section{Related Work}
 \label{sec:related-work}
 Over the last decade, there has been a significant effort towards
-composable networks as networks are complex to manage and configure
-without having a modular approach. These have ranged from composing
-policies  and controllers to
+making network programming composable as networks are complex to
+manage and configure without having a modular approach. These have
+ranged from composing policies  and controllers to
 dataplanes~\cite{180291,Anderson:2014:NSF:2535838.2535862,2034812,Mogul:2013:CTM:2535771.2535795,6980389,188954,Hancock:2016:HUP:2999572.2999607,8038396,Zheng:2018:PLV:3281411.3281436}.
 
-For composing control planes and static policies, recent
+For composing control planes and network policies, recent
 work~\cite{180291,Anderson:2014:NSF:2535838.2535862} focuses on
 defining a set of composition operators that can be used to describe
-complex policies without incurring inconsistencies. This approach
+complex policies from smaller policies in a consistent manner. This approach
 suits control programs as each program specifies complete behavior of
 a network or device. Inspired by these, recent work
 ~\cite{Hancock:2016:HUP:2999572.2999607,8038396,Zheng:2018:PLV:3281411.3281436}
-has tried to define composition operators for dataplane based on
+has tried to define composition operators for dataplane programs based on
 specific use cases. \ulang fundamentally differs from these as it
-enables flexible passing of control between dataplane programs---this
+enables flexible passing of control and information between dataplane programs---this
 allows users to reuse fine-grained packet-processing code and define
-custom composition operators. Reusing dataplane programs pose
-portability challenges. In this aspect, \ulang is orthogonal
-to PSA \cite{psa}. PSA exposes a dataplane model that devices must
-realize. Instead, we focus on an abstraction that users can use to
-write portable dataplane programs. \ucomp is closest to
+custom composition operators. Further, reusing dataplane programs pose
+portability challenges. In this aspect, \ulang is orthogonal to PSA
+\cite{psa}. PSA exposes a dataplane model that devices must realize.
+Instead, we focus on an abstraction that users can use to write
+portable dataplane programs. \ucomp is closest to
 Domino~\cite{Sivaraman:2016:PTH:2934872.2934900} which provides
-abstractions for stateful algorithms using its Banzai model.
-% and compiles them to target-specific low-level microcode.
+abstractions for expressing stateful algorithms using its Banzai model
+and compiles them to low-level microcode specific to the target.
 
-Conceptually, the design of \uarch resembles more with the Click 
-Modular Router\cite{Kohler:2000:CMR:354871.354874} than PSA. The 
-Click allows to compose packet processing modules, called 
-\emph{elements}, that can be connected together using \emph{push} or 
-\emph{pull} ports to create a directed graph. The edges of the 
-graph determines flows of the packets. Our approach slightly differs 
-here, \uarch's interfaces allows to transfer the control and data 
-along with packet. Also, the Click is software framework that is 
-targeted for general purpose compute machines, whereas \ulang 
-framework targets RMT based devices.
+Conceptually, the design philosophy of \uarch resembles with the Click
+modular router\cite{Kohler:2000:CMR:354871.354874}. Click allows
+composing packet processing modules, called \emph{elements}, that can
+be connected together using \emph{push} or \emph{pull} ports to create
+a directed graph. The edges of the graph determines flows of the
+packets. Our approach slightly differs here, \uarch's interfaces
+allows to transfer the control and data along with packet. Also, the
+Click is software framework that is targeted for general purpose
+compute machines, whereas \ulang framework targets RMT based devices.
 
 
 \section{Conclusion}
 Dataplane programs are evolving to be complex and diverse with novel
-use cases, such as those arising from in-network compute, and we are
-also starting to see a variety of target devices. So, we believe that
-the programming model must facilitate writing portable, modular and
-composable programs. To support this, we introduce \ulang which raises
-the level of abstraction from target-specific packet-processing
-pipelines and constructs. With \ulang, users can write
-target-agnostic, self-contained modules independently, and compose
-them to build larger programs while supporting a range of devices.
+use cases, such as those arising from in-network compute. At the same
+time, we are also starting to see a variety of target devices. So, we
+believe that the programming model must facilitate writing portable,
+modular and composable programs. To support this, we introduce \ulang
+which raises the level of abstraction from target-specific
+packet-processing pipelines and constructs. With \ulang, users can
+write target-agnostic, self-contained modules independently, and
+compose them to build larger programs while supporting a range of
+devices.
+
+
+
 
 
 
