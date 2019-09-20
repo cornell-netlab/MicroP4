@@ -13,20 +13,19 @@
 \begin{abstract}
 Domain-specific languages such as P4 enable flexible and efficient
 packet-processing using primitives such as programmable parsers and
-re-configurable match-action tables. However, the P4 ecosystem exposes
-details of the underlying architecture, which ties programs to
-specific architectures and makes it difficult to write composeable
-libraries of code that can be reused across many different programs.
+reconfigurable match-action tables. However, P4 programs are tightly
+coupled to the underlying hardware architectures, which makes it
+difficult to write composeable libraries of code that can be reused
+across many different programs.
 
 To address this challenge, we present the design and implementation of
-a logical target, MicroP4 (\uswitch), that decouples P4 programs from
-lower-level, architecture-specific constructs and naturally supports
-composition. We present the design of a higher-level architecture
-(\uarch) that abstracts away from hardware-level details without
-sacrificing expressiveness. Using realistic examples, we show how
-\uswitch enables modular programming and composition, and we present
-an implementation of the \ucomp compiler that generates code for the
-lower-level architectures implemented by real target devices.
+a lightweight logical architecture called MicroP4 (\ulang) that
+abstracts away from the structure of the underlying hardware pipelines
+used to implement them and naturally supports powerful forms of
+composition. Using realistic examples, we show how \ulang enables a
+modular style of program construction and we present an implementation
+of the \ucomp compiler that generates code for the lower-level
+architectures supported by current devices.
 \end{abstract}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -39,73 +38,79 @@ hardware and software has fundamentally changed how networks are built
 and operated. Hardware platforms such as
 RMT~\cite{bosshart2013forwarding} offer tremendous flexibility for
 customizing the forwarding plane without having to fabricate new
-chips, while languages such as P4~\cite{bosshart2014p4, p4lang} enable
-specifying rich packet-processing functions in terms of high-level
-abstractions such as parsers and match-action tables.
+chips, while domain-specific languages such as
+P4~\cite{bosshart2014p4, p4lang} enable specifying rich
+packet-processing functions in terms of high-level abstractions such
+as parsers and match-action tables.
 
 To support different kinds of targets (e.g., software switches, ASICs,
 FPGAs, etc.), P4 allows programmable and fixed-function blocks to be
 arranged into different layouts as specified by an architecture
 declaration. For example, the Portable Switch Architecture
-(PSA)~\cite{psa} models a switch with a programmable parser,
-programmable ingress pipeline, fixed-function scheduler and queues,
-programmable egress pipeline, and programmable deparser. However,
-while this design allows the language to flexibly accommodate a wide
-range of targets, it also creates a tight coupling between programs
-and architectures, which makes it difficult to write programs in a
-compositional manner or reuse common code fragments in different
-programs.
+(PSA)~\cite{psa} models a switch with programmable parsers,
+programmable ingress/egress pipelines, and fixed-function schedulers
+and queues. However, while this design allows the language to flexibly
+accommodate a wide range of targets, it also creates a tight coupling
+between programs and architectures, which makes it difficult to write
+programs in a compositional manner or reuse common code fragments
+across different programs.
 
-For example, \texttt{switch.p4}~\cite{switch.p4} handles several dozen
-different protocols and functions (e.g., Ethernet switching, IPv4 and
-IPv6 routing, tunneling, etc.,). But the code is written against a
-global collection of metadata and parsed headers as well as standard
-metadata defined by the architecture. To use the code in
-\texttt{switch.p4} to implement a stand-alone Ethernet switch, it
-would be necessary to detangle the Ethernet-specific functionality
-from the extraneous code in the rest of the program. Without a
-detailed understanding of the overall structure of the top-level
-program, it is difficult or impossible to reuse code fragments at
-finer granularity.
-
-Consider a simple scenario with two code fragments, as shown in
-\cref{fig:ether.p4,fig:ipv4.p4}. The first code fragment,
-\texttt{ether}, parses the Ethernet header, and modifies the source
-and destination addresses using the next hop (\texttt{h}), which is
+To illustrate the challenges that arise with writing modular P4
+programs, consider a simple scenario with two code fragments, as shown
+in \cref{fig:ether.p4,fig:ipv4.p4}. The first fragment,
+\texttt{ether}, parses the Ethernet header, modifies the source and
+destination addresses using the next hop (\texttt{h}) which is
 supplied as an argument, and finally deparses the packet. The second
-code fragment, \texttt{ipv4}, parses the IPv4 header, uses
-longest-prefix matching to determine the next hop, decrements the
-\texttt{ttl} field, and finally deparses the packet. Note that neither
-\texttt{ether} nor \texttt{ipv4} specifies a complete
-packet-processing program: the latter is parameterized on the next hop
-and so does not specify forwarding behavior, while the latter does not
-generate a valid packet---at least, not one that is well-formed
-according to the standard networking stacks implemented by end hosts.
-However, we could use \texttt{ether} with any routing scheme (e.g.,
-IPv6, MPLS, etc.) to obtain a complete program.
+fragment, \texttt{ipv4}, parses the IPv4 header, uses longest-prefix
+matching to determine the next hop, decrements the \texttt{ttl} field,
+and deparses the packet. Note that neither \texttt{ether} nor
+\texttt{ipv4} is a complete packet-processing program: the latter is
+parameterized on the next hop and so does not specify forwarding
+behavior, while the latter does not generate a valid packet (at least,
+not one that is well-formed according to the standard networking
+stacks implemented by end hosts). However, if we can combine the code
+in \texttt{ether} with any routing scheme (e.g., IPv6, MPLS, etc.), we
+can obtain a complete program.
 
-\jnf{Abrupt transition here}
+Unfortunately combining P4 program fragments is not easy as programs
+are written against an architecture whose structure is based on the
+underlying hardware pipeline. For example,
+\texttt{switch.p4}~\cite{switch.p4} handles several dozen different
+protocols and functions---e.g., Ethernet switching, IPv4 and IPv6
+routing, tunneling, access control, etc. However, the code is written
+against the V1Model architecture (see ~\cref{fig:arch-example}) in a
+monolithic style, and uses a fixed set of headers, user-defined
+metadata, and architecture-defined standard metadata. To use
+\texttt{switch.p4} to implement a stand-alone Ethernet switch, it
+would be necessary to somehow detangle the Ethernet-specific
+functionality from the rest of the program. Without a detailed
+understanding of the overall structure of the top-level program, doing
+this correctly would be extremely difficult. In practice, programmers
+rely on C preprocessor directives to enable and disable various
+features---an ad hoc and fragile approach.
 
-%% The current ecosystem of programmable data plane enforces programmers
-%% to write code amenable to the target device's data plane architecture
-%% and pipeline. Programmers write code for programmable blocks taking
-%% into account their location in pipeline rather than compilers
-%% automatically allocating code to the appropriate blocks. We believe
-%% that devices should only expose abstraction for processing blocks and
-%% the onus of code allocation to the blocks in pipeline should be on
-%% compilers for the devices.
+This paper presents the design and implementation of \ulang, a new
+architecture that provides fine-grained abstractions for constructing
+dataplane programs. \ulang provides a new architecture that distills
+packet processing to its essence and abstracts away hardware-level
+structure. \ulang enables writing P4 programs in a modular style, by
+combining functionality from simple programs and reusable libraries of
+code to obtain richer forms of packet processing. To implement these
+features, the \ucomp compiler maps composite programs onto standard P4
+architectures, merging parsers and match-action tables from multiple
+programs and scheduling them onto a single packet-processing pipeline.
 
-There is some prior work on modular composition of P4 programs.
-Systems such as HyPer4 \cite{Hancock:2016:HUP:2999572.2999607},
+There is some prior work enabling modular composition in the context
+of P4. Systems such as HyPer4 \cite{Hancock:2016:HUP:2999572.2999607},
 HyperV~\cite{8038396}, and
-P4Visor~\cite{Zheng:2018:PLV:3281411.3281436} provide constructs for
-merging independent programs onto a single device. However, these
-systems only handle programs that describe end-to-end
-packet-processing functions. Hence, they lack mechanisms for enabling
-selective reuse of library code, specifying interfaces between
-modules, and facilitating inter-module communication. To write truly
-modular P4 programs, a fundamentally different approach is needed.
-\begin{figure}[ht]
+P4Visor~\cite{Zheng:2018:PLV:3281411.3281436} focus on merging
+multiple independent programs so they can execute a single device.
+However, unlike \ulang, these systems only handle complete programs
+and lack mechanisms for selectively reusing code fragments from
+libraries, for specifying interfaces between modules, and for
+describing inter-module communication.
+
+\begin{figure}[t]
 \begin{lstlisting}[frame=none, escapechar=!]
 //ether.p4: parse and process Ethernet
 parser P(packet_in pin, out hdr_t ph) {
@@ -114,8 +119,9 @@ parser P(packet_in pin, out hdr_t ph) {
 control C(inout hdr_t ph, inout sm_t sm,
           in bit<16> !\colorbox{mygray}{h}!) {
   action drop () {}
-  action forward(bit<48> dest_mac, bit<48> src_mac, bit<8> port) {
-    ph.eth.dstMac = dest_mac;
+  action forward(bit<48> dst_mac, bit<48> src_mac, 
+                 bit<8> port) {
+    ph.eth.dstMac = dst_mac;
     ph.eth.srcMac = src_mac;
     sm.out_port = port;
   }
@@ -133,7 +139,7 @@ control D(packet_out po, in hdr_t ph) {
 \label{fig:ether.p4}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[t]
 \begin{lstlisting}[frame=none, escapechar=!]
 //ipv4.p4: parse and process IPv4
 struct meta_t { bit<16> type; }
@@ -143,7 +149,8 @@ parser P(packet_in pin, out hdr_t ph) {
     transition accept;
   }
 }
-control C(inout hdr_t ph, out bit<16> !\colorbox{mygray}{h}!, inout sm_t sm) {
+control C(inout hdr_t ph, out bit<16> !\colorbox{mygray}{h}!, 
+          inout sm_t sm) {
   action process(bit<16> n) {
     ph.ipv4.ttl = ph.ipv4.ttl - 1;
     h = n; // set out param
@@ -162,42 +169,29 @@ control D(packet_out po, in hdr_t ph) {
 \label{fig:ipv4.p4}
 \end{figure}
 
-
-To this end, this paper presents the design and implementation of
-\ulang, a new architecture that provides fine-grained abstractions for
-constructing dataplane programs. \ulang consists of two components: i)
-Micro Switch Architecture (\uarch), which distills packet processing
-to its essence, and abstracts away from device-specific structure, and
-ii) a compiler, \ucomp, that maps one or more \uarch programs to a
-standard PISA pipeline.
-\todo{Describe the impact, i.e what \ulang enables, further to
-appreciate why this is a good idea.}\\
-\todo{Fair to say the \ulang enables us to write portable, modular, and composable programs?}
-
-This paper makes the following contributions.\\
-\todo{rethink contributions}\\
+This paper makes the following contributions:
 \begin{itemize}
 \item We motivate the need for modular data plane programming using a
-  series of realistic examples.
-\item We introduce \uarch, a new P4 architecture designed to enable
-  fine-grained composition of program snippets.
-\item We develop techniques for compiling \uarch programs to the
-  standard PISA model, including merging programs composed together 
-  \hse{and scheduling them onto a single PISA pipeline}.
-%   including merging programs composed together in
-%   parallel or in sequence onto a single PISA pipeline.
+  series of realistic examples (\S\ref{sec:background}).
+\item We introduce a new architecture designed to enable fine-grained
+  composition of P4 program (\S\ref{sec:microp4}).
+\item We develop techniques for compiling programs to standard P4
+  architectures, including merging programs pieces and scheduling them
+  on a single packet-processing pipeline (\S\ref{sec:compiler}).
+\item We discuss our implementation of \ulang and present a case study
+  showing how it can be used to build a modular router
+  (\S\ref{sec:implementation}-\ref{sec:evaluation}).
 \end{itemize}
-
-% Although much work remains, we believe that \uarch represents a
-% promising first step toward enabling modular data plane programs.
-
-
-
+%
+While much work remains to fully achieve our vision of modular
+dataplane programming---e.g., designing libraries, developing
+optimizations, etc.---we believe that the \ulang design represents a
+promising first step in this direction.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% DATAPLANE PROGRAMMING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Dataplane Programming}
+\section{Background on Dataplane Programming}
 \label{sec:background}
 % Goals:
 % i) implicit background on dataplane programming and highlight the
