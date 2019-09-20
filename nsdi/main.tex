@@ -1800,7 +1800,7 @@ Further, \ucomp greatly simplifies the complexity of (de)parser
 circuits in hardware as \ucomp accepts all packet with size greater
 than min-packet-size and extract bytes up to extract-length estimated
 by static-analysis. In fact, this can be implemented with a simple
-simple counter-based design.
+simple counter-based design. 
 
 % However, as the parser consumes only 1-2\% of chip-area, the gain may not be significant to trade for usage of match-action stages in hardware pipeline. 
 % Therefore, further optimization would be required to reduce consumption of match-action stages.\\
@@ -1812,6 +1812,15 @@ transformed-parser. As these tables contain static entries, creating a
 single table based on their cross-product can reduce the overhead on
 match-action stages.
 
+The symbolic-execution used in static-analysis may result in 
+well-know path explosion problem for programs with high branching 
+factor.
+We only evaluate method calls of header types, extractor and emitter 
+during symbolic-executable allowing to spawn lightweight threads for 
+parallel execution.
+Further, the computations for extract-length and byte-stack size of 
+\uprograms are highly recursively, therefore they can be avoided by 
+storing and reusing the values during compilation with libraries.
 
 
 
@@ -2153,28 +2162,30 @@ Domino~\cite{Sivaraman:2016:PTH:2934872.2934900} which provides
 abstractions for expressing stateful algorithms using its Banzai model
 and compiles them to low-level microcode specific to the target.
 
-Conceptually, the design philosophy of \uarch resembles with the Click
+Conceptually, the design philosophy of \uarch resembles the Click
 modular router\cite{Kohler:2000:CMR:354871.354874}. Click allows
 composing packet processing modules, called \emph{elements}, that can
 be connected together using \emph{push} or \emph{pull} ports to create
-a directed graph. The edges of the graph determines flows of the
-packets. Our approach slightly differs here, \uarch's interfaces
-allows to transfer the control and data along with packet. Also, the
-Click is software framework that is targeted for general purpose
-compute machines, whereas \ulang framework targets RMT based devices.
+a directed graph. The edges of the graph determine flow of packets.
+\ulang's approach slightly differs here---\uarch's interfaces allows
+transfer of control and data along with a packet. Also, the Click is
+software framework is targeted for general purpose CPU, whereas \ulang
+targets programmable RMT-based devices.
 
 
 \section{Conclusion}
 Dataplane programs are evolving to be complex and diverse with novel
 use cases, such as those arising from in-network compute. At the same
 time, we are also starting to see a variety of target devices. So, we
-believe that the programming model must facilitate writing portable,
-modular and composable programs. To support this, we introduce \ulang
-which raises the level of abstraction from target-specific
-packet-processing pipelines and constructs. With \ulang, users can
-write target-agnostic, self-contained modules independently, and
-compose them to build larger programs while supporting a range of
-devices.
+believe that the dataplane programming model must facilitate writing
+portable, modular and composable programs. To support this, we
+introduce \ulang which raises the level of abstraction from
+target-specific packet-processing pipelines and constructs. With
+\ulang, users can write target-agnostic, self-contained modules
+independently, and compose them to build larger programs while
+supporting a range of devices. We believe that \ulang will enable
+rapid innovation in dataplane programming as users can contribute to
+and build on portable libraries for packet-processing.
 
 
 %-------------------------------------------------------------------------------
