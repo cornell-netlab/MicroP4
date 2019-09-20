@@ -1669,14 +1669,13 @@ our slicing criteria based on the semantics of logical externs,
 
 
 
-\ucomp's backend understands semantics of the pipeline model and
-constraints on intrinsic metadata of the specified target
-architecture. In addition, it uses the mapping between the metadata of
-two architectures to capture constraints imposed by the target
-architecture on its intrinsic metadata. It allocates the control
-blocks in \uarch-IR while respecting the constraints to the processing
-blocks exposed by the target architecture. During the allocation pass,
-it also translates the intrinsic metadata.
+\ucomp's backend understands semantics of the pipeline model of the
+specified target. It also uses a mapping of metadata from \uarch to
+the target architecture and captures any constraints on metadata in
+the target. It allocates the control blocks in \uarch-IR while
+respecting the constraints to the processing blocks exposed by the
+target. During the allocation, it also translates the intrinsic
+metadata for the target.
 
 % Finally, it uses metrics computed 
 % by \emph{static-analysis} in the midend to synthesise target-specific 
@@ -1685,53 +1684,49 @@ it also translates the intrinsic metadata.
 % pipeline, \ucomp performs required \emph{partitioning} transformation
 % on the thread's PDG.
 
-\tightparbf{Allocation to Target Architecture.}%
-In case of packet-processing code that uses packet-replication, the
-backend visits PPS nodes in topological order to 
-simultaneously allocate thread nodes that are at the 
-same level in the topological order. In the absence of 
-packet-replication, it allocates packet-processing code
+\tightparbf{Allocation to target architecture.}%
+For \uprograms that uses packet-replication, the
+backend visits PPS nodes in topological order to simultaneously
+allocate thread nodes that are at the same level in the ordering. In
+the absence of packet-replication, it allocates packet-processing code
 of a single thread. Next, we explain the partitioning for single
-thread on v1model architecture for simple\_switch target.
+thread while using \texttt{v1model} as a reference target architecture.
 
 
-\ucomp's backend for v1model maintains a FSM with two
+\ucomp's backend for \texttt{v1model} maintains a FSM with two
 states---ingress and egress. The FSM captures constraints on the usage
 of \texttt{egress\_spec}, \texttt{egress\_port} and queuing metadata
 in the ingress and egress blocks. Each state represents a set of
-assertions to be verified on visit of every program statement in 
-the Control Flow Graph (CFG) of the thread. For example, in the 
-ingress state, the graph traversal asserts that every visited 
-statement is NOT a \texttt{im\_t}'s \texttt{get\_value} method call 
-statement that have an argument (a value of \texttt{meta\_t}) mapped 
-to intrinsic metadata (e.g.,enq\_timestamp) not available in ingress 
-block.  If an assertion
-associated with a state fails, the program statement is marked and not
-visited. State transition occurs when the graph traversal can not be
-continued due to absence of unmarked and not-visited nodes. At this
-point, \ucomp creates two sub-graphs of the thread CFG, one having 
-visited and another having non-visited program statements. Also, the 
-FSM transits to egress
-state.  In the egress state, the graph traversal asserts every that
-visited statement is not a method call of \texttt{get\_egress\_port}
-in \texttt{im\_t} object.
+assertions to be verified on visit of every program statement in the
+Control Flow Graph (CFG) of the thread---e.g., to prevent accessing
+dequeue timestamp of a packet in ingress pipeline, the graph traversal
+asserts that every visited statement is NOT a \texttt{im\_t}'s
+\texttt{get\_value} method call whose argument maps to
+\texttt{v1model}'s intrinsic metadata for deq\_timestamp.  If an
+assertion associated with a state fails, the program statement is
+marked and not visited. State transition occurs when graph
+traversal can not continue due to absence of unmarked and
+unvisited nodes. At this point, \ucomp creates two sub-graphs of the
+thread CFG---one having visited and the other having unvisited program
+statements. The FSM also transits to egress state. Similary, in the egress
+state, the graph can enforce egress-specific constraints.
+% visited statement is not a method call of \texttt{get\_egress\_port} in \texttt{im\_t} object.
 % We perform trivial translation of method calls of \uarch's extern with corresponding method calls of target architecture.
 
-The nodes in two sub-graphs can be connected by edges 
-representing control dependencies between the sub-graphs. Also, 
-there may be data dependency (sharing live local variables). \ucomp 
-synthesizes \emph{partition-metadata} to convert
-control dependencies into data dependencies and convert live variable
-to user metadata. It synthesizes user-metadata parameter between 
-ingress and egress control block as the partition-metadata and live
-variables to restore execution state.
+For handling data dependency---e.g., sharing live local
+variables,---\ucomp synthesizes \emph{partition-metadata} that can be
+passsed as user-metadata between ingress and egress control blocks.
+% and live variables to restore execution state.
+Nodes across sub-graphs may be connected by edges to represent control
+dependencies among sub-graphs. \ucomp converts control dependencies into data
+dependencies by synthesizing more metadata.
 % Finally, {copy\_from} method calls of \texttt{pkt} instances are 
 % replaced for v1model with \texttt{clone3} and \texttt{recirculate} or 
 % by synthesizing multicast session while setting appropriate thread-id 
 % in user-defined metadata.
-We can perform similar allocations for other architectures like 
-PSA using appropriate mapping on \texttt{meta\_t} and creating an 
-FSM that captures PSA constraints.
+% We can perform similar allocations for other architectures using
+% appropriate mapping on \texttt{meta\_t} and creating an FSM that
+% captures PSA constraints.
 
 
 
