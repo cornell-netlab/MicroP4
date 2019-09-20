@@ -1598,7 +1598,8 @@ invalidates the last 4 bytes.
 % If the control block execution sets ipv4 header instance to valid, 
 % bytes after the ipv6 header are pushed down by the offset of 20 to 
 % insert ipv4 header instance.
-Finally, the midend removes all user-defined headers local to a \uprogram.
+Finally, the midend removes all user-defined headers local to a
+\uprogram.
 
 % The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
 % The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
@@ -1615,22 +1616,21 @@ Finally, the midend removes all user-defined headers local to a \uprogram.
 
 
 \subsubsection{Preprocessing for \ucomp-backends}
-After homogenizing packet processing blocks, the midend eliminates any
-use of logical buffers from \uprograms that do not use compile-time
-replication. If the \uprograms uses compile-time replication of packet
-and intrinsic metadata to express multi-packet processing, the midend
-prepares a \emph{Packet-Processing Schedule (PPS)} graph for the
-\uprogram. A node in a PPS graph captures the \uprogram's sub-program,
-called \texttt{thread}, that processes only one packet instance. An
-edge within a PPS represents dependencies among the packet-processing
-threads. To prepare a PPS by extracting sub-programs, we construct a
-Program Dependence Graph (PDG) \cite{Ferrante:1987:PDG:24039.24041}
-from the \uprogram-IR and perform \emph{slicing} that is defined based
-on a variant of \emph{program slice}
-\cite{Weiser:1981:PS:800078.802557}. We define our slicing criteria
-based on the semantics of logical externs, \texttt{pkt},
-\texttt{in\_buf} and \texttt{out\_buf}, along with \texttt{apply}
-method exposed by interfaces of \uarch. See
+After homogenizing the processing blocks, \ucomp eliminates any
+logical buffers for \uprograms that do not use compile-time replication. If a
+\uprogram uses compile-time replication of packet and intrinsic
+metadata to express multi-packet processing, \ucomp prepares a
+\emph{Packet-Processing Schedule (PPS)} graph for the \uprogram. A
+node in a PPS graph denotes the \uprogram's sub-program, called
+\texttt{thread}, that processes a single packet instance, while an
+edge represents dependency among threads. To prepare a PPS by
+extracting sub-programs, we construct a Program Dependence Graph
+(PDG)~\cite{Ferrante:1987:PDG:24039.24041} from the \uprogram-IR and
+perform \emph{slicing} that is defined based on a variant of
+\emph{program slice}~\cite{Weiser:1981:PS:800078.802557}. We define
+our slicing criteria based on the semantics of logical externs,
+\texttt{pkt}, \texttt{in\_buf} and \texttt{out\_buf}, along with
+\texttt{apply} method exposed by \uarch's interfaces. See
 \cref{subsubsection:packet-processing-schedule} for more details.
 
 
