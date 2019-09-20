@@ -238,13 +238,6 @@ promising first step in this direction.
 %% metadata in the pipeline, and semantics of target-specific constructs
 %% such as actions and externs. 
 
-\begin{figure}[tb]
-  \centering
-  \includegraphics[width=\linewidth]{example-arch.pdf}
-  \caption{Dataplane pipelines for example architectures}
-  \label{fig:arch-example}
-\end{figure}
-
 Today, a P4 program must be written for an architecture that specifies
 the features of the underlying target---i.e., the locations of
 P4-programmable blocks as well as the set of primitives (e.g.,
@@ -335,6 +328,14 @@ require somehow executing the \texttt{ether} parser after the
 \texttt{ipv4} control, which would not be possible if the architecture
 only exposed a single parser block.
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{example-arch.pdf}
+  \caption{Dataplane pipelines for common architectures}
+  \label{fig:arch-example}
+\end{figure}
+
+
 % \hs{May be we can get away with summary and put shorter summary}
 \deleted{
 To summarize, there are three main challenges with current dataplane
@@ -366,7 +367,7 @@ To summarize, dataplane programs currently written in P4 are
 \end{enumerate*}
 
 
-\subsection{Design goals and key insights}
+\paragraph{Design Goals.}
 \label{sec:goals}
 \label{sec:insights}
 
@@ -391,32 +392,32 @@ functions into larger programs. For example, in
 IPv6, MPLS etc.) with a compatible interface and functionality, to
 obtain a complete program.
 
-\paragraph{Insights.}
+\paragraph*{Insights.}
 %
 We find that the root cause that restricts dataplane programming from
 achieving these goals is the abstractions currently offered by P4 are
-too low level and too monolithic, as highlighted in
-~\cref{sec:challenges}. Consequently, we propose to raise the level of
-abstraction so that programs can be expressed in terms of a suitable
-external interface, while encapsulating the internal features needed
-to implement a given packet-processing function. Of course,
-introducing yet another architecture to unify existing architectures
-would add significant complexity to the ecosystem. Instead, we propose
-a \emph{logical} architecture that acts as high-level description
-against which programs can be written. We then map this logical
-architecture down to the standard architectures supported by P4
-targets. This architecture is logical in the sense that devices do not
-explicitly implement it; rather, it captures the bare essence of
-packet processing and exposes that to programmers including:
+too low level and too monolithic, as just discussed. Consequently, we
+propose to raise the level of abstraction so that programs can be
+expressed in terms of a suitable external interface, while
+encapsulating the internal features needed to implement a given
+packet-processing function. Of course, introducing yet another
+architecture to unify existing architectures would add significant
+complexity to the ecosystem. Instead, we propose a \emph{logical}
+architecture that acts as high-level description against which
+programs can be written. We then map this logical architecture down to
+the standard architectures supported by P4 targets. This architecture
+is logical in the sense that devices do not explicitly implement it.
+Rather, it captures the essence of packet processing including:
 \begin{enumerate*}[label=(\roman*)]
-  \item A logical pipeline that is expressive enough to encode a
-    wide range of packet-processing functions while being general,
-  \item A generic way to use features such as externs
-    without introducing tight coupling to targets, and
-  \item A common interface so that packet-processing modules can be
-    composed together.
+  \item a simple logical pipeline that is expressive enough to encode a
+    wide range of packet-processing functions,
+  \item a common interface so that modules can be easily composed, and
+  \item a generic way to use features such as externs
+    without creating a tight coupling to architectures.
 \end{enumerate*}
 
+\paragraph*{Overview.} 
+%
 In \ulang, users write dataplane programs using an extended P4
 language that supports modularity and composition. Each module
 processes a complete or partial packet along with associated metadata,
