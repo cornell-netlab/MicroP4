@@ -515,12 +515,12 @@ with \ulang and \ucomp in two stages:
   \item composing modules and compiling dataplane for a target.
 \end{enumerate*}
 Users write individual modules for specific processing---for example,
-\texttt{ether.\ulang} in \cref{fig:compile-module} performs only
+\texttt{ether.up4} in \cref{fig:compile-module} performs only
 ethernet processing similar to \cref{fig:ether.p4}.
 \cref{fig:compile-module} shows the first stage of compiling where
 \ucomp compiles a module into \uarch-specific IR. In the second phase,
 users can link different modules together to build a dataplane---e.g.,
-in \cref{fig:compile-to-target}, \texttt{main.\ulang} composes
+in \cref{fig:compile-to-target}, \texttt{main.up4} composes
 Ethernet and IPv4 modules to build a modular router. During this,
 \ucomp transforms parser and deparser blocks of each module into a
 match-action control. This transformation unifies the programming
@@ -849,7 +849,7 @@ is parameterized on \texttt{meta\_t}.
 \begin{figure*}[t]
 \noindent \begin{minipage}[t]{.50\textwidth}
 \begin{lstlisting}[frame=none, escapechar=!]
-/* !{l3.\ulang}! */
+/* !{l3.up4}! */
 // !{\color{commentcolor}{\uprograms for L3 protocols}}! 
 ipv6(pkt p, im_t im, out bit<16> nh);
 ipv4(pkt p, im_t im, out bit<16> nh);
@@ -870,8 +870,8 @@ ipv4(pkt p, im_t im, out bit<16> nh);
     apply { }
   }
 }    // L3 program sets the next hop (nh)
-!{\subcaption[]{l3.\ulang implements IPv4 and IPv6}\label{subfig:router}}!
-/* !{modular\_router.\ulang}! uses L3 program */
+!{\subcaption[]{l3.up4 implements IPv4 and IPv6}\label{subfig:router}}!
+/* !{modular\_router.up4}! uses L3 program */
 !\colorbox{green!10}{L3}!(pkt p, im_t im, 
 out bit<16> !\colorbox{mygray}{nh}!, inout bit<16> !\colorbox{mygray}{type}!);
 \end{lstlisting}
@@ -920,7 +920,7 @@ parser, control blocks and declarations of \uprograms.}
 % constructs introduced till now.
 
 \tightpar{Example: Modular router using \texttt{Unicast} interface and
-  externs.} \cref{subfig:router} shows a program, \texttt{l3.\ulang},
+  externs.} \cref{subfig:router} shows a program, \texttt{l3.up4},
 that implements the \texttt{Unicast} interface and processes IPv4 and
 IPv6 headers.\footnotemark[\value{footnote}] Both \texttt{ipv4} and
 \texttt{ipv6} declare a user-defined parameter, \texttt{nh} as a part
