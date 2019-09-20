@@ -1123,16 +1123,16 @@ composition interface.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{\ulang Compiler (\ucomp)}
 \label{sec:compiler}
-In this section, we explain the design of \ucomp: a compiler that
-transforms \ulang programs \deleted{, which are \uarch-specific,} for 
-a specified target architecture. We focus on key transformations that 
-enable composition and help \uarch to realize portable and 
-modular programming.
+In this section, we present the design of \ucomp--a compiler that
+transforms target-agnostic \ulang programs to configurations for a
+specified target architecture---with focus on key transformations that
+enable composition.
 
 \begin{figure*}[!tbh]
   \centering
   \includegraphics[width=\linewidth]{workflow}
-  \caption{Overview of transformations performed in different phases in \ucomp: frontend, midend, and backend.}
+  \caption{Overview of transformations performed in different phases
+  in \ucomp: frontend, midend, and backend.}
   \label{fig:workflow}
 \end{figure*}
 
@@ -1153,7 +1153,7 @@ libraries by serializing the \ucomp-IR.
 \ucomp's midend is responsible of two main transformations:
 \begin{enumerate*}[label=(\roman*)]
   \item homogenizing processing blocks to enable composition and
-  \item preprocessing for backend pass.
+  \item preprocessing for the backend pass.
 \end{enumerate*}
 
 To compose \uprograms by homogenizing their processing blocks, first,
@@ -1162,7 +1162,7 @@ it performs static analysis of the \uprogram to compute the
 that the program needs to access. Then, it synthesizes a stack of
 one-byte headers, called a \emph{byte-stack}, large enough to store
 the operational-region. Finally, considering this byte-stack as a
-packet it transforms any (de)parsers into homogeneous match-action
+packet, it transforms any (de)parsers into homogeneous match-action
 control blocks.
 
 To preprocess for the backend, in case of compile-time replication,
@@ -1198,11 +1198,11 @@ two transformations on every \uprogram:
 \begin{enumerate*}[label=(\roman*)]
   \item convert each header-stack instance into a set of header
     instances and
-  \item convert each \texttt{extract} method call parsing a
-    variable-length header to a sub-parser that uses only fixed-length
-    extractions to parse the header.
+  \item convert each \texttt{extract} method call that parses
+    variable-length headers to a sub-parser that uses only
+    fixed-length extractions to parse the header.
 \end{enumerate*}
-These transformations convert the parse graph into a Directed Acyclic
+These transformations convert a parse graph into a Directed Acyclic
 Graph (DAG), simplifying the \uprograms for the next pass, which
 performs \emph{static analysis}.
 
@@ -1212,17 +1212,17 @@ emitted by the deparsers. These values, in turn, are used to compute
 the operational-region for the composed program and store it in a
 byte-stack (\cref{subsubsection:static-analysis}).
 
-Having a byte-stack storing packets' operational-region allows to
+Having a byte-stack storing packets' operational-regions allows to
 synthesize a match-action table that can parse and deparse packets.
 Following static analysis, the midend performs these transformations
 on \ucomp-IR to homogenize all processing blocks to match-action
 control blocks (\cref{subsection:parser-to-match-action-table}).
 Naturally, the ``main'' \uprogram---i.e. the one composing together
 different \uprograms---in \ucomp-IR is also transformed to a control
-block that invokes other ones.
+block that invokes others.
 
 Finally, if the main \uprogram is dependent on a \uprogram that
-implements \texttt{Orchestration} interface, the final midend pass
+implements the \texttt{Orchestration} interface, the final midend pass
 extracts processing code for every packet instance created during
 \texttt{Orchestration} in the \uprogram. In addition, it prepares an
 execution schedule to capture interaction among processing of packet
@@ -1304,14 +1304,14 @@ To compute these values for a \uprogram, $a$, we first symbolically
 execute its parser and compute the extract-length for the parser,
 $El_{p}(a)$, as the maximum number of bytes extracted by the parser to
 reach the \textit{accept} state. A \uprogram's extract-length also
-depends on its callees. So, for a control block, we define the
+depends on its callees. So, for a control block, $c$, we define the
 extract-length, $E_{c}(a)$, as the maximum number of bytes extracted
-during execution of one of its control paths. In the same control
-path, multiple callees may be invoked. We define the extract-length,
+during execution of one of its control paths. In a control path,
+multiple callees may be invoked. We define the extract-length,
 $lc_{a}(x)$, of a control path $x$ as the maximum number of bytes
 required to process all the callees in $x$. The \uprogram's
-extract-length, $\mathcal{E}l(a)$, is the sum of extract-lengths of
-its parser and control blocks. The size of the byte-stack needed for a
+extract-length, $El(a)$, is the sum of extract-lengths of its parser
+and control blocks. Note that the size of the byte-stack needed for a
 \uprogram may differ from its extract-length as a packet's size may
 increase or decrease during processing.
 
@@ -1329,19 +1329,20 @@ increase or decrease during processing.
 
 
 
-To estimate the maximum decrease in a control path, we consider the
-case when a packet contains all the header instances which are set to
-valid or invalid in the path. The rationale for using this case is
-that if a packet already has a header instance, setting it to invalid
-will decrease the packet size, but setting it to valid is a no-op.
-Similarly for maximum increase, we consider that a packet does not
-contain any header instance that is set to valid or invalid on the
-path. Then, we symbolically execute the control block by evaluating
-all the \texttt{setValid} and \texttt{setInvalid} invocations.  We
-denote increase and decrease in packet size on a control path $x$ with
-$i_{a}(x)$ and $d_{a}(x)$, respectively. Similarly, $\Delta(a)$ and
-$\delta(a)$ denote increase and decrease for the entire \uprogram $a$.
-\cref{increase-path} expresses $i_{a}(x)$ as the sum of
+To estimate the maximum decrease in packet size in a control path, we
+consider the case when a packet has all the header instances
+which are set to valid or invalid in the path. The rationale for using
+this case is that if a packet already has a header instance, setting
+it to invalid will decrease the packet size, but setting it to valid
+is a no-op.  Similarly for maximum increase, we consider that a packet
+does not contain any header instance that is set to valid or invalid
+on the path. Then, we symbolically execute the control block by
+evaluating all the \texttt{setValid} and \texttt{setInvalid}
+invocations.  We denote increase and decrease in packet size on a
+control path $x$ with $i_{a}(x)$ and $d_{a}(x)$, respectively.
+Similarly, $\Delta(a)$ and $\delta(a)$ denote increase and decrease
+for the entire \uprogram $a$.  \cref{increase-path} expresses
+$i_{a}(x)$ as the sum of
 \begin{enumerate*}[label=(\roman*)]
   \item sizes of all the header instances on which \texttt{setValid}
     is done and
@@ -1378,12 +1379,11 @@ For a \uprogram, $a$, we compute the maximum increase $\Delta(a) =
 % to process their own deparsers along with callees'.
 
 % TODO : in figure, legend bold letters for accept state. control path
-Now, we define the extract-length, $lc_{a}(x)$, for a path $x$ in the
-\uprogram $a$'s control block as a function of the callees'
-extract-length ($\mathcal{E}l(cp)$) and maximum decrease in packet
-size ($\delta(cp)$). Let's assume that a control path $x$ invokes N
-callees in increasing order. \cref{fig:sequential-callees} shows such
-a scenario.
+Now, we compute the extract-length, $lc_{a}(x)$, for a path $x$ in the
+\uprogram $a$'s control block as a function of the extract-length,
+$El(cp)$, and maximum decrease in packet size, $\delta(cp)$, of
+callees (cp). Assume that a control path $x$ invokes N callees, as
+shown in \cref{fig:sequential-callees}.
 %and reduce the available bytes to be less than the extract-length
 % of $(i+1)$\textsuperscript{th} callee's parser ($El_{p}(i+1)$).  
 % of two callee \uprograms invoked in the same control path in the CFG 
@@ -1400,32 +1400,32 @@ a scenario.
 The $i$\textsuperscript{th} callee may decrease a packet's
 size---e.g., a control path of \texttt{callee1} removes the
 \texttt{mpls} header, decreasing the size by 4
-bytes.  \texttt{callee2} extracts \texttt{eth}, \texttt{ipv6} and
-\texttt{ipv4} headers from the packet. So, to
+bytes.  \texttt{callee2} extracts \texttt{eth}, \texttt{ipv4} and
+\texttt{ipv6} headers from the packet. So, to
 process
 \begin{enumerate*}[label=(\roman*)]
   \item removal of 4-byte \texttt{mpls} header by \texttt{callee1} and
-  \item extraction of maximum bytes (74-byte \texttt{eth-IPv6-IPv4})
-    in the parse-graph of \texttt{callee2},
+  \item extraction of maximum bytes (74-byte \texttt{eth-IPv4-IPv6})
+    in \texttt{callee2}'s parser,
 \end{enumerate*}
-4+74=78 bytes are required.
-So, we take into account the extract-length of every callee's
-parser along with the maximum decrease in packet size by the callee's
-predecessors in the control path $x$ to compute $lc_{a}(x)$,
-as shown in \cref{extract-length-control-path}.
+78(=4+74) bytes are required.  So, we take into account the
+extract-length of every callee's parser along with the maximum
+decrease in packet size by the callee's predecessors in the control
+path $x$ to compute $lc_{a}(x)$, as shown in
+\cref{extract-length-control-path}.
 \begin{align}
 lc_{a}(x) \; =& \; \max_{cp} \left\{ \left( \sum_{i=0}^{i<cp} \delta(i) \right)+ El(cp) \right\},&cp \in [0,N] \label{extract-length-control-path} \\
-\mathcal{B}s_{a} \; =& \; \mathcal{E}l(a) + \Delta(a) & \label{byte-stack-size-package}
+\mathcal{B}s_{a} \; =& \; El(a) + \Delta(a) & \label{byte-stack-size-package}
 \end{align}
-Finally, we define the byte-stack size for a \uprogram $a$,
+Finally, we compute the byte-stack size for a \uprogram $a$,
 $\mathcal{B}s_{a}$  as the sum of its extract-length and maximum
 increase in packet size as shown in \cref{byte-stack-size-package}.
 For the example in \cref{fig:sequential-callees}, the byte-stack size
-for the caller is 98 (= 78 $El$(\texttt{callee2}) + 20 for increase in
-\texttt{callee1}).
+for the caller is 98 ($El$(\texttt{callee2}) =78, and 20 for increase
+in \texttt{callee1}) bytes.
 % 20 bytes (due to ipv4.setValid()) in addition of its extract-length.
-We perform similar analysis for \textit{min-packet-size}. But, we skip
-the details for brevity.
+We perform a similar analysis for \textit{min-packet-size}. But, we
+skip the details for brevity.
 % dthe minimum number of bytes required to extract a packet.
 % by the caller's parser or among every possible first callee's parser.
 
