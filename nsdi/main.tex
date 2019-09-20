@@ -1971,9 +1971,9 @@ new checksum computations, action selector, and action profiles.
 \section{Evaluation}
 \label{sec:evaluation}
 To test the expressiveness and composability of \ulang, we have
-implemented a set of applications in \ulang. We present a subset of
-these to illustrate some novel ways in which  we can compose \ulang
-programs to build real applications.
+developed a set of \ulang programs. We present a subset of
+these to show novel ways of composing dataplane applications.
+ \deleted{\ulang programs to build real applications.}
 
 \subsection{Composing Packet-Processing Layers}
 \label{subsection:composing-packet-processing-layers}
@@ -1983,9 +1983,14 @@ writing modules for processing one or more layers is a natural way to
 build applications as these modules can be developed incrementally,
 composed together, and reused.
 \tightparbf{Layered Modularity.}
+By specializing generic interfaces provided by \uarch, 
+programmers can write and compose \ulang modules for different
+network layers and exchange data.
+\deleted{
 \uarch's generic interfaces allows programmers to define custom
 interfaces for modules to exchange data. These can be used to compose
-\ulang modules for different network layers. To demonstrate this, we
+\ulang modules for different network layers.} 
+To illustrate, we
 built a modular router by composing together independent modules
 responsible for processing each layer. For example,
 \cref{fig:modular-router} shows how we can compose modules for
@@ -2038,21 +2043,21 @@ processing the L2 (Ethernet) and and L3 (IPv4) headers.
 
 
 \tightparbf{Incremental Development.}%
-For the same program, suppose we want to replace IP routing with
-another approach based on segment routing (SRv6). With \ulang, one can
-independently and incrementally develop another module for segment
-routing, say \texttt{srv6}, to process IPv6 Segment Routing
-Header~\cite{srh}. And, we can reuse this module in our modular router
-from \cref{subfig:router-main} as follows:
-
+In the same modular router (\cref{subfig:router-main}), suppose we 
+want to add IP routing based on segment routing (SRv6). With \ulang, 
+one can independently and incrementally develop another module for 
+segment routing, \texttt{srv6}, to process IPv6 Segment Routing
+Header~\cite{srh}. And, we can integrate \texttt{srv6} in 
+L3 from \cref{subfig:router} without touching any other module as 
+follows:
 \begin{lstlisting}[frame=none, escapechar=!]
 0x86DD : {
-  !\colorbox{mygray}{srv6\_i.apply(p, im, h);}! // copies next segment address from SRH header's list to IPv6's destAddr field
+  !\colorbox{mygray}{srv6\_i.apply(p, im, h);}! // copy next segment addr from SRH's list to IPv6's destAddr field
   ipv6_i.apply(p, im, h);
 }
 \end{lstlisting}
-The snippets shows how we can integrate SRv6 without touching any
-other module used in the router.
+% The snippets shows how we can integrate SRv6 without touching any
+% other module used in the router.
 
 
 
