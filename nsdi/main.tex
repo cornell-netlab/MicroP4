@@ -720,9 +720,10 @@ Multicast<I,O> (pkt p, im_t im, in I i_param, out_buf<O> ob);
 Orchestration<I,O> (in_buf<I> ib, out_buf<O> ob);
 \end{lstlisting}
 
-To implement the execution model shown in \cref{fig:uswitch}, \uswitch
-implicitly performs a few operations while invoking \uprograms. For
-instance, note that \texttt{Unicast}'s signature does not have any
+To implement the model shown in \cref{fig:uswitch}, \uswitch
+implicitly performs a few operations while invoking 
+\uprograms---e.g., note that \texttt{Unicast}'s signature does not 
+have any
 buffer in its parameters, while \texttt{Orchestration} needs two
 buffers as arguments. So, \uswitch fetches an element from an implicit
 logical input buffer for \uprograms with \texttt{Unicast} or
@@ -1010,9 +1011,9 @@ ethernet header and invokes an instance of L3, by calling
 \texttt{l3\_i.apply()}. It passes a partial packet `\texttt{p}',
 without the ethernet header, to \texttt{L3}.  \texttt{L3}, in turn,
 uses the \texttt{type} argument to invoke an instance of the
-appropriate protocol---IPv4 or IPv6---which populates \texttt{nh\_id}
-parameter passed as an \texttt{out} argument. \texttt{ModularRouter}
-receives the value of \texttt{nh\_id} and continues processing by
+appropriate protocol---IPv4 or IPv6---which populates \texttt{nh\_id} 
+passed as an \texttt{out} argument. \texttt{ModularRouter}
+uses the value of \texttt{nh\_id} and continues processing by
 applying \texttt{forward\_tbl}.
 
 
@@ -1062,12 +1063,15 @@ pass as arguments to other modules. \texttt{out\_buf} exposes
 \texttt{enqueue} and \texttt{merge} methods to buffer packets
 processed by the callee program. to move elements to an
 \texttt{in\_buf} instance, which is passed as the argument, users
-can use \texttt{to\_in\_buf}. Additionally, the \texttt{mc\_buf}
-extern allows to store parsed headers, unlike \texttt{in\_buf} and
-\texttt{out\_buf}. It is designed to be used along with
+can use \texttt{to\_in\_buf}. Unlike \texttt{in\_buf} and
+\texttt{out\_buf}, the \texttt{mc\_buf} extern allows to store 
+replicated parsed headers for multicast.
+\deleted{
+It is designed to be used along with
 \texttt{mc\_engine} to express multicast packet-processing, where as
 \texttt{in\_buf} and \texttt{out\_buf} are designed for generic
 composition interface.
+}
 
 % \begin{figure}[htb]
 % \begin{lstlisting}[frame=none, escapechar=!]
