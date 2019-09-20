@@ -442,8 +442,8 @@ available blocks.
 \section{The \ulang framework}
 \label{sec:microp4}
 %% Describe each component of microP4
-Now, we describe each component of \ulang to show how \ulang achieves
-our goals for dataplane programming.
+We now describe each component of \ulang to show how it achieves
+our goals for compositional dataplane programming.
 \begin{figure}[!tb]
     \centering
     \includegraphics[width=\linewidth]{uswitch-model}
@@ -453,43 +453,37 @@ our goals for dataplane programming.
 
 
 \paragraph{\uswitch.}
-\uswitch is an intermediate logical target with an abstract
-programming model. It is designed to provide a high-level dataplane
+\uswitch is a logical architecture that provivdes an abstract
+programming model to developers. It offers a high-level dataplane
 abstraction that enables modular programming without compromising
-expressiveness to process packets. It does so by allowing to write
-modules that implement fine-grained packet processing and defining
-interfaces to compose these modules.
+expressiveness and encourages programmers to write modules with
+fine-grained functions and clearly-defined interfaces to support
+composition.
 
-\uswitch models each packet-processing module as a self-contained
-execution unit, called a \emph{\uprogram}, and executes it using the
-model shown in \cref{fig:uswitch}. A \uprogram takes as input: a
-packet byte-stream, metadata and arguments for user-defined
-parameters. As output, it generates byte-streams, metadata, and return
-values corresponding to one or more packets. Such a model hides
-implementation details---such as header types, local state,
+At a technical level, \uswitch models each packet-processing module as
+a self-contained execution unit, called a \emph{\uprogram}, and
+executes it using the model shown in \cref{fig:uswitch}. A \uprogram
+takes as input a packet byte-stream, metadata and arguments for
+user-defined parameters and it generates byte-streams, metadata, and
+return values corresponding to zero or more packets as output. Such a
+model hides implementation details---e.g., header types, local state,
 user-defined metadata and match-action tables---of a \uprogram from
-other \uprograms.  \uswitch fetches an element from a logical input
-buffer for each \uprogram, executes the \uprogram and writes one or
-more elements to the logical output buffer, which acts as input for
-another. Note that these buffers exist only in the abstraction and do
-not represent buffers in real target devices.
+other \uprograms. Operationally, a \uswitch fetches an element from a
+logical input buffer, executes the associated \uprogram, and writes
+one or more elements to the logical output buffer, which typically
+acts as input for another \uprogram. Note that these buffers exist
+only in the abstraction and do not represent buffers in real targets.
 
 \paragraph{\uswitch Architecture (\uarch).}
-To write portable \uprograms, we define \uswitch Architecture
-(\uarch)---it specifies the dataplane as composition of logical
-pipelines, called \emph{\upipeline}, where each \upipeline implements
-a part of the complete packet processing on the device. A \upipeline
-may map to one or more \uprograms. Each \upipeline is associated with
-a \uarch interface which specifies run-time parameters in a generic
-way and declares programmable blocks required to be implemented for
-the pipeline. In order to capture the fundamentals of
-packet-processing and expose a minimal interface, \upipelines comprise
-of only programmable blocks such as parser,
-match-action control and deparser. In addition, to abstract
-away from target-specific constructs, \uarch provides \emph{logical}
-externs and metadata to facilitate use of packet-processing features
-such as multicast, cloning, etc. that are not part of the core P4
-language but supported by actual target devices.
+To write portable \uprograms, we define the \uswitch Architecture
+(\uarch), which specifies the dataplane as composition of logical
+pipelines, called \emph{\upipeline}. Each \upipeline may contain
+several \uprograms and exposes an interface that specifies run-time
+parameters in a generic way. To abstract away from target-specific
+constructs, \uarch also provides logical externs and metadata to
+facilitate use of packet-processing features such as cloning,
+recirculation, etc. that are not part of the core P4 language but are
+supported by common architectures.
 
 \begin{figure}[!tbp]
   \begin{subfigure}{\linewidth}
@@ -510,16 +504,10 @@ language but supported by actual target devices.
 \end{figure}
 
 \paragraph{\ulang and Compiler (\ucomp).}%
-\ulang extends P4 and allows users to write libraries of independent
-packet-processing modules, declare their instances and invoke the
-instances using a built-in \texttt{apply} method. This allows to hide
-implementation of a module and reuse them using run-time parameters of
-their interfaces. Note that \ulang programs are written in a
-target-agnostic manner using logical constructs of \uarch. To use
-\ulang for a given target device, we need to generate configurations
-specific for that target. For this, we present the \ulang compiler,
-\ucomp.
-
+%
+\ulang extends P4 to allow programmers to write libraries of
+independent packet-processing modules, declare their instances and
+invoke the instances using a built-in \texttt{apply} method.
 \cref{fig:compiler-workflow} gives an example of building a dataplane
 with \ulang and \ucomp in two stages:
 \begin{enumerate*}[label=(\roman*)]
@@ -530,15 +518,15 @@ Users write individual modules for specific processing---for example,
 \texttt{ether.\ulang} in \cref{fig:compile-module} performs only
 ethernet processing similar to \cref{fig:ether.p4}.
 \cref{fig:compile-module} shows the first stage of compiling where
-\ucomp compiles a module into \uarch-specific IR.   In the second
-phase, users can link different modules together to build a
-dataplane---e.g., in \cref{fig:compile-to-target},
-\texttt{main.\ulang} composes Ethernet and IPv4 modules to build a
-modular router. During this, \ucomp transforms parser and deparser
-blocks of each module into match-action control. This transformation
-unifies the abstract-machines for packet-processing, thus allowing
-seamless transfer of execution control within and across modules and
-enables composition. Further, based on the specified target device,
+\ucomp compiles a module into \uarch-specific IR. In the second phase,
+users can link different modules together to build a dataplane---e.g.,
+in \cref{fig:compile-to-target}, \texttt{main.\ulang} composes
+Ethernet and IPv4 modules to build a modular router. During this,
+\ucomp transforms parser and deparser blocks of each module into a
+match-action control. This transformation unifies the programming
+model for parsing and packet-processing, thus allowing seamless
+transfer of execution control within and across modules and enables
+sequential composition. Further, based on the specified target device,
 the compiler also generates the dataplane configuration specific to
 the device through a sequence of intermediate steps
 (\cref{sec:compiler}).
