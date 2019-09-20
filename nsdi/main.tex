@@ -1590,24 +1590,23 @@ also include validity flags for headers.
 % field-variables and to move data in byte-stack.
 \tightparbf{Deparser.}%
 Using the emit order of header instances and number of bytes extracted
-by the parser of the \uprogram, the midend synthesises match-key and
-actions to copy back field-variables at appropriate offsets in
-byte-stack.  The control block of a \uprogram may set or reset
-validity of header instances and, thereby, modify the size of the
-packet. In case of increase in size, byte-stack is always large
-enough to hold new headers. The control block of \texttt{callee1}
-shown in \cref{fig:sequential-callees} invalidates the \texttt{mpls}
-header from packets if the execution follows the particular control
-path. Recall that the synthesized parser extracts 78 bytes in the
-stack. If the execution follows the path invalidating
-\texttt{mpls} header, following 60 bytes, carrying data, are moved up 
-by an offset of 4 in the stack. The synthesized action performs
-in-place copy of these 60 bytes and invalidates the last 4 bytes.
+by the parser, \ucomp synthesizes match-key and actions to copy back
+field-variables at appropriate offsets in the byte-stack. A \uprogram
+may set a header instance (in)valid, thereby, modifying a packet's
+size.  In case of an increase, the byte-stack is large enough to hold
+new headers. To show the case with decrease, consider \texttt{callee1}
+in \cref{fig:sequential-callees}, which invalidates the \texttt{mpls}
+header if execution follows a specific control path. Recall that the
+synthesized parser extracts 78 bytes in the stack. If execution
+follows the path invalidating \texttt{mpls} header, the following 60
+bytes, carrying data, are moved up by an offset of 4 in the stack. The
+synthesized action performs in-place copy of these 60 bytes and
+invalidates the last 4 bytes.
 % If the control block execution sets ipv4 header instance to valid, 
 % bytes after the ipv6 header are pushed down by the offset of 20 to 
 % insert ipv4 header instance.
-Finally, the midend removes all the header type and their instances
-originally declared in the \uprogram by the user.
+Finally, the midend removes all user-defined headers local to a
+\uprogram.
 
 % The select expression in transition statement could be a header field, metadata or local variable declared in the parser.
 % The value of select expression of a state may depend on its ancestors' parser statements. <<as shown in diagram>>
@@ -1624,22 +1623,21 @@ originally declared in the \uprogram by the user.
 
 
 \subsubsection{Preprocessing for \ucomp-backends}
-After homogenizing packet processing blocks, the midend eliminates any
-use of logical buffers from \uprograms that do not use compile-time
-replication. If the \uprograms uses compile-time replication of packet
-and intrinsic metadata to express multi-packet processing, the midend
-prepares a \emph{Packet-Processing Schedule (PPS)} graph for the
-\uprogram. A node in a PPS graph captures the \uprogram's sub-program,
-called \texttt{thread}, that processes only one packet instance. An
-edge within a PPS represents dependencies among the packet-processing
-threads. To prepare a PPS by extracting sub-programs, we construct a
-Program Dependence Graph (PDG) \cite{Ferrante:1987:PDG:24039.24041}
-from the \uprogram-IR and perform \emph{slicing} that is defined based
-on a variant of \emph{program slice}
-\cite{Weiser:1981:PS:800078.802557}. We define our slicing criteria
-based on the semantics of logical externs, \texttt{pkt},
-\texttt{in\_buf} and \texttt{out\_buf}, along with \texttt{apply}
-method exposed by interfaces of \uarch. See
+After homogenizing the processing blocks, \ucomp eliminates any
+logical buffers for \uprograms that do not use compile-time replication. If a
+\uprogram uses compile-time replication of packet and intrinsic
+metadata to express multi-packet processing, \ucomp prepares a
+\emph{Packet-Processing Schedule (PPS)} graph for the \uprogram. A
+node in a PPS graph denotes the \uprogram's sub-program, called
+\texttt{thread}, that processes a single packet instance, while an
+edge represents dependency among threads. To prepare a PPS by
+extracting sub-programs, we construct a Program Dependence Graph
+(PDG)~\cite{Ferrante:1987:PDG:24039.24041} from the \uprogram-IR and
+perform \emph{slicing} that is defined based on a variant of
+\emph{program slice}~\cite{Weiser:1981:PS:800078.802557}. We define
+our slicing criteria based on the semantics of logical externs,
+\texttt{pkt}, \texttt{in\_buf} and \texttt{out\_buf}, along with
+\texttt{apply} method exposed by \uarch's interfaces. See
 \cref{subsubsection:packet-processing-schedule} for more details.
 
 
