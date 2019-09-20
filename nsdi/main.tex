@@ -2077,8 +2077,8 @@ HyperV~\cite{8038396}, define operators based on certain use cases.
 P4 constructs such as conditionals.
 
 \tightparbf{Composition Operators.}%
-The following \ulang snippet shows an example of how one can express
-\emph{sequential} and \emph{override} composition operators from
+The following \ulang code expresses
+\emph{sequential} and \emph{override} operators from
 CoVisor~\cite{188954}.
 % \begin{lstlisting}[frame=none, escapechar=!]
 % // Sequential: Firewall -> Routing
@@ -2103,7 +2103,7 @@ p4_int.apply(p, im);
 \end{lstlisting}
 First, a packet is processed by the \texttt{firewall} module, which
 may decide to drop it after analysing one or more headers. Otherwise,
-the packet is routed.  While routing, \texttt{elephant\_flow\_routing}
+the packet is routed. While routing, \texttt{elephant\_flow\_routing}
 may override normal routing if the packet belongs to a large flow.
 Finally, \texttt{p4\_int} updates the INT (In-band Network Telemetry)
 \cite{Kim2015InbandNT, p4int} header with the appropriate data. Note
@@ -2115,9 +2115,9 @@ data at the appropriate location in target pipeline. For example,
 \texttt{v1model}, \ucomp partitions the composed pipeline and
 allocates \texttt{p4\_int} to the egress pipeline.
 
-Another interesting example of composition is the \texttt{A-B Testing}
-operator defined in P4Visor\cite{Zheng:2018:PLV:3281411.3281436}.
-\ulang can implement it as follows:
+\texttt{A-B Testing} is another composition operator (defined in 
+P4Visor\cite{Zheng:2018:PLV:3281411.3281436}) that \ulang can 
+implement as follows:
 \begin{lstlisting}[frame=none, escapechar=!]
 /* A-B Testing in core devices*/
 // parser extracts 1 byte header with flag
@@ -2134,19 +2134,17 @@ emiiter.emit(p, testHdr);
 
 
 
-
-
 \subsection{Advanced Processing}
 Many applications---e.g., mirroring~\cite{rasley2014planck},
-statistics collector such as NetFlow and
-sFlow~\cite{panchen2001inmon}, packet history based telemetry as in
+statistics collector (NetFlow and
+sFlow~\cite{panchen2001inmon}), packet history based telemetry 
 NetSight~\cite{179783}, and differential
 testing~\cite{Zheng:2018:PLV:3281411.3281436}---require selectively
 creating copies of packets and processing the copies in different
 manners. \ulang enables such processing through
 \texttt{Orchestration}, \texttt{copy\_from} method in \texttt{pkt},
-and \texttt{im} externs. The following snippet illustrates creating a
-copy of a packet \texttt{pk} and differential processing.
+and \texttt{im} externs. The following snippet shows use of
+compile-time copy of a packet \texttt{pk}.
 \begin{lstlisting}[frame=none]
 struct e_t {}; // empty type
 sflow(pkt, im_t);// sFlow implements Unicast
