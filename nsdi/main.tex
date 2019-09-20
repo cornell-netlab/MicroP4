@@ -59,7 +59,7 @@ To illustrate the challenges that arise with writing modular P4
 programs, consider a simple scenario with two code fragments, as shown
 in \cref{fig:ether.p4,fig:ipv4.p4}. The first, \texttt{ether}, parses
 the Ethernet header, modifies the source and destination addresses
-using the next hop (\texttt{h}) which is supplied as an argument, and
+using the next hop (\texttt{nh}) which is supplied as an argument, and
 finally deparses the packet. The second, \texttt{ipv4}, parses the
 IPv4 header, uses longest-prefix matching to determine the next hop,
 decrements the \texttt{ttl} field, and deparses the packet. Note that
@@ -124,7 +124,7 @@ parser P(packet_in pin, out hdr_t ph) {
   state start { pin.extract(ph.eth); }
 }
 control C(inout hdr_t ph, inout sm_t sm,
-          in bit<16> !\colorbox{mygray}{h}!) {
+          in bit<16> !\colorbox{mygray}{nh}!) {
   action drop () {}
   action forward(bit<48> dst_mac, bit<48> src_mac, 
                  bit<8> port) {
@@ -133,7 +133,7 @@ control C(inout hdr_t ph, inout sm_t sm,
     sm.out_port = port;
   }
   table forward_tbl {
-    key = { h : exact; }
+    key = { nh : exact; }
     actions = { forward; drop; }
   }
   apply { forward_tbl.apply(); }
@@ -156,11 +156,11 @@ parser P(packet_in pin, out hdr_t ph) {
     transition accept;
   }
 }
-control C(inout hdr_t ph, out bit<16> !\colorbox{mygray}{h}!, 
+control C(inout hdr_t ph, out bit<16> !\colorbox{mygray}{nh}!, 
           inout sm_t sm) {
   action process(bit<16> n) {
     ph.ipv4.ttl = ph.ipv4.ttl - 1;
-    h = n; // set out param
+    nh = n; // set out param
   }
   table ipv4_lpm_tbl {
     key = { ph.ipv4.dstAddr : lpm; }
@@ -323,7 +323,7 @@ programs. For instance, returning to the example in
 \cref{fig:ether.p4,fig:ipv4.p4}, we might like to execute the
 \texttt{ipv4} module (parser and control blocks) before applying
 \texttt{forward\_tbl} in \texttt{ether}'s control block so that
-\texttt{h} is defined. The obvious way to compose these programs would
+\texttt{nh} is defined. The obvious way to compose these programs would
 require somehow executing the \texttt{ether} parser after the
 \texttt{ipv4} control, which would not be possible if the architecture
 only exposed a single parser block.
@@ -599,17 +599,19 @@ In this section, we describe \uarch using two main constructs:
 \subsection{\upipelines and Interfaces}
 \label{sec:pipelines}
 
-\tightpar{\upipeline.}%
-\uarch models the dataplane as composed of two types of \upipelines:
-\emph{linear} and \emph{orchestration} as shown in
+\paragraph*{\upipeline.}%
+%
+A \ulang dataplane can be built from two different types of
+\upipelines: \emph{linear} and \emph{orchestration} as shown in
 \cref{fig:pipe-types}. A linear \upipeline models processing a single
 input packet through a linear set of stages: parser, match-action
-control, and deparser.  As output, it may generate multiple packets
-for a single input, but each packet is processed by the same code. In
+control, and deparser. As output, it may generate multiple packets for
+a single input, but each packet is processed by the same code. In
 contrast, an orchestration \upipeline can process multiple copies of a
-packet in different user-defined ways. A combination of these
-\upipelines enables expressing a wide range of packet-processing
-behavior.
+packet in different user-defined ways. By combining these two kinds of
+\upipelines, it is possible to express a wide range of
+packet-processing behaviors.
+
 \begin{figure}[!tbp]
   \centering
   \includegraphics[width=0.8\linewidth]{upipe-types}
@@ -649,8 +651,8 @@ have any
 buffer in its parameters, while \texttt{Orchestration} needs two
 buffers as arguments. So, \uswitch fetches an element from an implicit
 logical input buffer for \uprograms with \texttt{Unicast} or
-\texttt{Multicast} interface, while for \uprograms with
-\texttt{Orchestration} interface, it fetches the elements from the
+\texttt{Multicast} interfaces, while for \uprograms with
+\texttt{Orchestration} interfaces, it fetches the elements from the
 specified input buffer.
 
 
@@ -849,29 +851,29 @@ is parameterized on \texttt{meta\_t}.
 \begin{lstlisting}[frame=none, escapechar=!]
 /* !{l3.\ulang}! */
 // !{\color{commentcolor}{\uprograms for L3 protocols}}! 
-ipv6(pkt p, im_t im, out bit<16> nh_id);
-ipv4(pkt p, im_t im, out bit<16> nh_id);
+ipv6(pkt p, im_t im, out bit<16> nh);
+ipv4(pkt p, im_t im, out bit<16> nh);
 // implement unicast interface for L3 program
 !\colorbox{green!10}{program L3 : implements Unicast<>}! {
   parser P(extractor ex, pkt p, out empty_ht h, inout data_t d) {
     state start { transition accept; }
   }
   control C(pkt p, inout empty_ht h, im_t im,
-      out bit<16> !\colorbox{mygray}{nh\_id}!, inout bit<16> !\colorbox{mygray}{type}!) {
+      out bit<16> !\colorbox{mygray}{nh}!, inout bit<16> !\colorbox{mygray}{type}!) {
     ipv4() !\colorbox{red!10}{ipv4\_i}!; ipv6() !\colorbox{red!10}{ipv6\_i}!; // instantiation
-    apply { switch (!\colorbox{mygray}{type}!) { // out arg: nh_id
-        0x0800:!\colorbox{red!10}{ipv4\_i}!.apply(p, im, !\colorbox{mygray}{nh\_id}!);
-        0x86DD:!\colorbox{red!10}{ipv6\_i}!.apply(p, im, !\colorbox{mygray}{nh\_id}!);
+    apply { switch (!\colorbox{mygray}{type}!) { // out arg: nh
+        0x0800:!\colorbox{red!10}{ipv4\_i}!.apply(p, im, !\colorbox{mygray}{nh}!);
+        0x86DD:!\colorbox{red!10}{ipv6\_i}!.apply(p, im, !\colorbox{mygray}{nh}!);
     } }
   }
   control D(emitter em, pkt p, in empty_ht h) {
     apply { }
   }
-}    // L3 program sets the next hop (nh_id)
+}    // L3 program sets the next hop (nh)
 !{\subcaption[]{l3.\ulang implements IPv4 and IPv6}\label{subfig:router}}!
 /* !{modular\_router.\ulang}! uses L3 program */
 !\colorbox{green!10}{L3}!(pkt p, im_t im, 
-out bit<16> !\colorbox{mygray}{nh\_id}!, inout bit<16> !\colorbox{mygray}{type}!);
+out bit<16> !\colorbox{mygray}{nh}!, inout bit<16> !\colorbox{mygray}{type}!);
 \end{lstlisting}
 \end{minipage}\hspace{-4pt}\vline
 \hfill\begin{minipage}[t]{.50\textwidth}
@@ -883,19 +885,19 @@ parser P(extractor ex, pkt p, out hdr_t h) {
   }
 }
 control C(pkt p, inout hdr_t h, im_t im) { // p is partial pkt without L2 header
-  bit<16> !\colorbox{mygray}{nh\_id;}! !\colorbox{green!10}{L3()}! !\colorbox{red!10}{l3\_i; }!
+  bit<16> !\colorbox{mygray}{nh;}! !\colorbox{green!10}{L3()}! !\colorbox{red!10}{l3\_i; }!
   action drop () {}
   action forward(bit<48> dmac, bit<48> smac, bit<8> port) {
     h.eth.dstMac = dmac; h.eth.srcMac = smac;
     !\colorbox{blue!10}{es}!.set_out_port(port); // setting metadata
   }
-  table forward_tbl { // L2 forwarding, needs nh_id
-    key = { nh_id : exact; } 
+  table forward_tbl { // L2 forwarding, needs nh
+    key = { nh : exact; } 
     actions = { forward; drop; }
   }
-  apply { // invoke L3 to get nh_id
-    !\colorbox{red!10}{l3\_i}!.apply(p, im, !\colorbox{mygray}{nh\_id}!, !\colorbox{mygray}{h.eth.etherType}!);
-    forward_tbl.apply(); // use nh_id in forward_tbl
+  apply { // invoke L3 to get nh
+    !\colorbox{red!10}{l3\_i}!.apply(p, im, !\colorbox{mygray}{nh}!, !\colorbox{mygray}{h.eth.etherType}!);
+    forward_tbl.apply(); // use nh in forward_tbl
   }
 }
 control D(emitter em, pkt p, in hdr_t h) {
@@ -918,25 +920,23 @@ parser, control blocks and declarations of \uprograms.}
 % constructs introduced till now.
 
 \tightpar{Example: Modular router using \texttt{Unicast} interface and
-externs.}
-\cref{subfig:router} shows a program, \texttt{l3.\ulang}, that
-implements the \texttt{Unicast} interface and processes IPv4 and IPv6
-headers.\footnotemark[\value{footnote}] Both \texttt{ipv4} and
-\texttt{ipv6} declare a user-defined parameter, \texttt{nh\_id} as a
-part of run-time parameters along with packet \texttt{p} and intrinsic
+  externs.} \cref{subfig:router} shows a program, \texttt{l3.\ulang},
+that implements the \texttt{Unicast} interface and processes IPv4 and
+IPv6 headers.\footnotemark[\value{footnote}] Both \texttt{ipv4} and
+\texttt{ipv6} declare a user-defined parameter, \texttt{nh} as a part
+of run-time parameters along with packet \texttt{p} and intrinsic
 metadata \texttt{im}. Similarly, \texttt{L3} exposes another
-parameter, \texttt{type}.  Such user-defined parameters allow flexible
-passing of data across modules for composition.
-
+parameter, \texttt{type}. Such user-defined parameters allow flexible
+passing of data across modules for composition. The
 \texttt{ModularRouter}, in \cref{subfig:router-main}, parses the
-ethernet header and invokes an instance of L3, by calling
+Ethernet header and invokes an instance of L3, by calling
 \texttt{l3\_i.apply()}. It passes a partial packet `\texttt{p}',
-without the ethernet header, to \texttt{L3}.  \texttt{L3}, in turn,
+without the ethernet header, to \texttt{L3}. \texttt{L3}, in turn,
 uses the \texttt{type} argument to invoke an instance of the
-appropriate protocol---IPv4 or IPv6---which populates \texttt{nh\_id} 
-passed as an \texttt{out} argument. \texttt{ModularRouter}
-uses the value of \texttt{nh\_id} and continues processing by
-applying \texttt{forward\_tbl}.
+appropriate protocol---IPv4 or IPv6---which populates \texttt{nh}
+passed as an \texttt{out} argument. \texttt{ModularRouter} uses the
+value of \texttt{nh} and continues processing by applying
+\texttt{forward\_tbl}.
 
 
 
