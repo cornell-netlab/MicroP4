@@ -2240,7 +2240,11 @@ operators. Reuse of dataplane program poses challenge of
 portability. In this aspect, our framework is orthogonal to PSA 
 \cite{psa}. PSA exposes a dataplane model that target device 
 must realise. Instead, we focus on abstraction that programmers can 
-use to write portable dataplane programs.
+use to write portable dataplane programs. \ucomp framework is inline 
+with Domino \cite{Sivaraman:2016:PTH:2934872.2934900} that 
+provides abstractions to describe stateful algorithm with reference 
+to its Banzai model and compiles them to target-specific 
+low-level microcode.
 
 Conceptually, the design of \uarch resembles more with the Click 
 Modular Router\cite{Kohler:2000:CMR:354871.354874} than PSA. The 
