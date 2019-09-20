@@ -1201,8 +1201,8 @@ two transformations on every \uprogram:
     fixed-length extractions to parse the header.
 \end{enumerate*}
 These transformations convert a parse graph into a Directed Acyclic
-Graph (DAG), simplifying the \uprograms for the next pass, which
-performs \emph{static analysis}.
+Graph (DAG), simplifying the \uprograms for the next pass.
+% , which performs \emph{static analysis}.
 
 \tightpar{Static analysis.} The simplified \uprograms allow computing
 minimum and maximum bytes that are extracted by the parsers and
@@ -1429,7 +1429,7 @@ skip the details for brevity.
 
 \subsubsection{Parser and Deparser To Match-Action Tables}
 \label{subsection:parser-to-match-action-table}
-\begin{figure*}[!ht]
+\begin{figure*}[!tb]
     \begin{subfigure}[b]{0.25\linewidth}
         \centering
         \includegraphics[trim=4 270 596 0, clip,scale=0.37]{parser-transformation-example}    
@@ -1491,21 +1491,23 @@ essentially perform repeated match-action operations~\cite{6665172}.
 % consider that parser state may use any metadata or variable  to 
 % transit to the next state see Figure 
 % \ref{subfig:parser-symbolic-execution}. 
-So, with the operational-region in byte-stack, we can perform these
-match-action operations simultaneously by leveraging  TCAMs in 
-hardware stages.
-\deleted{match-action control blocks.}
+So, with the operational-region in byte-stack ($b$), we can perform
+these operations simultaneously in hardware. We use the parser in
+\cref{subfig:parser} as a running example to explain how we synthesize
+tables for a parser.
 
-For example, the parser's FSM in \cref{subfig:parser} has four states
-to extract standard Ethernet, IPv4, IPv6 and TCP headers of size 14,
-20, 40 and 20 bytes, respectively. Symbolic execution of the parser
-first identifies two possibles paths from the start state to the
-accept state and then, it replaces the header fields in each path---e.g., \texttt{eth.ethType}, \texttt{ipv6.nexthdr},
-\texttt{ipv4.protocol}---with their evaluated offsets in the 
-byte-stack (\cref{subfig:parser-symbolic-execution}). Also, it 
-performs Forward Substitution \cite{Padua:1986:ACO:7902.7904} on every 
-path to eliminate anti-dependency between two states (\texttt{var\_y} 
-replaced with \texttt{meta.data1} one \texttt{meta.data2} in another).
+The parser's FSM has four states to extract Ethernet, IPv4, IPv6 and
+TCP headers of size 14, 20, 40 and 20 bytes, respectively.  \ucomp
+performs symbolic execution of the parser to identify two possibles
+paths from the start state to the accept state. Then, it replaces the
+header fields in each path---e.g., \texttt{eth.ethType} and
+\texttt{ipv6.nexthdr}---with their evaluated offsets in the
+byte-stack---e.g., \texttt{b[12]++b[13]} and \texttt{b[23]}---as shown
+in \cref{subfig:parser-symbolic-execution}.  It also performs
+\emph{Forward Substitution} \cite{Padua:1986:ACO:7902.7904} on every
+path to eliminate any anti-dependency between two states---e.g.,
+\texttt{var\_y} is replaced with \texttt{meta.data1} in one and
+\texttt{meta.data2} in the other.
 \deleted{corresponding locations in the byte-stack}
 % As an example, \emph{tcp} state transits to the accept state based 
 % on value (0xFF) of \texttt{var\_y} variable which is updated by 
@@ -1520,29 +1522,26 @@ replaced with \texttt{meta.data1} one \texttt{meta.data2} in another).
 % method-call.In addition, valid metadata variable pertaining to the 
 % header instance is set.
 
-Using all the byte-stack offsets and variables used in \texttt{select} 
-expressions of states in every 
-path, (\cref{subfig:parser-symbolic-execution}), \ucomp
-synthesizes a match-key(\cref{subfig:parser-mat}). 
-For each path, to assert that packet is long enough to parse, the 
-match-key also comprises the valid bit flag of the last byte extracted 
-on the path.
-Then, for each path, we synthesize an
-action---e.g., \texttt{cp\_eth\_ipv4\_tcp} in
-\cref{subfig:parser-mat}---comprising assignment statements to copy
-only the required header fields. A match-action entry is created by
-pairing appropriate match-key values and action for each path.
-% by using the case fields values to match the path select keys and 
-% the other remaining fields are set to don't care values.
-For example, in the first entry shown in \cref{subfig:parser-mat},
-x0800, x6, xFF are match-values for the first, third and fifth keys to
-parse byte-stack as ethernet, IPv4 and TCP headers and the second and
-fourth keys are matched with don't care values. Finally, the midend 
-transforms header fields used in the control block of every
-\uprogram to necessary metadata called, \emph{field-variables}, that
-are copied from byte-stack in the synthesised actions. The 
-field-variables include a valid flag for header instances. 
+\ucomp creates a match-action entry for each path as follows. Using
+the byte-stack offsets and variables used in \texttt{select}
+expressions of states in each path
+(\cref{subfig:parser-symbolic-execution}), \ucomp synthesizes a
+match-key by merging them (\cref{subfig:parser-mat}). To ensure that a packet is long enough to be parsed, the key
+also contains validity test for the last byte extracted on the
+path. Then, it synthesizes an action for each path---e.g.,
+\texttt{cp\_eth\_ipv4\_tcp}---which has assignment statements to copy
+the relevant header fields. \ucomp pairs a key with the
+appropriate action to create an entry for the path---e.g., in the first entry in \cref{subfig:parser-mat},
+\texttt{x0800}, \texttt{x6} \& \texttt{xFF} are matched to the first, third and fifth keys to
+parse a byte-stack as ethernet, IPv4 and TCP headers while the
+the second and fourth keys are don't care values.
 
+Finally, the midend also converts header fields in each \uprogram to
+necessary metadata, called \emph{field-variables}, which is copied
+from the byte-stack in the synthesised actions. The field-variables
+also include validity flags for headers.
+% by using the case fields values to match the path select keys and
+% the other remaining fields are set to don't care values.
 
 % \subsubsection{Deparser To Match-Action Table:}
 % \label{subsection:deparser-to-match-action-table}
