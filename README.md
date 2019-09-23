@@ -1,4 +1,4 @@
-# ComposableP4
+# Composable P4
 
 CSA architecture
 extensions/csa/p4include/csa.p4
