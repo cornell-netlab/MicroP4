@@ -15,8 +15,10 @@
 #include "frontends/p4/frontend.h"
 #include "lib/error.h"
 #include "lib/exceptions.h"
+#include "frontends/p4/toP4/toP4.h"
 #include "lib/gc.h"
 #include "lib/log.h"
+#include "lib/path.h"
 #include "lib/nullstream.h"
 #include "extensions/csa/switch/version.h"
 #include "extensions/csa/switch/options.h"
@@ -91,6 +93,21 @@ int main(int argc, char *const argv[]) {
         std::cout<<"Running CSAMidend \n";
         CSA::CSAMidEnd csaMidend(options);
         program = csaMidend.run(program, precompiledP4Programs);
+        if (options.arch == nullptr)
+            options.arch = "v1model";
+
+        Util::PathName fname(options.file);
+        Util::PathName newName(fname.getBasename() + options.arch + "." + fname.getExtension());
+        auto fn = Util::PathName(options.dumpFolder).join(newName.toString());
+        cstring fileName = fn.toString();
+        auto stream = openFile(fileName, true);
+        if (stream != nullptr) {
+            if (Log::verbose())
+                std::cerr << "Writing program for "<<options.arch<< " to " << fileName << std::endl;
+            P4::ToP4 toP4(stream, Log::verbose(), options.file);
+            program->apply(toP4);
+        }
+
         if (::errorCount() > 0) {
             std::cout<<"error in running CSAMidend\n";
             return 1;
