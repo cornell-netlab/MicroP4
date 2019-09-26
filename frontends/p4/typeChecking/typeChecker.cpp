@@ -2997,6 +2997,72 @@ void TypeInference::checkCorelibMethods(const ExternMethod* em) const {
                 return;
             }
         }
+    } else if (et->name == corelib.pkt.name) {
+        if (em->method->name == corelib.pkt.copyFrom.name) {
+            if (argCount == 0) {
+                typeError("%1%: Expected exactly 1 argument for %2% method",
+                          mce, corelib.pkt.copyFrom.name);
+                return;
+            }
+            auto arg0 = mce->arguments->at(0);
+            auto argType = typeMap->getType(arg0, true);
+            auto argTE =  argType->to<IR::Type_Extern>();
+            if (argTE != nullptr && argTE->name != corelib.pkt.name) {
+                typeError("%1%: argument must be Pkt extern type", mce->arguments->at(0));
+                return;
+            }
+        } else if (em->method->name == corelib.pkt.length.name) {
+            if (argCount != 0) {
+                typeError("%1%: Expected exactly 0 argument for %2% method",
+                          mce, corelib.pkt.length.name);
+                return;
+            }
+        } else if (em->method->name == corelib.pkt.getInPort.name) {
+            if (argCount != 0) {
+                typeError("%1%: Expected exactly 0 argument for %2% method",
+                          mce, corelib.pkt.getInPort.name);
+                return;
+            }
+        }
+    } else if (et->name == corelib.extractor.name) {
+        if (em->method->name == corelib.extractor.extract.name) {
+            if (argCount == 0) {
+                typeError("%1%: Expected exactly 1 argument for %2% method",
+                          mce, corelib.extractor.extract.name);
+                return;
+            }
+
+            auto arg0 = mce->arguments->at(0);
+            auto argType = typeMap->getType(arg0, true);
+            if (!argType->is<IR::Type_Header>() && !argType->is<IR::Type_Dontcare>()) {
+                typeError("%1%: argument must be a header", mce->arguments->at(0));
+                return;
+            }
+
+            if (argCount == 1) {
+                if (hasVarbitsOrUnions(argType))
+                    // This will never have unions, but may have varbits
+                    typeError("%1%: argument cannot contain varbit fields", arg0);
+            } else if (argCount == 2) {
+                if (!hasVarbitsOrUnions(argType))
+                    typeError("%1%: argument should contain a varbit field", arg0);
+            } else {
+                typeError("%1%: Expected 1 or 2 arguments for '%2%' method",
+                          mce, corelib.extractor.extract.name);
+            }
+        }
+    } else if (et->name == corelib.emitter.name) {
+        if (em->method->name == corelib.emitter.emit.name) {
+            if (argCount == 1) {
+                auto arg = mce->arguments->at(0);
+                auto argType = typeMap->getType(arg, true);
+                checkEmitType(mce, argType);
+            } else {
+                typeError("%1%: Expected 1 argument for '%2%' method",
+                          mce, corelib.emitter.emit.name);
+                return;
+            }
+        }
     }
 }
 

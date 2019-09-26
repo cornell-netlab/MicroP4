@@ -1,143 +1,176 @@
 /*
- * Hardik Soni (hardik.soni@cornell.edu)
- *
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
  */
+
 #ifndef _MSA_P4_
 #define _MSA_P4_
 
 #include <core.p4>
 
 typedef   bit<8>    PortId_t;
-typedef   bit<16>   PacketInstanceId_t;
+typedef   bit<16>   PktInstId_t;
 typedef   bit<16>   GroupId_t;
 const   PortId_t    PORT_CPU = 255;
 const   PortId_t    PORT_RECIRCULATE = 254;
 
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////// Following two are taken from core.p4 //////////////////////
+match_kind {
+    /// Match bits exactly.
+    exact,
+    /// Ternary match, using a mask.
+    ternary,
+    /// Longest-prefix match.
+    lpm
+}
+
+/// Standard error codes.  New error codes can be declared by users.
+error {
+    NoError,           /// No error.
+    PacketTooShort,    /// Not enough bits in packet for 'extract'.
+    NoMatch,           /// 'select' expression has no matches.
+    StackOutOfBounds,  /// Reference to invalid element of a header stack.
+    HeaderTooShort,    /// Extracting too many bits into a varbit field.
+    ParserTimeout      /// Parser execution time limit exceeded.
+}
+////////////////////////////////////////////////////////////////////////////////
+
+
 enum msa_packet_path_t {
     NORMAL,     /// Packet received by ingress that is none of the cases below.
-    RECIRCULATE /// Packet arrival is the result of a recirculate operation
+//    RECIRCULATE /// Packet arrival is the result of a recirculate operation
 }
 
 /*
  * Recirculate is required to process the packet through same the same piece of
  * code repeatedly in control block.
- */
 extern void recirculate();
-
-/*
- * Programmers can declare and instance of this and create copies of it
  */
-struct msa_standard_metadata_t {
-    msa_packet_path_t packet_path;
-    PortId_t ingress_port;
-    bool drop_flag;  // true
+
+
+enum metadata_fields_t {
+  QUEUE_DEPTH_AT_DEQUEUE
 }
 
-enum msa_metadata_fields_t {
-    QUEUE_DEPTH_AT_DEQUEUE
+
+extern im_t {
+  void set_out_port(in PortId_t out_port);
+  PortId_t get_out_port(); // default 0x00
+  bit<32> get_value(msa_metadata_fields_t field_type);
+  void copy_from(im_t im);
 }
 
-extern egress_spec {
-    void set_egress_port(in PortId_t egress_port);
-    PortId_t get_egress_port(); // default 0x00
-    bit<32> get_value(msa_metadata_fields_t field_type);
-    void copy_from(egress_spec es);
+
+extern pkt {
+  void copy_from(pkt p);
+  bit<32> get_length();
+  bit<9> get_in_port();
 }
 
-extern msa_packet_in {
-    msa_packet_in();
 
-    packet_in pin;
-    void copy_from(msa_packet_in msa_pin);
+extern emitter {
+  void emit<H>(pkt p, in H hdrs);
 }
 
-extern msa_packet_out {
-    packet_out po;
 
-    msa_packet_out();
-    void get_packet_in(msa_packet_in msa_pin);
+extern extractor {
+  void extractor<H>(pkt, out H hdrs);
+  /// T may be an arbitrary fixed-size type.
+  T lookahead<T>();
 }
+
+
+extern in_buf<I> {
+  // This is not needed.
+  dequeue(pkt p, im_t im, out I in_param);
+}
+
+
+extern out_buf<O> {
+  enqueue(pkt p, im_t im, in O out_param);
+
+  // Can be used to convert out_buf to in_buf
+  // All the elements of this instance are moved to ib.
+  // Clears the out_buf.
+  void to_in_buf(in_buf<O> ib);
+
+  // All the elements of ob are moved to this instance
+  void merge(out_buf<O> ob);
+}
+
+
+extern mc_buf<H, O> {
+  enqueue(pkt p, im_t im, in H hdrs, in O param);
+}
+
 
 action msa_no_action(){}
 
 
-extern msa_multicast_engine {
-    msa_multicast_engine();
-    
-    void set_multicast_group(GroupId_t gid);
+extern multicast_engine {
+  msa_multicast_engine();
+  
+  void set_multicast_group(GroupId_t gid);
 
-    // Analogous to fork system call, only difference is original (parent
-    // process) cease to exist.
-    // Retuens packet instance id and appropriate egress_spec will be have
-    // port_id set by the CP for the PacketInstanceId_t value.
-    // All other declaration and arguments (local variable declarations, headers,
-    // metadata etc.,) in the scope will be available after this call.
-    //
-    // This function is available only in apply body of control blocks.
-    // Need to think more, if it should be allowed in Action body.
-    PacketInstanceId_t apply(egress_spec es);
-    /*
-     * Potential misuse of above function:
-     * not using es in successive statements. but using some es1 or es passed in
-     * arguments.
-     * Compiler should raise warning and if programmer persist, it essentially 
-     * means overriding configuration of control plane.
-     *
-     */
+  // Analogous to fork system call, only difference is original (parent
+  // process) cease to exist.
+  // Retuens packet instance id and appropriate im_t will be have
+  // port_id set by the CP for the PktInstId_t value.
+  // All other declaration and arguments (local variable declarations, headers,
+  // metadata etc.,) in the scope will be available after this call.
+  //
+  // This function is available only in apply body of control blocks.
+  // Need to think more, if it should be allowed in Action body.
+  /*
+   * Potential misuse of above function:
+   * not using es in successive statements. but using some es1 or es passed in
+   * arguments.
+   * Compiler should raise warning and if programmer persist, it essentially 
+   * means overriding configuration of control plane.
+   *
+   */
+  void apply(im_t im, out PktInstId_t id);
 
-    // In future, a shim will translate between architecture specific CP APIs
-    /*
-    @ControlPlaneAPI
-    {
-        entry_handle add_group (GroupId_t gid);
-        void         delete_group (GroupId_t gid);
-        void         add_group_entry   (GroupId_t gid, PacketInstanceId_t, PortId_t);
-        void         delete_group_entry (GroupId_t gid, PacketInstanceId_t, PortId_t);
-    }
-    */
-}
+  set_buf(out_buf<O>);
+  void apply(pkt, im_t, out O);
 
-extern msa_packet_buffer<EXTRA_ELE_T> {
-    msa_packet_buffer();
-    void enqueue(msa_packet_out msa_po, in msa_standard_metadata_t sm,
-                 egress_spec es, in EXTRA_ELE_T data); // writer
-    
-    void dequeue(msa_packet_in msa_pin, out msa_standard_metadata_t sm,
-                 egress_spec es, out EXTRA_ELE_T data); // finalize
-
-    void join();
+  // In future, a shim will translate between architecture specific CP APIs
+  /*
+  @ControlPlaneAPI
+  {
+      entry_handle add_group (GroupId_t gid);
+      void         delete_group (GroupId_t gid);
+      void         add_group_entry   (GroupId_t gid, PktInstId_t, PortId_t);
+      void         delete_group_entry (GroupId_t gid, PktInstId_t, PortId_t);
+  }
+  */
 }
 
 
-/*
- * This has to be package, because main can not be instance of P4Control types.
- */
-cpackage OrchestrationSwitch<IND, OUTD, INOUTD, RM>(
-          msa_packet_in b, msa_packet_out po, 
-          inout msa_standard_metadata_t standard_metadata, egress_spec es,
-          in IND in_args, out OUTD out_args, inout INOUTD inout_args) () {
+cpackage Unicast<H, M, I, O, IO>(pkt p, inout im_t im, in I in_param, out O out_param, inout IO inout_param) {
+  parser micro_parser(extractor ex, pkt p, im_t im, out H hdrs, inout M meta, in I in_param, inout IO inout_param);
 
-    control msa_pipe(msa_packet_in pin, msa_packet_out pout, 
-                     in IND in_meta, out OUTD out_meta, inout INOUTD inout_meta, 
-                     inout msa_standard_metadata_t sm, egress_spec e,
-                     inout RM recirculate_data);
+  control micro_control(pkt p, im_t im, inout H hdrs, inout M meta, in I in_param, out O out_param, inout IO inout_param);
 
+  control micro_deparser(emitter em, pkt p, in H hdrs);
 }
 
-cpackage MicroSwitch<IND, OUTD, INOUTD, H, UM, RM>(
-          msa_packet_in pin, msa_packet_out po, 
-          inout msa_standard_metadata_t standard_metadata, egress_spec es,
-          in IND in_args, out OUTD out_args, inout INOUTD inout_args)() {
 
-    parser msa_parser(packet_in b, out H parsed_hdr, inout UM meta, 
-                  inout msa_standard_metadata_t sm);
- 
-    control msa_pipe(inout H hdr, inout UM meta, inout msa_standard_metadata_t sm, 
-                     egress_spec e,  in IND in_meta, out OUTD out_meta, 
-                     inout INOUTD inout_meta, inout RM recirculate_data);
-    
-    control msa_deparser(packet_out b, in H hdr);
+cpackage Multicast<H, M, I, O>(pkt p, im_t im, in I in_param, out_buf<O> ob) {
+
+  parser micro_parser(extractor ex, pkt p, im_t im, out H hdrs, inout M meta, in I in_param);
+
+  control micro_control(pkt p, im_t im, inout H hdrs, inout M meta, inout I in_param, mc_buf<H,O> mob);
+
+  control micro_deparser(emitter em, pkt p, in H hdrs);
 }
 
+
+cpackage Orchestration<I, O>(in_buf<I> ib, out_buf<O> ob) {
+  // ib.dequeue operation is executed by microp4 before calling the control.
+  control orch_control(pkt p, im_t im, in I in_param, out_buf<O> ob);
+}
 
 #endif  /* _msa_P4_ */

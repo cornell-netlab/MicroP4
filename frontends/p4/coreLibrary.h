@@ -64,6 +64,40 @@ inline std::ostream& operator<<(std::ostream &out, P4::StandardExceptions e) {
 
 namespace P4 {
 
+/********************* Micro Switch Arch externs ******************************/
+class Pkt : public Model::Extern_Model {
+ public:
+    Pkt() :
+      Extern_Model("pkt"),
+      length("length"),  copyFrom("copy_from"), 
+      getInPort("get_in_port") {}
+    Model::Elem length;
+    Model::Elem copyFrom;
+    Model::Elem getInPort;
+};
+
+
+class Extractor : public Model::Extern_Model {
+ public:
+    Extractor() :
+            Extern_Model("extractor"),
+            extract("extract"), lookahead("lookahead"),
+            advance("advance") {}
+    Model::Elem extract;
+    Model::Elem lookahead;
+    Model::Elem advance;
+    int extractSecondArgSize = 32;
+};
+
+
+class Emitter : public Model::Extern_Model {
+ public:
+    Emitter() : Extern_Model("emitter"), emit("emit") {}
+    Model::Elem emit;
+};
+
+/******************************************************************************/
+
 class PacketIn : public Model::Extern_Model {
  public:
     PacketIn() :
@@ -117,6 +151,10 @@ class P4CoreLibrary : public ::Model::Model {
 
     PacketIn    packetIn;
     PacketOut   packetOut;
+
+    Pkt         pkt;
+    Extractor   extractor;
+    Emitter     emitter;
 
     P4Exception_Model noError;
     P4Exception_Model packetTooShort;
