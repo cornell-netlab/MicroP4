@@ -58,6 +58,8 @@ class DeparserConverter final : public Transform {
 
 
     void createTableEntryList(const IR::MethodCallStatement* mcs);
+    cstring createAppendedP4Action(const IR::MethodCallStatement* mcs,
+            unsigned& currentEmitOffset, IR::IndexedVector<IR::Declaration> oldActionStatements);
     cstring createP4Action(const IR::MethodCallStatement* mcs,
                            unsigned& currentEmitOffset);
     IR::Key* createKey(const IR::MethodCallStatement* mcs);

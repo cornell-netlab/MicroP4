@@ -282,8 +282,9 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 			   counter++;
             }
 	    }
-		if(!tablePropertyList.size()){
+		if(!tableDecls.size()){
 			//action elements
+			LOG3("Adding noAction");
 			auto mce = new IR::MethodCallExpression(
 				new IR::PathExpression(noActionName), new IR::Vector<IR::Type>(),
 				new IR::Vector<IR::Argument>());
@@ -301,11 +302,14 @@ const IR::Node* ParserConverter::preorder(IR::ParserState* state) {
 			tableDecls.clear();
 			tablePropertyList.clear();
 		}
+
 		auto keyElementListProperty = new IR::Property(IR::ID("key"),
 											new IR::Key(keyElementList), false);
 		tablePropertyList.push_back(keyElementListProperty);
 
-
+		for (auto a: actionList){
+			LOG3("action list elemtn: "<<a->getName());
+		}
 		auto actionListProperty = new IR::Property(IR::ID("actions"),
 											new IR::ActionList(actionList), false);
 		tablePropertyList.push_back(actionListProperty);
@@ -315,10 +319,9 @@ const IR::Node* ParserConverter::preorder(IR::ParserState* state) {
 		tablePropertyList.push_back(entriesListProperty);
 
 		if(!tableDecls.size()){
-			auto v = new IR::ExpressionValue(
-							new IR::MethodCallExpression(
-								new IR::PathExpression(noActionName),
-							new IR::Vector<IR::Argument>()));
+			auto v = new IR::ExpressionValue(new IR::MethodCallExpression(
+													new IR::PathExpression(noActionName),
+													new IR::Vector<IR::Argument>()));
 			auto defaultActionProp = new IR::Property(IR::ID("default_action"), v, true);
 			tablePropertyList.push_back(defaultActionProp);
 
