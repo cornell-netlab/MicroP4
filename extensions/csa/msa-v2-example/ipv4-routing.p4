@@ -7,7 +7,6 @@
 #include"common.p4"
 
 struct l3_meta_t { }
-struct empty_t { }
 
 header ipv4_h {
   bit<4> version;
@@ -29,7 +28,7 @@ struct l3_hdr_t {
 }
 
 cpackage l3 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16>> {
-  parser micro_parser(extractor ex, pkt p, inout im_t im, out l3_hdr_t hdr, inout l3_meta_t meta,
+  parser micro_parser(extractor ex, pkt p, im_t im, out l3_hdr_t hdr, inout l3_meta_t meta,
                         in empty_t ia, inout bit<16> ethType) { //inout arg
     state start {
       transition select(ethType){
@@ -42,15 +41,15 @@ cpackage l3 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16>>
     }
   }
 
-  control micro_control(pkt p, inout im_t im, inout l3_hdr_t hdr, inout l3_meta_t m,
+  control micro_control(pkt p, im_t im, inout l3_hdr_t hdr, inout l3_meta_t m,
                           in empty_t e, out bit<16> nexthop, 
                           inout bit<16> ethType) { // nexthop out arg
     action process(bit<16> nh) {
-      hdr.ipv4.ttl = hdr.ipv4 - 1;
+      hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
       nexthop = nh;  // setting out param
     }
     table ipv4_lpm_tbl {
-      key = { hdr.ipv4.dstAddr : lpm } 
+      key = { hdr.ipv4.dstAddr : lpm; } 
       actions = { process; }
     }
     apply { ipv4_lpm_tbl.apply(); }

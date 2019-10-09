@@ -343,6 +343,12 @@ bool TypeMap::equivalent(const IR::Type* left, const IR::Type* right) {
         auto re = right->to<IR::Type_Extern>();
         return le->name == re->name;
     }
+    if (left->is<IR::Type_Rec>()) {
+        auto le = left->to<IR::Type_Rec>();
+        auto re = right->to<IR::Type_Rec>();
+        return le->type->to<IR::Type_Declaration>()->getName() 
+          == re->type->to<IR::Type_Declaration>()->getName();
+    }
 
     BUG("%1%: Unexpected type check for equivalence", dbp(left));
     // The following are not expected to be compared for equivalence:

@@ -62,6 +62,15 @@ class Type_Type : Type {
     validate { BUG_CHECK(!type->is<IR::Type_Type>(), "%1%: nested Type_Type", type); }
 }
 
+
+class Type_Rec: Type_Type {
+    toString { return "Type(" + type->to<IR::Type_Declaration>()->getName() + ")"; }
+    dbprint { out << "Type(" << type->to<IR::Type_Declaration>()->getName() << ")"; }
+    Type getP4Type() const override { return  type; }
+    validate { BUG_CHECK(type->is<IR::Type_Declaration>() && !type->is<IR::Type_Rec>() && !type->is<IR::Type_Type>(), "%1%: nested Type_Type or Type_Rec", type); }
+}
+
+
 class Type_Boolean : Type_Base {
     static Type_Boolean get();
     int width_bits() const override { return 1; }

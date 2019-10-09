@@ -14,32 +14,8 @@ typedef   bit<16>   GroupId_t;
 const   PortId_t    PORT_CPU = 255;
 const   PortId_t    PORT_RECIRCULATE = 254;
 
-
-////////////////////////////////////////////////////////////////////////////////
-//////////////////// Following two are taken from core.p4 //////////////////////
-match_kind {
-    /// Match bits exactly.
-    exact,
-    /// Ternary match, using a mask.
-    ternary,
-    /// Longest-prefix match.
-    lpm
-}
-
-/// Standard error codes.  New error codes can be declared by users.
-error {
-    NoError,           /// No error.
-    PacketTooShort,    /// Not enough bits in packet for 'extract'.
-    NoMatch,           /// 'select' expression has no matches.
-    StackOutOfBounds,  /// Reference to invalid element of a header stack.
-    HeaderTooShort,    /// Extracting too many bits into a varbit field.
-    ParserTimeout      /// Parser execution time limit exceeded.
-}
-////////////////////////////////////////////////////////////////////////////////
-
-
 enum msa_packet_path_t {
-    NORMAL,     /// Packet received by ingress that is none of the cases below.
+    NORMAL     /// Packet received by ingress that is none of the cases below.
 //    RECIRCULATE /// Packet arrival is the result of a recirculate operation
 }
 
@@ -55,18 +31,18 @@ enum metadata_fields_t {
 }
 
 
-extern im_t {
-  void set_out_port(in PortId_t out_port);
-  PortId_t get_out_port(); // default 0x00
-  bit<32> get_value(msa_metadata_fields_t field_type);
-  void copy_from(im_t im);
-}
-
-
 extern pkt {
   void copy_from(pkt p);
   bit<32> get_length();
   bit<9> get_in_port();
+}
+
+
+extern im_t {
+  void set_out_port(in PortId_t out_port);
+  PortId_t get_out_port(); // default 0x00
+  bit<32> get_value(metadata_fields_t field_type);
+  void copy_from(im_t im);
 }
 
 
@@ -76,7 +52,7 @@ extern emitter {
 
 
 extern extractor {
-  void extractor<H>(pkt, out H hdrs);
+  void extract<H>(pkt p, out H hdrs);
   /// T may be an arbitrary fixed-size type.
   T lookahead<T>();
 }
@@ -84,12 +60,12 @@ extern extractor {
 
 extern in_buf<I> {
   // This is not needed.
-  dequeue(pkt p, im_t im, out I in_param);
+  void dequeue(pkt p, im_t im, out I in_param);
 }
 
 
 extern out_buf<O> {
-  enqueue(pkt p, im_t im, in O out_param);
+  void enqueue(pkt p, im_t im, in O out_param);
 
   // Can be used to convert out_buf to in_buf
   // All the elements of this instance are moved to ib.
@@ -102,16 +78,14 @@ extern out_buf<O> {
 
 
 extern mc_buf<H, O> {
-  enqueue(pkt p, im_t im, in H hdrs, in O param);
+  void enqueue(pkt p, im_t im, in H hdrs, in O param);
 }
 
 
 action msa_no_action(){}
 
 
-extern multicast_engine {
-  msa_multicast_engine();
-  
+extern multicast_engine<O> {
   void set_multicast_group(GroupId_t gid);
 
   // Analogous to fork system call, only difference is original (parent
@@ -133,8 +107,8 @@ extern multicast_engine {
    */
   void apply(im_t im, out PktInstId_t id);
 
-  set_buf(out_buf<O>);
-  void apply(pkt, im_t, out O);
+  void set_buf(out_buf<O> ob);
+  void apply(pkt p, im_t im, out O o);
 
   // In future, a shim will translate between architecture specific CP APIs
   /*
@@ -149,7 +123,7 @@ extern multicast_engine {
 }
 
 
-cpackage Unicast<H, M, I, O, IO>(pkt p, inout im_t im, in I in_param, out O out_param, inout IO inout_param) {
+cpackage Unicast<H, M, I, O, IO>(pkt p, im_t im, in I in_param, out O out_param, inout IO inout_param) {
   parser micro_parser(extractor ex, pkt p, im_t im, out H hdrs, inout M meta, in I in_param, inout IO inout_param);
 
   control micro_control(pkt p, im_t im, inout H hdrs, inout M meta, in I in_param, out O out_param, inout IO inout_param);

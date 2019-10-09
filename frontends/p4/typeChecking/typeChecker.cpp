@@ -252,14 +252,27 @@ const IR::ParameterList* TypeInference::canonicalizeParameters(const IR::Paramet
     if (params == nullptr)
         return params;
 
+    auto typeExtern = findContext<IR::Type_Extern>();
     bool changes = false;
     auto vec = new IR::IndexedVector<IR::Parameter>();
     for (auto p : *params->getEnumerator()) {
         auto paramType = getType(p);
         if (paramType == nullptr)
             return nullptr;
-        BUG_CHECK(!paramType->is<IR::Type_Type>(), "%1%: Unexpected parameter type", paramType);
-        if (paramType != p->type) {
+        BUG_CHECK(paramType->is<IR::Type_Rec>() || !paramType->is<IR::Type_Type>(), "%1%: Unexpected parameter type", paramType);
+        /*
+        if (paramType->is<IR::Type_Rec>()) {
+            std::cout<<" recursive types \n";
+            if (typeExtern != nullptr) {
+                std::cout<<"is p->type TypeName: "<<p->type->is<IR::Type_Name>()<<"\n";
+                auto pt = p->type->to<IR::Type_Name>();
+                if (pt != nullptr && pt->path->name == typeExtern->getName()) {
+                    std::cout<<"pt "<<pt->path->name<<"\n";
+                }
+            }
+        }*/
+
+        if (paramType != p->type && !paramType->is<IR::Type_Rec>()) {
             p = new IR::Parameter(p->srcInfo, p->name, p->annotations,
                                   p->direction, paramType, p->defaultValue);
             changes = true;
@@ -1313,6 +1326,49 @@ const IR::Node* TypeInference::postorder(IR::Type_Specialized *type) {
         }
         ctx = ctx->parent;
     }
+    // std::cout<<"Type to string : "<<type->toString()<<"\n";
+    auto typeExtern = findContext<IR::Type_Extern>(); 
+    if (typeExtern != nullptr && typeExtern->getName() == type->baseType->path->name) {
+        // std::cout<<"setting Type_Rec in postorder(IR::Type_Specialized*) --> "<<typeExtern->getName()<<"\n";
+
+        auto recType =  typeMap->getType(type->baseType)->to<IR::Type_Rec>();
+        if (recType != nullptr) {
+            // std::cout<<"recursive type "<<type->baseType->to<IR::Type_Name>()->path->name<<"\n";
+            auto baseOrig = recType->type;
+            auto gt = baseOrig->to<IR::IMayBeGenericType>();
+            auto tp = gt->getTypeParameters();
+            if (tp->size() != type->arguments->size()) {
+                typeError("%1%: Type %2% has %3% type parameter(s), but it is specialized with %4%",
+                      baseOrig, gt, tp->size(), type->arguments->size());
+                return nullptr;
+            }
+            IR::Vector<IR::Type> *args = new IR::Vector<IR::Type>();
+            for (const IR::Type* a : *type->arguments) {
+                auto atype = getTypeType(a);
+                if (atype == nullptr)
+                    return nullptr;
+                /*
+                if (atype->is<IR::Type_Var>())
+                    std::cout<<"getTypeType of type arguments :  "<<atype->toString()<<"\n";
+                */
+                if (atype->is<IR::Type_Control>() || atype->is<IR::Type_Parser>() ||
+                    atype->is<IR::Type_Package>() || atype->is<IR::P4Parser>() ||
+                    atype->is<IR::P4Control>()) {
+                    typeError("%1%: Cannot use %2% as a type parameter", type, atype);
+                    return nullptr;
+                }
+                const IR::Type* canon = canonicalize(atype);
+                if (canon == nullptr)
+                    return nullptr;
+                args->push_back(canon);
+            }
+            auto specialized = specialize(gt, args);
+            // std::cout<<"specialized in recursive type: "<<specialized->toString()<<"\n";
+            setType(specialized,  recType);
+            setType(getOriginal(), recType);
+            return type;
+        }
+    } 
     (void)setTypeType(type);
     return type;
 }
@@ -1343,6 +1399,15 @@ const IR::Node* TypeInference::postorder(IR::Type_Name* typeName) {
             return typeName;
         }
 
+        auto typeExtern = findContext<IR::Type_Extern>();
+        if (typeExtern != nullptr && typeExtern->getName() == decl->getName()) {
+            // std::cout<<"setting Type_Rec in postorder(IR::Type_Name*) --> "<<typeExtern->getName()<<"\n";
+            type = new IR::Type_Rec(typeExtern);
+            setType(typeName->path, typeExtern);
+            setType(getOriginal(), type);
+            setType(typeName, type);
+            return typeName;
+        } 
         type = getType(decl->getNode());
         if (type == nullptr)
             return typeName;
@@ -1590,10 +1655,34 @@ const IR::Node* TypeInference::postorder(IR::Type_HeaderUnion *type) {
 
 const IR::Node* TypeInference::postorder(IR::Parameter* param) {
     if (done()) return param;
-    const IR::Type* paramType = getTypeType(param->type);
-    if (paramType == nullptr)
+
+    const IR::Type* paramType = nullptr;
+
+    auto typeExtern = findContext<IR::Type_Extern>();
+    auto paramTypeSpec =  param->type->to<IR::Type_Specialized>();
+    const IR::Type_Name* paramTypeName = nullptr;
+    if (paramTypeSpec == nullptr)  {
+        //std::cout<<" nullptr in paramTypeSpec\n";
+        //std::cout<<param->type->toString()<<"\n";
+        paramTypeName = param->type->to<IR::Type_Name>();
+    }
+    else
+        paramTypeName = paramTypeSpec->baseType;
+
+    if (typeExtern != nullptr && paramTypeName != nullptr && 
+        typeExtern->getName() == paramTypeName->path->name) {
+        // std::cout<<"-*************> "<<typeExtern->getName()<<"\n";
+        paramType = getType(param->type);
+        BUG_CHECK(paramType->is<IR::Type_Rec>(), "%1%: unexpected type", paramType);
+        setType(getOriginal(), paramType);
+        setType(param, paramType);
         return param;
-    BUG_CHECK(!paramType->is<IR::Type_Type>(), "%1%: unexpected type", paramType);
+    } else {
+        paramType = getTypeType(param->type);
+        if (paramType == nullptr)
+            return param;
+        BUG_CHECK(!paramType->is<IR::Type_Type>(), "%1%: unexpected type", paramType);
+    }
 
     if (paramType->is<IR::P4Control>() || paramType->is<IR::P4Parser>()) {
         typeError("%1%: parameter cannot have type %2%", param, paramType);
@@ -3027,34 +3116,34 @@ void TypeInference::checkCorelibMethods(const ExternMethod* em) const {
     } else if (et->name == corelib.extractor.name) {
         if (em->method->name == corelib.extractor.extract.name) {
             if (argCount == 0) {
-                typeError("%1%: Expected exactly 1 argument for %2% method",
+                typeError("%1%: Expected exactly 2 argument for %2% method",
                           mce, corelib.extractor.extract.name);
                 return;
             }
 
-            auto arg0 = mce->arguments->at(0);
+            auto arg0 = mce->arguments->at(1);
             auto argType = typeMap->getType(arg0, true);
             if (!argType->is<IR::Type_Header>() && !argType->is<IR::Type_Dontcare>()) {
                 typeError("%1%: argument must be a header", mce->arguments->at(0));
                 return;
             }
 
-            if (argCount == 1) {
+            if (argCount == 2) {
                 if (hasVarbitsOrUnions(argType))
                     // This will never have unions, but may have varbits
                     typeError("%1%: argument cannot contain varbit fields", arg0);
-            } else if (argCount == 2) {
+            } else if (argCount == 3) {
                 if (!hasVarbitsOrUnions(argType))
                     typeError("%1%: argument should contain a varbit field", arg0);
             } else {
-                typeError("%1%: Expected 1 or 2 arguments for '%2%' method",
+                typeError("%1%: Expected 2 or 3 arguments for '%2%' method",
                           mce, corelib.extractor.extract.name);
             }
         }
     } else if (et->name == corelib.emitter.name) {
         if (em->method->name == corelib.emitter.emit.name) {
-            if (argCount == 1) {
-                auto arg = mce->arguments->at(0);
+            if (argCount == 2) {
+                auto arg = mce->arguments->at(1);
                 auto argType = typeMap->getType(arg, true);
                 checkEmitType(mce, argType);
             } else {
