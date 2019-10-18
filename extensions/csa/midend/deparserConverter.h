@@ -28,6 +28,7 @@ class DeparserConverter final : public Transform {
     P4::TypeMap* typeMap;
     cstring structTypeName;
     cstring fieldName;
+    cstring tableName = "deparser_tbl";
 
     P4::SymbolicValueFactory* symbolicValueFactory;
 
@@ -67,10 +68,10 @@ class DeparserConverter final : public Transform {
 
     IR::P4Table* createEmitTable(const IR::MethodCallStatement* mcs);
 
-    IR::P4Table* extendEmitTable(const IR::MethodCallStatement* mcs, 
+    IR::P4Table* extendEmitTable(const IR::P4Table* oldTable, const IR::MethodCallStatement* mcs,
                          const IR::MethodCallStatement* predecessor);
 
-    IR::P4Table* mergeAndExtendEmitTables(const IR::MethodCallStatement*, 
+    IR::P4Table* mergeAndExtendEmitTables(const IR::P4Table* oldTable, const IR::MethodCallStatement*,
                                   std::vector<const IR::MethodCallStatement*>*);
 
     void createID(const IR::MethodCallStatement* emitStmt);

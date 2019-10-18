@@ -55,7 +55,7 @@ bool CreateEmitSchedule::preorder(const IR::MethodCallStatement* mcs) {
 }
 
 bool CreateEmitSchedule::preorder(const IR::IfStatement* ifStmt) {
-    
+    LOG3("preorder ifstatement");
     size_t size = frontierStack.size();
 
     visit(ifStmt->ifTrue);
@@ -74,7 +74,7 @@ bool CreateEmitSchedule::preorder(const IR::IfStatement* ifStmt) {
 }
 
 bool CreateEmitSchedule::preorder(const IR::SwitchStatement* swStmt) {
-    
+	LOG3("preorder switch statement");
     size_t size = frontierStack.size();
     std::vector<const IR::MethodCallStatement*> pushBackStack;
 
@@ -92,6 +92,7 @@ bool CreateEmitSchedule::preorder(const IR::SwitchStatement* swStmt) {
 
 
 bool DeparserConverter::isDeparser(const IR::P4Control* p4control) {
+
     auto params = p4control->getApplyParameters();
     for (auto param : params->parameters) {
         auto type = typeMap->getType(param->type, false);
@@ -111,12 +112,12 @@ bool DeparserConverter::isDeparser(const IR::P4Control* p4control) {
 
 
 const IR::Node* DeparserConverter::preorder(IR::P4Control* deparser) {
-    
+	LOG3("preorder p4control"<< deparser->name.name);
     if (!isDeparser(deparser)) {
         prune();
         return deparser;
     }
-
+    LOG3("is deparser true");
     auto param = deparser->getApplyParameters()->getParameter(0);
     paketOutParamName = param->name.name;
 
@@ -180,7 +181,7 @@ const IR::Node* DeparserConverter::postorder(IR::P4Control* deparser) {
 }
 
 const IR::Node* DeparserConverter::preorder(IR::MethodCallStatement* methodCallStmt) {
-    
+	LOG3("preorder method call statement");
     auto mcs = getOriginal()->to<IR::MethodCallStatement>();
 
     if (!isEmitCall(methodCallStmt, refMap, typeMap))
@@ -219,31 +220,35 @@ const IR::Node* DeparserConverter::preorder(IR::MethodCallStatement* methodCallS
     }
     IR::P4Table* p4Table = nullptr;
 
-
+//TODO change this part, create emit table if not emit table iexists
+    // If emit table exists then we need to extend the existing able
     if (!emitCallGraph->isCallee(mcs)) {
         // std::cout<<"Converting --> "<<methodCallStmt<<" to table\n";
         p4Table = createEmitTable(mcs);
+        if (p4Table) {
+        // std::cout<<__func__<<": creating apply method call\n";
+             // std::cout<<"p4table name "<<p4Table->name.name<<"\n";
+             auto method = new IR::Member(new IR::PathExpression(p4Table->name.name), IR::ID("apply"));
+             auto mce = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
+             auto tblApplyMCS = new IR::MethodCallStatement(mce);
+             // std::cout<<__func__<<": apply method call created\n";
+             return tblApplyMCS;
+        }
+        LOG3("createEmit table "<< emitIds[mcs]);
+
     } else {
         auto callers = emitCallGraph->getCallers(mcs);
-        if (callers->size() == 1)
-            p4Table = extendEmitTable(mcs, (*callers)[0]);
-        else if ( callers->size() > 1)
-            p4Table = mergeAndExtendEmitTables(mcs, callers);
-        else {
+        if (callers->size() == 1){
+            p4Table = extendEmitTable(tableDecls[0]->to<IR::P4Table>(), mcs, (*callers)[0]);
+        LOG3("extendEmit table "<< emitIds[mcs]<< " with "<< emitIds[(*callers)[0]]);
+        }else if ( callers->size() > 1){
+            p4Table = mergeAndExtendEmitTables(tableDecls[0]->to<IR::P4Table>(), mcs, callers);
+            LOG3("merge and extendEmit table "<< emitIds[mcs]);
+        }else {
             // size can not be 0;
         }
     }
 
-    if (p4Table) {
-        
-        // std::cout<<__func__<<": creating apply method call\n";
-        // std::cout<<"p4table name "<<p4Table->name.name<<"\n";
-        auto method = new IR::Member(new IR::PathExpression(p4Table->name.name), IR::ID("apply"));
-        auto mce = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
-        auto tblApplyMCS = new IR::MethodCallStatement(mce);
-        // std::cout<<__func__<<": apply method call created\n";
-        return tblApplyMCS;
-    }
     return methodCallStmt;
 }
 
@@ -319,7 +324,7 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
 }
 
 
-IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* mcs, 
+IR::P4Table* DeparserConverter::extendEmitTable(const IR::P4Table* oldTable, const IR::MethodCallStatement* mcs,
                                                 const IR::MethodCallStatement* 
                                                     predecessor) {
     unsigned width;
@@ -332,8 +337,10 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     keyElementLists[mcs] = keyExp;
 
     cstring emittedActionName;
-
-    for (unsigned i=0; i<2; i++) {
+    // TODO WHY 2 what is 1
+    // TODO modify this part of the code to add previous match entries appended with their actions and the remaining added keys should be false
+    // TODO in this part also in createP4Actions, we need to append the previous actoin action declaration statements in the newly created action when matching on previous match + current match action
+    for (unsigned i=0; i<2; i++) { // WHY 2
         for (auto ele : keyValueEmitOffsets[predecessor]) {
             auto currentEmitOffset = ele.second;
             IR::ListExpression* ls = ele.first->clone();
@@ -365,9 +372,17 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
             keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset);
         }
     }
+
     for (const auto& aIdecl : actionDecls[mcs]) {
         auto amce = new IR::MethodCallExpression(
                             new IR::PathExpression(aIdecl->name.name), 
+                            new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+        auto actionRef = new IR::ActionListElement(amce);
+        actionListElements.push_back(actionRef);
+    }
+    for (const auto& aIdecl : actionDecls[predecessor]) {
+        auto amce = new IR::MethodCallExpression(
+                            new IR::PathExpression(aIdecl->name.name),
                             new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
         auto actionRef = new IR::ActionListElement(amce);
         actionListElements.push_back(actionRef);
@@ -379,6 +394,7 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     auto actionRef = new IR::ActionListElement(amce);
     actionListElements.push_back(actionRef);
 
+
     auto key = createKey(mcs);
     auto actionList = new IR::ActionList(actionListElements);
     auto entriesList = new IR::EntriesList(entries);
@@ -386,7 +402,11 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     return p4Table;
 }
 
-IR::P4Table* DeparserConverter::mergeAndExtendEmitTables(
+//TODO extend this part of the code to take into consideration the previous predecessors all keys, actions+ entries
+//TODO similar to extend but with iterations over the predecessors
+//TODO make sure when append to respect the order in the entry/key list when appending with false for non matched elements
+//TODO check if diagram will remain the same in all cases
+IR::P4Table* DeparserConverter::mergeAndExtendEmitTables(const IR::P4Table* old_table,
                                     const IR::MethodCallStatement* mcs,
                                     std::vector<const IR::MethodCallStatement*>*
                                         predecessors ) {
@@ -404,6 +424,7 @@ IR::P4Table* DeparserConverter::mergeAndExtendEmitTables(
     unsigned width = 0;
     auto exp = getArgHeaderExpression(mcs, width);
     for (auto p : (*predecessors)) {
+    	LOG3("merging table "<< emitIds[mcs]<< " with "<< emitIds[p]);
         std::vector<std::pair<const IR::Expression*, bool>>  tempKL(keyElementLists[p]);    
         auto keyExp = new IR::PathExpression(controlVar[p].first);
         tempKL.emplace_back(keyExp, true);
@@ -428,7 +449,7 @@ IR::P4Table* DeparserConverter::mergeAndExtendEmitTables(
                     actionBinding = new IR::MethodCallExpression(
                                         new IR::PathExpression(emittedActionName), 
                                         new IR::Vector<IR::Type>(), 
-                                        new IR::Vector<IR::Argument>());
+                                         new IR::Vector<IR::Argument>());
                 } else {
                     auto iter = controlVar.find(mcs);
                     if (iter != controlVar.end()) {
@@ -713,10 +734,15 @@ IR::P4Table* DeparserConverter::createP4Table(cstring name, IR::Key* key,
     auto defaultActionProp = new IR::Property(IR::ID("default_action"), v, true);
     tablePropertyList.push_back(defaultActionProp);
 
-    cstring tableName = "csa_"+name+"_tbl";
+
     auto table = new IR::P4Table(IR::ID(tableName), new IR::TableProperties(tablePropertyList));
-    // std::cout<<"table name --> "<<table->name<<"\n";
+    if(tableDecls.size()){
+    	LOG3("clearing table ");
+    	tableDecls.clear();
+    }
     tableDecls.push_back(table);
+
+    std::cout<<"Deparser table name --> "<<table->name<<" total"<<tableDecls.size()<<"\n";
     return table;
 }
 
