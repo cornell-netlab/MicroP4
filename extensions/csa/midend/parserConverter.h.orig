@@ -29,8 +29,6 @@ class ParserConverter final : public Transform {
 
     cstring noActionName;
 
-    cstring tableName = "parser_tbl";
-
 
 // per parser data structures, they get refreshed
     P4::ParserStructure* parserEval = nullptr;
@@ -39,19 +37,18 @@ class ParserConverter final : public Transform {
     IR::IndexedVector<IR::Declaration> actionDecls;
     IR::IndexedVector<IR::Property> tablePropertyList;
     IR::IndexedVector<IR::Declaration> tableDecls;
-    IR::Vector<IR::KeyElement> keyElementList;
-    IR::IndexedVector<IR::ActionListElement> actionList;
-    IR::Vector<IR::Entry> entryList;
-
-    std::map<cstring, IR::IndexedVector<IR::StatOrDecl>> toAppendStats;
-
     cstring paketInParamName;
     std::map<cstring, unsigned> stateIDMap;
 
     // Populated by createKeyElementList and used by entry creation
     std::list<cstring> keyElementOrder;
 
-    bool stateIterator(IR::ParserState* state);
+    void createP4Actions(IR::ParserState* state);
+    IR::Vector<IR::KeyElement>* createKeyElementList(IR::ParserState* state);
+    IR::IndexedVector<IR::ActionListElement>* 
+        createActionList(IR::ParserState* state);
+    IR::Vector<IR::Entry>* createEntryList(IR::ParserState* state);
+
     bool hasDefaultSelectCase(const IR::ParserState* state) const;
     bool hasSelectExpression(const IR::ParserState* state) const;
 
