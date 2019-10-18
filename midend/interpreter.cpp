@@ -35,6 +35,9 @@ SymbolicValue* SymbolicValueFactory::create(const IR::Type* type, bool uninitial
         if (te->name.name == P4CoreLibrary::instance.packetOut.name) {
             return new SymbolicPacketOut(te);
         }
+        if (te->name.name == P4CoreLibrary::instance.pkt.name) {
+            return new SymbolicPkt(te);
+        }
         return new SymbolicExtern(te);
     }
     if (type->is<IR::Type_Enum>() ||
@@ -611,6 +614,24 @@ bool SymbolicPacketOut::equals(const SymbolicValue* other) const {
     return maximumStreamOffset == sp->maximumStreamOffset;
 }
 
+bool SymbolicPkt::merge(const SymbolicValue* other) {
+    BUG_CHECK(other->is<SymbolicPkt>(), "%1%: merging with non- packet out", other);
+    auto sp = other->to<SymbolicPkt>();
+    bool changes = false;
+    if (offset < sp->offset) {
+        offset = sp->offset;
+        changes = true;
+    }
+    return changes;
+}
+
+bool SymbolicPkt::equals(const SymbolicValue* other) const {
+    if (!other->is<SymbolicPkt>())
+        return false;
+    auto sp = other->to<SymbolicPkt>();
+    return offset == sp->offset;
+}
+
 SymbolicVoid* SymbolicVoid::instance = new SymbolicVoid();
 
 /*****************************************************************************************/
@@ -1009,6 +1030,93 @@ void ExpressionEvaluator::postorder(const IR::MethodCallExpression* expression) 
                 std::cout<<"-------------------------------------------------\n";
                 */
                 return;
+            }
+        }
+
+        if (em->originalExternType->name.name == P4CoreLibrary::instance.extractor.name) {
+            if (em->method->name.name == P4CoreLibrary::instance.extractor.extract.name) {
+                auto arg0 = expression->arguments->at(0);
+
+                auto arg1 = expression->arguments->at(1);
+                auto argType = typeMap->getType(arg1, true);
+                auto hdr = get(arg1->expression);
+                bool fixed = factory->isFixedWidth(argType);
+                unsigned width = factory->getWidth(argType);
+
+                // For variable-sized objects width is the "minimum" width.
+                if (expression->arguments->size() == 2) {
+                    // 1-argument extract method
+                    if (!fixed || !argType->is<IR::Type_Header>()) {
+                        auto result = new SymbolicStaticError(
+                            arg1, "Expected a fixed-size header as argument");
+                        set(expression, result);
+                        return;
+                    }
+                } else {
+                    BUG_CHECK(expression->arguments->size() == 3,
+                              "%1%: expected 3 arguments", expression);
+                    // TODO: check first argument type more in depth; i.e. only
+                    // one varbit field allowed
+                    if (fixed || !argType->is<IR::Type_Header>()) {
+                        auto result = new SymbolicStaticError(
+                            arg1, "Expected a variable-size header as argument");
+                        set(expression, result);
+                        return;
+                    }
+                    auto arg2 = expression->arguments->at(2);
+                    auto sz = get(arg2->expression);
+                    if (sz->is<SymbolicInteger>()) {
+                        auto szValue = sz->to<SymbolicInteger>();
+                        if (szValue->isKnown())
+                            width = static_cast<unsigned>(szValue->constant->asInt());
+                    }
+                }
+
+                auto obj = valueMap->get(arg0->expression);
+                // std::cout<<"decl = ";decl->dbprint(std::cout);;
+                // std::cout<<", obj-valueMap = ";obj->dbprint(std::cout);std::cout<<"\n";
+                CHECK_NULL(obj);
+                if (obj->is<SymbolicError>()) {
+                    set(expression, obj);
+                    return;
+                }
+
+                BUG_CHECK(obj->is<SymbolicPkt>(), "%1%: expected a Pkt", arg0);
+                auto pkt = obj->to<SymbolicPkt>();
+                unsigned startOffset = pkt->getOffset();
+                pkt->advance(width);
+                
+                if (!fixed)
+                    pkt->setConservative();
+
+                BUG_CHECK(hdr->is<SymbolicHeader>(), "%1%: Not a header?", hdr);
+                auto sh = hdr->to<SymbolicHeader>();
+                if (sh->valid->isKnown() && sh->valid->value) {
+                    auto result = new SymbolicException(
+                        expression, P4::StandardExceptions::OverwritingHeader);
+                    set(expression, result);
+                    return;
+                }
+                sh->setCoordinatesFromBitStream(startOffset, startOffset+width);
+
+                sh->setAllUnknown();
+                sh->setValid(true);
+                // TODO: check if expression original already exists in ValueMap,
+                // raise error/warning, if so.
+                valueMap->set(arg1->expression, sh);
+                set(expression, SymbolicVoid::get());
+                /*
+                std::cout<<"["<<startOffset<<"."<<startOffset+width
+                         <<"]"<<"width:"<<width<<"\n";
+                std::cout<<"-------------------------------------------------\n";
+                */
+                return;
+
+            }
+        }
+
+        if (em->originalExternType->name.name == P4CoreLibrary::instance.emitter.name) {
+            if (em->method->name.name == P4CoreLibrary::instance.emitter.emit.name) {
             }
         }
     }

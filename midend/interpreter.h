@@ -608,6 +608,33 @@ class SymbolicPacketOut final : public SymbolicExtern {
 };
 
 
+class SymbolicPkt final : public SymbolicExtern {
+    unsigned offset;
+    bool conservative;
+
+  public:
+    explicit SymbolicPkt(const IR::Type_Extern* type) :
+            SymbolicExtern(type), offset(0), conservative(false) {}
+
+    void dbprint(std::ostream& out) const override {
+        out << "packet_out; offset =" << offset;
+    }
+    SymbolicValue* clone() const override {
+        auto result = new SymbolicPkt(type->to<IR::Type_Extern>());
+        result->offset = offset;
+        return result;
+    }
+    unsigned getOffset() const {
+        return offset;
+    }
+    void setConservative() { conservative = true; }
+    bool isConservative() const { return conservative; }
+    void advance(unsigned width) { offset += width; }
+    bool merge(const SymbolicValue* other) override;
+    bool equals(const SymbolicValue* other) const override;
+};
+
+
 }  // namespace P4
 
 #endif /* _MIDEND_INTERPRETER_H_ */
