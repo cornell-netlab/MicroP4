@@ -64,13 +64,13 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         // referenceMap. Not sure, why is that happening.
         // Therefore MergeDeclarations(a Transform Pass) without refMap and
         // typeMap is executed after it.
-        new CSA::CreateAllPartitions(&refMap, &typeMap, &mainP4ControlTypeName, 
+        new CSA::CreateAllPartitions(&refMap, &typeMap, &mainP4ControlTypeName,
                                      &partitionsMap, &controlToReconInfoMap, 
                                      &partitions),
         new CSA::MergeDeclarations(v1ModelIR), 
 
         new P4::MidEndLast(),
-        new CSA::CSAExternSubstituter(&refMap, &typeMap, &partitionsMap, 
+        new CSA::CSAExternSubstituter(&refMap, &typeMap, &partitionsMap,
                                       &partitions),
         new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
