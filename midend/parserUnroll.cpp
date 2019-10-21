@@ -278,9 +278,15 @@ class ParserSymbolicInterpreter {
                 // Check if any packet in the valueMap has changed
                 auto filter = [](const IR::IDeclaration*, const SymbolicValue* value)
                         { return value->is<SymbolicPacketIn>(); };
+                auto filterPkt = [](const IR::IDeclaration*, const SymbolicValue* value)
+                        { return value->is<SymbolicPkt>(); };
                 auto packets = state->before->filter(filter);
                 auto prevPackets = crt->before->filter(filter);
-                if (packets->equals(prevPackets)) {
+
+                auto pkts = state->before->filter(filterPkt);
+                auto prevPkts = crt->before->filter(filterPkt);
+
+                if ((!packets->empty() || !prevPackets->empty()) && packets->equals(prevPackets)) {
                     bool conservative = false;
                     for (auto p : state->before->map) {
                         auto pkt = p.second->to<SymbolicPacketIn>();
@@ -298,6 +304,26 @@ class ParserSymbolicInterpreter {
                                 stateChain(state));
                     return true;
                 }
+
+                if ((!pkts->empty() || !prevPkts->empty()) && pkts->equals(prevPkts)) {
+                    bool conservative = false;
+                    for (auto p : state->before->map) {
+                        auto pkt = p.second->to<SymbolicPkt>();
+                        if (pkt->isConservative()) {
+                            conservative = true;
+                            break;
+                        }
+                    }
+
+                    if (conservative)
+                        ::warning("Potential parser cycle without extracting any bytes:\n%1%",
+                                  stateChain(state));
+                    else
+                        ::error("Parser cycle without extracting any bytes:\n%1%",
+                                stateChain(state));
+                    return true;
+                }
+
 
                 // If no header validity has changed we can't really unroll
                 if (!headerValidityChange(crt->before, state->before)) {

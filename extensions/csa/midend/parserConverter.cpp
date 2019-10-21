@@ -33,7 +33,7 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     P4::ParserRewriter rewriter(refMap, typeMap, true, parserEval);
     parser->apply(rewriter);
 
-    unsigned offset = parserEval->result->getPacketInMaxOffset();
+    unsigned offset = parserEval->result->getPktMaxOffset();
     if (*bitMaxOffset < offset) {
         // std::cout<<"maxoffset "<<offset<<"\n";
         *bitMaxOffset = offset;

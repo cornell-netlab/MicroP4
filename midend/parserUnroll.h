@@ -135,6 +135,24 @@ class ParserInfo {
         }
         return ret;
     }
+
+    unsigned getPktMaxOffset() const {
+        unsigned ret = 0;
+        for (auto valueMap : allPossileFinalValueMaps) {
+            auto filter = [](const IR::IDeclaration*, const P4::SymbolicValue* value)
+                            { return value->is<P4::SymbolicPkt>(); };
+            auto vm = valueMap->filter(filter);
+            unsigned val = 0;
+            if (vm->map.size() == 1) {
+                auto spi = vm->map.begin()->second->to<P4::SymbolicPkt>();
+                val = spi->getOffset();
+                if (ret < val)
+                    ret = val;
+            }
+        }
+        return ret;
+    }
+
 };
 
 typedef CallGraph<const IR::ParserState*> StateCallGraph;

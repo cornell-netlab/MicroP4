@@ -24,11 +24,9 @@ class CPackageToControl final : public Transform {
     P4ControlStateReconInfoMap *controlToReconInfoMap;
 
     const std::vector<cstring> archBlockOrder = {
-        "csa_parser", 
-        "csa_import", 
-        "csa_pipe", 
-        "csa_export", 
-        "csa_deparser"
+        "micro_parser", 
+        "micro_control", 
+        "micro_deparser"
     };
 
     // Per P4ComposablePackage state

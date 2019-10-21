@@ -135,6 +135,8 @@ class ValueMap final : public IHasDbPrint {
         }
         return true;
     }
+
+    bool empty() const { return map.empty(); }
 };
 
 class ExpressionEvaluator : public Inspector {
