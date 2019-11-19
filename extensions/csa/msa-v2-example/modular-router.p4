@@ -29,7 +29,7 @@ cpackage ModularRouter : implements Unicast<hdr_t, meta_t,
   }
 
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
-                          in empty_t ia, out empty_t oa, inout ioa) {
+                          in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
     L3() l3_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
