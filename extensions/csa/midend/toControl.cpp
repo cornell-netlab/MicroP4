@@ -17,12 +17,15 @@ const cstring ToControl::headerTypeName = "csa_byte_h";
 const cstring ToControl::indicesHeaderTypeName = "csa_indices_h";
 const cstring ToControl::indicesHeaderInstanceName = "indices";
 const cstring ToControl::bitStreamFieldName = "data";
+const cstring ToControl::csaPakcetStructLenFName = "pkt_length";
+
+// used by CSAPacketSubstituter
 const cstring ToControl::csaPakcetInGetPacketStruct = "get_packet_struct";
 const cstring ToControl::csaPakcetOutSetPacketStruct = "set_packet_struct";
 const cstring ToControl::csaPakcetOutGetPacketIn = "get_packet_in";
 const cstring ToControl::csaPakcetInExternTypeName = "csa_packet_in";
 const cstring ToControl::csaPakcetOutExternTypeName = "csa_packet_out";
-const cstring ToControl::csaPakcetStructLenFName = "pkt_length";
+
 
 cstring CPackageToControl::getNamePrefix() {
     cstring namePrefix = "";
@@ -42,8 +45,8 @@ void CPackageToControl::resetMCSRelatedObjects() {
     newDeclInsts.clear();
 }
 
-void CPackageToControl::addMCSs(IR::BlockStatement* bs) {
 
+void CPackageToControl::addMCSs(IR::BlockStatement* bs) {
     for (auto cn : archBlockOrder) {
         auto iter = mcsMap.find(cn);
         if (iter != mcsMap.end()) {
@@ -52,6 +55,7 @@ void CPackageToControl::addMCSs(IR::BlockStatement* bs) {
         }
     }
 }
+
 
 void CPackageToControl::populateArgsMap(const IR::ParameterList* pl) {
     for (auto p : pl->parameters) {
@@ -114,7 +118,7 @@ void CPackageToControl::createMCS(const IR::Type_Control* tc) {
 }
 
 
-
+/*
 void CPackageToControl::addIntermediateExternCalls(IR::BlockStatement* bs) {
 
     auto args = new IR::Vector<IR::Argument>();
@@ -135,6 +139,7 @@ void CPackageToControl::addIntermediateExternCalls(IR::BlockStatement* bs) {
                   typeToArgsMap[ToControl::csaPacketStructTypeName]->clone(), me);
     bs->components.insert(bs->components.begin(), as);
 }
+*/
 
 const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
 
@@ -148,7 +153,7 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
     cstring newName = namePrefix+oldName;
     tc->name = newName; 
     typeRenameMap[oldName] = newName;
-    if (oldName == "csa_parser") {
+    if (oldName == "micro_parser") {
         // auto p = tc->getApplyParameters()->getParameter(1);
 
         // First out argument of struct type is considered as struct of headers
@@ -176,7 +181,7 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
             }
         }
         BUG_CHECK(parameterType!=nullptr, 
-            "csa_parser expected to have at least one out parameter");
+            "micro_parser expected to have at least one out parameter");
         // auto pt = typeMap->getTypeType(parameterType, true);
         auto parentCpkg = findContext<IR::P4ComposablePackage>();
         // auto pts = pt->to<IR::Type_Struct>();
@@ -184,7 +189,7 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
             controlToReconInfoMap->emplace(parentCpkg->getName(), 
                 new ControlStateReconInfo(parentCpkg->getName(), 
                                           pts->getName()));
-        std::cout<<__FILE__<<" "<<__LINE__<<" "<<pts->getName()<<"\n";
+            // std::cout<<__FILE__<<" "<<__LINE__<<" "<<pts->getName()<<"\n";
         }
 
     }
@@ -272,12 +277,13 @@ const IR::Node* CPackageToControl::postorder(IR::P4ComposablePackage* cp) {
     auto bs = new IR::BlockStatement();
     addMCSs(bs);
 
-    if (mcsMap.find("csa_parser") != mcsMap.end()) {
-        addIntermediateExternCalls(bs);
+    // check for orchestration block
+    if (mcsMap.find("micro_parser") != mcsMap.end()) {
+        // don't need this in MSA
+        // addIntermediateExternCalls(bs);
     }
 
     auto p4ct = new IR::P4Control(IR::ID(cp->getName()), tc, controlLocals, bs);
-
 
     moveToTop->push_back(p4ct);
     return moveToTop;
@@ -358,6 +364,7 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
     return p4Program;
 }
 
+/*
 const IR::Node* AddCSAByteHeader::preorder(IR::Type_Extern* te) {
   
     if (te->getName() == "csa_packet_in") {
@@ -382,6 +389,7 @@ const IR::Node* AddCSAByteHeader::preorder(IR::Type_Extern* te) {
     }
     return te;  
 }
+*/
 
 
 }// namespace CSA

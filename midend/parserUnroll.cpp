@@ -194,12 +194,8 @@ class ParserSymbolicInterpreter {
             auto next = refMap->getDeclaration(path);
             BUG_CHECK(next->is<IR::ParserState>(), "%1%: expected a state", path);
             auto nextInfo = newStateInfo(state, next->getName(), state->after);
-            // if (nextInfo != nullptr) {
-                state->nextParserStateInfo.emplace_back(nullptr, nextInfo);
-                result->push_back(nextInfo);
-            //} else {
-                // state->isLeafState = true;
-            //}
+            state->nextParserStateInfo.emplace_back(nullptr, nextInfo);
+            result->push_back(nextInfo);
         } else if (select->is<IR::SelectExpression>()) {
             // TODO: really try to match cases; today we are conservative
             // evaluate ListExpression member "select" 
@@ -210,12 +206,8 @@ class ParserSymbolicInterpreter {
                 auto next = refMap->getDeclaration(path);
                 BUG_CHECK(next->is<IR::ParserState>(), "%1%: expected a state", path);
                 auto nextInfo = newStateInfo(state, next->getName(), state->after);
-                // if (nextInfo != nullptr) {
-                    state->nextParserStateInfo.emplace_back(c->keyset, nextInfo);
-                    result->push_back(nextInfo);
-                //} else {
-                    // state->isLeafState = true;
-                //}
+                state->nextParserStateInfo.emplace_back(c->keyset, nextInfo);
+                result->push_back(nextInfo);
             }
         } else {
             BUG("%1%: unexpected expression", select);
@@ -338,6 +330,7 @@ class ParserSymbolicInterpreter {
         return false;
     }
 
+    /*
     std::vector<ParserStateInfo*>* evaluateState(ParserStateInfo* state) {
         LOG1("Analyzing " << state->state);
         auto valueMap = state->before->clone();
@@ -359,6 +352,29 @@ class ParserSymbolicInterpreter {
             
         return result;
     }
+    */
+
+    std::vector<ParserStateInfo*>* evaluateState(ParserStateInfo* state) {
+        LOG1("Analyzing " << state->state);
+        if (state->state->name == IR::ParserState::accept || 
+            state->state->name == IR::ParserState::reject) {
+            state->after = state->before;
+            synthesizedParser->allPossileFinalValueMaps.push_back(state->after);
+            if (state->state->name == IR::ParserState::accept)
+                synthesizedParser->acceptStateFinalValueMaps.push_back(state->after);
+            return nullptr;
+        }
+
+        auto valueMap = state->before->clone();
+        for (auto s : state->state->components) {
+            bool success = executeStatement(state, s, valueMap);
+            if (!success)
+                return nullptr;
+        }
+        state->after = valueMap;
+        return evaluateSelect(state);
+    }
+
 
  public:
     ParserSymbolicInterpreter(ParserStructure* structure, ReferenceMap* refMap,

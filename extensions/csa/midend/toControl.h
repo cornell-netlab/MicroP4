@@ -46,7 +46,7 @@ class CPackageToControl final : public Transform {
     bool isArchBlock(cstring name);
     void createMCS(const IR::Type_Control* tc);
 
-    void addIntermediateExternCalls(IR::BlockStatement* bs);
+    // void addIntermediateExternCalls(IR::BlockStatement* bs);
   public:
     explicit CPackageToControl(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         cstring* mainControlTypeName,
@@ -102,7 +102,8 @@ class AddCSAByteHeader final : public Transform {
         setName("AddCSAByteHeader"); 
     }
     const IR::Node* preorder(IR::P4Program* p4Program) override;
-    const IR::Node* preorder(IR::Type_Extern* te) override;
+
+    // const IR::Node* preorder(IR::Type_Extern* te) override;
 };
 
 

@@ -17,6 +17,7 @@ limitations under the License.
 #ifndef _MIDEND_PARSERUNROLL_H_
 #define _MIDEND_PARSERUNROLL_H_
 
+#include <algorithm>
 #include "ir/ir.h"
 #include "frontends/common/resolveReferences/referenceMap.h"
 #include "frontends/p4/typeChecking/typeChecker.h"
@@ -79,6 +80,7 @@ class ParserInfo {
 
  public:
     std::vector<ValueMap*> allPossileFinalValueMaps;
+    std::vector<ValueMap*> acceptStateFinalValueMaps;
 
     std::vector<ParserStateInfo*>* get(cstring origState) const {
         std::vector<ParserStateInfo*> *vec;
@@ -136,6 +138,7 @@ class ParserInfo {
         return ret;
     }
 
+
     unsigned getPktMaxOffset() const {
         unsigned ret = 0;
         for (auto valueMap : allPossileFinalValueMaps) {
@@ -153,6 +156,22 @@ class ParserInfo {
         return ret;
     }
 
+
+    std::vector<unsigned> getAcceptedPktOffsets() const { 
+        std::vector<unsigned> acceptedPktOffsets;
+        for (auto valueMap : acceptStateFinalValueMaps) {
+            auto filter = [](const IR::IDeclaration*, const P4::SymbolicValue* value)
+                            { return value->is<P4::SymbolicPkt>(); };
+            auto vm = valueMap->filter(filter);
+            unsigned val = 0;
+            if (vm->map.size() == 1) {
+                auto spi = vm->map.begin()->second->to<P4::SymbolicPkt>();
+                val = spi->getOffset();
+                acceptedPktOffsets.push_back(val);
+            }
+        }
+        return acceptedPktOffsets;
+    }
 };
 
 typedef CallGraph<const IR::ParserState*> StateCallGraph;

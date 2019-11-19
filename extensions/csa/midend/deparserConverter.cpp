@@ -149,13 +149,16 @@ const IR::Node* DeparserConverter::postorder(IR::Parameter* param) {
     }
     
     auto te = type->to<IR::Type_Extern>();
-    if (te->name.name != P4::P4CoreLibrary::instance.packetOut.name) {
-        return param;
+    if (te->name.name == P4::P4CoreLibrary::instance.emitter.name)
+        return nullptr;
+
+    if (te->name.name == P4::P4CoreLibrary::instance.pkt.name) {
+        auto np = new IR::Parameter(param->srcInfo, IR::ID(param->name.name), 
+            IR::Direction::InOut, new IR::Type_Name(structTypeName));
+        return np;
     }
 
-    auto np = new IR::Parameter(param->srcInfo, IR::ID(param->name.name), 
-                                IR::Direction::InOut, new IR::Type_Name(structTypeName));
-    return np;
+    return param;
 }
 
 

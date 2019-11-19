@@ -45,7 +45,7 @@ class ParserConverter final : public Transform {
 
     std::map<cstring, IR::IndexedVector<IR::StatOrDecl>> toAppendStats;
 
-    cstring paketInParamName;
+    cstring pktParamName;
     std::map<cstring, unsigned> stateIDMap;
 
     // Populated by createKeyElementList and used by entry creation
@@ -81,13 +81,25 @@ class ParserConverter final : public Transform {
     const IR::Node* preorder(IR::P4Parser* parser) override;
     const IR::Node* postorder(IR::P4Parser* parser) override;
     const IR::Node* preorder(IR::ParserState* state) override;
+    const IR::Node* preorder(IR::Parameter* param) override;
+
+    // control the visit order of P4Parser nodes to visit in 
+    // execution call order
+    const IR::Node* preorder(IR::P4Program* p4Program) override;
+
+    const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
+    // used to visit P4Parser of callee P4ComposablePackage
+    const IR::Node* preorder(IR::P4Control* p4Control) override;
+
+    const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
+
 };
 
 class ExtractSubstitutor final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
     const P4::ParserStateInfo* parserStateInfo;
-    cstring paketInParamName;
+    cstring pktParamName;
     cstring fieldName;
 
     P4::SymbolicValueFactory svf;
@@ -100,20 +112,20 @@ class ExtractSubstitutor final : public Transform {
 
     explicit ExtractSubstitutor(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
                                 const P4::ParserStateInfo* parserStateInfo, 
-                                cstring paketInParamName,
+                                cstring pktParamName,
                                 cstring fieldName)
         : refMap(refMap), typeMap(typeMap), parserStateInfo(parserStateInfo), 
-          paketInParamName(paketInParamName), fieldName(fieldName), svf(typeMap) { 
+          pktParamName(pktParamName), fieldName(fieldName), svf(typeMap) { 
         setName("ExtractSubstitutor"); 
     }
 
-    const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
 
+    const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
 };
 
 /*
 
-// FIXME: check IR::P4Parser has less or replace it with IR::Node* to have
+// FIXME: check IR::P4Parser has std::less or replace it with IR::Node* to have
 // std::less, otherwise pointer addresses are being compared here.
 // It is fine to compare as long nodes cloned in previous passes are not
 // invalidated.
