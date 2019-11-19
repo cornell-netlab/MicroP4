@@ -1,14 +1,15 @@
-# Composable P4
+# Micro P4
 
-CSA architecture
-extensions/csa/p4include/csa.p4
-
+MSA architecture
+```bash
+extensions/csa/p4include/msa.p4
+```
 
 # How to Build
 
 ```bash
-git clone --recursive https://github.com/cornell-netlab/p4-composition.git cp4
-cd cp4
+git clone --recursive https://github.com/hksoni/microp4.git microp4
+cd microp4
 mkdir build
 cmake .. -DCMAKE_BUILD_TYPE=DEBUG
 make -j4
@@ -18,14 +19,13 @@ make -j4
 
 There are example module programs `l2.p4` and `l3.p4` at following location
 ```bash
-/extensions/csa/testdata/explicit-specialization
+./extensions/csa/msa-v2-example
 ```
 
-Execute following set of commands from `cp4/build`
+Execute following set of commands from `microp4/build`
 ```bash
-./p4c-csa  -o ../extensions/csa/testdata/explicit-specialization/l2.json ../extensions/csa/testdata/explicit-specialization/l2.p4
 
-./p4c-csa  -o ../extensions/csa/testdata/explicit-specialization/l3.json ../extensions/csa/testdata/explicit-specialization/l3.p4
+./p4c-msa  -o ../extensions/csa/msa-v2-example/l3.json ../extensions/csa/msa-v2-example/l3.p4
 
-./p4c-csa  --arch=v1model -l ../extensions/csa/testdata/explicit-specialization/l2.json,../extensions/csa/testdata/explicit-specialization/l3.json  ../extensions/csa/testdata/explicit-specialization/l2l3.p4
+./p4c-msa  --arch=v1model -l ../extensions/csa/msa-v2-example/l3.json  ../extensions/csa/msa-v2-example/modular-router.p4
 ```

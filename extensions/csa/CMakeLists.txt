@@ -37,19 +37,19 @@ set (CSA_SWITCH_SRCS
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
 
 
-set (P4C_CSA_EXT_HEADERS p4include/csa.p4)
+set (P4C_CSA_EXT_HEADERS p4include/csa.p4 p4include/msa.p4)
 set (IR_DEF_FILES ${IR_DEF_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/ir/csa.def PARENT_SCOPE)
 
 build_unified(CSA_SWITCH_SRCS)
-add_executable(p4c-csa ${CSA_SWITCH_SRCS})
-target_link_libraries (p4c-csa ${P4C_LIBRARIES} ${P4C_LIB_DEPS})
+add_executable(p4c-msa ${CSA_SWITCH_SRCS})
+target_link_libraries (p4c-msa ${P4C_LIBRARIES} ${P4C_LIB_DEPS})
 
-install(TARGETS p4c-csa RUNTIME DESTINATION ${P4C_RUNTIME_OUTPUT_DIRECTORY})
+install(TARGETS p4c-msa RUNTIME DESTINATION ${P4C_RUNTIME_OUTPUT_DIRECTORY})
 install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/p4include DESTINATION ${P4C_ARTIFACTS_OUTPUT_DIRECTORY})
 
 
 add_custom_target(linkp4ccsa
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/p4c-csa ${P4C_BINARY_DIR}/p4c-csa
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/p4c-msa ${P4C_BINARY_DIR}/p4c-msa
     COMMAND ${CMAKE_COMMAND} -E make_directory ${P4C_BINARY_DIR}/p4include &&
             ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${P4C_CSA_EXT_HEADERS} ${P4C_BINARY_DIR}/p4include
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${P4C_BINARY_DIR}/p4include ${CMAKE_CURRENT_BINARY_DIR}/p4include
