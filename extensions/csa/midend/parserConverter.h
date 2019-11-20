@@ -26,10 +26,13 @@ class ParserConverter final : public Transform {
     cstring fieldName;
     unsigned* bitMaxOffset;
     P4ControlStateReconInfoMap* controlToReconInfoMap;
+    P4::ParserStructuresMap *parserStructures;
 
     cstring noActionName;
 
     cstring tableName = "parser_tbl";
+
+    std::vector<std::vector<unsigned>*> offsetsStack;
 
 
 // per parser data structures, they get refreshed
@@ -42,14 +45,9 @@ class ParserConverter final : public Transform {
     IR::Vector<IR::KeyElement> keyElementList;
     IR::IndexedVector<IR::ActionListElement> actionList;
     IR::Vector<IR::Entry> entryList;
-
     std::map<cstring, IR::IndexedVector<IR::StatOrDecl>> toAppendStats;
 
     cstring pktParamName;
-    std::map<cstring, unsigned> stateIDMap;
-
-    // Populated by createKeyElementList and used by entry creation
-    std::list<cstring> keyElementOrder;
 
     bool stateIterator(IR::ParserState* state);
     bool hasDefaultSelectCase(const IR::ParserState* state) const;
@@ -68,11 +66,13 @@ class ParserConverter final : public Transform {
     explicit ParserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
                              cstring structTypeName, cstring fieldName,
                              unsigned* maxOffset, 
-                             P4ControlStateReconInfoMap* controlToReconInfoMap)
+                             P4ControlStateReconInfoMap* controlToReconInfoMap,
+                             P4::ParserStructuresMap *parserStructures)
         : refMap(refMap), typeMap(typeMap), structTypeName(structTypeName), 
           fieldName(fieldName), bitMaxOffset(maxOffset), 
-          controlToReconInfoMap(controlToReconInfoMap) { 
-        CHECK_NULL(maxOffset);
+          controlToReconInfoMap(controlToReconInfoMap),
+          parserStructures(parserStructures) { 
+        CHECK_NULL(maxOffset); CHECK_NULL(parserStructures);
         setName("ParserConverter"); 
         *bitMaxOffset = 0;
         noActionName = "NoAction";
@@ -81,7 +81,7 @@ class ParserConverter final : public Transform {
     const IR::Node* preorder(IR::P4Parser* parser) override;
     const IR::Node* postorder(IR::P4Parser* parser) override;
     const IR::Node* preorder(IR::ParserState* state) override;
-    const IR::Node* preorder(IR::Parameter* param) override;
+    // const IR::Node* preorder(IR::Parameter* param) override;
 
     // control the visit order of P4Parser nodes to visit in 
     // execution call order

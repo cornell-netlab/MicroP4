@@ -615,7 +615,7 @@ bool SymbolicPacketOut::equals(const SymbolicValue* other) const {
 }
 
 bool SymbolicPkt::merge(const SymbolicValue* other) {
-    BUG_CHECK(other->is<SymbolicPkt>(), "%1%: merging with non- packet out", other);
+    BUG_CHECK(other->is<SymbolicPkt>(), "%1%: merging with non- Pkt", other);
     auto sp = other->to<SymbolicPkt>();
     bool changes = false;
     if (offset < sp->offset) {
@@ -1072,7 +1072,7 @@ void ExpressionEvaluator::postorder(const IR::MethodCallExpression* expression) 
                     }
                 }
 
-                auto obj = valueMap->get(arg0->expression);
+                auto obj = get(arg0->expression);
                 // std::cout<<"decl = ";decl->dbprint(std::cout);;
                 // std::cout<<", obj-valueMap = ";obj->dbprint(std::cout);std::cout<<"\n";
                 CHECK_NULL(obj);

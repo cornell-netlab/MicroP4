@@ -619,7 +619,7 @@ class SymbolicPkt final : public SymbolicExtern {
             SymbolicExtern(type), offset(0), conservative(false) {}
 
     void dbprint(std::ostream& out) const override {
-        out << "packet_out; offset =" << offset;
+        out << "Pkt; offset =" << offset;
     }
     SymbolicValue* clone() const override {
         auto result = new SymbolicPkt(type->to<IR::Type_Extern>());

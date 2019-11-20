@@ -15,7 +15,6 @@
 
 namespace CSA {
 
-
 const IR::Node* ParserConverter::preorder(IR::P4Program* p4Program) {
     auto mainDecls = p4Program->getDeclsByName(IR::P4Program::main)->toVector();
 
@@ -31,23 +30,51 @@ const IR::Node* ParserConverter::preorder(IR::P4Program* p4Program) {
     BUG_CHECK(type!=nullptr && type->is<IR::P4ComposablePackage>(), 
         "could not find type of main package");
     visit(type);
+    prune();
     return p4Program;
 }
 
 const IR::Node* ParserConverter::preorder(IR::P4ComposablePackage* cp) {
     
     LOG3("ParserConverter preorder visit P4ComposablePackage: "<<cp->name);
-    auto micro_parser = cp->getDeclByName("micro_parser");
-    if (micro_parser != nullptr && micro_parser->is<IR::P4Parser>())
-        visit(micro_parser->to<IR::P4Parser>());
-    auto micro_control = cp->getDeclByName("micro_control");
-    if (micro_control != nullptr && micro_control->is<IR::P4Control>())
-        visit(micro_control->to<IR::P4Control>());
+
+    for (auto typeDecl : *(cp->packageLocals)) {
+        if (typeDecl->is<IR::P4Parser>()) {
+            visit(typeDecl);
+            break;
+        }
+    }
+
+    // new start offsets are computed and pushed on offsetsStack.
+    auto currentParserOffsets = parserEval->result->getAcceptedPktOffsets();
+    if (offsetsStack.empty()) { 
+        offsetsStack.push_back(new std::vector<unsigned>(currentParserOffsets));
+    } else {
+        auto acceptedPktOffset = new std::vector<unsigned>();
+        for (auto currentOffset : *(offsetsStack.back())) {
+            for (auto o : currentParserOffsets) {
+                acceptedPktOffset->push_back(currentOffset + o);
+            }
+        }
+        offsetsStack.push_back(acceptedPktOffset);
+    }
+
+    // Any callee in control blocks will use above offsets( offsetsStack.back())
+    for (auto typeDecl : *(cp->packageLocals)) {
+        if (typeDecl->is<IR::P4Control>())
+            visit(typeDecl);
+    }
+
+    // pop the offsets pushed by the parser of this composable package
+    offsetsStack.pop_back();
+
+    prune();
     return cp;
 }
 
 const IR::Node* ParserConverter::preorder(IR::P4Control* p4Control) {
     visit(p4Control->body);
+    prune();
     return p4Control;
 }
 
@@ -62,15 +89,15 @@ const IR::Node* ParserConverter::preorder(IR::MethodCallStatement* mcs) {
             visit(cp);
         }
     }
+    prune();
     return mcs;
 }
-
 
 const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     LOG3("ParserConverter preorder visit  p4parser- "<<parser->name);
 
     // refreshing varibales
-    parserEval = new P4::ParserStructure();
+    // parserEval = new P4::ParserStructure();
     statOrDeclsOfControlBody.clear();
     varDecls.clear();  
     actionDecls.clear(); 
@@ -78,10 +105,23 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     keyElementList.clear();
     actionList.clear();
     entryList.clear();
-    stateIDMap.clear();
+    toAppendStats.clear();
+    // std::cout<<"parserStructures size: "<<parserStructures->size()<<"\n";
+    cstring parser_fqn = parser->getName();
+    auto cp = findContext<IR::P4ComposablePackage>();
+    if (cp != nullptr)
+        parser_fqn = cp->getName() +"_"+ parser->getName();
+    std::cout<<parser_fqn<<"\n";
+    auto iter = parserStructures->find(parser_fqn);
+    BUG_CHECK(iter != parserStructures->end(), 
+        "Parser %1% of %2% is not evaluated", parser->name, cp->getName());
+    parserEval = iter->second;
 
-    P4::ParserRewriter rewriter(refMap, typeMap, true, parserEval);
-    parser->apply(rewriter);
+
+    /*
+    for (auto o : *acceptedPktOffsets)
+        std::cout<<o<<" ";
+    */
 
     unsigned offset = parserEval->result->getPktMaxOffset();
     if (*bitMaxOffset < offset) {
@@ -89,11 +129,10 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
         *bitMaxOffset = offset;
     }
 
-    /* // moved pktParamName initialization to `preorder(IR::Parameter* param)`
+    // moved pktParamName initialization to `preorder(IR::Parameter* param)`
     auto param = parser->getApplyParameters()->getParameter(1);
     pktParamName = param->name.name;
-    */
-
+    
     auto callGraph = parserEval->callGraph;
     // std::cout<<"size : "<<callGraph->size()<<"\n";
 
@@ -109,7 +148,7 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     auto headerInvalidActionName = createHeaderInvalidAction(parser);
     auto pe = new IR::PathExpression(headerInvalidActionName);
     auto mce = new IR::MethodCallExpression(pe, new IR::Vector<IR::Type>(), 
-                                           new IR::Vector<IR::Argument>());
+                                            new IR::Vector<IR::Argument>());
     auto mcs = new IR::MethodCallStatement(mce);
     statOrDeclsOfControlBody.push_back(mcs);
 
@@ -118,36 +157,42 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
 
     auto method = new IR::Member(new IR::PathExpression(IR::ID(tableName)),
    			                                 IR::ID("apply"));
-	auto mcea = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
-	auto mcsa =
-			new IR::MethodCallStatement(mcea);
+    auto mcea = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
+    auto mcsa = new IR::MethodCallStatement(mcea);
 
-	statOrDeclsOfControlBody.push_back(mcsa);
-	LOG3("finished parser");
+    statOrDeclsOfControlBody.push_back(mcsa);
+    LOG3("finished parser");
     return parser;
 }
 
 
+/*
 const IR::Node* ParserConverter::preorder(IR::Parameter* param) {
     auto parser = findContext<IR::P4Parser>();
     if (parser != nullptr) {
-        auto type = typeMap->getType(param);
+        std::cout<<"parser not null \n";
+        auto type = typeMap->getType(param, true);
         auto typeExtern = type->to<IR::Type_Extern>();
         if (typeExtern != nullptr) {
-            if (typeExtern->name ==  P4::P4CoreLibrary::instance.pkt.name)
+            std::cout<<"typeExtern not null \n";
+            if (typeExtern->name == P4::P4CoreLibrary::instance.pkt.name) {
+                std::cout<<"pkt matched \n";
                 pktParamName = param->name.name;
+            }
         }
     }
     return param;
 }
+*/
 
 cstring ParserConverter::createHeaderInvalidAction(IR::P4Parser* parser) {
 
     cstring headerInvalidActionName = "csa_"+parser->name.name+"_"+"invalid_headers";
     auto statOrDeclList = new IR::IndexedVector<IR::StatOrDecl>();
-    auto param =  parser->getApplyParameters()->parameters.at(1);
+    auto param =  parser->getApplyParameters()->parameters.at(3);
     auto type = typeMap->getType(param, true);
-    BUG_CHECK(type->is<IR::Type_Struct>(), "%1% should be Struct type, but that error should be notified by now ", param->getName());
+    BUG_CHECK(type->is<IR::Type_Struct>(), "%1% should be Struct type", 
+                                            param->getName());
     auto hdrStruct = type->to<IR::Type_Struct>();
     for (auto f : hdrStruct->fields) {
         if (!f->type->is<IR::Type_Header>())
@@ -171,7 +216,7 @@ cstring ParserConverter::createHeaderInvalidAction(IR::P4Parser* parser) {
 bool ParserConverter::stateIterator(IR::ParserState* state){
     //LOG3("ParserConverter::stateIterator "<<state->name.name<<"\n");
 	  auto evaluatedInstances = parserEval->result->get(state->name);
-		//prepapring KeyElementList
+		// prepapring KeyElementList
 		std::list<std::unordered_set<cstring>> buckets;
 		std::list<cstring> order;
 		//preparing action list
@@ -190,7 +235,6 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                                               pktParamName, fieldName);
 	      auto components = statOrDecl->apply(extractSubstitutor);
 		    auto actionBlockStatements = *components;
-		    /*
         LOG3("evaluated instance "<< stateInfo->name);
 	      if (toAppendStats.find(stateInfo->name)!= toAppendStats.end()) {
             auto toAppend = toAppendStats.find(stateInfo->name)->second;
@@ -203,7 +247,6 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                                       (p.second->name, actionBlockStatements));
 	      	  LOG3("adding info about what to append "<< p.second->name);
 	      }
-        */
 
 	      auto actionBlock = new IR::BlockStatement(actionBlockStatements);
 	      auto action = new IR::P4Action(state->srcInfo, stateInfo->name,
@@ -228,11 +271,6 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 
 	       		for (auto e : se->select->components) { // TODO optimize
                 for (auto c : *components) {
-                    // HS to MR: Which scenario is covered here?
-                    // Why RHS of assignment statement is added as a key element?
-                    // If you aimed to perform Forward substitution, this is not
-                    // the right place to do it.
-                    // ParserUnroll will/should do it.
                     if (c->is<IR::AssignmentStatement>()) {
                         auto stmt = c->to<IR::AssignmentStatement>();
                         if (e->clone()->toString() == ((*stmt).left)->toString()) {
@@ -308,24 +346,6 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                                 //  LOG3("caseKeysetExp" << caseKeysetExp);
 						                }
 						                keySetExpression = new IR::ListExpression(simpleExpressionList);
-						                //TODO: need to take into account start_0 action
-						                //TODO:  need to modify the action name here 
-                            // (not all upcoming matches with the same matching 
-                            // action have same previous matching action)
-                            /* 
-                            const IR::P4Action* toAppend;
-            						    for (auto action: actionDecls) {
-                                LOG3(action->name);
-                                if (action->name == stateInfo->name) {
-                                    LOG3("got toAppend");
-                                    toAppend = action->to<IR::P4Action>();
-                                    toAppendStats.insert(std::pair<cstring, 
-                                    IR::IndexedVector<IR::StatOrDecl>>(actionName, 
-                                    toAppend->body->components));
-							                  }
-						                }
-						                auto toAppendStat =
-                            */
   	          					    actionBinding = new IR::MethodCallExpression(
 							                                new IR::PathExpression(actionName),
                               							  new IR::Vector<IR::Type>(), 
@@ -414,12 +434,6 @@ const IR::Node* ParserConverter::preorder(IR::ParserState* state) {
 				 	  tableDecls.push_back(table);
 				}
     }
-
-    /*cstring tableName = "csa_"+state->name.name+"_tbl";
-    auto table = new IR::P4Table(IR::ID(tableName), new IR::TableProperties(tablePropertyList));
-    tableDecls.push_back(table);
-    std::cout << "nmber of tabl declarations:"<<table->toString()<<"\n";
-	  */
     return state;
 }
 
@@ -476,6 +490,8 @@ const IR::Node* ParserConverter::postorder(IR::P4Parser* parser) {
         IR::ID(parser->name.name), typeControl, parser->constructorParams->clone(),
         *controlLocals, controlBody);
     
+    std::cout<<*control<<"\n";
+
     return control;
 }
 

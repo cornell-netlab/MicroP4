@@ -48,14 +48,19 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
     P4ControlStateReconInfoMap controlToReconInfoMap ;
     P4ControlPartitionInfoMap partitionsMap;
     // auto evaluator = new P4::EvaluatorPass(&refMap, &typeMap);
+    //
+    P4::ParserStructuresMap parserStructures;
     PassManager csaMidEnd = {
-        // new P4::MidEndLast(),
+        new P4::MidEndLast(),
         new CSA::MergeDeclarations(irs),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
-                           &controlToReconInfoMap),
+        new P4::ParsersUnroll(&refMap, &typeMap, &parserStructures),
         new P4::MidEndLast(),
+        new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
+                           &controlToReconInfoMap, &parserStructures),
+        new P4::MidEndLast(),
+        /*
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         // CreateAllPartitions is PassRepeated with ResolveReferences & TypeInference.
@@ -83,6 +88,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
         // evaluator
+        */
     };
 
     csaMidEnd.setName("CSAMidEndPasses");

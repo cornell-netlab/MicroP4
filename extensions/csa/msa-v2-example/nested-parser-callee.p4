@@ -26,7 +26,7 @@ struct callee_hdr_t {
 }
 
 cpackage Callee : implements Unicast<callee_hdr_t, callee_meta_t, 
-                                     empty_t, empty_t, empty_t> {
+                                     empty_t, empty_t, bit<8>> {
   parser micro_parser(extractor ex, pkt p, im_t im, out callee_hdr_t hdr, inout callee_meta_t meta,
                         in empty_t ia, inout bit<8> l4proto) {
     state start {
@@ -37,20 +37,18 @@ cpackage Callee : implements Unicast<callee_hdr_t, callee_meta_t,
     }
 
     state parse_tcp {
-      ex.extract(p, hdr.ipv4);
-      meta.l4proto = hdr.ipv4.protocol;
+      ex.extract(p, hdr.tcp);
       transition accept;
     }
 
     state parse_udp {
-      ex.extract(p, hdr.ipv6);
-      meta.l4proto = hdr.ipv6.nextHdr;
+      ex.extract(p, hdr.udp);
       transition accept;
     }
   }
 
   control micro_control(pkt p, im_t im, inout callee_hdr_t hdr, inout callee_meta_t m,
-                          in empty_t ia, out empty_t oa, inout empty_t ioa) {
+                          in empty_t ia, out empty_t oa, inout bit<8> ioa) {
     apply { 
     }
   }

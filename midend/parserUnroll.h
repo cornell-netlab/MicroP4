@@ -214,21 +214,6 @@ class AnalyzeParser : public Inspector {
     void postorder(const IR::PathExpression* expression) override;
 };
 
-#if 0
-class ParserUnroller : public Transform {
-    ReferenceMap*    refMap;
-    TypeMap*         typeMap;
-    ParserStructure* parser;
- public:
-    ParserUnroller(ReferenceMap* refMap, TypeMap* typeMap, ParserStructure* parser) :
-            refMap(refMap), typeMap(typeMap), parser(parser) {
-        CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(parser);
-        setName("ParserUnroller");
-        visitDagOnce = false;
-    }
-};
-#endif
-
 // Applied to a P4Parser object.
 class ParserRewriter : public PassManager {
     ParserStructure  *current;
@@ -247,10 +232,6 @@ class ParserRewriter : public PassManager {
                 current->analyze(refMap, typeMap, unroll);
                 return root;
             }));
-#if 0
-        if (unroll)
-            passes.push_back(new ParserUnroller(refMap, typeMap, current));
-#endif
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) override {
@@ -261,28 +242,45 @@ class ParserRewriter : public PassManager {
     }
 };
 
-///////////////////////////////////////////////////////
-// The following are applied to the entire program
+// cstring is P4ComposablePackage name + " _ "+ parser name 
+// As of now, no nested definitions of P4ComposablePackage are allowed, so it is
+// safe to uniquely identify parsers using these names.
+typedef std::map<cstring, P4::ParserStructure*> ParserStructuresMap;
 
-class RewriteAllParsers : public Transform {
+class AnalyzeAllParsers : public Inspector {
     ReferenceMap* refMap;
     TypeMap*      typeMap;
-    bool          unroll;
+    ParserStructuresMap* parserStructures;
  public:
-    RewriteAllParsers(ReferenceMap* refMap, TypeMap* typeMap, bool unroll) :
-            refMap(refMap), typeMap(typeMap), unroll(unroll)
-    { CHECK_NULL(refMap); CHECK_NULL(typeMap); }
-    const IR::Node* postorder(IR::P4Parser* parser) override {
-        ParserRewriter rewriter(refMap, typeMap, unroll);
-        return parser->apply(rewriter);
+    AnalyzeAllParsers(ReferenceMap* refMap, TypeMap* typeMap, 
+                      ParserStructuresMap* parserStructures) :
+        refMap(refMap), typeMap(typeMap), parserStructures(parserStructures) { 
+        CHECK_NULL(refMap); CHECK_NULL(typeMap); 
+        CHECK_NULL(parserStructures);
+    }
+
+    bool preorder(const IR::P4Parser* parser) override {
+        auto parserStructure = new P4::ParserStructure();
+        ParserRewriter rewriter(refMap, typeMap, true, parserStructure);
+        parser->apply(rewriter);
+
+        cstring parser_fqn = parser->getName();
+        auto cp = findContext<IR::P4ComposablePackage>();
+        if (cp != nullptr)
+            parser_fqn = cp->getName() +"_"+ parser->getName();
+
+        parserStructures->emplace(parser_fqn, parserStructure);
+        return false;
     }
 };
 
 class ParsersUnroll : public PassManager {
  public:
-    ParsersUnroll(bool unroll, ReferenceMap* refMap, TypeMap* typeMap) {
+    ParsersUnroll(ReferenceMap* refMap, TypeMap* typeMap, 
+                  ParserStructuresMap* parserStructures) {
         passes.push_back(new TypeChecking(refMap, typeMap));
-        passes.push_back(new RewriteAllParsers(refMap, typeMap, unroll));
+        passes.push_back(new AnalyzeAllParsers(refMap, typeMap, 
+                         parserStructures));
         setName("ParsersUnroll");
     }
 };

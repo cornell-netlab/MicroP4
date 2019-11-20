@@ -117,7 +117,8 @@ class ToControl final : public PassManager {
   public:
     ToControl(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
               cstring* mainControlTypeName, 
-              P4ControlStateReconInfoMap *controlToReconInfoMap)
+              P4ControlStateReconInfoMap *controlToReconInfoMap, 
+              P4::ParserStructuresMap *parserStructures)
         : refMap(refMap), typeMap(typeMap), 
           mainControlTypeName(mainControlTypeName),
           controlToReconInfoMap(controlToReconInfoMap) {
@@ -127,13 +128,15 @@ class ToControl final : public PassManager {
         maxOffset = new unsigned();
         passes.push_back(new ParserConverter(refMap, typeMap, 
               csaPacketStructTypeName, csaHeaderInstanceName, maxOffset, 
-              controlToReconInfoMap));
+              controlToReconInfoMap, parserStructures));
+        /*
         passes.push_back(new DeparserConverter(refMap, typeMap, 
               csaPacketStructTypeName, csaHeaderInstanceName));
         passes.push_back(new AddCSAByteHeader(headerTypeName, 
               bitStreamFieldName, maxOffset));
         passes.push_back(new CPackageToControl(refMap, typeMap, 
               mainControlTypeName, controlToReconInfoMap));
+        */
     }
     static const cstring headerTypeName;
     static const cstring indicesHeaderTypeName;
