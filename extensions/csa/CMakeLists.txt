@@ -37,7 +37,7 @@ set (CSA_SWITCH_SRCS
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
 
 
-set (P4C_CSA_EXT_HEADERS p4include/csa.p4 p4include/msa.p4)
+set (P4C_CSA_EXT_HEADERS p4include/msa.p4)
 set (IR_DEF_FILES ${IR_DEF_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/ir/csa.def PARENT_SCOPE)
 
 build_unified(CSA_SWITCH_SRCS)
