@@ -9,9 +9,9 @@
 
 namespace CSA {
 
-const cstring ToControl::csaHeaderInstanceName = "csa_packet";
+const cstring ToControl::csaHeaderInstanceName = "msa_packet";
 const cstring ToControl::csaStackInstanceName = "csa_stack";
-const cstring ToControl::csaPacketStructTypeName ="csa_packet_struct_t";
+const cstring ToControl::csaPacketStructTypeName ="msa_packet_struct_t";
 const cstring ToControl::csaPacketStructName ="csa_packet_struct";
 const cstring ToControl::headerTypeName = "csa_byte_h";
 const cstring ToControl::indicesHeaderTypeName = "csa_indices_h";

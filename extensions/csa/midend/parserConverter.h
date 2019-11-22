@@ -24,7 +24,6 @@ class ParserConverter final : public Transform {
     P4::TypeMap* typeMap;
     cstring structTypeName;
     cstring fieldName;
-    unsigned* bitMaxOffset;
     P4ControlStateReconInfoMap* controlToReconInfoMap;
     P4::ParserStructuresMap *parserStructures;
 
@@ -55,8 +54,8 @@ class ParserConverter final : public Transform {
 
     cstring createHeaderInvalidAction(IR::P4Parser* parser);
     
-    cstring getStateVisitVarName(const IR::ParserState* state) const {
-        return "visit_csa_"+state->name.name;
+    cstring getActionName(cstring stateInfoName, unsigned initOffset) const {
+        return "i_"+cstring::to_cstring(initOffset) +"_"+stateInfoName;
     }
 
  public:
@@ -65,16 +64,13 @@ class ParserConverter final : public Transform {
 
     explicit ParserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
                              cstring structTypeName, cstring fieldName,
-                             unsigned* maxOffset, 
                              P4ControlStateReconInfoMap* controlToReconInfoMap,
                              P4::ParserStructuresMap *parserStructures)
         : refMap(refMap), typeMap(typeMap), structTypeName(structTypeName), 
-          fieldName(fieldName), bitMaxOffset(maxOffset), 
-          controlToReconInfoMap(controlToReconInfoMap),
+          fieldName(fieldName), controlToReconInfoMap(controlToReconInfoMap),
           parserStructures(parserStructures) { 
-        CHECK_NULL(maxOffset); CHECK_NULL(parserStructures);
+        CHECK_NULL(parserStructures);
         setName("ParserConverter"); 
-        *bitMaxOffset = 0;
         noActionName = "NoAction";
     }
 
@@ -99,6 +95,7 @@ class ExtractSubstitutor final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
     const P4::ParserStateInfo* parserStateInfo;
+    unsigned initOffset;
     cstring pktParamName;
     cstring fieldName;
 
@@ -112,48 +109,17 @@ class ExtractSubstitutor final : public Transform {
 
     explicit ExtractSubstitutor(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
                                 const P4::ParserStateInfo* parserStateInfo, 
-                                cstring pktParamName,
+                                unsigned initOffset, cstring pktParamName,
                                 cstring fieldName)
-        : refMap(refMap), typeMap(typeMap), parserStateInfo(parserStateInfo), 
-          pktParamName(pktParamName), fieldName(fieldName), svf(typeMap) { 
+        : refMap(refMap), typeMap(typeMap), parserStateInfo(parserStateInfo),
+          initOffset(initOffset), pktParamName(pktParamName), 
+          fieldName(fieldName), svf(typeMap) { 
         setName("ExtractSubstitutor"); 
     }
 
 
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
 };
-
-/*
-
-// FIXME: check IR::P4Parser has std::less or replace it with IR::Node* to have
-// std::less, otherwise pointer addresses are being compared here.
-// It is fine to compare as long nodes cloned in previous passes are not
-// invalidated.
-typedef std::map<const IR::P4Parser*, P4::ParserStructure*> ParserEvalMap;
-
-class EvaluateAllParsers final : public Inspector { 
-    P4::ReferenceMap* refMap;
-    P4::TypeMap* typeMap;
-    ParserEvalMap* parserEvalMap;
-    unsigned* maxOffset = nullptr;
-  public:
-    
-    EvaluateAllParsers(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-                       // out param
-                       ParserEvalMap *parserEvalMap, 
-                       unsigned* maxOffset) 
-        : refMap(refMap), typeMap(typeMap), parserEvalMap(parserEvalMap), 
-          maxOffset(maxOffset) {
-        CHECK_NULL(refMap); CHECK_NULL(typeMap); 
-        CHECK_NULL(parserEvalMap); CHECK_NULL(maxOffset);
-        *maxOffset = 0;
-    }
-
-    bool preorder(const IR::P4Parser* parser) override;
-};
-
-*/
-
 
 }  // namespace CSA
 
