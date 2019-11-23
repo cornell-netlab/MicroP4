@@ -81,7 +81,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
 
     auto lhPE = new IR::PathExpression(csaPacketStructInstanceName);
     auto lhIndices = new IR::Member(lhPE, ToControl::indicesHeaderInstanceName);
-    auto lhs = new IR::Member(lhIndices, ToControl::csaPakcetStructLenFName);
+    auto lhs = new IR::Member(lhIndices, AddCSAByteHeader::csaPktStuLenFName);
     auto rhs = new IR::Constant(1);
     auto initAs = new IR::AssignmentStatement(lhs, rhs);
 
@@ -134,24 +134,24 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
         
         auto pe = new IR::PathExpression(csaPacketStructInstanceName);
         auto rhIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        auto pkt = new IR::Member(rhIndices, ToControl::csaPakcetStructLenFName);
+        auto pkt = new IR::Member(rhIndices, AddCSAByteHeader::csaPktStuLenFName);
         auto rinc = new IR::Add(pkt, new IR::Constant(1));
         pe = new IR::PathExpression(csaPacketStructInstanceName);
         auto lhIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        auto lh = new IR::Member(lhIndices, ToControl::csaPakcetStructLenFName);
+        auto lh = new IR::Member(lhIndices, AddCSAByteHeader::csaPktStuLenFName);
         auto inc = new IR::AssignmentStatement(lh, rinc);
         components.push_back(inc);
 
         pe = new IR::PathExpression(csaPacketStructInstanceName);
         auto pktIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        pkt = new IR::Member(pktIndices, ToControl::csaPakcetStructLenFName);
+        pkt = new IR::Member(pktIndices, AddCSAByteHeader::csaPktStuLenFName);
         auto rpe = new IR::PathExpression(stdMetadataArgName);
         auto castType = IR::Type::Bits::get(16, false);
         auto rpkt = new IR::Cast(castType, new IR::Member(rpe, "packet_length"));
         auto c1 = new IR::Leq(pkt, rpkt);
         pe = new IR::PathExpression(csaPacketStructInstanceName);
         pktIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        pkt = new IR::Member(pktIndices, ToControl::csaPakcetStructLenFName);
+        pkt = new IR::Member(pktIndices, AddCSAByteHeader::csaPktStuLenFName);
         auto re = new IR::Constant(1000);
         auto c2 = new IR::Leq(pkt, re);
         auto cond = new IR::LAnd(c1, c2);

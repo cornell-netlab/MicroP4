@@ -27,33 +27,33 @@ class ParserConverter final : public Transform {
     P4ControlStateReconInfoMap* controlToReconInfoMap;
     P4::ParserStructuresMap *parserStructures;
 
+    IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
     cstring noActionName;
-
-    cstring tableName = "parser_tbl";
-
+    const cstring tableName = "parser_tbl";
     std::vector<std::vector<unsigned>*> offsetsStack;
-
 
 // per parser data structures, they get refreshed
     P4::ParserStructure* parserEval = nullptr;
     IR::IndexedVector<IR::StatOrDecl> statOrDeclsOfControlBody;
-    IR::IndexedVector<IR::Declaration> varDecls;
     IR::IndexedVector<IR::Declaration> actionDecls;
-    IR::IndexedVector<IR::Property> tablePropertyList;
-    IR::IndexedVector<IR::Declaration> tableDecls;
+    IR::Declaration* tableDecl;
     IR::Vector<IR::KeyElement> keyElementList;
     IR::IndexedVector<IR::ActionListElement> actionList;
-    IR::Vector<IR::Entry> entryList;
-    std::map<cstring, IR::IndexedVector<IR::StatOrDecl>> toAppendStats;
+    
+    std::map<unsigned, IR::Vector<IR::Entry>> entryListPerOffset;
 
+    // IR::Vector<IR::Entry> entryList;
+
+    std::map<cstring, IR::IndexedVector<IR::StatOrDecl>> toAppendStats;
     cstring pktParamName;
 
     bool stateIterator(IR::ParserState* state);
     bool hasDefaultSelectCase(const IR::ParserState* state) const;
     bool hasSelectExpression(const IR::ParserState* state) const;
-
     cstring createHeaderInvalidAction(IR::P4Parser* parser);
-    
+    void initTableWithOffsetEntries(const cstring startStateName);
+    void createP4Table();
+
     cstring getActionName(cstring stateInfoName, unsigned initOffset) const {
         return "i_"+cstring::to_cstring(initOffset) +"_"+stateInfoName;
     }

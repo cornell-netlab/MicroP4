@@ -104,6 +104,9 @@ class AddCSAByteHeader final : public Transform {
     const IR::Node* preorder(IR::P4Program* p4Program) override;
 
     // const IR::Node* preorder(IR::Type_Extern* te) override;
+
+    static const cstring csaPktStuLenFName;
+    static const cstring csaPktStuCurrOffsetFName;
 };
 
 
@@ -125,15 +128,15 @@ class ToControl final : public PassManager {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(mainControlTypeName);
         CHECK_NULL(controlToReconInfoMap);
-        maxOffset = new unsigned();
+        maxOffset = new unsigned(100);
         passes.push_back(new ParserConverter(refMap, typeMap, 
               csaPacketStructTypeName, csaHeaderInstanceName, 
               controlToReconInfoMap, parserStructures));
+        passes.push_back(new AddCSAByteHeader(headerTypeName, 
+              bitStreamFieldName, maxOffset));
         /*
         passes.push_back(new DeparserConverter(refMap, typeMap, 
               csaPacketStructTypeName, csaHeaderInstanceName));
-        passes.push_back(new AddCSAByteHeader(headerTypeName, 
-              bitStreamFieldName, maxOffset));
         passes.push_back(new CPackageToControl(refMap, typeMap, 
               mainControlTypeName, controlToReconInfoMap));
         */
@@ -149,7 +152,6 @@ class ToControl final : public PassManager {
     static const cstring csaPakcetInGetPacketStruct;
     static const cstring csaPakcetOutSetPacketStruct;
     static const cstring csaPakcetOutGetPacketIn;
-    static const cstring csaPakcetStructLenFName;
 
     static const cstring csaPakcetInExternTypeName;
     static const cstring csaPakcetOutExternTypeName;

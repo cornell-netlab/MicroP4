@@ -17,7 +17,11 @@ const cstring ToControl::headerTypeName = "csa_byte_h";
 const cstring ToControl::indicesHeaderTypeName = "csa_indices_h";
 const cstring ToControl::indicesHeaderInstanceName = "indices";
 const cstring ToControl::bitStreamFieldName = "data";
-const cstring ToControl::csaPakcetStructLenFName = "pkt_length";
+
+
+
+const cstring AddCSAByteHeader::csaPktStuLenFName = "pkt_len";
+const cstring AddCSAByteHeader::csaPktStuCurrOffsetFName = "curr_offset";
 
 // used by CSAPacketSubstituter
 const cstring ToControl::csaPakcetInGetPacketStruct = "get_packet_struct";
@@ -327,8 +331,13 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
 
     auto pktLengthFieldType = IR::Type::Bits::get(16, false);
     auto stackHeadFieldType = IR::Type::Bits::get(16, false);
-    auto stackHeadField = new IR::StructField("stack_head", stackHeadFieldType);
-    auto pktLengthField = new IR::StructField("pkt_length", pktLengthFieldType);
+    auto stackHeadField = new IR::StructField(
+                                  AddCSAByteHeader::csaPktStuCurrOffsetFName, 
+                                  stackHeadFieldType);
+    auto pktLengthField = new IR::StructField(
+                                  AddCSAByteHeader::csaPktStuLenFName, 
+                                  pktLengthFieldType);
+
     IR::IndexedVector<IR::StructField> indicesFields;
     indicesFields.push_back(pktLengthField);
     indicesFields.push_back(stackHeadField);
@@ -341,18 +350,12 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
                               new IR::Type_Name(csaByteHeaderType->getName()),
                               new IR::Constant((*maxOffset)/8));
 
-    auto dataByteStack = new IR::Type_Stack(
-                              new IR::Type_Name(csaByteHeaderType->getName()),
-                              new IR::Constant((*maxOffset)/8));
-
     auto field = new IR::StructField(ToControl::csaHeaderInstanceName, pktByteStack);
-    auto fb = new IR::StructField(ToControl::csaStackInstanceName, dataByteStack);
     auto fIndices = new IR::StructField(ToControl::indicesHeaderInstanceName, 
                             new IR::Type_Name(csaIndicesHeaderType->getName()));
 
     IR::IndexedVector<IR::StructField> fiv;
     fiv.push_back(field);
-    fiv.push_back(fb);
     fiv.push_back(fIndices);
 
     auto ts = new IR::Type_Struct(ToControl::csaPacketStructTypeName, fiv);

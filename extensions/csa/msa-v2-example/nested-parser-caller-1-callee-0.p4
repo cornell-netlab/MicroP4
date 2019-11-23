@@ -16,6 +16,10 @@ header ethernet_h {
   bit<16> ethType; 
 }
 
+header vlan_h {
+  bit<16> ethType;
+}
+
 header ipv4_h {
   bit<8> protocol; 
   bit<32> src; 
@@ -30,6 +34,7 @@ header ipv6_h {
 
 struct caller_hdr_t {
   ethernet_h eth;
+  vlan_h vlan;
   ipv4_h ipv4;
   ipv6_h ipv6;
 }
@@ -41,6 +46,15 @@ cpackage Caller : implements Unicast<caller_hdr_t, caller_meta_t,
     state start {
       ex.extract(p, hdr.eth);
       transition select(hdr.eth.ethType) {
+        0x0800: parse_ipv4;
+        0x86DD: parse_ipv6;
+        0x8100: parse_vlan;
+      }
+    }
+
+    state parse_vlan {
+      ex.extract(p, hdr.vlan);
+      transition select(hdr.vlan.ethType) {
         0x0800: parse_ipv4;
         0x86DD: parse_ipv6;
       }
@@ -61,7 +75,7 @@ cpackage Caller : implements Unicast<caller_hdr_t, caller_meta_t,
 
   control micro_control(pkt p, im_t im, inout caller_hdr_t hdr, inout caller_meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
-    Callee() callee_i;
+    Callee0() callee_i;
     apply {
       callee_i.apply(p, im, ia, oa, m.l4proto);
     }

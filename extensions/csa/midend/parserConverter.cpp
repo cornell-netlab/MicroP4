@@ -25,34 +25,41 @@ const IR::Node* ParserConverter::preorder(IR::P4Program* p4Program) {
     auto mainDeclInst = main->to<IR::Declaration_Instance>();
     if (mainDeclInst == nullptr)
         return p4Program;
-    
+
     auto type = typeMap->getType(mainDeclInst);
     BUG_CHECK(type!=nullptr && type->is<IR::P4ComposablePackage>(), 
         "could not find type of main package");
 
     offsetsStack.push_back(new std::vector<unsigned>({0}));
-    visit(type);
+    auto p4cpType = type->to<IR::P4ComposablePackage>();
+    visit(p4cpType);
+
+    for (auto updateNode : updateP4ProgramObjects) {
+        for (auto& o : p4Program->objects) {
+            auto p4cp = o->to<IR::P4ComposablePackage>();
+            if (p4cp != nullptr && p4cp->getName() == updateNode->getName()) {
+                o = updateNode;
+            }
+        }
+    }
     prune();
     return p4Program;
 }
+
 
 const IR::Node* ParserConverter::preorder(IR::P4ComposablePackage* cp) {
     
     LOG3("ParserConverter preorder visit P4ComposablePackage: "<<cp->name);
 
-    auto it = cp->packageLocals->begin();
-    while (it != cp->packageLocals->end()) {
-        if ((*it)->is<IR::P4Parser>()) 
+    auto packageLocals = cp->packageLocals->clone();
+    const IR::Type_Declaration* convertedParser = nullptr;
+    for (auto& p : *packageLocals) {
+        if (p->is<IR::P4Parser>()) {
+            visit(p);
+            convertedParser = p;
             break;
-        it++;
+        }
     }
-    auto typeDecl = *it;
-    visit(typeDecl);
-    // TO Continue
-    // cp->packageLocals->replace(it, typeDecl);
-    if ((*it)->is<IR::P4Control>())
-        std::cout<<"\n----------\n"<<*it<<"\n";
-
     // new start offsets are computed and pushed on offsetsStack.
     auto currentParserOffsets = parserEval->result->getAcceptedPktOffsets();
     auto acceptedPktOffset = new std::vector<unsigned>();
@@ -64,17 +71,17 @@ const IR::Node* ParserConverter::preorder(IR::P4ComposablePackage* cp) {
     offsetsStack.push_back(acceptedPktOffset);
 
     // Any callee in control blocks will use above offsets( offsetsStack.back())
-    for (auto typeDecl : *(cp->packageLocals)) {
-        if (typeDecl->is<IR::P4Control>())
+    for (auto& typeDecl : *(packageLocals)) {
+        if (typeDecl->is<IR::P4Control>() && convertedParser!= typeDecl)
             visit(typeDecl);
-            if (typeDecl->is<IR::P4Parser>())
-                std::cout<<"\n----------\n"<<*typeDecl<<"\n";
     }
 
     // pop the offsets pushed by the parser of this composable package
     offsetsStack.pop_back();
 
+    cp->packageLocals = packageLocals;
     prune();
+    updateP4ProgramObjects.push_back(cp);
     return cp;
 }
 
@@ -85,7 +92,6 @@ const IR::Node* ParserConverter::preorder(IR::P4Control* p4Control) {
 }
 
 const IR::Node* ParserConverter::preorder(IR::MethodCallStatement* mcs) {
-
     auto expression = mcs->methodCall;
     P4::MethodInstance* mi = P4::MethodInstance::resolve(expression, refMap, typeMap);
     auto applyMethod = mi->to<P4::ApplyMethod>();
@@ -105,12 +111,11 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     // refreshing varibales
     // parserEval = new P4::ParserStructure();
     statOrDeclsOfControlBody.clear();
-    varDecls.clear();  
     actionDecls.clear(); 
-    tableDecls.clear();
+    tableDecl = nullptr;
     keyElementList.clear();
     actionList.clear();
-    entryList.clear();
+    entryListPerOffset.clear();
     toAppendStats.clear();
     // std::cout<<"parserStructures size: "<<parserStructures->size()<<"\n";
     cstring parser_fqn = parser->getName();
@@ -123,7 +128,6 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
         "Parser %1% of %2% is not evaluated", parser->name, cp->getName());
     parserEval = iter->second;
 
-    // moved pktParamName initialization to `preorder(IR::Parameter* param)`
     auto param = parser->getApplyParameters()->getParameter(1);
     pktParamName = param->name.name;
     
@@ -146,9 +150,15 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     auto mcs = new IR::MethodCallStatement(mce);
     statOrDeclsOfControlBody.push_back(mcs);
 
+    if (!(offsetsStack.size() == 1 && offsetsStack.back()->size() == 1 && 
+          (*(offsetsStack.back()))[0] == 0)) {
+        initTableWithOffsetEntries(sorted[0]->getName());
+    }
+
     for(auto s : sorted)
         visit(s);
 
+    createP4Table();
     auto method = new IR::Member(new IR::PathExpression(IR::ID(tableName)),
    			                                 IR::ID("apply"));
     auto mcea = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
@@ -156,6 +166,7 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
 
     statOrDeclsOfControlBody.push_back(mcsa);
     LOG3("finished parser");
+    std::cout<<"finished : "<<parser_fqn<<"\n";
     return parser;
 }
 
@@ -178,6 +189,34 @@ const IR::Node* ParserConverter::preorder(IR::Parameter* param) {
     return param;
 }
 */
+
+
+void ParserConverter::initTableWithOffsetEntries(const cstring startStateName) {
+    
+    // indicesHeaderInstanceName
+    auto ke1 = new IR::Member(new IR::PathExpression(pktParamName), "inst");
+    auto ke2 = new IR::Member(ke1, "f");
+    auto keyEle = new IR::KeyElement(ke2, new IR::PathExpression("exact"));
+    keyElementList.push_back(keyEle);
+
+    for (auto os : *(offsetsStack.back())) {
+        auto evaluatedInstances = parserEval->result->get(startStateName);
+        IR::Vector<IR::Entry> entryList;
+		    for (auto stateInfo : *evaluatedInstances) {
+            auto an = getActionName(stateInfo->name, os);
+            // std::cout<<"initTableWithOffsetEntries an: "<<an<<"\n";
+            IR::Vector<IR::Expression> exprList;
+            exprList.push_back(new IR::Constant(os));
+            auto keySetExpr = new IR::ListExpression(exprList);
+            auto ab = new IR::MethodCallExpression(new IR::PathExpression(an), 
+                new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+            auto entry = new IR::Entry(keySetExpr, ab);
+            entryList.push_back(entry);
+        }
+        entryListPerOffset.emplace(os, entryList);
+    }
+}
+
 
 cstring ParserConverter::createHeaderInvalidAction(IR::P4Parser* parser) {
 
@@ -207,6 +246,51 @@ cstring ParserConverter::createHeaderInvalidAction(IR::P4Parser* parser) {
 }
 
 
+void ParserConverter::createP4Table() {
+  
+    IR::IndexedVector<IR::Property> tablePropertyList;
+    auto keyElementListProperty = new IR::Property(IR::ID("key"),
+                                          new IR::Key(keyElementList), false);
+    tablePropertyList.push_back(keyElementListProperty);
+    /*
+    for (auto a: actionList){
+        LOG3("action list elemtn: "<<a->getName());
+    }
+    */
+    auto actionListProperty = new IR::Property(IR::ID("actions"),
+                                      new IR::ActionList(actionList), false);
+    tablePropertyList.push_back(actionListProperty);
+    
+    IR::Vector<IR::Entry> el;
+    for (auto offset_el : entryListPerOffset) {
+        el.append(offset_el.second);
+    }
+    auto entriesListProperty = new IR::Property(IR::ID("entries"), 
+                                      new IR::EntriesList(el), true);
+    tablePropertyList.push_back(entriesListProperty);
+  
+    auto v = new IR::ExpressionValue(
+                     new IR::MethodCallExpression(
+                             new IR::PathExpression(noActionName),
+                             new IR::Vector<IR::Argument>()));
+
+    auto defaultActProp = new IR::Property(IR::ID("default_action"), v, true);
+    tablePropertyList.push_back(defaultActProp);
+    
+    tableDecl = new IR::P4Table(IR::ID(tableName), 
+                                 new IR::TableProperties(tablePropertyList));
+}
+
+const IR::Node* ParserConverter::preorder(IR::ParserState* state) {
+    LOG3("ParserConverter preorder visit parser state- "<<state->name);
+
+    if (state->name.name != IR::ParserState::accept && 
+        state->name.name != IR::ParserState::reject)
+        stateIterator(state);
+    return state;
+}
+
+
 bool ParserConverter::stateIterator(IR::ParserState* state){
     //LOG3("ParserConverter::stateIterator "<<state->name.name<<"\n");
 
@@ -223,23 +307,23 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 		//preparing entry list
 		IR::Vector<IR::Expression> exprList;
 
+
     // IF the state has select key which does not synthesizes into multiple keys
     // based on byte location, a single key is enough for all the evaluated
     // instances.
-    bool keyAdded = false;
     IR::PathExpression* matchType = nullptr;
     if (evaluatedInstances->size() > 1 || hasDefaultSelectCase(state))
         matchType = new IR::PathExpression("ternary");
     else
         matchType = new IR::PathExpression("exact");
-        
 
     auto initialOffsets = *(offsetsStack.back());
-
-    for (auto initOffset : initialOffsets) {
-		    for (auto stateInfo : *evaluatedInstances) {
-            auto oldKeysSize = keyElementList.size();
-            // create actions + get keys bit placement
+		for (auto stateInfo : *evaluatedInstances) {
+        auto oldKeysSize = keyElementList.size();
+        bool unsubstKeyAdded = false;
+        IR::Vector<IR::KeyElement> newKeyEles;
+        // Creating actions
+        for (auto initOffset : initialOffsets) {
             auto newActionName = getActionName(stateInfo->name, initOffset);
 		        auto decl = actionDecls.getDeclaration(newActionName);
 		        if (decl != nullptr)
@@ -248,10 +332,9 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 		        ExtractSubstitutor extctSubr(refMap, typeMap, stateInfo, initOffset,
                                          pktParamName, fieldName);
 		        auto components = statOrDecl->apply(extctSubr);
-				    auto actionBlockStatements = *components;
+		 	 	    auto actionBlockStatements = *components;
             LOG3("evaluated instance "<< stateInfo->name);
             auto iter = toAppendStats.find(newActionName);
-            // auto iter = toAppendStats.find(stateInfo->name);
 		        if (iter != toAppendStats.end()) {
                 auto toAppend = iter->second;
 		        	  actionBlockStatements.append(toAppend);
@@ -262,16 +345,17 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                 toAppendStats.emplace(nextAppendName, actionBlockStatements);
 		        	  LOG3("adding info about what to append "<< nextAppendName);
 		        }
-  
+       
 		        auto actionBlock = new IR::BlockStatement(actionBlockStatements);
 		        auto action = new IR::P4Action(state->srcInfo, newActionName,
                                   new IR::ParameterList(), actionBlock);
             actionDecls.push_back(action);
   
-            if (hasSelectExpression(state) && !keyAdded) {
+            // Adding Key Elements
+            if (hasSelectExpression(state) && !unsubstKeyAdded) {
                 // creating key matching based on expression list
 		            auto se = state->selectExpression->to<IR::SelectExpression>();
-  
+         
 		         		for (auto e : se->select->components) { // TODO optimize
                     bool exists = false;
                     for (auto c : *components) {
@@ -288,171 +372,167 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                                     }
 		         						        }
 		         						        if (!exists) {
-                                    keyElementList.push_back(selectKey);
+                                    // keyElementList.push_back(selectKey);
+                                    newKeyEles.push_back(selectKey);
                                     exists = true;
                                     break;
                                 }
-        	       					  }
+                 					  }
 		             				}
 		           			}
                     if (!exists) {
                         auto selectKey = new IR::KeyElement(e->clone(), 
                                                     matchType); 
-                        keyElementList.push_back(selectKey);
-                        keyAdded = true;
+                        // keyElementList.push_back(selectKey);
+                        newKeyEles.push_back(selectKey);
+                        unsubstKeyAdded = true;
                     }
 		         	  }
 		        }
-		        // add actions + entries
-		    	  IR::Vector<IR::Entry> entries;
-		    	  //LOG3("evaluated instances "<<stateInfo->name);
-		    	  // auto current = stateInfo->predecessor;
-  
-		    	  auto oldEntries = entryList.clone();
-		    	  if (oldEntries->size() && oldKeysSize != keyElementList.size() && 
-                stateInfo->nextParserStateInfo.size())
-                entryList.clear();
-		    	  bool appendDefaultEntry = false;
-		    	  size_t counter = 0;
-            for (auto kseNSI : stateInfo->nextParserStateInfo) {
-                if (counter==(stateInfo->nextParserStateInfo).size()-1)
-                    appendDefaultEntry = true;
-                auto nextStateInfo = kseNSI.second;
-					      cstring actionName = getActionName(nextStateInfo->name, initOffset);
-					      //LOG3("actionName"<< actionName);
-					      auto itBool = actions.insert(actionName);
-					      if (!itBool.second) {
-                    counter++;
-						        continue;
-                }
-                if (nextStateInfo->state->name == IR::ParserState::accept 
-                    || nextStateInfo->state->name == IR::ParserState::reject) {
-                    counter++;
-                    continue;
-                }
-                    
+        }
 
-					      auto mce = new IR::MethodCallExpression(
-                                  new IR::PathExpression(actionName), 
-                                  new IR::Vector<IR::Type>(),
-                                  new IR::Vector<IR::Argument>());
-                auto actionRef = new IR::ActionListElement(mce);
-                // if actionlist contains action don't add
-                if (!actionList.getDeclaration(actionName))
-						        actionList.push_back(actionRef);
-            		//entry processing
-                auto caseKeysetExp = kseNSI.first->clone();
-				        //LOG3("matching value"<< caseKeysetExp);
-        		    exprList.clear();
-				        if (oldKeysSize != keyElementList.size()) {
-                    // revisit all previously created entries
-                    // LOG3("old entries size"<< oldEntries->size());
-          			    if (oldEntries->size()) {
-                        for (auto e: *oldEntries) {
-                            //LOG3("old entry"<< e);
+        /*
+        std::cout<<"stateInfo->name: "<<stateInfo->name<<"\n";
+        std::cout<<"unsubstKeyAdded: "<<unsubstKeyAdded<<"\n";
+        std::cout<<"newKeyEles.size: "<<newKeyEles.size()<<"\n";
+        std::cout<<"initialOffsets.size: "<<initialOffsets.size()<<"\n";
+        */
+        BUG_CHECK((unsubstKeyAdded && newKeyEles.size()==1) || 
+            (newKeyEles.size()==initialOffsets.size()) || 
+            (newKeyEles.size()==0 && !unsubstKeyAdded), 
+            "error in synthesizing keys");
+
+		    // add actions + entries
+		    //LOG3("evaluated instances "<<stateInfo->name);
+		    // auto current = stateInfo->predecessor;
+  
+        IR::Vector<IR::Expression> prefExprList;
+
+        keyElementList.append(newKeyEles);
+        for (unsigned in = 0; in<initialOffsets.size(); in++) {
+            unsigned initOffset = initialOffsets[in];
+            auto& entryList = entryListPerOffset[initOffset];
+            auto oldEntries = entryList.clone();
+
+            if (oldEntries->size() && newKeyEles.size() 
+                && stateInfo->nextParserStateInfo.size())
+            entryList.clear();
+
+            prefExprList.clear();
+            if (!unsubstKeyAdded) {
+                for (unsigned c=0; c<in; c++)
+                    prefExprList.push_back(new IR::DefaultExpression());
+            }
+
+				    if (newKeyEles.size()) {
+          	if (oldEntries->size()) {
+                // revisit all previously created entries
+                for (auto e: *oldEntries) {
+                    auto actionBinding = e->getAction();
+                    auto an = getActionName(stateInfo->name, initOffset);
+                    IR::Vector<IR::Expression> suffExprList;
+							      if (actionBinding->toString() == an) {
+                        for (auto kseNSI : stateInfo->nextParserStateInfo) {
+                            exprList.clear(); suffExprList.clear();
                             auto keySetExpr = e->getKeys();
-                            auto actionBinding = e->getAction();
-							              exprList = (keySetExpr->to<IR::ListExpression>())->components;
-                					  // LOG3("action "<<actionBinding->toString() << "stateInfo"<<stateInfo->name);
-                            auto an = getActionName(stateInfo->name, initOffset);
-							              if (actionBinding->toString() == an) {
-								                // LOG3("same action editing whole entry");
-                                // if action is this one then add depending on 
-                                // select + modify action in entry
-								                if (hasSelectExpression(state)){
-                                    exprList.push_back(caseKeysetExp);
-                                    //  LOG3("caseKeysetExp" << caseKeysetExp);
-								                }
-								                keySetExpr = new IR::ListExpression(exprList);
-    		          					    actionBinding = new IR::MethodCallExpression(
-									                                new IR::PathExpression(actionName),
-                                  							  new IR::Vector<IR::Type>(), 
-                                                  new IR::Vector<IR::Argument>());
-                						    auto entry = new IR::Entry(keySetExpr, actionBinding);
-                                //LOG3("entry added "<<entry);
-                                entryList.push_back(entry);
-                                // LOG3("binded action path expression"<< actionName);
-							              } 
-                            else if (appendDefaultEntry) {
-                                // else add default value
-                                //LOG3("not action, appending default");
+                            exprList = (keySetExpr->to<IR::ListExpression>())->components;
+                            auto nextStateInfo = kseNSI.second;
+					                  cstring actionName = getActionName(nextStateInfo->name, 
+                                                               initOffset);
+					                  //LOG3("actionName"<< actionName);
+                            if (nextStateInfo->state->name == IR::ParserState::accept)
+                                continue;
+                    
+                            auto mce = new IR::MethodCallExpression(
+                                              new IR::PathExpression(actionName), 
+                                              new IR::Vector<IR::Type>(),
+                                              new IR::Vector<IR::Argument>());
+                            auto actionRef = new IR::ActionListElement(mce);
+                            // if actionlist contains action don't add
+                            if (!actionList.getDeclaration(actionName))
+						                    actionList.push_back(actionRef);
+              					    //entry processing
+                            auto caseKeysetExp = kseNSI.first->clone();
+								            if (hasSelectExpression(state)){
+                                suffExprList.push_back(caseKeysetExp);
+                                if (!unsubstKeyAdded) {
+                                    for (auto c=prefExprList.size()+1; c<initialOffsets.size(); c++)
+                                        suffExprList.push_back(new IR::DefaultExpression());
+                                }
+                                exprList.append(prefExprList);
+                                exprList.append(suffExprList);
+                                //  LOG3("caseKeysetExp" << caseKeysetExp);
+								            }
+								            keySetExpr = new IR::ListExpression(exprList);
+    		          					actionBinding = new IR::MethodCallExpression(
+									                            new IR::PathExpression(actionName),
+                              							  new IR::Vector<IR::Type>(), 
+                                              new IR::Vector<IR::Argument>());
+                            auto entry = new IR::Entry(keySetExpr, actionBinding);
+                            entryList.push_back(entry);
+                            // LOG3("entry added "<<entry);
+                            // LOG3("binded action path expression"<< actionName);
+							          }   
+                    } else {
+                        // else add default value
+                        auto keySetExpr = e->getKeys();
+                        exprList.clear();
+                        exprList = (keySetExpr->to<IR::ListExpression>())->components;
+                        //LOG3("not action, appending default");
+                        exprList.push_back(new IR::DefaultExpression());
+
+                        if (!unsubstKeyAdded) {
+                            for (auto c=1; c<newKeyEles.size(); c++)
                                 exprList.push_back(new IR::DefaultExpression());
-                                keySetExpr = new IR::ListExpression(exprList);
-                                auto entry = new IR::Entry(keySetExpr, actionBinding);
-                                //LOG3("entry added"<<entry);
-                                entryList.push_back(entry);
-							              }
-						            }
-					          } else {
-                        if (hasSelectExpression(state)) {
-                            exprList.push_back(caseKeysetExp);
-							              //LOG3("caseKeysetExp" << caseKeysetExp);
                         }
-						            auto keySetExpr = new IR::ListExpression(exprList);
-                        auto actionBinding = new IR::MethodCallExpression(
-                        new IR::PathExpression(actionName),
-                        new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
-                        //LOG3("binded action path expression"<< actionName);
+                        keySetExpr = new IR::ListExpression(exprList);
                         auto entry = new IR::Entry(keySetExpr, actionBinding);
+                        //LOG3("entry added"<<entry);
                         entryList.push_back(entry);
+                        auto mce = new IR::MethodCallExpression(
+                            new IR::PathExpression(actionBinding->toString()), 
+                                          new IR::Vector<IR::Type>(),
+                                          new IR::Vector<IR::Argument>());
+                        auto actionRef = new IR::ActionListElement(mce);
+                        if (!actionList.getDeclaration(actionBinding->toString()))
+						                actionList.push_back(actionRef);
+						        }
+                } 
+            } else {
+                for (auto kseNSI : stateInfo->nextParserStateInfo) {
+                    exprList.clear();
+                    auto nextStateInfo = kseNSI.second;
+					          cstring actionName = getActionName(nextStateInfo->name, 
+                                                           initOffset);
+                    if (hasSelectExpression(state)) {
+                        auto caseKeysetExp = kseNSI.first->clone();
+                        exprList.push_back(caseKeysetExp);
+							          //LOG3("caseKeysetExp" << caseKeysetExp);
                     }
-				        }
-				        counter++;
+						        auto keySetExpr = new IR::ListExpression(exprList);
+                    auto actionBinding = new IR::MethodCallExpression(
+                    new IR::PathExpression(actionName),
+                    new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+                    //LOG3("binded action path expression"<< actionName);
+                    auto entry = new IR::Entry(keySetExpr, actionBinding);
+                    entryList.push_back(entry);
+                    /*
+                    auto mce = new IR::MethodCallExpression(
+                                      new IR::PathExpression(actionName), 
+                                      new IR::Vector<IR::Type>(),
+                                      new IR::Vector<IR::Argument>());
+                    auto actionRef = new IR::ActionListElement(mce);
+                    if (!actionList.getDeclaration(actionName))
+						            actionList.push_back(actionRef);
+                    */
+                }
+				    }
             }
 		    }
     }
-
-		if(!tableDecls.size()){
-        //action elements
-        LOG3("Adding noAction");
-        auto mce = new IR::MethodCallExpression(
-                          new IR::PathExpression(noActionName), new 
-                          IR::Vector<IR::Type>(),	new IR::Vector<IR::Argument>());
-        auto actionRef = new IR::ActionListElement(mce);
-        actionList.push_back(actionRef);
-		}
 	  return true;
 }
 
-const IR::Node* ParserConverter::preorder(IR::ParserState* state) {
-    LOG3("ParserConverter preorder visit parser state- "<<state->name);
-
-    if(stateIterator(state)){
-				if(tablePropertyList.size()){
-						tableDecls.clear();
-						tablePropertyList.clear();
-				}
-				auto keyElementListProperty = new IR::Property(IR::ID("key"),
-													new IR::Key(keyElementList), false);
-				tablePropertyList.push_back(keyElementListProperty);
-  
-				for (auto a: actionList){
-			  		LOG3("action list elemtn: "<<a->getName());
-				}
-				auto actionListProperty = new IR::Property(IR::ID("actions"),
-													new IR::ActionList(actionList), false);
-				tablePropertyList.push_back(actionListProperty);
-  
-				auto entriesListProperty = new IR::Property(IR::ID("entries"),
-															new IR::EntriesList(entryList), true);
-				tablePropertyList.push_back(entriesListProperty);
-  
-				if(!tableDecls.size()) {
-            auto v = new IR::ExpressionValue(
-                            new IR::MethodCallExpression(
-                                    new IR::PathExpression(noActionName),
-                                    new IR::Vector<IR::Argument>()));
-				    auto defaultActionProp = new IR::Property(IR::ID("default_action"), 
-                                            v, true);
-				 	  tablePropertyList.push_back(defaultActionProp);
-           
-				 	  auto table = new IR::P4Table(IR::ID(tableName), 
-                                new IR::TableProperties(tablePropertyList));
-				 	  tableDecls.push_back(table);
-				}
-    }
-    return state;
-}
 
 
 bool ParserConverter::hasSelectExpression(const IR::ParserState* state) const {
@@ -498,16 +578,15 @@ const IR::Node* ParserConverter::postorder(IR::P4Parser* parser) {
     for (auto decl : parser->parserLocals)
         controlLocals->push_back(decl->clone());
    
-    controlLocals->append(varDecls);
     controlLocals->append(actionDecls);
-    controlLocals->append(tableDecls);
+    controlLocals->push_back(tableDecl);
 
     auto controlBody =  new IR::BlockStatement(statOrDeclsOfControlBody);
     IR::P4Control* control = new IR::P4Control(parser->srcInfo, 
         IR::ID(parser->name.name), typeControl, parser->constructorParams->clone(),
         *controlLocals, controlBody);
 
-    std::cout<<*control<<"\n\n";
+    // std::cout<<*control<<"\n\n";
     return control;
 }
 
