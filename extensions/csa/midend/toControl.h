@@ -130,7 +130,6 @@ class ToControl final : public PassManager {
         CHECK_NULL(controlToReconInfoMap);
         maxOffset = new unsigned(100);
         passes.push_back(new ParserConverter(refMap, typeMap, 
-              csaPacketStructTypeName, csaHeaderInstanceName, 
               controlToReconInfoMap, parserStructures));
         passes.push_back(new AddCSAByteHeader(headerTypeName, 
               bitStreamFieldName, maxOffset));

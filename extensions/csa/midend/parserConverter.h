@@ -12,6 +12,8 @@
 #include "frontends/p4/typeMap.h"
 #include "midend/parserUnroll.h"
 #include "controlStateReconInfo.h"
+#include "msaNameConstants.h"
+
 /*
  * This pass converts parser into DAG of MATs
  */
@@ -22,8 +24,6 @@ class ParserConverter final : public Transform {
 // global throught the pass
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    cstring structTypeName;
-    cstring fieldName;
     P4ControlStateReconInfoMap* controlToReconInfoMap;
     P4::ParserStructuresMap *parserStructures;
 
@@ -63,11 +63,10 @@ class ParserConverter final : public Transform {
     using Transform::postorder;
 
     explicit ParserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-                             cstring structTypeName, cstring fieldName,
                              P4ControlStateReconInfoMap* controlToReconInfoMap,
                              P4::ParserStructuresMap *parserStructures)
-        : refMap(refMap), typeMap(typeMap), structTypeName(structTypeName), 
-          fieldName(fieldName), controlToReconInfoMap(controlToReconInfoMap),
+        : refMap(refMap), typeMap(typeMap), 
+          controlToReconInfoMap(controlToReconInfoMap),
           parserStructures(parserStructures) { 
         CHECK_NULL(parserStructures);
         setName("ParserConverter"); 

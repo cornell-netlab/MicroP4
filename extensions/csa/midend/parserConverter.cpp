@@ -194,8 +194,9 @@ const IR::Node* ParserConverter::preorder(IR::Parameter* param) {
 void ParserConverter::initTableWithOffsetEntries(const cstring startStateName) {
     
     // indicesHeaderInstanceName
-    auto ke1 = new IR::Member(new IR::PathExpression(pktParamName), "inst");
-    auto ke2 = new IR::Member(ke1, "f");
+    auto ke1 = new IR::Member(new IR::PathExpression(pktParamName), 
+                              NameConstants::indicesHeaderInstanceName);
+    auto ke2 = new IR::Member(ke1, NameConstants::csaPktStuCurrOffsetFName);
     auto keyEle = new IR::KeyElement(ke2, new IR::PathExpression("exact"));
     keyElementList.push_back(keyEle);
 
@@ -330,7 +331,7 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                 continue;
             auto statOrDecl = state->components.clone();
 		        ExtractSubstitutor extctSubr(refMap, typeMap, stateInfo, initOffset,
-                                         pktParamName, fieldName);
+                            pktParamName, NameConstants::csaHeaderInstanceName);
 		        auto components = statOrDecl->apply(extctSubr);
 		 	 	    auto actionBlockStatements = *components;
             LOG3("evaluated instance "<< stateInfo->name);
@@ -564,9 +565,8 @@ const IR::Node* ParserConverter::postorder(IR::P4Parser* parser) {
     newApplyParams->parameters.erase(newApplyParams->parameters.begin());
     auto pktParam = newApplyParams->getParameter(0);
     auto param = new IR::Parameter(pktParam->srcInfo, 
-                                   IR::ID(pktParam->name.name), 
-                                   IR::Direction::InOut,
-                                   new IR::Type_Name(structTypeName));
+                      IR::ID(pktParam->name.name), IR::Direction::InOut,
+                      new IR::Type_Name(NameConstants::csaPacketStructTypeName));
 
     newApplyParams->parameters.replace(newApplyParams->parameters.begin(), param);
 

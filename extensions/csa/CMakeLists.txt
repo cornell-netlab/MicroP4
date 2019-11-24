@@ -15,6 +15,8 @@ set (CSA_SWITCH_SRCS
     switch/options.h
     switch/parseInput.h
     switch/parseInput.cpp
+    midend/msaNameConstants.h
+    midend/msaNameConstants.cpp
     midend/csamidend.h
     midend/csamidend.cpp
     midend/controlStateReconInfo.h
