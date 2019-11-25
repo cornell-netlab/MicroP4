@@ -17,6 +17,11 @@ cpackage L3(pkt p, im_t im, in empty_t ia, out empty_t oa,
 cpackage Filter_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<8> l4proto);
 
+cpackage Nat_L3(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+
+cpackage Nat_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<1> change, inout bit<8> l4proto);
 /*
 ecn (pkt p, inout sm_t sm  es_t es, in empty_t ia, out empty_t oa, 
     inout empty_t ioa);

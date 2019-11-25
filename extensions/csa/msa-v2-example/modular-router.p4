@@ -39,7 +39,7 @@ cpackage ModularRouter : implements Unicast<hdr_t, meta_t,
     }
     table forward_tbl {
       key = { nh : lpm; } 
-      actions = { process; }
+      actions = { forward; }
     }
     apply { 
       l3_i.apply(p, im, ia, nh, hdr.eth.ethType);
