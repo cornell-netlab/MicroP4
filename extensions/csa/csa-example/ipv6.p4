@@ -61,6 +61,7 @@ cpackage ipv6l3 : implements CSASwitch<empty_t, external_meta_t, empty_t,
                  inout csa_standard_metadata_t standard_metadata, egress_spec es) {
 
     action process(bit<128> nexthop_ipv6_addr, bit<9> port){
+      hdr.ipv6.hoplimit = hdr.ipv6.hoplimit - 1;
       meta.next_hop = nexthop_ipv6_addr;
       es.set_egress_port(port);
     }

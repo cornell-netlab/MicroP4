@@ -1,6 +1,6 @@
 /*
- * Author: Hardik Soni
- * Email: hks57@cornell.edu
+ * Author: Myriana Rifai
+ * Email: myriana.rifai@nokia-bell-labs.com
  */
 
 #include"msa.p4"
@@ -18,7 +18,7 @@ struct hdr_t {
   ethernet_h eth;
 }
 
-cpackage ModularRouter : implements Unicast<hdr_t, meta_t, 
+cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t, 
                                             empty_t, empty_t, empty_t> {
   parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout meta_t meta,
                         in empty_t ia, inout empty_t ioa) {
@@ -30,8 +30,8 @@ cpackage ModularRouter : implements Unicast<hdr_t, meta_t,
 
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
-    bit<16> nh;
-    L3() l3_i;
+    bit<128> nh;
+    L3v6() l3_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
@@ -54,7 +54,7 @@ cpackage ModularRouter : implements Unicast<hdr_t, meta_t,
   }
 }
 
-ModularRouter() main;
+ModularRouterv6() main;
 
 
  

@@ -23,7 +23,7 @@ cpackage natting : implements OrchestrationSwitch<empty_t, empty_t, empty_t,
         external_meta_t arg;
 
         l2() layer2;
-        l3() layer3;
+        ipv4l3() layer3;
         nat() natlayer;
         csa_packet_out() nat_po;
         csa_packet_out() l3_po;

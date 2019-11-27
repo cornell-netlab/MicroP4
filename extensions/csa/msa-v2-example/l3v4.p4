@@ -27,7 +27,7 @@ struct l3_hdr_t {
   ipv4_h ipv4;
 }
 
-cpackage L3 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16>> {
+cpackage L3v4 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16>> {
   parser micro_parser(extractor ex, pkt p, im_t im, out l3_hdr_t hdr, inout l3_meta_t meta,
                         in empty_t ia, inout bit<16> ethType) { //inout arg
     state start {
