@@ -26,7 +26,12 @@ cpackage ipv6l3(csa_packet_in pin, csa_packet_out po,
                 in empty_t in_meta, out external_meta_t out_meta,
                 inout empty_t inout_meta) (/*ctor parameters*/);
 
-cpackage ecn(csa_packet_in pin, csa_packet_out po, 
+cpackage ecnv4(csa_packet_in pin, csa_packet_out po, 
+                inout csa_standard_metadata_t sm, egress_spec es,
+                in empty_t in_meta, out external_meta_t out_meta,
+                inout empty_t inout_meta) (/*ctor parameters*/);
+                
+cpackage ecnv6(csa_packet_in pin, csa_packet_out po, 
                 inout csa_standard_metadata_t sm, egress_spec es,
                 in empty_t in_meta, out external_meta_t out_meta,
                 inout empty_t inout_meta) (/*ctor parameters*/);

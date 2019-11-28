@@ -12,8 +12,9 @@ struct meta_t {
 
 
 header ethernet_h {
-    bit<96> unused;
-    bit<16> etherType;
+  bit<48> dmac;
+  bit<48> smac;
+  bit<16> ethType; 
 }
 
 header ipv4_h {
@@ -56,7 +57,7 @@ cpackage ModularFirewall : implements Unicast<hdr_t, meta_t,
 
     state start {
       ex.extract(p, hdr.eth);
-      transition select(hdr.eth.etherType) {
+      transition select(hdr.eth.ethType) {
         0x0800: parse_ipv4;
         0x86DD: parse_ipv6;
       }
@@ -91,7 +92,7 @@ cpackage ModularFirewall : implements Unicast<hdr_t, meta_t,
     }
     apply { 
       filter.apply(p, im, ia, oa, m.l4proto);
-      l3v4_i.apply(p, im, ia, nh, hdr.eth.ethType);
+      l3_i.apply(p, im, ia, nh, hdr.eth.ethType);
       forward_tbl.apply(); 
     }
   }

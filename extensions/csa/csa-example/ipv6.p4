@@ -46,7 +46,7 @@ cpackage ipv6l3 : implements CSASwitch<empty_t, external_meta_t, empty_t,
 	    state parse_ethernet {
 	      pin.extract(parsed_hdr.ethernet);
 	      transition select(parsed_hdr.ethernet.etherType){
-	        0x08: parse_ipv6;
+	        0x86DD: parse_ipv6;
 	      }
 	    }
 	    
