@@ -43,7 +43,7 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
 
     std::reverse(std::begin(sorted), std::end(sorted));
 
-    auto headerInvalidActionName = createHeaderInvalidAction(parser);
+    auto headerInvalidActionName = createInitdAction(parser);
     createRejectAction(parser);
     auto pe = new IR::PathExpression(headerInvalidActionName);
     auto mce = new IR::MethodCallExpression(pe, new IR::Vector<IR::Type>(), 
@@ -120,9 +120,9 @@ void ParserConverter::initTableWithOffsetEntries(const cstring startStateName) {
 }
 
 
-cstring ParserConverter::createHeaderInvalidAction(IR::P4Parser* parser) {
+cstring ParserConverter::createInitdAction(IR::P4Parser* parser) {
 
-    cstring headerInvalidActionName = "csa_"+parser->name.name+"_"+"invalid_headers";
+    cstring headerInvalidActionName = parser->name.name+"_"+"init";
     auto statOrDeclList = new IR::IndexedVector<IR::StatOrDecl>();
     auto param =  parser->getApplyParameters()->parameters.at(3);
     auto type = typeMap->getType(param, true);

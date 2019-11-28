@@ -67,11 +67,14 @@ void CPackageToControl::populateArgsMap(const IR::ParameterList* pl) {
         auto pe = new IR::PathExpression(IR::ID(p->getName()));
         if (auto tn = p->type->to<IR::Type_Name>())
             typeName = tn->path->name.name;
-        if (auto td = p->type->to<IR::Type_Declaration>())
+        else if (auto td = p->type->to<IR::Type_Declaration>())
             typeName = td->getName();
+        else 
+            typeName = p->type->toString();
         if (typeName != "") {
             // std::cout<<typeName<<"\n";
-            typeToArgsMap[typeName] = pe;
+            auto ds = cstring::to_cstring(p->direction);
+            typeToArgsMap[typeName+ds] = pe;
         }
     }
 }
@@ -92,7 +95,8 @@ void CPackageToControl::createMCS(const IR::Type_Control* tc) {
     auto args = new IR::Vector<IR::Argument> ();
     for (auto p : apl->parameters) {
         if (auto tn = p->type->to<IR::Type_Name>()) {
-            cstring typeName = tn->path->name.name;
+            cstring typeName = tn->path->name.name + 
+                                cstring::to_cstring(p->direction);
             auto iter = typeToArgsMap.find(typeName);
             if (iter != typeToArgsMap.end()) {
                 args->push_back(new IR::Argument(iter->second->clone()));
@@ -105,6 +109,12 @@ void CPackageToControl::createMCS(const IR::Type_Control* tc) {
                 typeToArgsMap[typeName] = pe;
                 args->push_back(new IR::Argument(pe->clone()));
             }
+        } else if (auto tb = p->type->to<IR::Type_Bits>()) {
+            auto iter = typeToArgsMap.find(tb->toString() + 
+                                           cstring::to_cstring(p->direction));
+            if (iter != typeToArgsMap.end()) {
+                args->push_back(new IR::Argument(iter->second->clone()));
+            } 
         }
     }
 

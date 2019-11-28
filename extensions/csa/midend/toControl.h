@@ -163,7 +163,7 @@ class ToControl final : public PassManager {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(mainControlTypeName);
         CHECK_NULL(controlToReconInfoMap);
-        maxOffset = new unsigned(96);
+        maxOffset = new unsigned(9600);
         passes.push_back(new Converter(refMap, typeMap, 
               mainControlTypeName, parserStructures, controlToReconInfoMap));
         passes.push_back(new AddCSAByteHeader(headerTypeName, 

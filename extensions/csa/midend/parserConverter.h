@@ -44,7 +44,7 @@ class ParserConverter final : public Transform {
     bool stateIterator(IR::ParserState* state);
     bool hasDefaultSelectCase(const IR::ParserState* state) const;
     bool hasSelectExpression(const IR::ParserState* state) const;
-    cstring createHeaderInvalidAction(IR::P4Parser* parser);
+    cstring createInitdAction(IR::P4Parser* parser);
     void createRejectAction(IR::P4Parser* parser);
     void initTableWithOffsetEntries(const cstring startStateName);
     void createP4Table();
