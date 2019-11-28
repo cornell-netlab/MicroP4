@@ -78,8 +78,21 @@ cpackage ModularFirewall : implements Unicast<hdr_t, meta_t,
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     Filter_L4() filter;
+    bit<16> nh;
+    L3v4() l3_i;
+    action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
+      hdr.eth.dmac = dmac;
+      hdr.eth.smac = smac;
+      im.set_out_port(port);
+    }
+    table forward_tbl {
+      key = { nh : lpm; } 
+      actions = { forward; }
+    }
     apply { 
       filter.apply(p, im, ia, oa, m.l4proto);
+      l3v4_i.apply(p, im, ia, nh, hdr.eth.ethType);
+      forward_tbl.apply(); 
     }
   }
 

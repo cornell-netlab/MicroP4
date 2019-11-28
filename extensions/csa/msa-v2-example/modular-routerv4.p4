@@ -1,6 +1,6 @@
 /*
- * Author: Myriana Rifai
- * Email: myriana.rifai@nokia-bell-labs.com
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
  */
 
 #include"msa.p4"
@@ -14,13 +14,13 @@ header ethernet_h {
   bit<16> ethType; 
 }
 
-struct main_hdr_t {
+struct hdr_t {
   ethernet_h eth;
 }
 
-cpackage ModularNat : implements Unicast<main_hdr_t, meta_t, 
+cpackage ModularRouterv4 : implements Unicast<hdr_t, meta_t, 
                                             empty_t, empty_t, empty_t> {
-  parser micro_parser(extractor ex, pkt p, im_t im, out main_hdr_t hdr, inout meta_t meta,
+  parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout meta_t meta,
                         in empty_t ia, inout empty_t ioa) {
     state start {
       ex.extract(p, hdr.eth);
@@ -28,10 +28,10 @@ cpackage ModularNat : implements Unicast<main_hdr_t, meta_t,
     }
   }
 
-  control micro_control(pkt p, im_t im, inout main_hdr_t hdr, inout meta_t m,
+  control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
-    Nat_L3() nat3_i;
+    L3v4() l3_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
@@ -42,19 +42,19 @@ cpackage ModularNat : implements Unicast<main_hdr_t, meta_t,
       actions = { forward; }
     }
     apply { 
-      nat3_i.apply(p, im, ia, oa, hdr.eth.ethType);
+      l3_i.apply(p, im, ia, nh, hdr.eth.ethType);
       forward_tbl.apply(); 
     }
   }
 
-  control micro_deparser(emitter em, pkt p, in main_hdr_t hdr) {
+  control micro_deparser(emitter em, pkt p, in hdr_t hdr) {
     apply { 
       em.emit(p, hdr.eth); 
     }
   }
 }
 
-ModularNat() main;
+ModularRouterv4() main;
 
 
  
