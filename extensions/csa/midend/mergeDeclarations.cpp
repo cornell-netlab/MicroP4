@@ -22,6 +22,7 @@ const IR::Node* MergeDeclarations::preorder(IR::P4Program* p4Program) {
     // std::cout<<"Consolidated  P4Program -----------------------------\n";;
     // std::cout<<consolidatedP4Program<<"\n";;
     // std::cout<<"Consolidated  P4Program -----------------------------\n";;
+
     InvalidateSourceInfo invalidateSourceInfo;
     return consolidatedP4Program->apply(invalidateSourceInfo);
 }

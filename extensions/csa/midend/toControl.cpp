@@ -237,7 +237,7 @@ const IR::Node* CPackageToControl::preorder(IR::P4ComposablePackage* cp) {
         // std::cout<<cp->getName()<<" parent is p4program \n";
 
     // cpSourceInfo = cp->srcInfo;
-    // std::cout<<"visiting "<<cp->getName()<<"\n";;
+    std::cout<<"visiting CPackageToControl::preorder: "<<cp->getName()<<"\n";;
     resetMCSRelatedObjects();
 
     // Identify default instances and store them in ctrlInstanceName
@@ -248,7 +248,6 @@ const IR::Node* CPackageToControl::preorder(IR::P4ComposablePackage* cp) {
                 if (auto tn = di->type->to<IR::Type_Name>()) {
                     if (tn->path->name.name == name) {
                         ctrlInstanceName[name] = di->name;
-                        // std::cout<<di->name<<"\n";
                     }
                 }
             }
@@ -393,6 +392,210 @@ const IR::Node* AddCSAByteHeader::preorder(IR::Type_Extern* te) {
     return te;  
 }
 */
+
+
+const IR::Node* Converter::preorder(IR::P4Program* p4Program) {
+    auto mainDecls = p4Program->getDeclsByName(IR::P4Program::main)->toVector();
+
+    if (mainDecls->size() != 1)
+        return p4Program;
+
+    auto main = mainDecls->at(0);
+    auto mainDeclInst = main->to<IR::Declaration_Instance>();
+    if (mainDeclInst == nullptr)
+        return p4Program;
+
+    auto type = typeMap->getType(mainDeclInst);
+    BUG_CHECK(type!=nullptr && type->is<IR::P4ComposablePackage>(), 
+        "could not find type of main package");
+
+    offsetsStack.push_back(new std::vector<unsigned>({0}));
+    auto p4cpType = type->to<IR::P4ComposablePackage>();
+
+    // visit(p4cpType);
+    // HS: Note on bug-default-instance-typemap
+    /*  Ideally , above statement should do, but the node type or p4cpType
+     *  returned by TypeMap does not have default instances of parser, control
+     *  and deparser.
+     *  The default Declaration_Instances were created by AnnotateTypes pass.
+     *  They are not available in p4cpType node. but, but they exist in program IR.
+     *  They are deleted in the node stored by TypeChecker.
+     *  This needs to be investigated at some point.. 
+     *  For now quick hack is to get the node from program IR
+    for (auto& o : p4Program->objects) {
+        auto cp = o->to<IR::P4ComposablePackage>();
+        if (cp != nullptr) {
+            std::cout<<cp->packageLocalDeclarations.size()<<"\n";
+            for (auto& dl : cp->packageLocalDeclarations)
+              std::cout<<"Convert ***** : "<<dl<<"\n";
+        }
+    }
+    */
+
+    // Hack for bug-default-instance-typemap
+    for (auto& o : p4Program->objects) {
+        auto cp = o->to<IR::P4ComposablePackage>();
+        if (cp != nullptr && cp->getName() == p4cpType->getName()) {
+          visit(o);
+          break;
+        }
+    }
+
+    for (auto updateNode : updateP4ProgramObjects) {
+        for (auto& o : p4Program->objects) {
+            auto p4cp = o->to<IR::P4ComposablePackage>();
+            if (p4cp != nullptr && p4cp->getName() == updateNode->getName()) {
+                o = updateNode;
+            }
+        }
+    }
+    prune();
+    return p4Program;
+}
+
+
+const IR::Node* Converter::preorder(IR::P4ComposablePackage* cp) {
+    
+    std::cout<<"visiting P4ComposablePackage "<<cp->getName()<<"\n";
+    LOG3("Converter preorder visit P4ComposablePackage: "<<cp->name);
+
+    /*
+     * Debug point for bug-default-instance-typemap
+    std::cout<<cp->packageLocalDeclarations.size()<<"\n";
+    for (auto& dl : cp->packageLocalDeclarations)
+        std::cout<<"Convert ***** : "<<dl<<"\n";
+    */
+
+    auto packageLocals = cp->packageLocals->clone();
+    const IR::Type_Declaration* convertedParser = nullptr;
+    for (auto& p : *packageLocals) {
+        if (p->is<IR::P4Parser>()) {
+            visit(p);
+            convertedParser = p;
+            break;
+        }
+    }
+
+    // Any callee in control blocks will use above offsets( offsetsStack.back())
+    // Visiting controls
+    for (auto& typeDecl : *(packageLocals)) {
+        auto control = typeDecl->to<IR::P4Control>();
+        if (control != nullptr && convertedParser != typeDecl) {
+            if (!isDeparser(control))
+                visit(typeDecl);
+        }
+    }
+
+    // Visiting Deparser
+    for (auto& typeDecl : *(packageLocals)) {
+        auto control = typeDecl->to<IR::P4Control>();
+        if (control != nullptr && convertedParser != typeDecl) {
+            if (isDeparser(control)) {
+                visit(typeDecl);
+                break;
+            }
+        }
+    }
+
+    visit(cp->packageLocalDeclarations);
+    cp->packageLocals = packageLocals;
+    prune();
+    updateP4ProgramObjects.push_back(cp);
+    std::cout<<"Finish visiting "<<cp->getName()<<"\n";
+    return cp;
+}
+
+const IR::Node* Converter::preorder(IR::P4Parser* parser) {
+    std::cout<<"visiting "<<parser->getName()<<"\n";
+    cstring parser_fqn = parser->getName();
+    auto cp = findContext<IR::P4ComposablePackage>();
+    if (cp != nullptr)
+        parser_fqn = cp->getName() +"_"+ parser->getName();
+    // std::cout<<parser_fqn<<"\n";
+    auto iter = parserStructures->find(parser_fqn);
+    BUG_CHECK(iter != parserStructures->end(), 
+        "Parser %1% of %2% is not evaluated", parser->name, cp->getName());
+    auto parserStructure = iter->second;
+
+    ParserConverter pc(refMap, typeMap, controlToReconInfoMap, parserStructure, 
+                       offsetsStack.back());
+    auto convertedParser = ((IR::Node*)parser)->apply(pc);
+
+    // new start offsets are computed and pushed on offsetsStack.
+    auto currentParserOffsets = parserStructure->result->getAcceptedPktOffsets();
+    auto acceptedPktOffset = new std::vector<unsigned>();
+    for (const auto& currentOffset : *(offsetsStack.back())) {
+        for (auto o : currentParserOffsets) {
+            acceptedPktOffset->push_back(currentOffset + o);
+            // std::cout<<currentOffset + o<<"  ";
+        }
+        // std::cout<<"\n";
+    }
+    offsetsStack.push_back(acceptedPktOffset);
+
+
+    prune();
+    return convertedParser;
+}
+
+const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
+
+    if (!isDeparser(p4Control)) {
+    // std::cout<<"visiting ccccc "<<p4Control->getName()<<"\n";
+        visit(p4Control->body);
+        prune();
+        return p4Control;
+    } 
+
+    // std::cout<<"visiting ----- "<<p4Control->getName()<<"\n";
+    offsetsStack.pop_back();
+    auto& initialOffsets = *(offsetsStack.back());
+    DeparserConverter dc(refMap, typeMap, initialOffsets);
+
+    auto dep = p4Control->apply(dc);
+    prune();
+    return dep;
+}
+
+const IR::Node* Converter::preorder(IR::MethodCallStatement* mcs) {
+    auto expression = mcs->methodCall;
+    P4::MethodInstance* mi = P4::MethodInstance::resolve(expression, refMap, typeMap);
+    auto applyMethod = mi->to<P4::ApplyMethod>();
+    if (applyMethod != nullptr) {
+        if (applyMethod->applyObject->is<IR::P4ComposablePackage>()) {
+            auto cp = applyMethod->applyObject->to<IR::P4ComposablePackage>();
+            // Hack for bug-default-instance-typemap
+            auto p4Program = findContext<IR::P4Program>();
+            for (auto& o : p4Program->objects) {
+                auto ocp = o->to<IR::P4ComposablePackage>();
+                if (ocp != nullptr && ocp->getName() == cp->getName()) {
+                    visit(ocp);
+                    break;
+                }
+            }
+        }
+    }
+    prune();
+    return mcs;
+}
+
+bool Converter::isDeparser(const IR::P4Control* p4Control) {
+
+    auto params = p4Control->getApplyParameters();
+    for (auto param : params->parameters) {
+        auto type = typeMap->getType(param, false);
+        CHECK_NULL(type);
+        if (type->is<IR::Type_Extern>()) {
+            auto te = type->to<IR::Type_Extern>();
+            if (te->name.name == P4::P4CoreLibrary::instance.emitter.name) {
+                // std::cout<<te<<"\n";
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 
 
 }// namespace CSA

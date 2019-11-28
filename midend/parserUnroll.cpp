@@ -27,6 +27,7 @@ std::map<cstring, unsigned> ParserStateInfo::stateNameIndices = {};
 
 namespace ParserStructureImpl {
 
+/* Dead Code
 // Set of possible definitions of a variable
 struct VarDef {
     const SymbolicValue* leftValue;
@@ -44,6 +45,7 @@ struct Definitions {
 struct AllDefinitions {
     std::map<const IR::Node*, Definitions*> perStatement;
 };
+*/
 
 
 

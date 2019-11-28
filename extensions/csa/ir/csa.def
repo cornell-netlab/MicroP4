@@ -38,8 +38,8 @@ class P4ComposablePackage : Type_Declaration, ISimpleNamespace, IApply, IContain
     // FIXME: change this type tp P4ComposablePackage
     optional NullOK Type_ComposablePackage         type = nullptr;
 
-    // This is not set p4-16 parser, it used to store internal default
-    // Declaration_Instances
+    // This is not set by p4-16 parser.
+    // It used to store internal default Declaration_Instances.
     optional inline IndexedVector<Declaration>     packageLocalDeclarations;
 
     TypeParameters getTypeParameters() const override;

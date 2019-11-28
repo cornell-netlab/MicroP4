@@ -109,6 +109,40 @@ class AddCSAByteHeader final : public Transform {
     static const cstring csaPktStuCurrOffsetFName;
 };
 
+class Converter final : public Transform {
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+    cstring* mainControlTypeName;
+
+    P4::ParserStructuresMap *parserStructures;
+    P4ControlStateReconInfoMap *controlToReconInfoMap;
+    std::vector<std::vector<unsigned>*> offsetsStack;
+    IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
+
+    bool isDeparser(const IR::P4Control* p4control);
+  public:
+    Converter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
+              cstring* mainControlTypeName, 
+              P4::ParserStructuresMap *parserStructures, 
+              P4ControlStateReconInfoMap *controlToReconInfoMap)
+        : refMap(refMap), typeMap(typeMap), 
+          mainControlTypeName(mainControlTypeName),
+          parserStructures(parserStructures),
+          controlToReconInfoMap(controlToReconInfoMap){
+        CHECK_NULL(refMap); CHECK_NULL(typeMap);
+        CHECK_NULL(mainControlTypeName);  CHECK_NULL(parserStructures);
+    }
+
+    // control the visit order of P4Parser nodes to visit in 
+    // execution call order
+    const IR::Node* preorder(IR::P4Program* p4Program) override;
+    const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
+    // used to visit P4Parser of callee P4ComposablePackage
+    const IR::Node* preorder(IR::P4Control* p4Control) override;
+    const IR::Node* preorder(IR::P4Parser* p4Parser) override;
+    const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
+
+};
 
 class ToControl final : public PassManager {
     P4::ReferenceMap* refMap;
@@ -128,17 +162,13 @@ class ToControl final : public PassManager {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(mainControlTypeName);
         CHECK_NULL(controlToReconInfoMap);
-        maxOffset = new unsigned(100);
-        passes.push_back(new ParserConverter(refMap, typeMap, 
-              controlToReconInfoMap, parserStructures));
+        maxOffset = new unsigned(96);
+        passes.push_back(new Converter(refMap, typeMap, 
+              mainControlTypeName, parserStructures, controlToReconInfoMap));
         passes.push_back(new AddCSAByteHeader(headerTypeName, 
               bitStreamFieldName, maxOffset));
-        /*
-        passes.push_back(new DeparserConverter(refMap, typeMap, 
-              csaPacketStructTypeName, csaHeaderInstanceName));
         passes.push_back(new CPackageToControl(refMap, typeMap, 
               mainControlTypeName, controlToReconInfoMap));
-        */
     }
     static const cstring headerTypeName;
     static const cstring indicesHeaderTypeName;

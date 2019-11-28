@@ -13,6 +13,18 @@
 
 namespace CSA {
 
+class DebugPass final : public Inspector {
+    unsigned c = 0;
+  public:
+    static unsigned i;
+    explicit DebugPass() { c= i++;}
+
+    bool preorder(const IR::Declaration_Instance* di) {
+        std::cout<<"DebugPass: "<<c<<" "<<di<<"\n";
+        return true;
+    }
+};
+
 class CSAMidEnd {
     std::vector<DebugHook> hooks;
 

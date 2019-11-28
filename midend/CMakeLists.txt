@@ -42,6 +42,8 @@ set (MIDEND_SRCS
   singleArgumentSelect.cpp
   tableHit.cpp
   validateProperties.cpp
+  controlBlockInterpreter.cpp
+  composablePackageInterpreter.cpp
   )
 
 set (MIDEND_HDRS
@@ -79,6 +81,8 @@ set (MIDEND_HDRS
   singleArgumentSelect.h
   tableHit.h
   validateProperties.h
+  controlBlockInterpreter.h
+  composablePackageInterpreter.h
   )
 
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MIDEND_SRCS};${MIDEND_HDRS}")

@@ -15,101 +15,11 @@
 
 namespace CSA {
 
-const IR::Node* ParserConverter::preorder(IR::P4Program* p4Program) {
-    auto mainDecls = p4Program->getDeclsByName(IR::P4Program::main)->toVector();
-
-    if (mainDecls->size() != 1)
-        return p4Program;
-
-    auto main = mainDecls->at(0);
-    auto mainDeclInst = main->to<IR::Declaration_Instance>();
-    if (mainDeclInst == nullptr)
-        return p4Program;
-
-    auto type = typeMap->getType(mainDeclInst);
-    BUG_CHECK(type!=nullptr && type->is<IR::P4ComposablePackage>(), 
-        "could not find type of main package");
-
-    offsetsStack.push_back(new std::vector<unsigned>({0}));
-    auto p4cpType = type->to<IR::P4ComposablePackage>();
-    visit(p4cpType);
-
-    for (auto updateNode : updateP4ProgramObjects) {
-        for (auto& o : p4Program->objects) {
-            auto p4cp = o->to<IR::P4ComposablePackage>();
-            if (p4cp != nullptr && p4cp->getName() == updateNode->getName()) {
-                o = updateNode;
-            }
-        }
-    }
-    prune();
-    return p4Program;
-}
-
-
-const IR::Node* ParserConverter::preorder(IR::P4ComposablePackage* cp) {
-    
-    LOG3("ParserConverter preorder visit P4ComposablePackage: "<<cp->name);
-
-    auto packageLocals = cp->packageLocals->clone();
-    const IR::Type_Declaration* convertedParser = nullptr;
-    for (auto& p : *packageLocals) {
-        if (p->is<IR::P4Parser>()) {
-            visit(p);
-            convertedParser = p;
-            break;
-        }
-    }
-    // new start offsets are computed and pushed on offsetsStack.
-    auto currentParserOffsets = parserEval->result->getAcceptedPktOffsets();
-    auto acceptedPktOffset = new std::vector<unsigned>();
-    for (auto currentOffset : *(offsetsStack.back())) {
-        for (auto o : currentParserOffsets) {
-            acceptedPktOffset->push_back(currentOffset + o);
-        }
-    }
-    offsetsStack.push_back(acceptedPktOffset);
-
-    // Any callee in control blocks will use above offsets( offsetsStack.back())
-    for (auto& typeDecl : *(packageLocals)) {
-        if (typeDecl->is<IR::P4Control>() && convertedParser!= typeDecl)
-            visit(typeDecl);
-    }
-
-    // pop the offsets pushed by the parser of this composable package
-    offsetsStack.pop_back();
-
-    cp->packageLocals = packageLocals;
-    prune();
-    updateP4ProgramObjects.push_back(cp);
-    return cp;
-}
-
-const IR::Node* ParserConverter::preorder(IR::P4Control* p4Control) {
-    visit(p4Control->body);
-    prune();
-    return p4Control;
-}
-
-const IR::Node* ParserConverter::preorder(IR::MethodCallStatement* mcs) {
-    auto expression = mcs->methodCall;
-    P4::MethodInstance* mi = P4::MethodInstance::resolve(expression, refMap, typeMap);
-    auto applyMethod = mi->to<P4::ApplyMethod>();
-    if (applyMethod != nullptr) {
-        if (applyMethod->applyObject->is<IR::P4ComposablePackage>()) {
-            auto cp = applyMethod->applyObject->to<IR::P4ComposablePackage>();  
-            visit(cp);
-        }
-    }
-    prune();
-    return mcs;
-}
 
 const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     LOG3("ParserConverter preorder visit  p4parser- "<<parser->name);
 
     // refreshing varibales
-    // parserEval = new P4::ParserStructure();
     statOrDeclsOfControlBody.clear();
     actionDecls.clear(); 
     tableDecl = nullptr;
@@ -117,42 +27,33 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     actionList.clear();
     entryListPerOffset.clear();
     toAppendStats.clear();
-    // std::cout<<"parserStructures size: "<<parserStructures->size()<<"\n";
-    cstring parser_fqn = parser->getName();
-    auto cp = findContext<IR::P4ComposablePackage>();
-    if (cp != nullptr)
-        parser_fqn = cp->getName() +"_"+ parser->getName();
-    std::cout<<parser_fqn<<"\n";
-    auto iter = parserStructures->find(parser_fqn);
-    BUG_CHECK(iter != parserStructures->end(), 
-        "Parser %1% of %2% is not evaluated", parser->name, cp->getName());
-    parserEval = iter->second;
 
     auto param = parser->getApplyParameters()->getParameter(1);
     pktParamName = param->name.name;
     
-    auto callGraph = parserEval->callGraph;
+    auto callGraph = parserStructure->callGraph;
     // std::cout<<"size : "<<callGraph->size()<<"\n";
 
     // Visit states in topological order
     std::vector<const IR::ParserState*> sorted;
 
-    bool hasLoop = callGraph->sccSort(parserEval->start, sorted);
+    bool hasLoop = callGraph->sccSort(parserStructure->start, sorted);
     BUG_CHECK(!hasLoop, "Parser %1% still has loops, unexpected situation.", 
                          parser->name.name);
 
     std::reverse(std::begin(sorted), std::end(sorted));
 
     auto headerInvalidActionName = createHeaderInvalidAction(parser);
+    createRejectAction(parser);
     auto pe = new IR::PathExpression(headerInvalidActionName);
     auto mce = new IR::MethodCallExpression(pe, new IR::Vector<IR::Type>(), 
                                             new IR::Vector<IR::Argument>());
     auto mcs = new IR::MethodCallStatement(mce);
     statOrDeclsOfControlBody.push_back(mcs);
 
-    if (!(offsetsStack.size() == 1 && offsetsStack.back()->size() == 1 && 
-          (*(offsetsStack.back()))[0] == 0)) {
+    if (!(initialOffsets->size() == 1 &&  (*initialOffsets)[0] == 0)) {
         initTableWithOffsetEntries(sorted[0]->getName());
+        std::cout<<"----------------------"<<parser->name<<"\n";
     }
 
     for(auto s : sorted)
@@ -166,7 +67,7 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
 
     statOrDeclsOfControlBody.push_back(mcsa);
     LOG3("finished parser");
-    std::cout<<"finished : "<<parser_fqn<<"\n";
+    // std::cout<<"finished : "<<parser->name<<"\n";
     return parser;
 }
 
@@ -200,11 +101,11 @@ void ParserConverter::initTableWithOffsetEntries(const cstring startStateName) {
     auto keyEle = new IR::KeyElement(ke2, new IR::PathExpression("exact"));
     keyElementList.push_back(keyEle);
 
-    for (auto os : *(offsetsStack.back())) {
-        auto evaluatedInstances = parserEval->result->get(startStateName);
+    for (auto os : *initialOffsets) {
+        auto evaluatedInstances = parserStructure->result->get(startStateName);
         IR::Vector<IR::Entry> entryList;
 		    for (auto stateInfo : *evaluatedInstances) {
-            auto an = getActionName(stateInfo->name, os);
+            auto an = getActionName(stateInfo, os);
             // std::cout<<"initTableWithOffsetEntries an: "<<an<<"\n";
             IR::Vector<IR::Expression> exprList;
             exprList.push_back(new IR::Constant(os));
@@ -246,9 +147,27 @@ cstring ParserConverter::createHeaderInvalidAction(IR::P4Parser* parser) {
     return headerInvalidActionName;
 }
 
+void ParserConverter::createRejectAction(IR::P4Parser* parser) {
+
+    rejectActionName = parser->name.name+"_"+"reject";
+    auto statOrDeclList = new IR::IndexedVector<IR::StatOrDecl>();
+    auto lval = new IR::PathExpression(NameConstants::csaParserRejectStatus);
+    auto rval = new IR::Constant(1, 2);
+    auto as = new IR::AssignmentStatement(lval, rval);
+    statOrDeclList->push_back(as);
+    auto ab = new IR::BlockStatement(*statOrDeclList);
+    auto a = new IR::P4Action(rejectActionName, new IR::ParameterList(), ab);
+    actionDecls.push_back(a);
+}
+
+
 
 void ParserConverter::createP4Table() {
   
+    auto mceNoAction =  new IR::MethodCallExpression(
+        new IR::PathExpression(noActionName), new IR::Vector<IR::Argument>());
+    auto noAction = new IR::ExpressionValue(mceNoAction->clone());
+
     IR::IndexedVector<IR::Property> tablePropertyList;
     auto keyElementListProperty = new IR::Property(IR::ID("key"),
                                           new IR::Key(keyElementList), false);
@@ -258,6 +177,8 @@ void ParserConverter::createP4Table() {
         LOG3("action list elemtn: "<<a->getName());
     }
     */
+
+    actionList.push_back(new IR::ActionListElement(mceNoAction));
     auto actionListProperty = new IR::Property(IR::ID("actions"),
                                       new IR::ActionList(actionList), false);
     tablePropertyList.push_back(actionListProperty);
@@ -270,12 +191,9 @@ void ParserConverter::createP4Table() {
                                       new IR::EntriesList(el), true);
     tablePropertyList.push_back(entriesListProperty);
   
-    auto v = new IR::ExpressionValue(
-                     new IR::MethodCallExpression(
-                             new IR::PathExpression(noActionName),
-                             new IR::Vector<IR::Argument>()));
 
-    auto defaultActProp = new IR::Property(IR::ID("default_action"), v, true);
+    auto defaultActProp = new IR::Property(IR::ID("default_action"), 
+                                            noAction, true);
     tablePropertyList.push_back(defaultActProp);
     
     tableDecl = new IR::P4Table(IR::ID(tableName), 
@@ -299,7 +217,7 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
         state->name.name == IR::ParserState::reject)
         return false;
 
-	  auto evaluatedInstances = parserEval->result->get(state->name);
+	  auto evaluatedInstances = parserStructure->result->get(state->name);
 		// prepapring KeyElementList
 		std::list<std::unordered_set<cstring>> buckets;
 		std::list<cstring> order;
@@ -318,14 +236,14 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
     else
         matchType = new IR::PathExpression("exact");
 
-    auto initialOffsets = *(offsetsStack.back());
+    // auto initialOffsets = *(offsetsStack.back());
 		for (auto stateInfo : *evaluatedInstances) {
         auto oldKeysSize = keyElementList.size();
         bool unsubstKeyAdded = false;
         IR::Vector<IR::KeyElement> newKeyEles;
         // Creating actions
-        for (auto initOffset : initialOffsets) {
-            auto newActionName = getActionName(stateInfo->name, initOffset);
+        for (auto initOffset : *initialOffsets) {
+            auto newActionName = getActionName(stateInfo, initOffset);
 		        auto decl = actionDecls.getDeclaration(newActionName);
 		        if (decl != nullptr)
                 continue;
@@ -342,7 +260,7 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 		        	  LOG3("appending to instance "<< newActionName);
 		        }
 		        for (auto p: stateInfo->nextParserStateInfo) {
-                auto nextAppendName = getActionName(p.second->name, initOffset);
+                auto nextAppendName = getActionName(p.second, initOffset);
                 toAppendStats.emplace(nextAppendName, actionBlockStatements);
 		        	  LOG3("adding info about what to append "<< nextAppendName);
 		        }
@@ -396,10 +314,10 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
         std::cout<<"stateInfo->name: "<<stateInfo->name<<"\n";
         std::cout<<"unsubstKeyAdded: "<<unsubstKeyAdded<<"\n";
         std::cout<<"newKeyEles.size: "<<newKeyEles.size()<<"\n";
-        std::cout<<"initialOffsets.size: "<<initialOffsets.size()<<"\n";
+        std::cout<<"initialOffsets.size: "<<initialOffsets->size()<<"\n";
         */
         BUG_CHECK((unsubstKeyAdded && newKeyEles.size()==1) || 
-            (newKeyEles.size()==initialOffsets.size()) || 
+            (newKeyEles.size()==initialOffsets->size()) || 
             (newKeyEles.size()==0 && !unsubstKeyAdded), 
             "error in synthesizing keys");
 
@@ -410,8 +328,8 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
         IR::Vector<IR::Expression> prefExprList;
 
         keyElementList.append(newKeyEles);
-        for (unsigned in = 0; in<initialOffsets.size(); in++) {
-            unsigned initOffset = initialOffsets[in];
+        for (unsigned in = 0; in<initialOffsets->size(); in++) {
+            unsigned initOffset = (*initialOffsets)[in];
             auto& entryList = entryListPerOffset[initOffset];
             auto oldEntries = entryList.clone();
 
@@ -430,7 +348,7 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                 // revisit all previously created entries
                 for (auto e: *oldEntries) {
                     auto actionBinding = e->getAction();
-                    auto an = getActionName(stateInfo->name, initOffset);
+                    auto an = getActionName(stateInfo, initOffset);
                     IR::Vector<IR::Expression> suffExprList;
 							      if (actionBinding->toString() == an) {
                         for (auto kseNSI : stateInfo->nextParserStateInfo) {
@@ -438,7 +356,7 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                             auto keySetExpr = e->getKeys();
                             exprList = (keySetExpr->to<IR::ListExpression>())->components;
                             auto nextStateInfo = kseNSI.second;
-					                  cstring actionName = getActionName(nextStateInfo->name, 
+					                  cstring actionName = getActionName(nextStateInfo, 
                                                                initOffset);
 					                  //LOG3("actionName"<< actionName);
                             if (nextStateInfo->state->name == IR::ParserState::accept)
@@ -457,7 +375,7 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 								            if (hasSelectExpression(state)){
                                 suffExprList.push_back(caseKeysetExp);
                                 if (!unsubstKeyAdded) {
-                                    for (auto c=prefExprList.size()+1; c<initialOffsets.size(); c++)
+                                    for (auto c=prefExprList.size()+1; c<initialOffsets->size(); c++)
                                         suffExprList.push_back(new IR::DefaultExpression());
                                 }
                                 exprList.append(prefExprList);
@@ -490,20 +408,13 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                         auto entry = new IR::Entry(keySetExpr, actionBinding);
                         //LOG3("entry added"<<entry);
                         entryList.push_back(entry);
-                        auto mce = new IR::MethodCallExpression(
-                            new IR::PathExpression(actionBinding->toString()), 
-                                          new IR::Vector<IR::Type>(),
-                                          new IR::Vector<IR::Argument>());
-                        auto actionRef = new IR::ActionListElement(mce);
-                        if (!actionList.getDeclaration(actionBinding->toString()))
-						                actionList.push_back(actionRef);
 						        }
                 } 
             } else {
                 for (auto kseNSI : stateInfo->nextParserStateInfo) {
                     exprList.clear();
                     auto nextStateInfo = kseNSI.second;
-					          cstring actionName = getActionName(nextStateInfo->name, 
+					          cstring actionName = getActionName(nextStateInfo, 
                                                            initOffset);
                     if (hasSelectExpression(state)) {
                         auto caseKeysetExp = kseNSI.first->clone();
@@ -517,15 +428,15 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                     //LOG3("binded action path expression"<< actionName);
                     auto entry = new IR::Entry(keySetExpr, actionBinding);
                     entryList.push_back(entry);
-                    /*
+
                     auto mce = new IR::MethodCallExpression(
-                                      new IR::PathExpression(actionName), 
-                                      new IR::Vector<IR::Type>(),
-                                      new IR::Vector<IR::Argument>());
+                          new IR::PathExpression(actionBinding->toString()), 
+                          new IR::Vector<IR::Type>(),
+                          new IR::Vector<IR::Argument>());
                     auto actionRef = new IR::ActionListElement(mce);
-                    if (!actionList.getDeclaration(actionName))
-						            actionList.push_back(actionRef);
-                    */
+                    if (!actionList.getDeclaration(actionBinding->toString()))
+                        actionList.push_back(actionRef);
+
                 }
 				    }
             }

@@ -6,15 +6,17 @@
 #ifndef _EXTENSIONS_CSA_LINKER_DEPARSERCONVERTER_H_ 
 #define _EXTENSIONS_CSA_LINKER_DEPARSERCONVERTER_H_ 
 
+#include <tuple>
 #include "ir/ir.h"
 #include "lib/ordered_map.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
 #include "midend/interpreter.h"
 #include "frontends/p4/callGraph.h"
+#include "msaNameConstants.h"
 
 /*
- * This pass converts parser into DAG of MATs
+ * This pass converts parser into a MAT
  */
 namespace CSA {
 
@@ -26,13 +28,12 @@ class DeparserConverter final : public Transform {
     cstring noActionName;
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    cstring structTypeName;
-    cstring fieldName;
     cstring tableName = "deparser_tbl";
 
     P4::SymbolicValueFactory* symbolicValueFactory;
 
 // per deparser
+    const std::vector<unsigned>& initialOffsets;
     EmitCallGraph* emitCallGraph;
     IR::IndexedVector<IR::Declaration> varDecls;
     std::map<const IR::MethodCallStatement*, 
@@ -52,15 +53,15 @@ class DeparserConverter final : public Transform {
              std::vector<std::pair<const IR::Expression*, bool>>>  keyElementLists;
 
     std::map<const IR::MethodCallStatement*, 
-             std::vector<std::pair<IR::ListExpression*, unsigned>>> 
+             std::vector<std::tuple<IR::ListExpression*, unsigned, IR::P4Action*>>> 
                 keyValueEmitOffsets;
 
 
 
     void createTableEntryList(const IR::MethodCallStatement* mcs);
-    cstring createAppendedP4Action(const IR::MethodCallStatement* mcs,
-            unsigned& currentEmitOffset, IR::IndexedVector<IR::Declaration> oldActionStatements);
-    cstring createP4Action(const IR::MethodCallStatement* mcs,
+    IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
+            unsigned& currentEmitOffset, const IR::P4Action* ancestorAction);
+    IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
                            unsigned& currentEmitOffset);
     IR::Key* createKey(const IR::MethodCallStatement* mcs);
 
@@ -70,11 +71,13 @@ class DeparserConverter final : public Transform {
 
     IR::P4Table* createEmitTable(const IR::MethodCallStatement* mcs);
 
-    IR::P4Table* extendEmitTable(const IR::P4Table* oldTable, const IR::MethodCallStatement* mcs,
+    IR::P4Table* extendEmitTable(const IR::MethodCallStatement* mcs,
                          const IR::MethodCallStatement* predecessor);
 
+    /*
     IR::P4Table* mergeAndExtendEmitTables(const IR::P4Table* oldTable, const IR::MethodCallStatement*,
                                   std::vector<const IR::MethodCallStatement*>*);
+    */
 
     void createID(const IR::MethodCallStatement* emitStmt);
     const IR::Expression* getArgHeaderExpression(const IR::MethodCallStatement* mcs, 
@@ -82,14 +85,16 @@ class DeparserConverter final : public Transform {
 
 
     bool isDeparser(const IR::P4Control* p4control);
+
+    void initTableWithOffsetEntries(const IR::MethodCallStatement* mcs);
+
  public:
     using Transform::preorder;
     using Transform::postorder;
 
-    explicit DeparserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-                               cstring structTypeName, cstring fieldName)
-        : refMap(refMap), typeMap(typeMap), structTypeName(structTypeName), 
-          fieldName(fieldName) { 
+    explicit DeparserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
+                               const std::vector<unsigned>& initialOffsets)
+        : refMap(refMap), typeMap(typeMap), initialOffsets(initialOffsets) {
         setName("DeparserConverter"); 
         symbolicValueFactory = new P4::SymbolicValueFactory(typeMap);
         noActionName = "NoAction";
@@ -99,6 +104,7 @@ class DeparserConverter final : public Transform {
     const IR::Node* postorder(IR::P4Control* deparser) override;
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
     const IR::Node* postorder(IR::Parameter* param) override;
+    const IR::Node* postorder(IR::BlockStatement* param) override;
 };
 
 
@@ -107,42 +113,22 @@ class CreateEmitSchedule final : public Inspector {
     P4::TypeMap* typeMap;
     EmitCallGraph* emitCallGraph;
     std::vector<std::vector<const IR::MethodCallStatement*>> frontierStack;
+    bool addDummyInit;
   public:
     
     CreateEmitSchedule(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-                       EmitCallGraph* emitCallGraph) 
-      :  refMap(refMap), typeMap(typeMap), emitCallGraph(emitCallGraph) {
+                       EmitCallGraph* emitCallGraph, bool addDummyInit=false) 
+      :  refMap(refMap), typeMap(typeMap), emitCallGraph(emitCallGraph), 
+         addDummyInit(addDummyInit) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap); 
         setName("CreateEmitSchedule"); 
     }
+    bool preorder(const IR::P4Control* deparser) override;
     bool preorder(const IR::MethodCallStatement* mcs) override;
     bool preorder(const IR::IfStatement* ifStmt) override;
     bool preorder(const IR::SwitchStatement* swStmt) override;
 };
 
-
-/*
-class ConvertAllDeparsers final : public PassManager {
-    P4::ReferenceMap* refMap;
-    P4::TypeMap* typeMap;
-    unsigned maxOffset;
-  public:
-    ConvertAllParsers(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-                      const IR::P4Parser* mainParser = nullptr, 
-                      bool convertMainParser = false) 
-        : refMap(refMap), typeMap(typeMap) {
-        CHECK_NULL(refMap); CHECK_NULL(typeMap);
-
-        cstring structTypeName = "csa_packet_in_t";
-        cstring fieldName = "bitStream";
-        passes.push_back(new EvaluateAllDeparsers(refMap, typeMap, &parserEvalMap,
-                                &maxOffset));
-        passes.push_back(new ParserConverter(refMap, typeMap, structTypeName, 
-                                fieldName));
-    }
-
-};
-*/
 
 }  // namespace CSA
 

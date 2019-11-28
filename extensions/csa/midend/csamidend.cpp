@@ -28,6 +28,7 @@
 
 namespace CSA {
 
+unsigned DebugPass::i = 0;
 const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program, 
                                     std::vector<const IR::P4Program*> precompiledIRs) {
 
@@ -57,6 +58,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::ParsersUnroll(&refMap, &typeMap, &parserStructures),
         new P4::MidEndLast(),
+        // new CSA::DebugPass(),
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
                            &controlToReconInfoMap, &parserStructures),
         new P4::MidEndLast(),

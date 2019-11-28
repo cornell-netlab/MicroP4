@@ -55,29 +55,6 @@ const IR::P4ComposablePackage* AnnotateTypes::preorder(IR::P4ComposablePackage* 
     
     auto interfaceType = decl->to<IR::Type_ComposablePackage>();
 
-    /*
-    TypeVariableSubstitution tvs;
-    auto setBindings =  [&] (const IR::IMayBeGenericType* genType, unsigned int i) {
-        for (auto v : genType->getTypeParameters()->parameters) {
-            cstring newName = v->getName() + cstring::to_cstring(i);
-            auto tv = new IR::Type_Var(v->srcInfo, IR::ID(newName, v->getName()));
-            bool b = tvs.setBinding(v, tv);
-            BUG_CHECK(b, "%1%: failed replacing %2% with %3%", genType, v, tv);
-        }
-    };
-    setBindings(type, i);
-    for (auto decl : *(type->getDeclarations())) {
-        if (decl->is<IR::IMayBeGenericType>()) {
-            setBindings(decl->to<IR::IMayBeGenericType>(), i);
-        }
-    }
-    TypeVariableSubstitutionVisitor sv(&tvs, true);
-    cp->type = type->to<IR::Type>()->apply(sv)->to<IR::Type_ComposablePackage>();
-
-    ReplaceTypeName rtn(refMap, &tvs);
-    cp->type = cp->type->apply(rtn)->to<IR::Type_ComposablePackage>();
-
-    */
 
     for (auto typeDecl : *(interfaceType->getDeclarations())) {
         auto typeArchBlock = typeDecl->to<IR::Type_ArchBlock>();
@@ -102,6 +79,7 @@ const IR::P4ComposablePackage* AnnotateTypes::preorder(IR::P4ComposablePackage* 
 
             // create declaration_instance of instance of idecl
             auto name = refMap->newName(cp->name+"_"+idecl->getName()+"_inst");
+            // std::cout<<"annotateTypes new name: "<<name<<"\n";
             auto annos = new IR::Annotations();
             annos->add(new IR::Annotation(IR::Annotation::nameAnnotation,
                   { new IR::StringLiteral(cp->name+"."+idecl->getName())}));

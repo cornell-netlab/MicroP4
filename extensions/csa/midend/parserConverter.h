@@ -25,25 +25,18 @@ class ParserConverter final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
     P4ControlStateReconInfoMap* controlToReconInfoMap;
-    P4::ParserStructuresMap *parserStructures;
-
-    IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
     cstring noActionName;
-    const cstring tableName = "parser_tbl";
-    std::vector<std::vector<unsigned>*> offsetsStack;
+    cstring rejectActionName;
+    P4::ParserStructure* parserStructure = nullptr;
+    const std::vector<unsigned>* initialOffsets;
 
-// per parser data structures, they get refreshed
-    P4::ParserStructure* parserEval = nullptr;
+    const cstring tableName = "parser_tbl";
     IR::IndexedVector<IR::StatOrDecl> statOrDeclsOfControlBody;
     IR::IndexedVector<IR::Declaration> actionDecls;
     IR::Declaration* tableDecl;
     IR::Vector<IR::KeyElement> keyElementList;
     IR::IndexedVector<IR::ActionListElement> actionList;
-    
     std::map<unsigned, IR::Vector<IR::Entry>> entryListPerOffset;
-
-    // IR::Vector<IR::Entry> entryList;
-
     std::map<cstring, IR::IndexedVector<IR::StatOrDecl>> toAppendStats;
     cstring pktParamName;
 
@@ -51,11 +44,14 @@ class ParserConverter final : public Transform {
     bool hasDefaultSelectCase(const IR::ParserState* state) const;
     bool hasSelectExpression(const IR::ParserState* state) const;
     cstring createHeaderInvalidAction(IR::P4Parser* parser);
+    void createRejectAction(IR::P4Parser* parser);
     void initTableWithOffsetEntries(const cstring startStateName);
     void createP4Table();
 
-    cstring getActionName(cstring stateInfoName, unsigned initOffset) const {
-        return "i_"+cstring::to_cstring(initOffset) +"_"+stateInfoName;
+    cstring getActionName(const P4::ParserStateInfo* si, unsigned initOffset) const {
+        if (si->state->name.name == IR::ParserState::reject) 
+            return rejectActionName;
+        return "i_"+cstring::to_cstring(initOffset) +"_"+si->name;
     }
 
  public:
@@ -64,11 +60,13 @@ class ParserConverter final : public Transform {
 
     explicit ParserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
                              P4ControlStateReconInfoMap* controlToReconInfoMap,
-                             P4::ParserStructuresMap *parserStructures)
+                             P4::ParserStructure* parserStructure,
+                             const std::vector<unsigned>* initialOffsets)
         : refMap(refMap), typeMap(typeMap), 
           controlToReconInfoMap(controlToReconInfoMap),
-          parserStructures(parserStructures) { 
-        CHECK_NULL(parserStructures);
+          parserStructure(parserStructure), initialOffsets(initialOffsets){ 
+        CHECK_NULL(refMap); CHECK_NULL(typeMap);
+        CHECK_NULL(parserStructure); CHECK_NULL(initialOffsets);
         setName("ParserConverter"); 
         noActionName = "NoAction";
     }
@@ -77,17 +75,6 @@ class ParserConverter final : public Transform {
     const IR::Node* postorder(IR::P4Parser* parser) override;
     const IR::Node* preorder(IR::ParserState* state) override;
     // const IR::Node* preorder(IR::Parameter* param) override;
-
-    // control the visit order of P4Parser nodes to visit in 
-    // execution call order
-    const IR::Node* preorder(IR::P4Program* p4Program) override;
-
-    const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
-    // used to visit P4Parser of callee P4ComposablePackage
-    const IR::Node* preorder(IR::P4Control* p4Control) override;
-
-    const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
-
 };
 
 class ExtractSubstitutor final : public Transform {
