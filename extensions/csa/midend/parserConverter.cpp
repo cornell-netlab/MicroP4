@@ -140,6 +140,14 @@ cstring ParserConverter::createHeaderInvalidAction(IR::P4Parser* parser) {
         statOrDeclList->push_back(mcs);
     }
 
+    auto lval = new IR::Member(new IR::PathExpression(
+                                NameConstants::convertedParserMetaParamName),
+                                IR::ID(NameConstants::csaParserRejectStatus));
+    auto rval = new IR::Constant(0, 2);
+    auto as = new IR::AssignmentStatement(lval, rval);
+    statOrDeclList->push_back(as);
+
+
     auto actionBlock = new IR::BlockStatement(*statOrDeclList);
     auto action = new IR::P4Action(headerInvalidActionName, 
                                    new IR::ParameterList(), actionBlock);
@@ -151,7 +159,9 @@ void ParserConverter::createRejectAction(IR::P4Parser* parser) {
 
     rejectActionName = parser->name.name+"_"+"reject";
     auto statOrDeclList = new IR::IndexedVector<IR::StatOrDecl>();
-    auto lval = new IR::PathExpression(NameConstants::csaParserRejectStatus);
+    auto lval = new IR::Member(new IR::PathExpression(
+                                NameConstants::convertedParserMetaParamName),
+                                IR::ID(NameConstants::csaParserRejectStatus));
     auto rval = new IR::Constant(1, 2);
     auto as = new IR::AssignmentStatement(lval, rval);
     statOrDeclList->push_back(as);
@@ -480,6 +490,12 @@ const IR::Node* ParserConverter::postorder(IR::P4Parser* parser) {
                       new IR::Type_Name(NameConstants::csaPacketStructTypeName));
 
     newApplyParams->parameters.replace(newApplyParams->parameters.begin(), param);
+
+    auto metaParam = new IR::Parameter(pktParam->srcInfo, 
+                      IR::ID(NameConstants::convertedParserMetaParamName), 
+                      IR::Direction::Out,
+                      new IR::Type_Name(parserMetaStructTypeName));
+    newApplyParams->parameters.push_back(metaParam);
 
     IR::Type_Control* typeControl = new IR::Type_Control(type->srcInfo, 
         IR::ID(type->name.name), IR::Annotations::empty, 

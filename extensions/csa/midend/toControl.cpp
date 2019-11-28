@@ -253,7 +253,7 @@ const IR::Node* CPackageToControl::preorder(IR::P4ComposablePackage* cp) {
             }
         }
     }
-
+    
     // prepare type name to IR::PathExpression map, so controls can use the
     // PathExpression to supply arguments in MCS
     populateArgsMap(cp->getApplyParameters());
@@ -284,6 +284,8 @@ const IR::Node* CPackageToControl::postorder(IR::P4ComposablePackage* cp) {
     if (mcsMap.find("micro_parser") != mcsMap.end()) {
         // don't need this in MSA
         // addIntermediateExternCalls(bs);
+
+
     }
 
     auto p4ct = new IR::P4Control(IR::ID(cp->getName()), tc, controlLocals, bs);
@@ -449,6 +451,10 @@ const IR::Node* Converter::preorder(IR::P4Program* p4Program) {
             }
         }
     }
+
+
+    p4Program->objects.insert(p4Program->objects.begin(), 
+        addInP4ProgramObjects.begin(), addInP4ProgramObjects.end());
     prune();
     return p4Program;
 }
@@ -516,9 +522,17 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     BUG_CHECK(iter != parserStructures->end(), 
         "Parser %1% of %2% is not evaluated", parser->name, cp->getName());
     auto parserStructure = iter->second;
+    
+    auto flagType = IR::Type::Bits::get(1, false);
+    auto flagField = new IR::StructField(
+                         NameConstants::csaParserRejectStatus, flagType);
+    IR::IndexedVector<IR::StructField> fIV;
+    fIV.push_back(flagField);
+    auto ts = new IR::Type_Struct(IR::ID(parser_fqn+"_meta_t"), fIV);
+    addInP4ProgramObjects.push_back(ts);
 
     ParserConverter pc(refMap, typeMap, controlToReconInfoMap, parserStructure, 
-                       offsetsStack.back());
+                       offsetsStack.back(), parser_fqn+"_meta_t");
     auto convertedParser = ((IR::Node*)parser)->apply(pc);
 
     // new start offsets are computed and pushed on offsetsStack.

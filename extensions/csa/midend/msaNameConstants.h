@@ -42,6 +42,7 @@ class NameConstants {
 
 
     static const cstring csaParserRejectStatus;
+    static const cstring convertedParserMetaParamName;
   private:
     NameConstants() {}
 

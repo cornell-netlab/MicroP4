@@ -179,7 +179,7 @@ const IR::Node* DeparserConverter::postorder(IR::Parameter* param) {
     if (deparser == nullptr)
         return param;
     
-    auto type = typeMap->getType(param, false);
+    auto type = typeMap->getTypeType(param->type, false);
     if (!type->is<IR::Type_Extern>()) {
         return param;
     }

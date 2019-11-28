@@ -29,4 +29,5 @@ const cstring NameConstants::csaPakcetOutExternTypeName = "csa_packet_out";
 
 
 const cstring NameConstants::csaParserRejectStatus = "packet_reject";
+const cstring NameConstants::convertedParserMetaParamName = "pr";
 }// namespace CSA

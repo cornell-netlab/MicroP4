@@ -118,6 +118,7 @@ class Converter final : public Transform {
     P4ControlStateReconInfoMap *controlToReconInfoMap;
     std::vector<std::vector<unsigned>*> offsetsStack;
     IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
+    IR::Vector<IR::Type_Declaration> addInP4ProgramObjects;
 
     bool isDeparser(const IR::P4Control* p4control);
   public:
