@@ -12,6 +12,12 @@ struct swtrace_inout_t {
   bit<16> ipv4_total_len;
 }
 
+cpackage ecnv4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+                 
+cpackage ecnv6(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+                 
 cpackage L3v4(pkt p, im_t im, in empty_t ia, out bit<16> nh, 
                  inout bit<16> etherType);
                  

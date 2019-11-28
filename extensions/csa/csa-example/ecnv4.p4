@@ -36,7 +36,7 @@ struct ecn_hdr_t {
   ipv4_h ipv4;
 }
 
-cpackage ecn : implements CSASwitch<empty_t, external_meta_t, empty_t, 
+cpackage ecnv4 : implements CSASwitch<empty_t, external_meta_t, empty_t, 
 									ecn_hdr_t, ecn_meta_t, empty_t> {
 									
   parser csa_parser(packet_in pin, out ecn_hdr_t parsed_hdr, 

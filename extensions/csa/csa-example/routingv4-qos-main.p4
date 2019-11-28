@@ -14,7 +14,7 @@ struct meta2_t {
 }
 
 
-cpackage routerqos : implements OrchestrationSwitch<empty_t, empty_t, empty_t, 
+cpackage routerv4qos : implements OrchestrationSwitch<empty_t, empty_t, empty_t, 
                                               meta1_t, meta2_t> {
 
   control csa_pipe(csa_packet_in pin, csa_packet_out po, inout meta1_t meta, 
@@ -24,7 +24,7 @@ cpackage routerqos : implements OrchestrationSwitch<empty_t, empty_t, empty_t,
 
         l2() layer2;
         ipv4l3() ipv4layer;
-        ecn() ecnlayer;
+        ecnv4() ecnlayer;
         csa_packet_out() ecn_po;
         csa_packet_out() ipv4_po;
         csa_packet_in() l2_pin;
@@ -45,4 +45,4 @@ cpackage routerqos : implements OrchestrationSwitch<empty_t, empty_t, empty_t,
     }                                              
 }
 
-routerqos() main;                                              
+routerv4qos() main;                                              

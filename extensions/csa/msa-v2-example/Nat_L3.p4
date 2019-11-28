@@ -50,7 +50,7 @@ cpackage Nat_L3 : implements Unicast<hdr_t, empty_t,
   
 control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout bit<16> etherType) {
-    bit<1> change;
+    bit<1> change=0;
     Nat_L4() nat4_i;
     action change_srcAddr() {
             change = 1;
