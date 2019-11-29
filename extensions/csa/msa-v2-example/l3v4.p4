@@ -48,9 +48,15 @@ cpackage L3v4 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16
       hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
       nexthop = nh;  // setting out param
     }
+    action default_act() {
+      nexthop = 0; 
+    }
+
     table ipv4_lpm_tbl {
       key = { hdr.ipv4.dstAddr : lpm; } 
-      actions = { process; }
+      actions = { process; default_act;}
+      default_action = default_act;
+
     }
     apply { ipv4_lpm_tbl.apply(); }
   }

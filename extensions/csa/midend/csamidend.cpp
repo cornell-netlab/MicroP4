@@ -25,6 +25,7 @@
 #include "controlStateReconInfo.h"
 #include "csaExternSubstituter.h"
 #include "parserConverter.h"
+#include "msaPacketSubstituter.h"
 
 namespace CSA {
 
@@ -65,7 +66,6 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
-        /*
         // CreateAllPartitions is PassRepeated with ResolveReferences & TypeInference.
         // It will terminate when p4program does not change.
         // Subsequent TypeInference fails due to stale const IR::Path* in
@@ -76,13 +76,20 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
                                      &partitionsMap, &controlToReconInfoMap, 
                                      &partitions),
         new CSA::MergeDeclarations(v1ModelIR), 
-
-        new P4::MidEndLast(),
-        new CSA::CSAExternSubstituter(&refMap, &typeMap, &partitionsMap,
-                                      &partitions),
         new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
+        new CSA::MSAPacketSubstituter(&refMap, &typeMap), 
+        new P4::MidEndLast(),
+
+        /*
+        new CSA::CSAExternSubstituter(&refMap, &typeMap, &partitionsMap,
+                                      &partitions),
+                                      */
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
+        new P4::MidEndLast(),
+        /*
         new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions),
         new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
@@ -90,8 +97,8 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
-        // evaluator
         */
+        // evaluator
     };
 
     csaMidEnd.setName("CSAMidEndPasses");

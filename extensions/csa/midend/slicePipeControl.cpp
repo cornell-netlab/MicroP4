@@ -75,74 +75,105 @@ const IR::Node* AddInstancesInApplyParameterList::preorder(IR::ParameterList* pl
 }
 
 
-// unsigned SlicePipeControl::uniqueControlIDGen = 0;
-
-
 const IR::Node* SlicePipeControl::preorder(IR::Type_Control* type) {
-    auto p4ControlPart1Name = getUniqueControlName(type->name);
+
     auto apl = type->getApplyParameters();
+    auto newAPL = apl->clone();
+    /*
+    cstring pktStr = NameConstants::csaPacketStructTypeName;
+    auto p0 = new IR::Parameter(IR::ID(pktStr+"_var"), 
+        IR::Direction::InOut,  new IR::Type_Name(IR::ID(pktStr)));
+    newAPL->parameters.replace(newAPL->parameters.begin(), p0);
+    */
     auto p = new IR::Parameter(sharedStructInstArgName, IR::Direction::InOut, 
                                new IR::Type_Name(sharedStructTypeName));
-    auto newAPL = apl->clone();
     newAPL->push_back(p);
+
+    auto p4ControlPart1Name = getUniqueControlName(type->name);
     auto rt = new IR::Type_Control(type->srcInfo, p4ControlPart1Name, newAPL);
     return rt;
 }
 
+const IR::Node* SlicePipeControl::preorder(IR::Declaration_Variable* dv) {
+    
+    // isConvertedCPackage helps to identify deparser/parser and synthesize code
+    // accordingly.
+    cstring var_name = NameConstants::csaPacketStructTypeName+"_var";
+    if (dv->getName() == var_name ) {
+        intermediateCSAPacketHeaderInst = var_name;
+        isConvertedCPackage = true;
+    }
+    return dv;
+    
+} 
+
 const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
 
-    // std::cout<<"Visiting P4Control "<<p4control->getName()<<"\n";
+    msaPktParamName="";
+    std::cout<<"SlicePipeControl Visiting P4Control "<<p4control->getName()<<"\n";
+    // Skipping the parser/deparser control
     auto param = p4control->getApplyParameters()->getParameter(0);
     auto type = typeMap->getTypeType(param->type, true);
     if (type->is<IR::Type_StructLike>()) {
         auto typeStruct = type->to<IR::Type_StructLike>();
         // std::cout<<"Type : "<<type<<"\n";
-        if (typeStruct->name == ToControl::csaPacketStructTypeName) {
+        if (typeStruct->name == NameConstants::csaPacketStructTypeName) {
             // std::cout<<"skipping "<<p4control->name.name<<"\n";
             prune();
             return p4control;
         }
     }
-    // IR::IndexedVector<IR::Declaration> usedDecls;
-    // getUsedDeclarations = new GetUsedDeclarations(p4control, &usedDecls);
+    if (auto te = type->to<IR::Type_Extern>() ){
+        if (te->getName() ==  P4::P4CoreLibrary::instance.pkt.name)
+            msaPktParamName = param->getName();
+    }
+
+
     track = true;
     slice = false;
     isConvertedCPackage = false;
     splitApplyMCE = nullptr; 
+
+    visit(p4control->controlLocals);
     visit(p4control->body);
+
     if (slice) {
         std::set<cstring> replicateDecls;
         auto part1Body = const_cast<IR::BlockStatement*>
                           (slicedHalf->to<IR::BlockStatement>());
         cstring p4ControlOrigName = p4control->getName();
+
         for (auto dv : sharedVariableDecls)
             p4control->controlLocals.push_back(dv);
-        for (auto nci : newControlInsts)
+        for (auto nci : newControlInsts) 
             p4control->controlLocals.push_back(nci);
 
         // std::cout<<"First part of control body\n";
+        // std::cout<<part1Body<<"\n\n";
         // std::cout<<p4control->body<<"\n\n";
         
-        // std::cout<<"Second part of control body\n";
         auto part2Body = new IR::BlockStatement();
         for (auto s : newStmtVec) {
             part2Body->components.push_back(s);
         }
+        // std::cout<<"Second part of control body\n";
         // std::cout<<part2Body<<"\n\n";
 
         IR::Type_Declaration* deparser = nullptr;
         IR::Type_Declaration* parser = nullptr;
 
         if (isConvertedCPackage) {
+            // Now, we are at the place where we need to do all sorts of state
+            // reconstruction between ingress and egress
             auto iter = controlToReconInfoMap->find(p4control->getName());
             if (iter != controlToReconInfoMap->end()) {
                 cstring parsedHeaderTypeName = iter->second->headerTypeName;
                 // std::cout<<iter->first<<" - "<<iter->second<<"\n";
                 deparser = createIntermediateDeparser(
-                    ToControl::csaPacketStructTypeName, iter->second);
+                    NameConstants::csaPacketStructTypeName, iter->second);
                     //ToControl::csaPacketStructTypeName, iter->second);
                 parser = createIntermediateParser(
-                    ToControl::csaPacketStructTypeName, iter->second);
+                    NameConstants::csaPacketStructTypeName, iter->second);
 
                 cstring varName = "";
                 // get parsed header instance name from the apply call.
@@ -203,22 +234,24 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                 auto& p1Stmts = part1Body->components;
 
                 p1Stmts.push_back(dMCS);
+                p2Stmts.insert(p2Stmts.begin(), pMCS);
+                /*
                 auto lastBS = p2Stmts.back()->to<IR::BlockStatement>();
                 BUG_CHECK(lastBS != nullptr, "expected Blockstatement here");
                 p1Stmts.push_back(lastBS->components.back()->clone());
 
-                p2Stmts.insert(p2Stmts.begin(), pMCS);
                 auto getPktCall = p1Stmts.front();
                 p2Stmts.insert(p2Stmts.begin(), getPktCall->clone());
-
+                */
                 /*
-                std::cout<<"------------\n";
+                std::cout<<"part1body ------------\n";
                 std::cout<<part1Body<<"\n";
-                std::cout<<"------------\n";
+                std::cout<<"part2body ------------\n";
                 std::cout<<part2Body<<"\n";
                 */
             }              
         }
+
         p4control->body = part1Body;
 
         visit(p4control->type);
@@ -231,10 +264,11 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
         
         /*
         std::cout<<"First Control ................ \n";
-        std::cout<<p4control->getName()<<"\n";
+        std::cout<<p4control<<"\n";
         std::cout<<"Second Control ................ \n";
-        std::cout<<p4ControlPart2->getName()<<"\n";
+        std::cout<<p4ControlPart2<<"\n";
         */
+
         partitionsMap.emplace(std::piecewise_construct,
             //std::forward_as_tuple(p4ControlOrigName),
             std::forward_as_tuple(p4control->getName()),
@@ -480,7 +514,7 @@ const IR::Node* SlicePipeControl::preorder(IR::MethodCallExpression* mce) {
 
     auto ancestorP4Control = findContext<IR::P4Control>();
     if (ancestorP4Control == nullptr) {
-        
+        prune();
         return mce;
     }
 
@@ -514,7 +548,6 @@ const IR::Node* SlicePipeControl::preorder(IR::MethodCallExpression* mce) {
             SlicePipeControl slicePipeControl(refMap, typeMap, 
                 structTypeName, partitionState, controlToReconInfoMap);
             
-
             // std::cout<<mce<<"\n";
             auto p4ControlPart1 = p4Control->apply(slicePipeControl);
 
@@ -531,6 +564,7 @@ const IR::Node* SlicePipeControl::preorder(IR::MethodCallExpression* mce) {
             cstring varName = structTypeName+"_var";
             auto dv = new IR::Declaration_Variable(varName, 
                                             new IR::Type_Name(structTypeName));
+
             sharedVariableDecls.push_back(dv);
             
             cstring ci1Name = p4C1Name+"_inst";
@@ -594,10 +628,11 @@ const IR::Node* SlicePipeControl::preorder(IR::MethodCallExpression* mce) {
         // std::cout<<"ExternMethod : "<<mce<<"\n";
         processExternMethodCall(mi->to<P4::ExternMethod>());
     }
+    prune();
     return mce;
 }
 
-
+/*
 const IR::Node* SlicePipeControl::postorder(IR::AssignmentStatement* asStmt) {
     if (isConvertedCPackage) {
         auto lhs = asStmt->left->to<IR::PathExpression>();
@@ -608,24 +643,33 @@ const IR::Node* SlicePipeControl::postorder(IR::AssignmentStatement* asStmt) {
     }
     return asStmt;
 }
+*/
 
 
 void SlicePipeControl::processExternMethodCall(const P4::ExternMethod* em) {
-    if (em->originalExternType->name.name == "egress_spec") {
-        if (em->method->name.name == "set_egress_port") {
-            if (partitionState == ControlConstraintStates::ES_R_EM_R) {
-                std::cout<<"egress slice  ------------\n";
-                slice = true;
-            }
-        }
-        if (em->method->name.name == "get_value") {
-            if (partitionState == ControlConstraintStates::ES_RW_IM_R) {
+    if (em->originalExternType->name.name == "im_t") {
+        // Currently in ingress state.
+        if (partitionState == ControlConstraintStates::ES_RW_IM_R) {
+            // If any of the following condition satisfies slicing should happen.
+            // The program statements that are allowed only in egress.
+            // (i.e. things that are not allowed in ingress)
+            if (em->method->name.name == "get_value") {
                 std::cout<<"ingress slice  ------------\n";
                 slice = true;
             }
         }
+        // Currently in egress state
+        if (partitionState == ControlConstraintStates::ES_R_EM_R) {
+            // things that are not allowed in egress
+            if (em->method->name.name == "set_out_port") {
+                std::cout<<"egress slice  ------------\n";
+                slice = true;
+            }
+        }
+
     }
 
+    /*
     if (em->originalExternType->name.name == "csa_packet_in") {
         if (em->method->name.name == "get_packet_struct") {
             isConvertedCPackage = true;
@@ -636,6 +680,9 @@ void SlicePipeControl::processExternMethodCall(const P4::ExternMethod* em) {
             isConvertedCPackage = true;
         }
     }
+    */  
+
+
 
 }
 
@@ -714,6 +761,11 @@ IR::P4Control* SlicePipeControl::createPartitionedP4Control(
         auto np = new IR::Parameter(p->name, p->direction, p->type->clone());
         pl->push_back(np);
     }
+    /*
+    auto p = new IR::Parameter(sharedStructInstArgName, IR::Direction::InOut, 
+                                   new IR::Type_Name(sharedStructTypeName));
+    pl->push_back(p);
+    */
     auto type = new IR::Type_Control(newName, pl);
     auto newP4Control = new IR::P4Control(IR::ID(newName), type, 
         orig->constructorParams->clone(), *(orig->controlLocals.clone()), newBody);
@@ -789,10 +841,7 @@ const IR::Node* PartitionP4Control::preorder(IR::P4Control* p4control) {
     SlicePipeControl slicePipeControl(refMap, typeMap, sharedStructTypeName, 
                                       *constraintState, controlToReconInfoMap);
     auto orig = p4control->apply(slicePipeControl);
-
-
     partMap = slicePipeControl.getPartitionInfo();
-
 
     if (partMap.empty()) {
         std::cout<<"Partitions empty for P4Control: "
@@ -802,13 +851,12 @@ const IR::Node* PartitionP4Control::preorder(IR::P4Control* p4control) {
         return p4control;
     }
 
-
     /*
     // part 1 name
     std::cout<<"Orig "<<orig->getName()<<"\n";
     // original name
     */
-    std::cout<<"p4control "<<p4control->getName()<<"\n";
+    // std::cout<<"p4control "<<p4control->getName()<<"\n";
     auto iter = partMap.find(orig->getName());
     if (iter != partMap.end()) {
         /*

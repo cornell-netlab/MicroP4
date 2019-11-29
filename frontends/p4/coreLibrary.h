@@ -96,6 +96,21 @@ class Emitter : public Model::Extern_Model {
     Model::Elem emit;
 };
 
+class im_t : public Model::Extern_Model {
+ public:
+    im_t() :
+      Extern_Model("im_t"),
+      copyFrom("copy_from"), 
+      getValue("get_value"),
+      setOutPort("set_out_port"),
+      getOutPort("get_out_port") {}
+    Model::Elem copyFrom;
+    Model::Elem getValue;
+    Model::Elem setOutPort;
+    Model::Elem getOutPort;
+};
+
+
 /******************************************************************************/
 
 class PacketIn : public Model::Extern_Model {
@@ -153,6 +168,7 @@ class P4CoreLibrary : public ::Model::Model {
     PacketOut   packetOut;
 
     Pkt         pkt;
+    im_t        im;
     Extractor   extractor;
     Emitter     emitter;
 
