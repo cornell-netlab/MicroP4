@@ -70,7 +70,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
     auto pl = getHeaderMetaStdMetaPL();
     pl->parameters.erase(pl->parameters.begin());
     auto ph = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
-        IR::Direction::Out, new IR::Type_Name(ToControl::csaPacketStructTypeName));
+        IR::Direction::Out, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
     auto pin = new IR::Parameter(IR::ID(packetInArgName), 
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetIn.name));
     pl->parameters.insert(pl->parameters.begin(), ph);
@@ -80,7 +80,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
 
 
     auto lhPE = new IR::PathExpression(csaPacketStructInstanceName);
-    auto lhIndices = new IR::Member(lhPE, ToControl::indicesHeaderInstanceName);
+    auto lhIndices = new IR::Member(lhPE, NameConstants::indicesHeaderInstanceName);
     auto lhs = new IR::Member(lhIndices, AddCSAByteHeader::csaPktStuLenFName);
     auto rhs = new IR::Constant(1);
     auto initAs = new IR::AssignmentStatement(lhs, rhs);
@@ -90,7 +90,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
     { // creating start state
 
         auto svPE = new IR::PathExpression(csaPacketStructInstanceName);
-        auto svM = new IR::Member(svPE, ToControl::indicesHeaderInstanceName);
+        auto svM = new IR::Member(svPE, NameConstants::indicesHeaderInstanceName);
         auto sv = new IR::Member(svM, IR::Type_Header::setValid);
         auto mce = new IR::MethodCallExpression(sv);
         auto setValidMCS =  new IR::MethodCallStatement(mce);
@@ -121,7 +121,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
         IR::IndexedVector<IR::StatOrDecl> components;
 
         auto em = new IR::Member(new IR::PathExpression(
-              csaPacketStructInstanceName), ToControl::csaHeaderInstanceName);
+              csaPacketStructInstanceName), NameConstants::csaHeaderInstanceName);
         auto exArg = new IR::Argument(new IR::Member(em, "next"));
         auto exArgs = new IR::Vector<IR::Argument>();
         exArgs->push_back(exArg);
@@ -133,25 +133,25 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
         components.push_back(mcs);
         
         auto pe = new IR::PathExpression(csaPacketStructInstanceName);
-        auto rhIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        auto pkt = new IR::Member(rhIndices, AddCSAByteHeader::csaPktStuLenFName);
+        auto rhIndices = new IR::Member(pe, NameConstants::indicesHeaderInstanceName);
+        auto pkt = new IR::Member(rhIndices, NameConstants::csaPktStuLenFName);
         auto rinc = new IR::Add(pkt, new IR::Constant(1));
         pe = new IR::PathExpression(csaPacketStructInstanceName);
-        auto lhIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        auto lh = new IR::Member(lhIndices, AddCSAByteHeader::csaPktStuLenFName);
+        auto lhIndices = new IR::Member(pe,  NameConstants::indicesHeaderInstanceName);
+        auto lh = new IR::Member(lhIndices, NameConstants::csaPktStuLenFName);
         auto inc = new IR::AssignmentStatement(lh, rinc);
         components.push_back(inc);
 
         pe = new IR::PathExpression(csaPacketStructInstanceName);
-        auto pktIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        pkt = new IR::Member(pktIndices, AddCSAByteHeader::csaPktStuLenFName);
+        auto pktIndices = new IR::Member(pe, NameConstants::indicesHeaderInstanceName);
+        pkt = new IR::Member(pktIndices, NameConstants::csaPktStuLenFName);
         auto rpe = new IR::PathExpression(stdMetadataArgName);
         auto castType = IR::Type::Bits::get(16, false);
         auto rpkt = new IR::Cast(castType, new IR::Member(rpe, "packet_length"));
         auto c1 = new IR::Leq(pkt, rpkt);
         pe = new IR::PathExpression(csaPacketStructInstanceName);
-        pktIndices = new IR::Member(pe, ToControl::indicesHeaderInstanceName);
-        pkt = new IR::Member(pktIndices, AddCSAByteHeader::csaPktStuLenFName);
+        pktIndices = new IR::Member(pe, NameConstants::indicesHeaderInstanceName);
+        pkt = new IR::Member(pktIndices, NameConstants::csaPktStuLenFName);
         auto re = new IR::Constant(1000);
         auto c2 = new IR::Leq(pkt, re);
         auto cond = new IR::LAnd(c1, c2);
@@ -188,12 +188,12 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelDeparser() {
     auto po = new IR::Parameter(IR::ID(packetOutArgName), 
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetOut.name));
     auto ph = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
-        IR::Direction::In, new IR::Type_Name(ToControl::csaPacketStructTypeName));
+        IR::Direction::In, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
     pl->push_back(po);
     pl->push_back(ph);
 
     auto argExp = new IR::Member(new IR::PathExpression(csaPacketStructInstanceName),
-                                 IR::ID(ToControl::csaHeaderInstanceName));
+                                 IR::ID(NameConstants::csaHeaderInstanceName));
     auto args = new IR::Vector<IR::Argument>();
     auto arg = new IR::Argument(argExp);
     args->push_back(arg);
@@ -244,7 +244,7 @@ const IR::Node* CreateV1ModelArchBlock::createIngressControl(
             auto ts = type->to<IR::Type_Struct>();
             const IR::Type* fieldType = nullptr;
             if (ts != nullptr) {
-                if (ts->getName() == ToControl::csaPacketStructTypeName) {
+                if (ts->getName() == NameConstants::csaPacketStructTypeName) {
                     auto pe = new IR::PathExpression(csaPacketStructInstanceName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
@@ -300,7 +300,7 @@ const IR::Node* CreateV1ModelArchBlock::createEgressControl(
             auto ts = type->to<IR::Type_Struct>();
             const IR::Type* fieldType = nullptr;
             if (ts != nullptr) {
-                if (ts->getName() == ToControl::csaPacketStructTypeName) {
+                if (ts->getName() == NameConstants::csaPacketStructTypeName) {
                     auto pe = new IR::PathExpression(csaPacketStructInstanceName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
@@ -346,7 +346,7 @@ const IR::Node* CreateV1ModelArchBlock::createEgressControl(
 IR::ParameterList* CreateV1ModelArchBlock::getHeaderMetaPL() {
     auto pl = new IR::ParameterList();
     auto phdr = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
-        IR::Direction::InOut, new IR::Type_Name(ToControl::csaPacketStructTypeName));
+        IR::Direction::InOut, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
     auto pum = new IR::Parameter(IR::ID(metadataArgName), 
         IR::Direction::InOut, new IR::Type_Name(userMetadataStructTypeName));
     pl->push_back(phdr);
@@ -369,11 +369,15 @@ std::vector<const IR::P4Control*>
 CreateV1ModelArchBlock::getControls(const IR::P4Program* prog, bool ingress) {
     std::vector<const IR::P4Control*> controls;
 
-    unsigned i = ingress ? 0 : 1;
-    std::cout<<"Partition Map : "<<partitionsMap->size()<<"\n";
-    std::cout<<"i = "<<i<<"\n";
-    for (; i<partitions->size(); i+=2) {
-        std::cout<<"partition : "<<(*partitions)[i]<<"\n";
+    unsigned i = 0;
+    unsigned c = 0;
+    if (!ingress) {
+       i = 1;
+       c = 1;
+    }
+    std::cout<<"Partition Map size: "<<partitionsMap->size()<<"\n";
+    std::cout<<"Total Partitions: "<<partitions->size()<<"\n";
+    for (; i<partitions->size(); i = i+2) {
         if (i == partitions->size()-1) {
             auto it = partitionsMap->find((*partitions)[i-1]);
             BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");

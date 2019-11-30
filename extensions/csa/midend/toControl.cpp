@@ -374,8 +374,8 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
                               new IR::Type_Name(csaByteHeaderType->getName()),
                               new IR::Constant((*maxOffset)/8));
 
-    auto field = new IR::StructField(ToControl::csaHeaderInstanceName, pktByteStack);
-    auto fIndices = new IR::StructField(ToControl::indicesHeaderInstanceName, 
+    auto field = new IR::StructField(NameConstants::csaHeaderInstanceName, pktByteStack);
+    auto fIndices = new IR::StructField(NameConstants::indicesHeaderInstanceName, 
                             new IR::Type_Name(csaIndicesHeaderType->getName()));
 
     IR::IndexedVector<IR::StructField> fiv;

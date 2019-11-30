@@ -312,26 +312,30 @@ class CreateAllPartitions : public PassRepeated {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
     ControlConstraintStates initState;
+    std::vector<cstring>* partitions;
+
   public:
-    explicit CreateAllPartitions(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
+    explicit CreateAllPartitions(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         cstring* mainControlTypeName,
-        P4ControlPartitionInfoMap* partitionsMap,
-        P4ControlStateReconInfoMap *controlToReconInfoMap,
-        std::vector<cstring>* partitions) 
-      : PassManager({}), refMap(refMap), typeMap(typeMap) {
-
-      CHECK_NULL(refMap); CHECK_NULL(typeMap); setName("CreateAllPartitions");
-
-      initState = ControlConstraintStates::ES_RW_IM_R;
-
-      passes.emplace_back(new P4::ResolveReferences(refMap, true)); 
-      passes.emplace_back(new P4::TypeInference(refMap, typeMap, false)); 
-      passes.emplace_back(new PartitionP4Control(refMap, typeMap, 
-            mainControlTypeName, partitionsMap, controlToReconInfoMap, 
-            partitions, &initState));
+          P4ControlPartitionInfoMap* partitionsMap,
+          P4ControlStateReconInfoMap *controlToReconInfoMap,
+          std::vector<cstring>* partitions) 
+        : PassManager({}), refMap(refMap), typeMap(typeMap), partitions(partitions) {
+       
+        CHECK_NULL(refMap); CHECK_NULL(typeMap); setName("CreateAllPartitions");
+       
+        initState = ControlConstraintStates::ES_RW_IM_R;
+       
+        passes.emplace_back(new P4::ResolveReferences(refMap, true)); 
+        passes.emplace_back(new P4::TypeInference(refMap, typeMap, false)); 
+        passes.emplace_back(new PartitionP4Control(refMap, typeMap, 
+              mainControlTypeName, partitionsMap, controlToReconInfoMap, 
+              partitions, &initState));
     }
 
     void end_apply(const IR::Node* node) override { 
+        if (partitions->size() > 2)
+            partitions->pop_back();
         refMap->clear();
         typeMap->clear();
         PassManager::end_apply(node);
