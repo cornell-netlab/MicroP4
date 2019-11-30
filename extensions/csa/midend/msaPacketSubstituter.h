@@ -35,6 +35,7 @@ class MSAPacketSubstituter final : public Transform {
     void end_apply(const IR::Node* node) override { 
         refMap->clear();
         typeMap->clear();
+        Transform::end_apply(node);
     }
 
 

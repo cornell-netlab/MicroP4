@@ -16,7 +16,7 @@ namespace CSA {
 //
 // control ingress (csa_packet_struct_t pkt, csa_user_metadata_t metadataArgName,
 // standard_metadata_t csa_sm))
-const cstring CreateV1ModelArchBlock::csaPacketStructInstanceName = "pkt";
+const cstring CreateV1ModelArchBlock::csaPacketStructInstanceName = "pkt_i";
 const cstring CreateV1ModelArchBlock::metadataArgName = "csa_um";
 const cstring CreateV1ModelArchBlock::stdMetadataArgName = "csa_sm";
 const cstring CreateV1ModelArchBlock::userMetadataStructTypeName = "csa_user_metadata_t";
@@ -442,20 +442,15 @@ const IR::Node* CSAStdMetaSubstituter::preorder(IR::Path* path) {
 
 const IR::Node* CSAStdMetaSubstituter::preorder(IR::Parameter* param) {
     auto type = typeMap->getTypeType(param->type, true);
-    if (auto tDecl = type->to<IR::Type_Struct>()) {
-        if (tDecl->getName() == "csa_standard_metadata_t") {
-            prune();
-            return new IR::Parameter(param->srcInfo, param->name, 
-                param->annotations, param->direction, 
-                new IR::Type_Name(P4V1::V1Model::instance.standardMetadataType.name), 
-                param->defaultValue);
-        }
-    }
-
     if (auto te = type->to<IR::Type_Extern>()) {
-        if (te->getName() == "egress_spec") {
+        if (te->getName() == P4::P4CoreLibrary::instance.im.name) {
             prune();
-            return nullptr;
+            auto tn = new IR::Type_Name(
+                            P4V1::V1Model::instance.standardMetadataType.name); 
+            return new IR::Parameter(param->srcInfo, param->name, 
+                param->annotations, IR::Direction::InOut, tn, 
+                param->defaultValue);
+
         }
     }
     prune();
@@ -467,8 +462,8 @@ const IR::Node* CSAStdMetaSubstituter::preorder(IR::MethodCallStatement* mcs) {
     auto mi = P4::MethodInstance::resolve(mcs, refMap, typeMap);
     if (mi->is<P4::ExternMethod>()) {
         auto em = mi->to<P4::ExternMethod>();
-        if (em->method->name.name == "set_egress_port" &&
-            em->originalExternType->name.name == "egress_spec") {
+        if (em->method->name.name == P4::P4CoreLibrary::instance.im.setOutPort.name
+            && em->originalExternType->name.name == P4::P4CoreLibrary::instance.im.name) {
             // std::cout<<"Method name :"<<em->method->name<<"\n";
             // std::cout<<"decl :"<<em->object<<"\n";
             auto exp = mcs->methodCall->arguments->at(0)->expression;
@@ -492,7 +487,8 @@ const IR::Node* CSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
     auto mi = P4::MethodInstance::resolve(mce, refMap, typeMap);
     if (mi->is<P4::ExternMethod>()) {
         auto em = mi->to<P4::ExternMethod>();
-        if (em->originalExternType->name.name != "egress_spec")
+        if (em->originalExternType->name.name 
+            != P4::P4CoreLibrary::instance.im.name)
             return mce;
 
         auto p4c = findContext<IR::P4Control>();
@@ -500,27 +496,39 @@ const IR::Node* CSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
         BUG_CHECK(p4c != nullptr, 
             "CSAStdMetaSubstituter:: unexpected use of %1%", mce);
         auto pathExp = new IR::PathExpression(IR::ID(stdMetaParam->name));
-        if (em->method->name.name == "get_egress_port") {           
+        if (em->method->name.name 
+            == P4::P4CoreLibrary::instance.im.getOutPort.name) {           
             auto member = new IR::Member(mce->srcInfo, pathExp,
                 P4V1::V1Model::instance.standardMetadataType.egress_spec.name);
             prune();
             return member;
         }
-        if (em->method->name.name == "get_value") {
+        if (em->method->name.name 
+            == P4::P4CoreLibrary::instance.im.getValue.name) {
             auto exp = mce->arguments->at(0)->expression;
             auto mem = exp->to<IR::Member>();
             BUG_CHECK(mem != nullptr, "unable to identify arg %1%", exp);
             if (mem->member == "QUEUE_DEPTH_AT_DEQUEUE") {
                 auto m = new IR::Member(mce->srcInfo, pathExp, "enq_qdepth");
+                auto tc = IR::Type_Bits::get(32, false);
+                auto cm = new IR::Cast(tc, m);
                 prune();
-                return m;
+                return cm;
             }
         }
+        if (em->method->name.name == "drop") {
+            auto pe = new IR::PathExpression("mark_to_drop");
+            auto dropMce = new IR::MethodCallExpression(
+                pe, new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+            prune();
+            return dropMce;
+        }
+
     }
     return mce;
 }
 
-
+/*
 const IR::Node* CSAStdMetaSubstituter::preorder(IR::Argument* arg) {
     auto type = typeMap->getType(arg->expression, true);
     if (auto te = type->to<IR::Type_Extern>()) {
@@ -531,6 +539,7 @@ const IR::Node* CSAStdMetaSubstituter::preorder(IR::Argument* arg) {
     }
     return arg;
 }
+*/
 
 const IR::Node* CSAStdMetaSubstituter::preorder(IR::AssignmentStatement* as) {
     auto re = as->right->to<IR::BoolLiteral>();

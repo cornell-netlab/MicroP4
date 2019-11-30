@@ -110,7 +110,7 @@ const IR::Node* SlicePipeControl::preorder(IR::Declaration_Variable* dv) {
 const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
 
     msaPktParamName="";
-    std::cout<<"SlicePipeControl Visiting P4Control "<<p4control->getName()<<"\n";
+    //std::cout<<"SlicePipeControl Visiting P4Control "<<p4control->getName()<<"\n";
     // Skipping the parser/deparser control
     auto param = p4control->getApplyParameters()->getParameter(0);
     auto type = typeMap->getTypeType(param->type, true);
@@ -180,7 +180,7 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                 for (auto arg : *(splitApplyMCE->arguments)) {
                     auto type = typeMap->getType(arg->expression, true);
                     if (auto ts = type->to<IR::Type_Struct>()) {
-                        std::cout<<"type : "<<ts->getName()<<"\n";
+                        // std::cout<<"type : "<<ts->getName()<<"\n";
                         if (parsedHeaderTypeName == ts->getName()) {
                             auto pe = arg->expression->to<IR::PathExpression>();
                             BUG_CHECK(pe!=nullptr, "unexpected situation");
@@ -654,7 +654,7 @@ void SlicePipeControl::processExternMethodCall(const P4::ExternMethod* em) {
             // The program statements that are allowed only in egress.
             // (i.e. things that are not allowed in ingress)
             if (em->method->name.name == "get_value") {
-                std::cout<<"ingress slice  ------------\n";
+                // std::cout<<"ingress slice  ------------\n";
                 slice = true;
             }
         }
@@ -662,7 +662,7 @@ void SlicePipeControl::processExternMethodCall(const P4::ExternMethod* em) {
         if (partitionState == ControlConstraintStates::ES_R_EM_R) {
             // things that are not allowed in egress
             if (em->method->name.name == "set_out_port") {
-                std::cout<<"egress slice  ------------\n";
+                // std::cout<<"egress slice  ------------\n";
                 slice = true;
             }
         }
@@ -844,8 +844,8 @@ const IR::Node* PartitionP4Control::preorder(IR::P4Control* p4control) {
     partMap = slicePipeControl.getPartitionInfo();
 
     if (partMap.empty()) {
-        std::cout<<"Partitions empty for P4Control: "
-                 <<p4control->getName()<<"\n\n\n";
+        //std::cout<<"Partitions empty for P4Control: " 
+        //<<p4control->getName()<<"\n";
         partitions->push_back(p4control->getName());
         prune();
         return p4control;

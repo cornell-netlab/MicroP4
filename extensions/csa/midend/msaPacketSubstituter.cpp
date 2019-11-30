@@ -13,8 +13,8 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Path* path) {
     }
         
     if (path->name.name == pathToReplace){
-        std::cout<<"MSAPacketSubstituter: "<<path->name.name <<"\n"; 
-      return new IR::Path(replacementPath);
+        // std::cout<<"MSAPacketSubstituter: "<<path->name.name <<"\n"; 
+        return new IR::Path(replacementPath);
     }
     else
         return path;
@@ -32,7 +32,7 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Parameter* param) {
         if (te->getName() ==  P4::P4CoreLibrary::instance.pkt.name) {
             pathToReplace = param->getName();
             cstring pktStr = NameConstants::csaPacketStructTypeName;
-        std::cout<<"MSAPacketSubstituter param: "<<param->name <<"\n"; 
+            // std::cout<<"MSAPacketSubstituter param: "<<param->name <<"\n"; 
             param = new IR::Parameter(IR::ID(pktStr+"_var"),
                 IR::Direction::InOut, new IR::Type_Name(IR::ID(pktStr)));
         }

@@ -89,9 +89,9 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
-        /*
         new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions),
         new P4::MidEndLast(),
+        /*
         new P4::ResolveReferences(&refMap, true),
         new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),

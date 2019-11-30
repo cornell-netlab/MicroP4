@@ -104,7 +104,7 @@ class CSAStdMetaSubstituter final : public Transform {
 
     const IR::Node* preorder(IR::Path* path) override;
     const IR::Node* preorder(IR::Parameter* parameter) override;
-    const IR::Node* preorder(IR::Argument* arg) override;
+    //const IR::Node* preorder(IR::Argument* arg) override;
 
     const IR::Node* preorder(IR::MethodCallExpression* mce) override;
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
@@ -136,9 +136,9 @@ class ToV1Model final : public PassManager {
 
         passes.push_back(new P4::ResolveReferences(refMap, true));
         passes.push_back(new P4::TypeInference(refMap, typeMap, false));
+        /*
         passes.push_back(new CreateV1ModelArchBlock(refMap, typeMap, 
                 ToControl::headerTypeName, partitionsMap, partitions));
-        /*
         passes.push_back(new CreateUserMetadataStructType(refMap, typeMap, 
                 partitionsMap, partitions));
         */

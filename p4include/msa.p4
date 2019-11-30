@@ -8,7 +8,7 @@
 
 #include <core.p4>
 
-typedef   bit<8>    PortId_t;
+typedef   bit<9>    PortId_t;
 typedef   bit<16>   PktInstId_t;
 typedef   bit<16>   GroupId_t;
 const   PortId_t    PORT_CPU = 255;
