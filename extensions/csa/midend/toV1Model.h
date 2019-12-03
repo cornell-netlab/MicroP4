@@ -104,7 +104,7 @@ class CSAStdMetaSubstituter final : public Transform {
 
     const IR::Node* preorder(IR::Path* path) override;
     const IR::Node* preorder(IR::Parameter* parameter) override;
-    const IR::Node* preorder(IR::Argument* arg) override;
+    //const IR::Node* preorder(IR::Argument* arg) override;
 
     const IR::Node* preorder(IR::MethodCallExpression* mce) override;
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;

@@ -8,7 +8,7 @@
 
 #include <core.p4>
 
-typedef   bit<8>    PortId_t;
+typedef   bit<9>    PortId_t;
 typedef   bit<16>   PktInstId_t;
 typedef   bit<16>   GroupId_t;
 const   PortId_t    PORT_CPU = 255;
@@ -43,6 +43,7 @@ extern im_t {
   PortId_t get_out_port(); // default 0x00
   bit<32> get_value(metadata_fields_t field_type);
   void copy_from(im_t im);
+  void drop();
 }
 
 

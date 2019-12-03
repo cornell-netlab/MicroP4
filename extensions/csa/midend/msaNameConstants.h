@@ -30,18 +30,21 @@ class NameConstants {
     static const cstring csaPacketStructName;
     static const cstring csaHeaderInstanceName;
     static const cstring csaStackInstanceName;
-    static const cstring csaPakcetInGetPacketStruct;
-    static const cstring csaPakcetOutSetPacketStruct;
     static const cstring csaPakcetOutGetPacketIn;
 
     static const cstring csaPakcetInExternTypeName;
     static const cstring csaPakcetOutExternTypeName;
+
+
+    static const cstring csaPktGetPacketStruct;
+    static const cstring csaPktSetPacketStruct;
 
     static const cstring csaPktStuLenFName;
     static const cstring csaPktStuCurrOffsetFName;
 
 
     static const cstring csaParserRejectStatus;
+    static const cstring convertedParserMetaParamName;
   private:
     NameConstants() {}
 

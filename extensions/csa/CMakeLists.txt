@@ -19,6 +19,8 @@ set (CSA_SWITCH_SRCS
     midend/msaNameConstants.cpp
     midend/csamidend.h
     midend/csamidend.cpp
+    midend/msaPacketSubstituter.h
+    midend/msaPacketSubstituter.cpp
     midend/controlStateReconInfo.h
     midend/controlStateReconInfo.cpp
     midend/parserConverter.h

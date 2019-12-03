@@ -46,7 +46,7 @@ class CPackageToControl final : public Transform {
     bool isArchBlock(cstring name);
     void createMCS(const IR::Type_Control* tc);
 
-    // void addIntermediateExternCalls(IR::BlockStatement* bs);
+    void addIntermediateExternCalls(IR::BlockStatement* bs);
   public:
     explicit CPackageToControl(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         cstring* mainControlTypeName,
@@ -103,7 +103,7 @@ class AddCSAByteHeader final : public Transform {
     }
     const IR::Node* preorder(IR::P4Program* p4Program) override;
 
-    // const IR::Node* preorder(IR::Type_Extern* te) override;
+    const IR::Node* preorder(IR::Type_Extern* te) override;
 
     static const cstring csaPktStuLenFName;
     static const cstring csaPktStuCurrOffsetFName;
@@ -118,6 +118,7 @@ class Converter final : public Transform {
     P4ControlStateReconInfoMap *controlToReconInfoMap;
     std::vector<std::vector<unsigned>*> offsetsStack;
     IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
+    IR::Vector<IR::Type_Declaration> addInP4ProgramObjects;
 
     bool isDeparser(const IR::P4Control* p4control);
   public:
@@ -162,7 +163,7 @@ class ToControl final : public PassManager {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(mainControlTypeName);
         CHECK_NULL(controlToReconInfoMap);
-        maxOffset = new unsigned(96);
+        maxOffset = new unsigned(9600);
         passes.push_back(new Converter(refMap, typeMap, 
               mainControlTypeName, parserStructures, controlToReconInfoMap));
         passes.push_back(new AddCSAByteHeader(headerTypeName, 

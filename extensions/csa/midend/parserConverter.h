@@ -29,6 +29,7 @@ class ParserConverter final : public Transform {
     cstring rejectActionName;
     P4::ParserStructure* parserStructure = nullptr;
     const std::vector<unsigned>* initialOffsets;
+    cstring parserMetaStructTypeName;
 
     const cstring tableName = "parser_tbl";
     IR::IndexedVector<IR::StatOrDecl> statOrDeclsOfControlBody;
@@ -43,7 +44,7 @@ class ParserConverter final : public Transform {
     bool stateIterator(IR::ParserState* state);
     bool hasDefaultSelectCase(const IR::ParserState* state) const;
     bool hasSelectExpression(const IR::ParserState* state) const;
-    cstring createHeaderInvalidAction(IR::P4Parser* parser);
+    cstring createInitdAction(IR::P4Parser* parser);
     void createRejectAction(IR::P4Parser* parser);
     void initTableWithOffsetEntries(const cstring startStateName);
     void createP4Table();
@@ -61,10 +62,12 @@ class ParserConverter final : public Transform {
     explicit ParserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
                              P4ControlStateReconInfoMap* controlToReconInfoMap,
                              P4::ParserStructure* parserStructure,
-                             const std::vector<unsigned>* initialOffsets)
+                             const std::vector<unsigned>* initialOffsets,
+                             cstring parserMetaStructTypeName)
         : refMap(refMap), typeMap(typeMap), 
           controlToReconInfoMap(controlToReconInfoMap),
-          parserStructure(parserStructure), initialOffsets(initialOffsets){ 
+          parserStructure(parserStructure), initialOffsets(initialOffsets),
+          parserMetaStructTypeName(parserMetaStructTypeName) { 
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(parserStructure); CHECK_NULL(initialOffsets);
         setName("ParserConverter"); 

@@ -13,6 +13,7 @@
 #include "frontends/p4/typeMap.h"
 #include "midend/parserUnroll.h"
 #include "controlStateReconInfo.h"
+#include "msaNameConstants.h"
 
 
 namespace CSA {
@@ -71,6 +72,7 @@ class RereferenceDeclPathsToArg final : public Transform {
     }
     */
 };
+
 
 /*
 class RenamePathsToNewDecl final : public Transform {
@@ -171,6 +173,8 @@ class SlicePipeControl final : public Transform {
     std::map<cstring, PartitionInfo> partitionsMap;
     // GetUsedDeclarations* getUsedDeclarations;
 
+    cstring msaPktParamName;
+
     void processExternMethodCall(const P4::ExternMethod* em);
     cstring getFieldNameForSlice(bool ifSwitch = true, unsigned valRange = 3);
     IR::Statement* createAssignmentStatement(cstring fieldName, unsigned value);
@@ -209,6 +213,7 @@ class SlicePipeControl final : public Transform {
         setName("SlicePipeControl"); 
         slice = false;
         track = true;
+        // visitDagOnce = false;
         sharedStructInstArgName = sharedStructTypeName+"_arg";
     }
 
@@ -221,7 +226,9 @@ class SlicePipeControl final : public Transform {
     // const IR::Node* postorder(IR::Statement* stmt) override;
     const IR::Node* preorder(IR::MethodCallExpression* mce) override;
 
-    const IR::Node* postorder(IR::AssignmentStatement* asignmentStmt) override; 
+    //const IR::Node* postorder(IR::AssignmentStatement* asignmentStmt) override; 
+
+    const IR::Node* preorder(IR::Declaration_Variable* dv) override; 
 
     Visitor::profile_t init_apply(const IR::Node* node) override { 
         BUG_CHECK(node->is<IR::P4Control>(), "%1%: expected a P4Control", node);
@@ -238,11 +245,10 @@ class SlicePipeControl final : public Transform {
         return partitionsMap;
     }
 
-    std::vector<const IR::Declaration_Instance*> getSharedDeclarationInstances() const {
+    std::vector<const IR::Declaration_Instance*> 
+                                        getSharedDeclarationInstances() const {
         return sharedLocalDeclInsts;
     }
-
-
     static cstring getSharedStructTypeName(cstring controlTypeName);
 
 };
@@ -261,8 +267,6 @@ class PartitionP4Control final : public Transform {
     // local map instance
     P4ControlPartitionInfoMap partMap;
     
-    // std::vector<const IR::Declaration_Instance*> sharedLocalDeclInsts;
-
   public:
     using Transform::preorder;
 
@@ -308,26 +312,30 @@ class CreateAllPartitions : public PassRepeated {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
     ControlConstraintStates initState;
+    std::vector<cstring>* partitions;
+
   public:
-    explicit CreateAllPartitions(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
+    explicit CreateAllPartitions(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         cstring* mainControlTypeName,
-        P4ControlPartitionInfoMap* partitionsMap,
-        P4ControlStateReconInfoMap *controlToReconInfoMap,
-        std::vector<cstring>* partitions) 
-      : PassManager({}), refMap(refMap), typeMap(typeMap) {
-
-      CHECK_NULL(refMap); CHECK_NULL(typeMap); setName("CreateAllPartitions");
-
-      initState = ControlConstraintStates::ES_RW_IM_R;
-
-      passes.emplace_back(new P4::ResolveReferences(refMap, true)); 
-      passes.emplace_back(new P4::TypeInference(refMap, typeMap, false)); 
-      passes.emplace_back(new PartitionP4Control(refMap, typeMap, 
-            mainControlTypeName, partitionsMap, controlToReconInfoMap, 
-            partitions, &initState));
+          P4ControlPartitionInfoMap* partitionsMap,
+          P4ControlStateReconInfoMap *controlToReconInfoMap,
+          std::vector<cstring>* partitions) 
+        : PassManager({}), refMap(refMap), typeMap(typeMap), partitions(partitions) {
+       
+        CHECK_NULL(refMap); CHECK_NULL(typeMap); setName("CreateAllPartitions");
+       
+        initState = ControlConstraintStates::ES_RW_IM_R;
+       
+        passes.emplace_back(new P4::ResolveReferences(refMap, true)); 
+        passes.emplace_back(new P4::TypeInference(refMap, typeMap, false)); 
+        passes.emplace_back(new PartitionP4Control(refMap, typeMap, 
+              mainControlTypeName, partitionsMap, controlToReconInfoMap, 
+              partitions, &initState));
     }
 
     void end_apply(const IR::Node* node) override { 
+        if (partitions->size() > 2)
+            partitions->pop_back();
         refMap->clear();
         typeMap->clear();
         PassManager::end_apply(node);

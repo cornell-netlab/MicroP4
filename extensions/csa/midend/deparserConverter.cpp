@@ -179,7 +179,7 @@ const IR::Node* DeparserConverter::postorder(IR::Parameter* param) {
     if (deparser == nullptr)
         return param;
     
-    auto type = typeMap->getType(param, false);
+    auto type = typeMap->getTypeType(param->type, false);
     if (!type->is<IR::Type_Extern>()) {
         return param;
     }
@@ -204,8 +204,17 @@ const IR::Node* DeparserConverter::postorder(IR::P4Control* deparser) {
 
     auto& controlLocals = deparser->controlLocals;
     controlLocals.append(varDecls);
-    for (const auto& e : actionDecls) 
-        controlLocals.append(e.second);
+
+
+    std::vector<const IR::MethodCallStatement*> sorted;
+    emitCallGraph->sort(sorted);
+    std::reverse(std::begin(sorted), std::end(sorted));
+    
+    auto iter = actionDecls.find(sorted[0]);
+    if (iter != actionDecls.end()) 
+        controlLocals.append(actionDecls[sorted[0]]);
+    for (unsigned i = 1; i<sorted.size(); i++)
+        controlLocals.append(actionDecls[sorted[i]]);
 
     controlLocals.append(tableDecls);
 
@@ -387,12 +396,14 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
             auto action = std::get<2>(ele);
             if (i==1) {
                 auto emitAct = createP4Action(mcs,currentEmitOffset, action);
+                actionDecls[mcs].push_back(emitAct);
                 auto actionBinding = new IR::MethodCallExpression(
                               new IR::PathExpression(emitAct->name),
                               new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
                 auto entry0 = new IR::Entry(ls, actionBinding);
                 entries.push_back(entry0);
                 keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset, emitAct);
+
             } else {
                 if (action != nullptr) {
                     auto actionBinding = new IR::MethodCallExpression(
@@ -408,7 +419,9 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
             }
         }
     }
+
     refdActs.append(actionDecls[mcs]);
+
     for (const auto& aIdecl : refdActs) {
         auto amce = new IR::MethodCallExpression(
                             new IR::PathExpression(aIdecl->name.name), 
@@ -664,9 +677,6 @@ IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* m
 
     auto p4Action = createP4Action(mcs, currentEmitOffset);
     auto body = const_cast<IR::BlockStatement*>(p4Action->body);
-    auto a = actionDecls[mcs].getDeclaration(p4Action->getName());
-    if (a == nullptr)
-        actionDecls[mcs].push_back(p4Action);
     if (ancestorAction != nullptr) {
         auto mce = new IR::MethodCallExpression(
             new IR::PathExpression(ancestorAction->name), 
