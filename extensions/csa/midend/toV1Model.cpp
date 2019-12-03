@@ -367,13 +367,24 @@ IR::ParameterList* CreateV1ModelArchBlock::getHeaderMetaStdMetaPL() {
 
 std::vector<const IR::P4Control*>
 CreateV1ModelArchBlock::getControls(const IR::P4Program* prog, bool ingress) {
+  
     std::vector<const IR::P4Control*> controls;
+    if (partitions->size() == 1) {
+        auto it = partitionsMap->find((*partitions)[0]);
+        BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
+        auto pi = it->second;
+        auto cv = prog->getDeclsByName(pi.partition1->getName())->toVector();
+        BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
+                                   pi.partition1->getName());
+        auto p4c = cv->at(0)->to<IR::P4Control>();
+        controls.push_back(p4c);
+        return controls;
+
+    }
 
     unsigned i = 0;
-    unsigned c = 0;
     if (!ingress) {
        i = 1;
-       c = 1;
     }
     std::cout<<"Partition Map size: "<<partitionsMap->size()<<"\n";
     std::cout<<"Total Partitions: "<<partitions->size()<<"\n";
@@ -422,10 +433,13 @@ const IR::Node* CreateV1ModelArchBlock::preorder(IR::P4Program* p4program) {
     p4program->objects.push_back(createV1ModelDeparser());
 
     auto ingressControls = getControls(p4program, true);
-    auto egressControls = getControls(p4program, false);
+
     auto ic = createIngressControl(ingressControls, userMetaStruct);
     p4program->objects.push_back(ic);
 
+    std::vector<const IR::P4Control*> egressControls;
+    if (partitions->size() > 1)
+        egressControls = getControls(p4program, false);
     auto ec = createEgressControl(egressControls, userMetaStruct);
     p4program->objects.push_back(ec);
 

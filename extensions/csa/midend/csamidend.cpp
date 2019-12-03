@@ -75,29 +75,23 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::CreateAllPartitions(&refMap, &typeMap, &mainP4ControlTypeName,
                                      &partitionsMap, &controlToReconInfoMap, 
                                      &partitions),
-        new CSA::MergeDeclarations(v1ModelIR), 
         new P4::MidEndLast(),
+        new CSA::MergeDeclarations(v1ModelIR), 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
+        new P4::MidEndLast(),
         new CSA::MSAPacketSubstituter(&refMap, &typeMap), 
         new P4::MidEndLast(),
-
-        /*
-        new CSA::CSAExternSubstituter(&refMap, &typeMap, &partitionsMap,
-                                      &partitions),
-                                      */
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
         new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions),
         new P4::MidEndLast(),
-        /*
         new P4::ResolveReferences(&refMap, true),
         new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
-        */
         // evaluator
     };
 

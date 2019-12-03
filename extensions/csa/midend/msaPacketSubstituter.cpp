@@ -12,10 +12,8 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Path* path) {
         return path;
     }
         
-    if (path->name.name == pathToReplace){
-        // std::cout<<"MSAPacketSubstituter: "<<path->name.name <<"\n"; 
+    if (path->name.name == pathToReplace)
         return new IR::Path(replacementPath);
-    }
     else
         return path;
 }
@@ -33,7 +31,8 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Parameter* param) {
             pathToReplace = param->getName();
             cstring pktStr = NameConstants::csaPacketStructTypeName;
             // std::cout<<"MSAPacketSubstituter param: "<<param->name <<"\n"; 
-            param = new IR::Parameter(IR::ID(pktStr+"_var"),
+            prune();
+            return new IR::Parameter(IR::ID(pktStr+"_var"),
                 IR::Direction::InOut, new IR::Type_Name(IR::ID(pktStr)));
         }
     }
@@ -54,8 +53,8 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Declaration_Variable* dv) {
 const IR::Node* MSAPacketSubstituter::preorder(IR::P4Control* p4control) {
     pathToReplace = "";
     visit(p4control->type);
-    visit(p4control->body);
     visit(p4control->controlLocals);
+    visit(p4control->body);
     prune();
     return p4control;
 }

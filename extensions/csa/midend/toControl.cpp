@@ -300,8 +300,15 @@ const IR::Node* CPackageToControl::postorder(IR::P4ComposablePackage* cp) {
     for (auto decl : newDeclInsts) 
         controlLocals.push_back(decl);
 
-    auto tc = new IR::Type_Control(cp->getName(), cp->annotations->clone(), 
-                                   cp->getApplyParameters()->clone());
+    // BUG: cp->getApplyParameters()->clone() does not clone parameters with 
+    // extern type
+    auto pl = new IR::ParameterList();
+    for (auto p : *(cp->getApplyParameters())) {
+        auto np = new IR::Parameter(p->name, p->direction, p->type->clone());
+        pl->push_back(np);
+    }
+
+    auto tc = new IR::Type_Control(cp->getName(), cp->annotations->clone(), pl);
     
     auto bs = new IR::BlockStatement();
     addMCSs(bs);

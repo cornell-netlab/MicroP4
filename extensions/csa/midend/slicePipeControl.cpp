@@ -79,12 +79,6 @@ const IR::Node* SlicePipeControl::preorder(IR::Type_Control* type) {
 
     auto apl = type->getApplyParameters();
     auto newAPL = apl->clone();
-    /*
-    cstring pktStr = NameConstants::csaPacketStructTypeName;
-    auto p0 = new IR::Parameter(IR::ID(pktStr+"_var"), 
-        IR::Direction::InOut,  new IR::Type_Name(IR::ID(pktStr)));
-    newAPL->parameters.replace(newAPL->parameters.begin(), p0);
-    */
     auto p = new IR::Parameter(sharedStructInstArgName, IR::Direction::InOut, 
                                new IR::Type_Name(sharedStructTypeName));
     newAPL->push_back(p);
@@ -761,11 +755,6 @@ IR::P4Control* SlicePipeControl::createPartitionedP4Control(
         auto np = new IR::Parameter(p->name, p->direction, p->type->clone());
         pl->push_back(np);
     }
-    /*
-    auto p = new IR::Parameter(sharedStructInstArgName, IR::Direction::InOut, 
-                                   new IR::Type_Name(sharedStructTypeName));
-    pl->push_back(p);
-    */
     auto type = new IR::Type_Control(newName, pl);
     auto newP4Control = new IR::P4Control(IR::ID(newName), type, 
         orig->constructorParams->clone(), *(orig->controlLocals.clone()), newBody);
@@ -847,6 +836,19 @@ const IR::Node* PartitionP4Control::preorder(IR::P4Control* p4control) {
         //std::cout<<"Partitions empty for P4Control: " 
         //<<p4control->getName()<<"\n";
         partitions->push_back(p4control->getName());
+        *controlTypeName = "";
+
+        if (partitionsMap->empty()) {
+            std::vector<const IR::Declaration_Instance*> sharedDeclInsts;
+            std::map<cstring, cstring> param2InstPart1;
+            std::map<cstring, cstring> param2InstPart2;
+            partitionsMap->emplace(std::piecewise_construct,
+                std::forward_as_tuple(p4control->getName()),
+                std::forward_as_tuple(p4control->getName(), nullptr, 
+                  sharedDeclInsts, param2InstPart1, param2InstPart2,
+                  p4control, nullptr, nullptr, nullptr));
+        }
+
         prune();
         return p4control;
     }

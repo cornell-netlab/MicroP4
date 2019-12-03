@@ -334,8 +334,6 @@ class CreateAllPartitions : public PassRepeated {
     }
 
     void end_apply(const IR::Node* node) override { 
-        if (partitions->size() > 2)
-            partitions->pop_back();
         refMap->clear();
         typeMap->clear();
         PassManager::end_apply(node);
