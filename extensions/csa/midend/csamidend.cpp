@@ -26,6 +26,7 @@
 #include "csaExternSubstituter.h"
 #include "parserConverter.h"
 #include "msaPacketSubstituter.h"
+#include "staticAnalyzer.h"
 
 namespace CSA {
 
@@ -57,7 +58,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::MergeDeclarations(irs),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::ParsersUnroll(&refMap, &typeMap, &parserStructures),
+        // new P4::ParsersUnroll(&refMap, &typeMap, &parserStructures),
         new P4::MidEndLast(),
         // new CSA::DebugPass(),
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 

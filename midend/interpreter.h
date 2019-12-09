@@ -148,8 +148,11 @@ class ExpressionEvaluator : public Inspector {
 
     std::map<const IR::Expression*, SymbolicValue*> value;
 
-    SymbolicValue* set(const IR::Expression* expression, SymbolicValue* v)
-    { value.emplace(expression, v); return v; }
+    SymbolicValue* set(const IR::Expression* expression, SymbolicValue* v) { 
+        // expression->dbprint(std::cout);std::cout<<", \n";
+        BUG_CHECK(v != nullptr, "null symbolic value for %1%", expression);
+        value.emplace(expression, v); return v; 
+    }
     SymbolicValue* get(const IR::Expression* expression) const {
         // expression->dbprint(std::cout);std::cout<<", value";
         auto r = ::get(value, expression);

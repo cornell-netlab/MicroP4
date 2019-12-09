@@ -13,6 +13,7 @@
 #include "deparserConverter.h"
 #include "controlStateReconInfo.h"
 #include "parserConverter.h"
+#include "staticAnalyzer.h"
 
 
 namespace CSA {
@@ -164,6 +165,11 @@ class ToControl final : public PassManager {
         CHECK_NULL(mainControlTypeName);
         CHECK_NULL(controlToReconInfoMap);
         maxOffset = new unsigned(9600);
+
+        passes.push_back(new P4::ParsersUnroll(refMap, typeMap, parserStructures));
+        passes.push_back(new P4::TypeChecking(refMap, typeMap));
+        passes.push_back(new StaticAnalyzer(refMap, typeMap, parserStructures, 
+              mainControlTypeName));
         passes.push_back(new Converter(refMap, typeMap, 
               mainControlTypeName, parserStructures, controlToReconInfoMap));
         passes.push_back(new AddCSAByteHeader(headerTypeName, 
