@@ -47,22 +47,23 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
     v1ModelIR.push_back(v1modelP4Program);
 
     std::vector<cstring> partitions;
+
+    unsigned minExtLen = 0;
+    unsigned maxExtLen = 0;
   
     P4ControlStateReconInfoMap controlToReconInfoMap ;
     P4ControlPartitionInfoMap partitionsMap;
     // auto evaluator = new P4::EvaluatorPass(&refMap, &typeMap);
     //
-    P4::ParserStructuresMap parserStructures;
     PassManager csaMidEnd = {
         new P4::MidEndLast(),
         new CSA::MergeDeclarations(irs),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        // new P4::ParsersUnroll(&refMap, &typeMap, &parserStructures),
         new P4::MidEndLast(),
         // new CSA::DebugPass(),
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
-                           &controlToReconInfoMap, &parserStructures),
+                           &controlToReconInfoMap, &minExtLen, &maxExtLen),
         new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
@@ -86,7 +87,8 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
-        new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions),
+        new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions, 
+                           &minExtLen, &maxExtLen),
         new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::RemoveAllUnusedDeclarations(&refMap),

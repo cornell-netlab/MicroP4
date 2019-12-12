@@ -34,6 +34,7 @@ class DeparserConverter final : public Transform {
 
 // per deparser
     const std::vector<unsigned>& initialOffsets;
+    const std::vector<std::set<cstring>>* xoredHeaderSets;
     EmitCallGraph* emitCallGraph;
     IR::IndexedVector<IR::Declaration> varDecls;
     std::map<const IR::MethodCallStatement*, 
@@ -56,15 +57,12 @@ class DeparserConverter final : public Transform {
              std::vector<std::tuple<IR::ListExpression*, unsigned, IR::P4Action*>>> 
                 keyValueEmitOffsets;
 
-
-
     void createTableEntryList(const IR::MethodCallStatement* mcs);
     IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
             unsigned& currentEmitOffset, const IR::P4Action* ancestorAction);
     IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
                            unsigned& currentEmitOffset);
     IR::Key* createKey(const IR::MethodCallStatement* mcs);
-
 
     IR::P4Table* createP4Table(cstring name, IR::Key* key, IR::ActionList* al, 
                                IR::EntriesList* el);
@@ -83,18 +81,24 @@ class DeparserConverter final : public Transform {
     const IR::Expression* getArgHeaderExpression(const IR::MethodCallStatement* mcs, 
                                                  unsigned& width) const;
 
-
     bool isDeparser(const IR::P4Control* p4control);
 
     void initTableWithOffsetEntries(const IR::MethodCallStatement* mcs);
+
+    std::vector<cstring> keyExpToNameStrVec(
+        std::vector<std::pair<const IR::Expression*, bool>>& ke);
+
+    bool emitsXORedHdrs(const std::vector<cstring>& vec, const IR::ListExpression* ls);
 
  public:
     using Transform::preorder;
     using Transform::postorder;
 
     explicit DeparserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-                               const std::vector<unsigned>& initialOffsets)
-        : refMap(refMap), typeMap(typeMap), initialOffsets(initialOffsets) {
+        const std::vector<unsigned>& initialOffsets,
+        const std::vector<std::set<cstring>>* xoredHeaderSets)
+        : refMap(refMap), typeMap(typeMap), initialOffsets(initialOffsets), 
+          xoredHeaderSets(xoredHeaderSets) {
         setName("DeparserConverter"); 
         symbolicValueFactory = new P4::SymbolicValueFactory(typeMap);
         noActionName = "NoAction";

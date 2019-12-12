@@ -150,6 +150,15 @@ class CallGraph {
             remove(n);
     }
 
+    std::vector<T> getNodesWithoutIncomingEdge() {
+        std::vector<T> res;
+        for (auto n : nodes) {
+            if (!isCallee(n))
+                res.push_back(n);
+        }
+        return res;
+    }
+
     typedef std::unordered_set<T> Set;
 
     // Compute for each node the set of dominators with the indicated start node.

@@ -184,6 +184,10 @@ class ParserStructure {
     const IR::P4Parser*    parser;
     const IR::ParserState* start;
     const ParserInfo*      result;
+
+    std::vector<std::set<cstring>>* xoredHeaderSets = 
+                                            new std::vector<std::set<cstring>>();
+
     void setParser(const IR::P4Parser* parser) {
         CHECK_NULL(parser);
         callGraph = new StateCallGraph(parser->name);
@@ -214,6 +218,28 @@ class AnalyzeParser : public Inspector {
     void postorder(const IR::PathExpression* expression) override;
 };
 
+
+class CreateXoredHeaderSets : public Inspector {
+    ReferenceMap* refMap;
+    TypeMap*      typeMap;
+    ParserStructure*    parserStructure;
+
+    std::set<cstring> xoredHeaderSet;
+ public:
+    CreateXoredHeaderSets(ReferenceMap* refMap, TypeMap* typeMap, 
+                          ParserStructure* parserStructure)
+      : refMap(refMap), typeMap(typeMap), parserStructure(parserStructure) {
+        CHECK_NULL(refMap);   CHECK_NULL(parserStructure); 
+        CHECK_NULL(typeMap);   
+        setName("CreateXoredHeaderSets");
+    }
+
+    bool preorder(const IR::P4Parser* parser) override;
+    bool preorder(const IR::ParserState* state) override;
+    bool preorder(const IR::MethodCallStatement* mcs) override;
+};
+
+
 // Applied to a P4Parser object.
 class ParserRewriter : public PassManager {
     ParserStructure  *current;
@@ -227,6 +253,7 @@ class ParserRewriter : public PassManager {
             current = parserEval;
     
         passes.push_back(new AnalyzeParser(refMap, current));
+        passes.push_back(new CreateXoredHeaderSets(refMap, typeMap, current));
         passes.push_back(new VisitFunctor (
             [this, refMap, typeMap, unroll](const IR::Node* root) -> const IR::Node* {
                 current->analyze(refMap, typeMap, unroll);

@@ -60,7 +60,7 @@ bool ComposablePackageInterpreter::preorder(const IR::P4Parser* parser) {
 
     parserStructures->emplace(parser_fqn, parserStructure);
     */
-    cstring parser_fqn = p4cpCallStack.back() +"_"+ parser->getName();
+    parser_fqn = p4cpCallStack.back() +"_"+ parser->getName();
     auto iter = parserStructures->find(parser_fqn);
     BUG_CHECK(iter != parserStructures->end(), "parser %1% is not evaluated", 
                                                 parser->getName());
@@ -74,7 +74,7 @@ bool ComposablePackageInterpreter::preorder(const IR::P4Parser* parser) {
 
 bool ComposablePackageInterpreter::preorder(const IR::P4Control* p4Control) {
 
-    ControlBlockInterpreter cbi(refMap, typeMap, parserStructures);
+    ControlBlockInterpreter cbi(refMap, typeMap, parserStructures, parser_fqn);
     p4Control->apply(cbi);
     maxExtLen += cbi.getMaxExtLen();
 

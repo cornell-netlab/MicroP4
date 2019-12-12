@@ -23,27 +23,31 @@ class StaticAnalyzer : public Inspector {
     P4::ParserStructuresMap*  parserStructures;
     cstring*                  mainPackageTypeName;
 
+    unsigned* minExtLen;
+    unsigned* maxExtLen;
+    unsigned* byteStackSize;
 
-    unsigned maxExtLen;
-    unsigned byteStackSize;
  public:
     StaticAnalyzer(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
                     P4::ParserStructuresMap* parserStructures, 
-                    cstring* mainPackageTypeName)
+                    cstring* mainPackageTypeName, unsigned* minExtLen, 
+                    unsigned* maxExtLen, unsigned* byteStackSize )
         : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures), 
-          mainPackageTypeName(mainPackageTypeName) {
+          mainPackageTypeName(mainPackageTypeName), minExtLen(minExtLen), 
+          maxExtLen(maxExtLen), byteStackSize(byteStackSize) {
+
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(parserStructures); CHECK_NULL(mainPackageTypeName);
-        maxExtLen = 0;
-        byteStackSize = 0;
+        CHECK_NULL(minExtLen); CHECK_NULL(maxExtLen); CHECK_NULL(byteStackSize);
+        *minExtLen = 0;
+        *maxExtLen = 0;
+        *byteStackSize = 0;
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) override;
     bool preorder(const IR::P4ComposablePackage* p4cp) override;
     bool preorder(const IR::P4Program* p4Program) override;
 
-    unsigned getByteStackSize() const {return byteStackSize; }
-    unsigned getPktExtractLength() const { return maxExtLen; }
 };
 
 

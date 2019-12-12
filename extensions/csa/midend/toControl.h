@@ -90,16 +90,17 @@ class CPackageToControl final : public Transform {
 class AddCSAByteHeader final : public Transform {
     cstring headerTypeName;
     cstring fieldName;
-    unsigned* maxOffset;
+    unsigned* byteStackSize;
 
  public:
     using Transform::preorder;
     using Transform::postorder;
 
     explicit AddCSAByteHeader(cstring headerTypeName, cstring fieldName, 
-                              unsigned* maxOffset)
-        : headerTypeName(headerTypeName), fieldName(fieldName), maxOffset(maxOffset) {
-        CHECK_NULL(maxOffset);
+                              unsigned* byteStackSize)
+        : headerTypeName(headerTypeName), fieldName(fieldName), 
+          byteStackSize(byteStackSize) {
+        CHECK_NULL(byteStackSize);
         setName("AddCSAByteHeader"); 
     }
     const IR::Node* preorder(IR::P4Program* p4Program) override;
@@ -118,6 +119,8 @@ class Converter final : public Transform {
     P4::ParserStructuresMap *parserStructures;
     P4ControlStateReconInfoMap *controlToReconInfoMap;
     std::vector<std::vector<unsigned>*> offsetsStack;
+    std::vector<std::vector<std::set<cstring>>*> xoredHeaderSetsStack;
+
     IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
     IR::Vector<IR::Type_Declaration> addInP4ProgramObjects;
 
@@ -149,31 +152,34 @@ class Converter final : public Transform {
 class ToControl final : public PassManager {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    unsigned* maxOffset;
     cstring* mainControlTypeName;
-
     P4ControlStateReconInfoMap *controlToReconInfoMap;
+
+    P4::ParserStructuresMap parserStructures;
+    unsigned byteStackSize;
+
   public:
     ToControl(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
               cstring* mainControlTypeName, 
               P4ControlStateReconInfoMap *controlToReconInfoMap, 
-              P4::ParserStructuresMap *parserStructures)
+              unsigned* minExtLen, unsigned* maxExtLen)
         : refMap(refMap), typeMap(typeMap), 
           mainControlTypeName(mainControlTypeName),
           controlToReconInfoMap(controlToReconInfoMap) {
+
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(mainControlTypeName);
         CHECK_NULL(controlToReconInfoMap);
-        maxOffset = new unsigned(9600);
+        CHECK_NULL(minExtLen); CHECK_NULL(maxExtLen);
 
-        passes.push_back(new P4::ParsersUnroll(refMap, typeMap, parserStructures));
+        passes.push_back(new P4::ParsersUnroll(refMap, typeMap, &parserStructures));
         passes.push_back(new P4::TypeChecking(refMap, typeMap));
-        passes.push_back(new StaticAnalyzer(refMap, typeMap, parserStructures, 
-              mainControlTypeName));
+        passes.push_back(new StaticAnalyzer(refMap, typeMap, &parserStructures, 
+              mainControlTypeName, minExtLen, maxExtLen, &byteStackSize));
         passes.push_back(new Converter(refMap, typeMap, 
-              mainControlTypeName, parserStructures, controlToReconInfoMap));
+              mainControlTypeName, &parserStructures, controlToReconInfoMap));
         passes.push_back(new AddCSAByteHeader(headerTypeName, 
-              bitStreamFieldName, maxOffset));
+              bitStreamFieldName, &byteStackSize));
         passes.push_back(new CPackageToControl(refMap, typeMap, 
               mainControlTypeName, controlToReconInfoMap));
     }

@@ -21,6 +21,8 @@ class ComposablePackageInterpreter : public Inspector {
 
     std::vector<cstring> p4cpCallStack;
 
+    cstring parser_fqn = "";
+
     unsigned minExtLen;
     unsigned maxExtLen;
     unsigned maxIncrPktLen;

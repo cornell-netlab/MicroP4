@@ -25,8 +25,8 @@ class CreateV1ModelArchBlock final : public Transform {
     cstring headerTypeName;
     const P4ControlPartitionInfoMap* partitionsMap;
     const std::vector<cstring>* partitions;
-    unsigned minNumBytes;
-    unsigned maxNumBytes;
+    unsigned* minExtLen;
+    unsigned* maxExtLen;
 
     std::set<cstring> metadataFields;
 
@@ -58,10 +58,10 @@ class CreateV1ModelArchBlock final : public Transform {
         P4::TypeMap* typeMap, cstring headerTypeName, 
         const P4ControlPartitionInfoMap* partitionsMap,
         const std::vector<cstring>* partitions,
-        unsigned minNumBytes = 14, unsigned maxNumBytes = 34)
+        unsigned* minExtLen, unsigned* maxExtLen)
       : refMap(refMap), typeMap(typeMap), headerTypeName(headerTypeName), 
         partitionsMap(partitionsMap), partitions(partitions),
-        minNumBytes(minNumBytes), maxNumBytes(maxNumBytes) {
+        minExtLen(minExtLen), maxExtLen(maxExtLen) {
         CHECK_NULL(refMap);
         CHECK_NULL(typeMap);
         setName("CreateV1ModelArchBlock"); 
@@ -126,7 +126,8 @@ class ToV1Model final : public PassManager {
   public:
     ToV1Model(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
               const P4ControlPartitionInfoMap* partitionsMap,
-              const std::vector<cstring>* partitions)
+              const std::vector<cstring>* partitions,
+              unsigned* minExtLen, unsigned* maxExtLen)
         : refMap(refMap), typeMap(typeMap) {
 
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
@@ -137,7 +138,8 @@ class ToV1Model final : public PassManager {
         passes.push_back(new P4::ResolveReferences(refMap, true));
         passes.push_back(new P4::TypeInference(refMap, typeMap, false));
         passes.push_back(new CreateV1ModelArchBlock(refMap, typeMap, 
-                ToControl::headerTypeName, partitionsMap, partitions));
+                ToControl::headerTypeName, partitionsMap, partitions, 
+                minExtLen, maxExtLen));
         /*
         passes.push_back(new CreateUserMetadataStructType(refMap, typeMap, 
                 partitionsMap, partitions));

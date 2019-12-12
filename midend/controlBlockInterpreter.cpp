@@ -124,6 +124,10 @@ bool ControlBlockInterpreter::preorder(const IR::MethodCallExpression* mce) {
         unsigned hs =  factory->getWidth(th);
         // std::cout<<"Header size:"<<hs<<"\n";
         if (bm->name == IR::Type_Header::setValid) {
+            if (auto mem = exp->to<IR::Member>()) {
+                std::cout<<mem->member<<"\n";
+                removeHdrFromXOredHeaderSets(mem->member);
+            }
             maxIncr += hs;
         } else if (bm->name == IR::Type_Header::setInvalid) {
             maxDecr += hs;
@@ -186,4 +190,14 @@ bool ControlBlockInterpreter::preorder(const IR::P4ComposablePackage* p4cp) {
 }
 
 
+void ControlBlockInterpreter::removeHdrFromXOredHeaderSets(cstring hdrInstName) {
+    
+    if (parserStructure == nullptr)
+        return;
+    for (auto& s: *(parserStructure->xoredHeaderSets)) {
+        auto it = s.find(hdrInstName);
+        if (it != s.end())
+            s.erase(it);
+    }
+}
 }  // namespace P4
