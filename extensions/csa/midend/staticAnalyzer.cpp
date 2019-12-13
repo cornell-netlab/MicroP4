@@ -47,8 +47,8 @@ bool StaticAnalyzer::preorder(const IR::P4ComposablePackage* p4cp) {
     *maxExtLen = cpi.getMaxExtLen();
     *byteStackSize = *maxExtLen + cpi.getMaxIncrPktLen();
 
-    std::cout<<"Max extract length: "<<(*maxExtLen)/8<<"\n";
-    std::cout<<"Byte Stack Size: "<<(*byteStackSize)/8<<"\n";
+    std::cout<<"staticAnalyzer : Max extract length: "<<(*maxExtLen)/8<<"\n";
+    std::cout<<"staticAnalyzer : Byte Stack Size: "<<(*byteStackSize)/8<<"\n";
     return false;
 }
 

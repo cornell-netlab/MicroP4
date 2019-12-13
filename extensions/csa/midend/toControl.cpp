@@ -263,7 +263,7 @@ const IR::Node* CPackageToControl::preorder(IR::P4ComposablePackage* cp) {
         // std::cout<<cp->getName()<<" parent is p4program \n";
 
     // cpSourceInfo = cp->srcInfo;
-    std::cout<<"visiting CPackageToControl::preorder: "<<cp->getName()<<"\n";;
+    // std::cout<<"visiting CPackageToControl::preorder: "<<cp->getName()<<"\n";;
     resetMCSRelatedObjects();
 
     // Identify default instances and store them in ctrlInstanceName
@@ -488,7 +488,7 @@ const IR::Node* Converter::preorder(IR::P4Program* p4Program) {
 
 const IR::Node* Converter::preorder(IR::P4ComposablePackage* cp) {
     
-    std::cout<<"visiting P4ComposablePackage "<<cp->getName()<<"\n";
+    // std::cout<<"visiting P4ComposablePackage "<<cp->getName()<<"\n";
     LOG3("Converter preorder visit P4ComposablePackage: "<<cp->name);
 
     /*
@@ -533,12 +533,12 @@ const IR::Node* Converter::preorder(IR::P4ComposablePackage* cp) {
     cp->packageLocals = packageLocals;
     prune();
     updateP4ProgramObjects.push_back(cp);
-    std::cout<<"Finish visiting "<<cp->getName()<<"\n";
+    // std::cout<<"Finish visiting "<<cp->getName()<<"\n";
     return cp;
 }
 
 const IR::Node* Converter::preorder(IR::P4Parser* parser) {
-    std::cout<<"visiting "<<parser->getName()<<"\n";
+    // std::cout<<"visiting "<<parser->getName()<<"\n";
     cstring parser_fqn = parser->getName();
     auto cp = findContext<IR::P4ComposablePackage>();
     if (cp != nullptr)

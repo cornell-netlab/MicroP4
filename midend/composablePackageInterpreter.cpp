@@ -67,7 +67,7 @@ bool ComposablePackageInterpreter::preorder(const IR::P4Parser* parser) {
     auto parserStructure = iter->second;
     maxExtLen = parserStructure->result->getPktMaxOffset();
 
-    std::cout<<parser_fqn<<" maxExtLen "<<maxExtLen/8<<"\n";
+    // std::cout<<parser_fqn<<" maxExtLen "<<maxExtLen/8<<"\n";
     return false;
 }
 
@@ -79,7 +79,7 @@ bool ComposablePackageInterpreter::preorder(const IR::P4Control* p4Control) {
     maxExtLen += cbi.getMaxExtLen();
 
     cstring control_fqn = p4cpCallStack.back() +"_"+ p4Control->getName();
-    std::cout<<control_fqn<<" maxExtLen "<<maxExtLen/8<<"\n";
+    // std::cout<<control_fqn<<" maxExtLen "<<maxExtLen/8<<"\n";
 
     maxIncrPktLen = cbi.getMaxIncrPktLen();
     maxDecrPktLen = cbi.getMaxDecrPktLen();

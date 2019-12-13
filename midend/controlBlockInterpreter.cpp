@@ -98,21 +98,21 @@ bool ControlBlockInterpreter::preorder(const IR::MethodCallExpression* mce) {
         auto am = mi->to<P4::ApplyMethod>();
         if (am->isTableApply()) {
             auto p4Table = am->object->to<IR::P4Table>();
-            std::cout<<"Apply call to P4Table : "<<p4Table->getName()<<"\n";
+            // std::cout<<"Apply call to P4Table : "<<p4Table->getName()<<"\n";
             visit(p4Table);
         }
         if (auto di = am->object->to<IR::Declaration_Instance>()) {
             auto inst = P4::Instantiation::resolve(di, refMap, typeMap);
             if (auto cpi = inst->to<P4::P4ComposablePackageInstantiation>()) {
                 auto cpt = cpi->p4ComposablePackage;
-                std::cout<<"Apply call to Package : "<<cpt->getName()<<"\n";
+                // std::cout<<"Apply call to Package : "<<cpt->getName()<<"\n";
                 visit(cpt);
             }
         }
     }
     if (mi->is<P4::ActionCall>()) {
         auto ac = mi->to<P4::ActionCall>();
-        std::cout<<"Call to P4Action : "<<ac->action->getName()<<"\n";
+        // std::cout<<"Call to P4Action : "<<ac->action->getName()<<"\n";
         visit(ac->action);
     }
     if (mi->is<P4::BuiltInMethod>()) {
@@ -125,7 +125,7 @@ bool ControlBlockInterpreter::preorder(const IR::MethodCallExpression* mce) {
         // std::cout<<"Header size:"<<hs<<"\n";
         if (bm->name == IR::Type_Header::setValid) {
             if (auto mem = exp->to<IR::Member>()) {
-                std::cout<<mem->member<<"\n";
+                // std::cout<<mem->member<<"\n";
                 removeHdrFromXOredHeaderSets(mem->member);
             }
             maxIncr += hs;
