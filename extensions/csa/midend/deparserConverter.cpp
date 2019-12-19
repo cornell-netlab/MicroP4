@@ -386,15 +386,20 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     keyExp.emplace_back(exp, true);
     keyElementLists[mcs] = keyExp;
 
+    auto nameStrVec = keyExpToNameStrVec(keyExp);
+
     for (unsigned i=0; i<2; i++) {
         for (auto ele : keyValueEmitOffsets[predecessor]) {
-            auto currentEmitOffset = std::get<1>(ele);
             IR::ListExpression* ls = std::get<0>(ele)->clone();
+            auto currentEmitOffset = std::get<1>(ele);
+            auto action = std::get<2>(ele);
             IR::Expression* e = (i==0)?	new IR::BoolLiteral(false):
                                         new IR::BoolLiteral(true);
             ls->components.push_back(e);
-            auto action = std::get<2>(ele);
+
             if (i==1) {
+                if (emitsXORedHdrs(nameStrVec, ls))
+                    continue;
                 auto emitAct = createP4Action(mcs,currentEmitOffset, action);
                 actionDecls[mcs].push_back(emitAct);
                 auto actionBinding = new IR::MethodCallExpression(
@@ -444,6 +449,60 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     auto p4Table = createP4Table(emitIds[mcs], key, actionList, entriesList);
     return p4Table;
 }
+
+std::vector<cstring> DeparserConverter::keyExpToNameStrVec(
+                      std::vector<std::pair<const IR::Expression*, bool>>& ke) {
+
+    std::vector<cstring> vec;
+    unsigned i = 0;
+    for (const auto& ele : ke) {
+        auto mem = ele.first->to<IR::Member>();
+        if (mem != nullptr)  {
+            auto type = typeMap->getType(mem, false);
+            if (type != nullptr && type->is<IR::Type_Header>()) {
+                // std::cout<<mem->member.name<<"\n";
+                vec.push_back(mem->member.name);
+            } else {
+                vec.push_back(cstring::to_cstring(i++));
+            }
+        } else {
+            vec.push_back(cstring::to_cstring(i++));
+        }
+    }
+
+    return vec;
+}
+
+bool DeparserConverter::emitsXORedHdrs(const std::vector<cstring>& vec, 
+                                       const IR::ListExpression* ls) {
+
+    BUG_CHECK(vec.size() == ls->components.size(), 
+        "list expression size does not match key size %1% != %2%", 
+        vec.size(), ls->components.size());
+    size_t in = 0;
+    std::vector<cstring> validHdr;
+    for (const auto exp : ls->components) {
+        auto bl = exp->to<IR::BoolLiteral>();
+        if (bl != nullptr) {
+            if (bl->value) {
+                validHdr.push_back(vec[in]);
+            }
+        }
+        in++;
+    }
+
+    for (const auto& xoredHeaderSet : (*xoredHeaderSets)) {
+        unsigned numValidHdr = 0;
+        for (const auto& hdr : validHdr) {
+            if (xoredHeaderSet.count(hdr) > 0)
+                numValidHdr++;
+        }
+        if (numValidHdr > 1)
+            return true;
+    }
+    return false;
+}
+
 
 /*
  *

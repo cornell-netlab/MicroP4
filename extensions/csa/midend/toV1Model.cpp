@@ -152,7 +152,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
         pe = new IR::PathExpression(csaPacketStructInstanceName);
         pktIndices = new IR::Member(pe, NameConstants::indicesHeaderInstanceName);
         pkt = new IR::Member(pktIndices, NameConstants::csaPktStuLenFName);
-        auto re = new IR::Constant(1000);
+        auto re = new IR::Constant(*maxExtLen);
         auto c2 = new IR::Leq(pkt, re);
         auto cond = new IR::LAnd(c1, c2);
         auto ev = new IR::Vector<IR::Expression>();

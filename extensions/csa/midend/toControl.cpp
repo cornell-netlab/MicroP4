@@ -263,7 +263,7 @@ const IR::Node* CPackageToControl::preorder(IR::P4ComposablePackage* cp) {
         // std::cout<<cp->getName()<<" parent is p4program \n";
 
     // cpSourceInfo = cp->srcInfo;
-    std::cout<<"visiting CPackageToControl::preorder: "<<cp->getName()<<"\n";;
+    // std::cout<<"visiting CPackageToControl::preorder: "<<cp->getName()<<"\n";;
     resetMCSRelatedObjects();
 
     // Identify default instances and store them in ctrlInstanceName
@@ -352,7 +352,7 @@ const IR::Node* CPackageToControl::preorder(IR::Parameter* p) {
 
 const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
 
-    LOG3("Adding struct type with field having bitwidth "<<maxOffset);
+    LOG3("Adding struct type with field having bitwidth "<<byteStackSize);
 
     auto byteType = IR::Type::Bits::get(8, false);
     auto dataField = new IR::StructField(fieldName, byteType);
@@ -379,7 +379,7 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
     
     auto pktByteStack = new IR::Type_Stack(
                               new IR::Type_Name(csaByteHeaderType->getName()),
-                              new IR::Constant((*maxOffset)/8));
+                              new IR::Constant((*byteStackSize)/8));
 
     auto field = new IR::StructField(NameConstants::csaHeaderInstanceName, pktByteStack);
     auto fIndices = new IR::StructField(NameConstants::indicesHeaderInstanceName, 
@@ -488,7 +488,7 @@ const IR::Node* Converter::preorder(IR::P4Program* p4Program) {
 
 const IR::Node* Converter::preorder(IR::P4ComposablePackage* cp) {
     
-    std::cout<<"visiting P4ComposablePackage "<<cp->getName()<<"\n";
+    // std::cout<<"visiting P4ComposablePackage "<<cp->getName()<<"\n";
     LOG3("Converter preorder visit P4ComposablePackage: "<<cp->name);
 
     /*
@@ -533,12 +533,12 @@ const IR::Node* Converter::preorder(IR::P4ComposablePackage* cp) {
     cp->packageLocals = packageLocals;
     prune();
     updateP4ProgramObjects.push_back(cp);
-    std::cout<<"Finish visiting "<<cp->getName()<<"\n";
+    // std::cout<<"Finish visiting "<<cp->getName()<<"\n";
     return cp;
 }
 
 const IR::Node* Converter::preorder(IR::P4Parser* parser) {
-    std::cout<<"visiting "<<parser->getName()<<"\n";
+    // std::cout<<"visiting "<<parser->getName()<<"\n";
     cstring parser_fqn = parser->getName();
     auto cp = findContext<IR::P4ComposablePackage>();
     if (cp != nullptr)
@@ -561,6 +561,7 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
                        offsetsStack.back(), parser_fqn+"_meta_t");
     auto convertedParser = ((IR::Node*)parser)->apply(pc);
 
+    xoredHeaderSetsStack.push_back(parserStructure->xoredHeaderSets);
     // new start offsets are computed and pushed on offsetsStack.
     auto currentParserOffsets = parserStructure->result->getAcceptedPktOffsets();
     auto acceptedPktOffset = new std::vector<unsigned>();
@@ -590,9 +591,12 @@ const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
     // std::cout<<"visiting ----- "<<p4Control->getName()<<"\n";
     offsetsStack.pop_back();
     auto& initialOffsets = *(offsetsStack.back());
-    DeparserConverter dc(refMap, typeMap, initialOffsets);
+    auto xoredHeaderSets = xoredHeaderSetsStack.back();
+    DeparserConverter dc(refMap, typeMap, initialOffsets, xoredHeaderSets);
 
     auto dep = p4Control->apply(dc);
+    xoredHeaderSetsStack.pop_back();
+
     prune();
     return dep;
 }

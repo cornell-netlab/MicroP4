@@ -53,19 +53,32 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
 
     if (!(initialOffsets->size() == 1 &&  (*initialOffsets)[0] == 0)) {
         initTableWithOffsetEntries(sorted[0]->getName());
-        std::cout<<"----------------------"<<parser->name<<"\n";
+        // std::cout<<"----------------------"<<parser->name<<"\n";
     }
 
     for(auto s : sorted)
         visit(s);
 
-    createP4Table();
-    auto method = new IR::Member(new IR::PathExpression(IR::ID(tableName)),
+    if (keyElementList.size() > 0) {
+        createP4Table();
+        auto method = new IR::Member(new IR::PathExpression(IR::ID(tableName)),
    			                                 IR::ID("apply"));
-    auto mcea = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
-    auto mcsa = new IR::MethodCallStatement(mcea);
-
-    statOrDeclsOfControlBody.push_back(mcsa);
+        auto mcea = new IR::MethodCallExpression(method, 
+                                                new IR::Vector<IR::Argument>());
+        auto mcsa = new IR::MethodCallStatement(mcea);
+        statOrDeclsOfControlBody.push_back(mcsa);
+    } else {
+        for (auto a : actionDecls) {
+            if (a->getName() == rejectActionName ||
+                a->getName() == headerInvalidActionName)
+                continue;
+            pe = new IR::PathExpression(a->getName());
+            mce = new IR::MethodCallExpression(pe, new IR::Vector<IR::Type>(), 
+                                       new IR::Vector<IR::Argument>());
+            mcs = new IR::MethodCallStatement(mce);
+            statOrDeclsOfControlBody.push_back(mcs);
+        }
+    }
     LOG3("finished parser");
     // std::cout<<"finished : "<<parser->name<<"\n";
     return parser;
@@ -506,7 +519,8 @@ const IR::Node* ParserConverter::postorder(IR::P4Parser* parser) {
         controlLocals->push_back(decl->clone());
    
     controlLocals->append(actionDecls);
-    controlLocals->push_back(tableDecl);
+    if (tableDecl != nullptr)
+        controlLocals->push_back(tableDecl);
 
     auto controlBody =  new IR::BlockStatement(statOrDeclsOfControlBody);
     IR::P4Control* control = new IR::P4Control(parser->srcInfo, 

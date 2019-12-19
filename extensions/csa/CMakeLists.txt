@@ -17,6 +17,8 @@ set (CSA_SWITCH_SRCS
     switch/parseInput.cpp
     midend/msaNameConstants.h
     midend/msaNameConstants.cpp
+    midend/staticAnalyzer.h
+    midend/staticAnalyzer.cpp
     midend/csamidend.h
     midend/csamidend.cpp
     midend/msaPacketSubstituter.h

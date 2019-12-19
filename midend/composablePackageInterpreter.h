@@ -17,12 +17,35 @@ namespace P4 {
 class ComposablePackageInterpreter : public Inspector {
     ReferenceMap*       refMap;
     TypeMap*            typeMap;
+    P4::ParserStructuresMap* parserStructures;
+
+    std::vector<cstring> p4cpCallStack;
+
+    cstring parser_fqn = "";
+
+    unsigned minExtLen;
+    unsigned maxExtLen;
+    unsigned maxIncrPktLen;
+    unsigned maxDecrPktLen;
+
+    // TODO: tighten the bound for maxIncrPktLen using them
+    // if minIncrPktLen > 0, maxDecrPktLen = minDecrPktLen = 0
+    unsigned minIncrPktLen;
+
+    // if minDecrPktLen > 0, maxIncrPktLen = minIncrPktLen = 0
+    unsigned minDecrPktLen;
+
 
  public:
-     ComposablePackageInterpreter(ReferenceMap* refMap, TypeMap* typeMap) :
-            refMap(refMap), typeMap(typeMap) {
-        CHECK_NULL(refMap); CHECK_NULL(typeMap);
+     ComposablePackageInterpreter(ReferenceMap* refMap, TypeMap* typeMap,
+         P4::ParserStructuresMap* parserStructures)
+       : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures) {
+        CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(parserStructures);
+        minExtLen = 0; maxExtLen = 0;
+        maxIncrPktLen = 0; maxDecrPktLen = 0;
     }
+
+    Visitor::profile_t init_apply(const IR::Node* node) override;
 
     bool preorder(const IR::P4Control* p4Control) override;
 
@@ -30,7 +53,10 @@ class ComposablePackageInterpreter : public Inspector {
 
     bool preorder(const IR::P4ComposablePackage* p4cp) override;
 
-    bool preorder(const IR::P4Program* p4Program) override;
+    unsigned getMinExtLen() const { return minExtLen; }
+    unsigned getMaxExtLen() const { return maxExtLen; }
+    unsigned getMaxIncrPktLen() const { return maxIncrPktLen; }
+    unsigned getMaxDecrPktLen() const { return maxDecrPktLen; }
 };
 
 }  // namespace P4

@@ -11,6 +11,7 @@ bool AnalyzeParser::preorder(const IR::ParserState* state) {
     return true;
 }
 
+
 void AnalyzeParser::postorder(const IR::PathExpression* expression) {
     auto state = findContext<IR::ParserState>();
     if (state == nullptr) {
@@ -20,6 +21,54 @@ void AnalyzeParser::postorder(const IR::PathExpression* expression) {
     if (decl->is<IR::ParserState>())
         current->calls(state, decl->to<IR::ParserState>());
 }
+
+
+bool CreateXoredHeaderSets::preorder(const IR::P4Parser* parser) {
+  
+    CHECK_NULL(parserStructure->callGraph);
+    auto callGraph = parserStructure->callGraph;
+    while (callGraph->size() > 0) {
+        auto zeroDegNodes = callGraph->getNodesWithoutIncomingEdge();
+        xoredHeaderSet.clear();
+        for (auto n : zeroDegNodes) {
+            visit(n);
+            callGraph->remove(n);
+        }
+        parserStructure->xoredHeaderSets->push_back(xoredHeaderSet);
+    }
+
+    AnalyzeParser ap(refMap, parserStructure);
+    parser->apply(ap);
+    return false;
+}
+
+bool CreateXoredHeaderSets::preorder(const IR::ParserState* state) {
+    visit(state->components);
+    return false;
+}
+
+
+bool CreateXoredHeaderSets::preorder(const IR::MethodCallStatement* mcs) {
+    MethodInstance* mi = MethodInstance::resolve(mcs, refMap, typeMap);
+    if (!mi->is<ExternMethod>()) 
+        return false;
+    auto em = mi->to<ExternMethod>();
+    if (em->originalExternType->name.name != 
+        P4CoreLibrary::instance.extractor.name ||
+        em->method->name.name !=  
+        P4CoreLibrary::instance.extractor.extract.name)
+      return false;
+    auto arg1 = mcs->methodCall->arguments->at(1);
+    auto arg1Mem = arg1->expression->to<IR::Member>();
+    auto hdrInstName = arg1Mem->member;
+    xoredHeaderSet.insert(hdrInstName);
+    /*
+     * auto argType = typeMap->getType(arg1, true);
+     * auto hdrType = argType->to<IR::Type_Header>();
+     */
+    return false;
+}
+
 
 std::map<cstring, unsigned> ParserStateInfo::stateNameIndices = {};
 
