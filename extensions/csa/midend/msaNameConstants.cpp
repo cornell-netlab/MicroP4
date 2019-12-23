@@ -8,11 +8,16 @@
 
 namespace CSA {
 
-const cstring NameConstants::csaHeaderInstanceName = "msa_packet";
+const cstring NameConstants::csaHeaderInstanceName = "msa_hdr_stack";
 const cstring NameConstants::csaStackInstanceName = "csa_stack";
 const cstring NameConstants::csaPacketStructTypeName ="msa_packet_struct_t";
 const cstring NameConstants::csaPacketStructName ="mp";
-const cstring NameConstants::headerTypeName = "csa_byte_h";
+
+const cstring NameConstants::headerTypeName = "msa_byte_h";
+
+const cstring NameConstants::multiByteHdrTypeName = "msa_twobytes_h";
+const cstring NameConstants::msaOneByteHdrInstName = "msa_byte";
+
 const cstring NameConstants::indicesHeaderTypeName = "csa_indices_h";
 const cstring NameConstants::indicesHeaderInstanceName = "indices";
 const cstring NameConstants::bitStreamFieldName = "data";

@@ -27,6 +27,7 @@
 #include "parserConverter.h"
 #include "msaPacketSubstituter.h"
 #include "staticAnalyzer.h"
+#include "../backend/tofino/replaceByteHdrStack.h"
 
 namespace CSA {
 
@@ -50,11 +51,19 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
 
     unsigned minExtLen = 0;
     unsigned maxExtLen = 0;
+    unsigned byteStackSize = 0;
   
     P4ControlStateReconInfoMap controlToReconInfoMap ;
     P4ControlPartitionInfoMap partitionsMap;
     // auto evaluator = new P4::EvaluatorPass(&refMap, &typeMap);
-    //
+    
+    // For tofino backend pass
+    // I will split this pass later
+    unsigned stackSize = 32;
+    unsigned newFieldBitWidth = 16;
+    unsigned numFullStacks;
+    unsigned residualStackSize;
+
     PassManager csaMidEnd = {
         new P4::MidEndLast(),
         new CSA::MergeDeclarations(irs),
@@ -87,6 +96,16 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
+
+        new CSA::ReplaceMSAByteHdrStack(&refMap, &typeMap, stackSize, 
+            newFieldBitWidth, &numFullStacks, &residualStackSize),
+
+        new P4::MidEndLast(),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
+        new P4::MidEndLast(),
+
+        /*
         new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions, 
                            &minExtLen, &maxExtLen),
         new P4::MidEndLast(),
@@ -94,6 +113,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
+        */
         new P4::MidEndLast(),
         // evaluator
     };

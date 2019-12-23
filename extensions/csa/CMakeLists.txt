@@ -39,6 +39,8 @@ set (CSA_SWITCH_SRCS
     midend/toV1Model.cpp
     midend/csaExternSubstituter.h
     midend/csaExternSubstituter.cpp
+    backend/tofino/replaceByteHdrStack.h
+    backend/tofino/replaceByteHdrStack.cpp
     )
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
 

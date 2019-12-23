@@ -588,25 +588,32 @@ ExtractSubstitutor::createPerFieldAssignmentStmts(const IR::Expression* hdrVar,
         auto w = svf.getWidth(f->type);
 
         unsigned startByteIndex = start/8;
-        unsigned startByteBitIndex = start % 8;
+        // unsigned startByteBitIndex = start % 8;
+        unsigned startByteBitIndex = 8-(start % 8);
 
         // std::cout<<"startByteBitIndex "<<startByteBitIndex<<"\n";
         // std::cout<<"startByteIndex "<<startByteIndex<<"\n";
 
         std::vector<const IR::Expression*> byteExps;
         unsigned fwCounter = 0; // field width counter
-        if (startByteBitIndex != 0) {
+        // if (startByteBitIndex != 0) {
+        if (8-startByteBitIndex != 0) {
             auto bl = new IR::ArrayIndex(exp->clone(), 
                                          new IR::Constant(startByteIndex));
 
             auto mem = new IR::Member(bl, IR::ID("data"));
             const IR::Expression* initSlice = nullptr;
-            if (w >= (8-startByteBitIndex)) {
-                initSlice = IR::Slice::make(mem, startByteBitIndex, 7);
-                fwCounter += (8-startByteBitIndex);
+            // if (w >= (8-startByteBitIndex)) {
+            if (w >= startByteBitIndex) {
+                // initSlice = IR::Slice::make(mem, startByteBitIndex, 7);
+                initSlice = IR::Slice::make(mem, 0, startByteBitIndex-1);
+                // fwCounter += (8-startByteBitIndex);
+                fwCounter += startByteBitIndex;
             } else {
-                initSlice = IR::Slice::make(mem, startByteBitIndex, 
-                                            startByteBitIndex+w-1);
+                // initSlice = IR::Slice::make(mem, startByteBitIndex, 
+                //                             startByteBitIndex+w-1);
+                initSlice = IR::Slice::make(mem, startByteBitIndex-w+1,
+                                            startByteBitIndex);
                 fwCounter += w;
             }
             startByteIndex++;
@@ -623,7 +630,8 @@ ExtractSubstitutor::createPerFieldAssignmentStmts(const IR::Expression* hdrVar,
             auto bl = new IR::ArrayIndex(exp->clone(), 
                                          new IR::Constant(startByteIndex));
             auto mem = new IR::Member(bl, IR::ID("data"));
-            auto endSlice = IR::Slice::make(mem, 0, w-fwCounter-1);
+            // auto endSlice = IR::Slice::make(mem, 0, w-fwCounter-1);
+            auto endSlice = IR::Slice::make(mem, 8-(w-fwCounter), 7);
             byteExps.push_back(endSlice);
         }
 

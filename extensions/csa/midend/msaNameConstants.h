@@ -23,6 +23,10 @@ namespace CSA {
 class NameConstants {
   public:
     static const cstring headerTypeName;
+
+    static const cstring multiByteHdrTypeName;
+    static const cstring msaOneByteHdrInstName;
+
     static const cstring indicesHeaderTypeName;
     static const cstring indicesHeaderInstanceName;
     static const cstring bitStreamFieldName;

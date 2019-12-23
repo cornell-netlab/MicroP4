@@ -178,7 +178,7 @@ class ToControl final : public PassManager {
               mainControlTypeName, minExtLen, maxExtLen, &byteStackSize));
         passes.push_back(new Converter(refMap, typeMap, 
               mainControlTypeName, &parserStructures, controlToReconInfoMap));
-        passes.push_back(new AddCSAByteHeader(headerTypeName, 
+        passes.push_back(new AddCSAByteHeader(NameConstants::headerTypeName, 
               bitStreamFieldName, &byteStackSize));
         passes.push_back(new CPackageToControl(refMap, typeMap, 
               mainControlTypeName, controlToReconInfoMap));

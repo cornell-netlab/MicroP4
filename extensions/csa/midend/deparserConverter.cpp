@@ -785,28 +785,35 @@ IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* m
     for (auto f : th->fields) {
         auto w = symbolicValueFactory->getWidth(f->type);
         unsigned startByteIndex = start/8;
-        unsigned startByteBitIndex = start % 8;
+        // unsigned startByteBitIndex = start % 8;
+        unsigned startByteBitIndex = 8-(start % 8);
         
         start += w;
         unsigned fwCounter = 0; // field width counter
-        if (startByteBitIndex != 0) {
+        // if (startByteBitIndex != 0) {
+        if (8-startByteBitIndex != 0) {
             auto bl = new IR::ArrayIndex(exp->clone(), 
                                          new IR::Constant(startByteIndex));
             auto member = new IR::Member(bl, IR::ID("data"));
 
             const IR::Expression* initSlice = nullptr;
             const IR::Expression* rh = nullptr;
-            if ((8-startByteBitIndex) <= w) {
-                initSlice = IR::Slice::make(member, startByteBitIndex, 7);
-                fwCounter += (8-startByteBitIndex);
+            // if ((8-startByteBitIndex) <= w) {
+            if (startByteBitIndex <= w) {
+                // initSlice = IR::Slice::make(member, startByteBitIndex, 7);
+                initSlice = IR::Slice::make(member, 0, startByteBitIndex-1);
+                // fwCounter += (8-startByteBitIndex);
+                fwCounter += startByteBitIndex;
                 auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
-                // rh = IR::Slice::make(rMem, 0, 8-startByteBitIndex-1);
-                rh = IR::Slice::make(rMem, w-(8-startByteBitIndex), w-1);
-                w = w-(8-startByteBitIndex);
+                // rh = IR::Slice::make(rMem, w-(8-startByteBitIndex), w-1);
+                rh = IR::Slice::make(rMem, w-startByteBitIndex, w-1);
+                // w = w-(8-startByteBitIndex);
+                w = w-startByteBitIndex;
             } else {
-                initSlice = IR::Slice::make(member, startByteBitIndex, 
-                                            startByteBitIndex+w-1);
-                // fwCounter += w;
+                // initSlice = IR::Slice::make(member, startByteBitIndex, 
+                //                            startByteBitIndex+w-1);
+                initSlice = IR::Slice::make(member, startByteBitIndex-w, 
+                                            startByteBitIndex-1);
                 rh = new IR::Member(e->clone(), IR::ID(f->getName()));
                 w = 0;
             }
@@ -814,28 +821,23 @@ IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* m
             auto as = new IR::AssignmentStatement(initSlice, rh);
             actionBlockStatements.push_back(as);
         }
-        // while (fwCounter+8 <= w) {
         while (w >= 8) {
             auto pe = new IR::ArrayIndex(exp->clone(), 
                                          new IR::Constant(startByteIndex++));
             auto lh = new IR::Member(pe, IR::ID("data"));
             auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
-            // auto rh = IR::Slice::make(rMem, fwCounter, fwCounter+7);
             auto rh = IR::Slice::make(rMem, w-8, w-1);
             auto as = new IR::AssignmentStatement(lh, rh);
             actionBlockStatements.push_back(as);
-            // fwCounter += 8;
             w -=8;
         }
-        // if (fwCounter < w) {
         if (w != 0) {
             auto bl = new IR::ArrayIndex(exp->clone(), 
                                          new IR::Constant(startByteIndex));
             auto lh = new IR::Member(bl, IR::ID("data"));
-            // auto endSlice = IR::Slice::make(lh, 0, w-fwCounter-1);
-            auto endSlice = IR::Slice::make(lh, 0, w-1);
+            // auto endSlice = IR::Slice::make(lh, 0, w-1);
+            auto endSlice = IR::Slice::make(lh, 8-w, 7);
             auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
-            // auto rh = IR::Slice::make(rMem, fwCounter, w-1);
             auto rh = IR::Slice::make(rMem, 0, w-1);
             auto as = new IR::AssignmentStatement(endSlice, rh);
             actionBlockStatements.push_back(as);
