@@ -75,8 +75,10 @@ class CreateTofinoArchBlock final : public Transform {
     /*
     const IR::Node* createIngressControl(std::vector<const IR::P4Control*>& p4c,
                                          IR::Type_Struct* typeStruct);
+    */
     const IR::Node* createTofinoIngressDeparser();
 
+    /*
     const IR::Node* createTofinoEgressParser();
     const IR::Node* createEgressControl(std::vector<const IR::P4Control*>& p4c,
                                         IR::Type_Struct*  typeStruct);
@@ -128,6 +130,7 @@ class CreateTofinoArchBlock final : public Transform {
     static const cstring igIMFrmParTypeName;
     static const cstring igIMForDePTypeName;
 
+    static const cstring igIMForDePInstName;
 };
 
 

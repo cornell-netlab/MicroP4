@@ -30,6 +30,7 @@ const cstring CreateTofinoArchBlock::egIMArgName = "eg_intr_md";
 
 const cstring CreateTofinoArchBlock::igIMFrmParTypeName = "ingress_intrinsic_metadata_from_parser_t";
 const cstring CreateTofinoArchBlock::igIMForDePTypeName = "ingress_intrinsic_metadata_for_deparser_t";
+const cstring CreateTofinoArchBlock::igIMForDePInstName = "ig_intr_md_for_dprsr";
 
 
 /*
@@ -185,6 +186,12 @@ IR::Type_Struct* CreateTofinoArchBlock::createUserMetadataStructType() {
     return ts;
 }
 
+IR::P4Control* CreateTofinoArchBlock::createP4Control(cstring name,
+                              IR::ParameterList* pl, IR::BlockStatement* bs) {
+    auto tc = new IR::Type_Control(IR::ID(name), pl);
+    auto p4c = new IR::P4Control(IR::ID(name), tc, bs);
+    return p4c;
+}
 
 const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
 
@@ -327,46 +334,49 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
 }
 
 
-/*
-
 const IR::Node* CreateTofinoArchBlock::createTofinoIngressDeparser() {
     cstring packetOutArgName = "po";
-    auto pl = new IR::ParameterList();
+    auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::In);
     auto po = new IR::Parameter(IR::ID(packetOutArgName), 
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetOut.name));
-    auto ph = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
-        IR::Direction::In, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
-    pl->push_back(po);
-    pl->push_back(ph);
 
-    auto argExp = new IR::Member(new IR::PathExpression(csaPacketStructInstanceName),
-                                 IR::ID(NameConstants::csaHeaderInstanceName));
-    auto args = new IR::Vector<IR::Argument>();
-    auto arg = new IR::Argument(argExp);
-    args->push_back(arg);
+    auto pIgIMForDeP = new IR::Parameter(IR::ID(igIMForDePInstName), 
+        IR::Direction::In, new IR::Type_Name(igIMForDePTypeName));
+    pl->parameters.insert(pl->parameters.begin(),  po);
+    pl->push_back(pIgIMForDeP);
 
-    auto member = new IR::Member(new IR::PathExpression(packetOutArgName),
-        IR::ID(P4::P4CoreLibrary::instance.packetOut.emit.name));
-    auto emptyTypeVec = new IR::Vector<IR::Type>(); 
-    auto mce = new IR::MethodCallExpression(member, emptyTypeVec, args);
-    auto mcs = new IR::MethodCallStatement(mce);
+
+    std::vector<cstring> hdrInsts;
+
+    unsigned i = 0;
+    for (; i < maxFullStToExct; i++)
+        hdrInsts.push_back(ReplaceMSAByteHdrStack::getHdrStackInstName(i));
+    if (*residualStackSize > 0)
+        hdrInsts.push_back(ReplaceMSAByteHdrStack::getHdrStackInstName(i));
+    
+    hdrInsts.push_back(NameConstants::msaOneByteHdrInstName);
+
+
+    auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
     auto bs = new IR::BlockStatement();
-    bs->push_back(mcs);
+    for (auto hdrIns : hdrInsts) {
+        auto argExp = new IR::Member(csaPktInstPE->clone(), IR::ID(hdrIns));
+        auto args = new IR::Vector<IR::Argument>();
+        auto arg = new IR::Argument(argExp);
+        args->push_back(arg);
+        auto member = new IR::Member(new IR::PathExpression(packetOutArgName),
+            IR::ID(P4::P4CoreLibrary::instance.packetOut.emit.name));
+        auto emptyTypeVec = new IR::Vector<IR::Type>(); 
+        auto mce = new IR::MethodCallExpression(member, emptyTypeVec, args);
+        auto mcs = new IR::MethodCallStatement(mce);
+        bs->push_back(mcs);
+    }
 
-    return createP4Control(deparserName, pl, bs);
+    return createP4Control(ingressDeparserName, pl, bs);
 }
 
 
-
-
-IR::P4Control* CreateTofinoArchBlock::createP4Control(cstring name,
-    IR::ParameterList* pl, IR::BlockStatement* bs) {
-    auto tc = new IR::Type_Control(IR::ID(name), pl);
-    auto p4c = new IR::P4Control(IR::ID(name), tc, bs);
-    return p4c;
-}
-
-
+/*
 const IR::Node* CreateTofinoArchBlock::createIngressControl(
     std::vector<const IR::P4Control*>& p4Controls, IR::Type_Struct*  typeStruct) {
 
@@ -594,8 +604,10 @@ const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
     auto ic = createIngressControl(ingressControls, userMetaStruct);
     p4program->objects.push_back(ic);
 
+    */
     p4program->objects.push_back(createTofinoIngressDeparser());
 
+    /*
     p4program->objects.push_back(createTofinoEgressParser());
 
     std::vector<const IR::P4Control*> egressControls;
