@@ -84,7 +84,7 @@ class CreateTofinoArchBlock final : public Transform {
                                         IR::Type_Struct*  typeStruct);
     const IR::Node* createTofinoEgressDeparser();
     */
-    const IR::Node* createMainPackageInstance();
+    IR::Vector<IR::Node> createMainPackageInstance();
 
   public:
     explicit CreateTofinoArchBlock(P4::ReferenceMap* refMap, 

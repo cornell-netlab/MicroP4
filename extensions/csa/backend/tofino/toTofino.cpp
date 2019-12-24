@@ -376,6 +376,60 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressDeparser() {
 }
 
 
+std::vector<const IR::P4Control*>
+CreateTofinoArchBlock::getControls(const IR::P4Program* prog, bool ingress) {
+  
+    std::vector<const IR::P4Control*> controls;
+    if (partitions->size() == 1) {
+        auto it = partitionsMap->find((*partitions)[0]);
+        BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
+        auto pi = it->second;
+        auto cv = prog->getDeclsByName(pi.partition1->getName())->toVector();
+        BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
+                                   pi.partition1->getName());
+        auto p4c = cv->at(0)->to<IR::P4Control>();
+        controls.push_back(p4c);
+        return controls;
+
+    }
+
+    unsigned i = 0;
+    if (!ingress) {
+       i = 1;
+    }
+    std::cout<<"Partition Map size: "<<partitionsMap->size()<<"\n";
+    std::cout<<"Total Partitions: "<<partitions->size()<<"\n";
+    for (; i<partitions->size(); i = i+2) {
+        if (i == partitions->size()-1) {
+            auto it = partitionsMap->find((*partitions)[i-1]);
+            BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
+            auto pi = it->second;
+
+            std::cout<<"Name : "<<pi.partition2->getName()<<"\n";
+            auto cv = prog->getDeclsByName(pi.partition2->getName())->toVector();
+            BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
+                                       pi.partition2->getName());
+            auto p4c = cv->at(0)->to<IR::P4Control>();
+            controls.push_back(p4c);
+
+        } else {
+            auto it = partitionsMap->find((*partitions)[i]);
+            BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
+            auto pi = it->second;
+         
+            std::cout<<"Name : "<<pi.partition1->getName()<<"\n";
+            auto cv = prog->getDeclsByName(pi.partition1->getName())->toVector();
+            BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
+                                       pi.partition1->getName());
+            auto p4c = cv->at(0)->to<IR::P4Control>();
+            controls.push_back(p4c);
+        }
+
+    }
+    return controls;
+}
+
+
 /*
 const IR::Node* CreateTofinoArchBlock::createIngressControl(
     std::vector<const IR::P4Control*>& p4Controls, IR::Type_Struct*  typeStruct) {
@@ -494,63 +548,11 @@ const IR::Node* CreateTofinoArchBlock::createEgressControl(
 
 
 
-std::vector<const IR::P4Control*>
-CreateTofinoArchBlock::getControls(const IR::P4Program* prog, bool ingress) {
-  
-    std::vector<const IR::P4Control*> controls;
-    if (partitions->size() == 1) {
-        auto it = partitionsMap->find((*partitions)[0]);
-        BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
-        auto pi = it->second;
-        auto cv = prog->getDeclsByName(pi.partition1->getName())->toVector();
-        BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
-                                   pi.partition1->getName());
-        auto p4c = cv->at(0)->to<IR::P4Control>();
-        controls.push_back(p4c);
-        return controls;
-
-    }
-
-    unsigned i = 0;
-    if (!ingress) {
-       i = 1;
-    }
-    std::cout<<"Partition Map size: "<<partitionsMap->size()<<"\n";
-    std::cout<<"Total Partitions: "<<partitions->size()<<"\n";
-    for (; i<partitions->size(); i = i+2) {
-        if (i == partitions->size()-1) {
-            auto it = partitionsMap->find((*partitions)[i-1]);
-            BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
-            auto pi = it->second;
-
-            std::cout<<"Name : "<<pi.partition2->getName()<<"\n";
-            auto cv = prog->getDeclsByName(pi.partition2->getName())->toVector();
-            BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
-                                       pi.partition2->getName());
-            auto p4c = cv->at(0)->to<IR::P4Control>();
-            controls.push_back(p4c);
-
-        } else {
-            auto it = partitionsMap->find((*partitions)[i]);
-            BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
-            auto pi = it->second;
-         
-            std::cout<<"Name : "<<pi.partition1->getName()<<"\n";
-            auto cv = prog->getDeclsByName(pi.partition1->getName())->toVector();
-            BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
-                                       pi.partition1->getName());
-            auto p4c = cv->at(0)->to<IR::P4Control>();
-            controls.push_back(p4c);
-        }
-
-    }
-    return controls;
-}
 
 
 */
 
-const IR::Node* CreateTofinoArchBlock::createMainPackageInstance() {
+IR::Vector<IR::Node> CreateTofinoArchBlock::createMainPackageInstance() {
     auto args = new IR::Vector<IR::Argument>();
     auto eva = new IR::Vector<IR::Argument>();
 
@@ -558,7 +560,6 @@ const IR::Node* CreateTofinoArchBlock::createMainPackageInstance() {
     auto ptnip = new IR::Argument(new IR::ConstructorCallExpression(tnip, eva));
     args->push_back(ptnip);
 
-    /*
     auto tnic = new IR::Type_Name(ingressControlName);
     auto ptnic = new IR::Argument(new IR::ConstructorCallExpression(tnic, eva->clone()));
     args->push_back(ptnic);
@@ -567,6 +568,7 @@ const IR::Node* CreateTofinoArchBlock::createMainPackageInstance() {
     auto ptndip = new IR::Argument(new IR::ConstructorCallExpression(tndip, eva->clone()));
     args->push_back(ptndip);
 
+    /*
     auto tnep = new IR::Type_Name(egressParserName);
     auto ptnep = new IR::Argument(new IR::ConstructorCallExpression(tnep, eva->clone()));
     args->push_back(ptnep);
@@ -579,8 +581,20 @@ const IR::Node* CreateTofinoArchBlock::createMainPackageInstance() {
     auto ptndep = new IR::Argument(new IR::ConstructorCallExpression(tndep, eva->clone()));
     args->push_back(ptndep);
     */
-    auto tn =  new IR::Type_Name(P4V1::V1Model::instance.sw.name);
-    return new IR::Declaration_Instance(IR::P4Program::main, tn, args);
+
+    cstring pipe = "pipe";
+    auto tnpipeline =  new IR::Type_Name("Pipeline");
+    auto dl = new IR::Declaration_Instance(pipe, tnpipeline, args);
+
+    auto ma = new IR::Vector<IR::Argument>();
+    ma->push_back(new IR::Argument(new IR::PathExpression(pipe)));
+    auto mainType = new IR::Type_Name("Switch");
+    auto mdl = new IR::Declaration_Instance(IR::P4Program::main, mainType, ma);
+
+    IR::Vector<IR::Node> nodes;
+    nodes.push_back(dl);
+    nodes.push_back(mdl);
+    return nodes;
 }
 
 const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
@@ -598,12 +612,11 @@ const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
     p4program->objects.push_back(userMetaStruct);
     p4program->objects.push_back(createTofinoIngressParser());
 
-    /*
     auto ingressControls = getControls(p4program, true);
 
+    /*
     auto ic = createIngressControl(ingressControls, userMetaStruct);
     p4program->objects.push_back(ic);
-
     */
     p4program->objects.push_back(createTofinoIngressDeparser());
 
@@ -617,7 +630,7 @@ const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
     p4program->objects.push_back(ec);
     p4program->objects.push_back(createTofinoEgressDeparser());
     */
-    p4program->objects.push_back(createMainPackageInstance());
+    p4program->objects.append(createMainPackageInstance());
     return p4program;
 
 }
