@@ -1,11 +1,7 @@
 #include "replaceByteHdrStack.h"
 
 #include "../../midend/msaNameConstants.h"
-
-
 namespace CSA {
-
-
 
 bool CompareExpression::preorder(const IR::Member* mem) {
     auto currMem = currExpr->to<IR::Member>();
@@ -111,12 +107,12 @@ const IR::Node* ReplaceByteHdrStack::preorder(IR::Type_Struct* typeStruct) {
     typeStruct->fields.removeByName(NameConstants::csaHeaderInstanceName);
 
     unsigned fac = hdrBitWidth / 8;
-    if (byteStackSize % fac != 0) {
+    // if (byteStackSize % fac != 0) {
         addOneByteHdr = true;
         auto sf = new IR::StructField(IR::ID(NameConstants::msaOneByteHdrInstName), 
                             new IR::Type_Name(NameConstants::headerTypeName));
         typeStruct->fields.push_back(sf);
-    }
+    // }
     unsigned numTwoBytes = byteStackSize / fac;
   
     *residualStackSize = numTwoBytes % stackSize;

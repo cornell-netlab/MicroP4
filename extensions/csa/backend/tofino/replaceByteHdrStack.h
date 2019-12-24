@@ -43,8 +43,8 @@ class ReplaceByteHdrStack final : public Transform {
 
     unsigned byteStackSize;
 
-    unsigned stackSize = 32;
-    unsigned hdrBitWidth = 16;
+    unsigned stackSize;
+    unsigned hdrBitWidth;
     cstring fieldName;
  
     bool addOneByteHdr = false;

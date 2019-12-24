@@ -8,6 +8,7 @@
 
 #include "ir/ir.h"
 #include "frontends/common/options.h"
+#include "../switch/options.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
 
