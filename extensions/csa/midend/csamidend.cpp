@@ -41,12 +41,16 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         return nullptr;
 
     auto v1modelP4Program = getV1ModelIR();
+    auto tnaP4Program = getTofinoIR();
+
     auto coreP4Program = getCoreIR();
+
     std::vector<const IR::P4Program*> irs = precompiledIRs;
     irs.insert(irs.begin(), coreP4Program);
 
-    std::vector<const IR::P4Program*> v1ModelIR;
-    v1ModelIR.push_back(v1modelP4Program);
+    std::vector<const IR::P4Program*> targetIR;
+    // targetIR.push_back(v1modelP4Program);
+    targetIR.push_back(tnaP4Program);
 
     std::vector<cstring> partitions;
 
@@ -88,7 +92,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
                                      &partitionsMap, &controlToReconInfoMap, 
                                      &partitions),
         new P4::MidEndLast(),
-        new CSA::MergeDeclarations(v1ModelIR), 
+        new CSA::MergeDeclarations(targetIR), 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
@@ -200,5 +204,41 @@ const IR::P4Program* CSAMidEnd::getV1ModelIR() {
     }
     return p4program;
 }
+
+
+const IR::P4Program* CSAMidEnd::getTofinoIR() {
+    FILE* in = nullptr;
+
+    cstring file = "tna.p4";
+#ifdef __clang__
+    std::string cmd("cc -E -x c -Wno-comment");
+#else
+    std::string cmd("cpp");
+#endif
+
+    char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
+    cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
+           csaOptions.preprocessor_options
+        + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
+        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
+
+    // std::cout<<"p4includePath "<<p4includePath<<"\n";
+    file = p4includePath+cstring("/")+file;
+    in = popen(cmd.c_str(), "r");
+    if (in == nullptr) {
+        ::error("Error invoking preprocessor");
+        perror("");
+        return nullptr;
+    }
+
+    auto p4program = P4::P4ParserDriver::parse(in, file);
+    // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
+    if (::errorCount() > 0) { 
+        ::error("%1% errors encountered, aborting compilation", ::errorCount());
+        return nullptr;
+    }
+    return p4program;
+}
+
 
 } 

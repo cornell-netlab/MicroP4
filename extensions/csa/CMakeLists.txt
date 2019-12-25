@@ -47,7 +47,12 @@ set (CSA_SWITCH_SRCS
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
 
 
-set (P4C_CSA_EXT_HEADERS p4include/msa.p4)
+set (P4C_CSA_EXT_HEADERS 
+     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/msa.p4
+     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/tna.p4
+     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/tofino.p4
+     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/v1model.p4
+    )
 set (IR_DEF_FILES ${IR_DEF_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/ir/csa.def PARENT_SCOPE)
 
 build_unified(CSA_SWITCH_SRCS)
@@ -61,7 +66,7 @@ install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/p4include DESTINATION ${P4C_ARTIF
 add_custom_target(linkp4ccsa
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/p4c-msa ${P4C_BINARY_DIR}/p4c-msa
     COMMAND ${CMAKE_COMMAND} -E make_directory ${P4C_BINARY_DIR}/p4include &&
-            ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${P4C_CSA_EXT_HEADERS} ${P4C_BINARY_DIR}/p4include
+            ${CMAKE_COMMAND} -E copy ${P4C_CSA_EXT_HEADERS} ${P4C_BINARY_DIR}/p4include
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${P4C_BINARY_DIR}/p4include ${CMAKE_CURRENT_BINARY_DIR}/p4include
     )
 

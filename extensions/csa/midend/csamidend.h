@@ -31,6 +31,7 @@ class CSAMidEnd {
 
     CSAOptions csaOptions;
     const IR::P4Program* getV1ModelIR();
+    const IR::P4Program* getTofinoIR();
     const IR::P4Program* getCoreIR();
  public:
     P4::ReferenceMap       refMap;

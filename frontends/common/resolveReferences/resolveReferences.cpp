@@ -292,6 +292,10 @@ void ResolveReferences::checkShadowing(const IR::INamespace* ns) const {
             if (pnode->is<IR::Type_Control>() && node->is<IR::P4Control>() )
                 continue;
 
+            if (node->is<IR::Parameter>() && 
+                (pnode->is<IR::Method>() || pnode->is<IR::Type_Extern>())) {
+                continue;
+            }
             ::warning("%1% shadows %2%", node, pnode);
         }
     }
