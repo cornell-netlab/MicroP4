@@ -14,33 +14,53 @@
 
 namespace CSA {
 
-/*
+class GetCalleeP4Controls final : public Inspector {
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+
+    IR::IndexedVector<IR::Type_Declaration>* callees;
+  public:
+    explicit GetCalleeP4Controls(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
+        IR::IndexedVector<IR::Type_Declaration>* callees) 
+      : refMap(refMap), typeMap(typeMap), callees(callees) {
+        CHECK_NULL(refMap); CHECK_NULL(typeMap);
+        CHECK_NULL(callees);
+    }
+
+    bool preorder(const IR::P4Control* mcs) override;
+    bool preorder(const IR::MethodCallStatement* mcs) override;
+    
+    Visitor::profile_t init_apply(const IR::Node* node) {
+        BUG_CHECK(node->is<IR::P4Control>(),
+            "%1%: expected a P4Control node", node);
+        return Inspector::init_apply(node);
+    }
+
+};
+
 class MSAStdMetaSubstituter final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
 
-    const IR::Parameter* getStandardMetadataParam(const IR::P4Control* p4c);
+    bool ingress;
   public:
-    MSAStdMetaSubstituter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
-        : refMap(refMap), typeMap(typeMap) {
+    MSAStdMetaSubstituter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, bool ingress = true)
+        : refMap(refMap), typeMap(typeMap), ingress(ingress) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
     }
 
     const IR::Node* preorder(IR::Path* path) override;
     const IR::Node* preorder(IR::Parameter* parameter) override;
-    //const IR::Node* preorder(IR::Argument* arg) override;
+    const IR::Node*preorder(IR::Argument* arg) override;
 
     const IR::Node* preorder(IR::MethodCallExpression* mce) override;
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
-    const IR::Node* preorder(IR::AssignmentStatement* as) override;
-    
+    /*
     void end_apply(const IR::Node* node) override { 
-        typeMap->clear();
-        refMap->clear();
         Transform::end_apply(node);
     }
+    */
 };
-*/
 
 
 class CreateTofinoArchBlock final : public Transform {
@@ -60,6 +80,9 @@ class CreateTofinoArchBlock final : public Transform {
     unsigned maxHdrsToExctResSt;
     unsigned extctResidualByteHdr;
 
+    IR::IndexedVector<IR::Type_Declaration> updateP4Controls;
+
+
     std::set<cstring> metadataFields;
 
     IR::P4Control* createP4Control(cstring name, IR::ParameterList* pl, 
@@ -71,11 +94,10 @@ class CreateTofinoArchBlock final : public Transform {
     IR::Type_Struct* createUserMetadataStructType();
     
 
+    const IR::Type_Control* createIngressTypeControl();
     const IR::Node* createTofinoIngressParser();
-    /*
-    const IR::Node* createIngressControl(std::vector<const IR::P4Control*>& p4c,
+    const IR::Node* createIngressP4Control(std::vector<const IR::P4Control*>& p4c,
                                          IR::Type_Struct* typeStruct);
-    */
     const IR::Node* createTofinoIngressDeparser();
 
     /*
@@ -123,14 +145,22 @@ class CreateTofinoArchBlock final : public Transform {
 
     static const cstring igIMTypeName;
     static const cstring igIMArgName;
+
+    static const cstring igIMFrmParTypeName;
+    static const cstring igIMFrmParInstName;
+
+    static const cstring igIMForDePTypeName;
+    static const cstring igIMForDePInstName;
+
+    static const cstring igIMForTMTypeName;
+    static const cstring igIMForTMInstName;
+
     static const cstring egIMTypeName; 
     static const cstring egIMArgName;
 
 
-    static const cstring igIMFrmParTypeName;
-    static const cstring igIMForDePTypeName;
-
-    static const cstring igIMForDePInstName;
+    static IR::IndexedVector<IR::Parameter>* createIngressIMParams();
+    static IR::Vector<IR::Argument>* createIngressIMArgs();
 };
 
 

@@ -4,6 +4,7 @@
  */
 
 #include "frontends/p4/coreLibrary.h"
+#include "frontends/p4/methodInstance.h"
 #include "toTofino.h"
 #include "replaceByteHdrStack.h"
 
@@ -25,30 +26,69 @@ const cstring CreateTofinoArchBlock::egressControlName = "msa_tofino_eg_control"
 
 const cstring CreateTofinoArchBlock::igIMTypeName = "ingress_intrinsic_metadata_t";
 const cstring CreateTofinoArchBlock::igIMArgName = "ig_intr_md";
-const cstring CreateTofinoArchBlock::egIMTypeName = "egress_intrinsic_metadata_t";
-const cstring CreateTofinoArchBlock::egIMArgName = "eg_intr_md";
 
 const cstring CreateTofinoArchBlock::igIMFrmParTypeName = "ingress_intrinsic_metadata_from_parser_t";
+const cstring CreateTofinoArchBlock::igIMFrmParInstName = "ig_intr_md_from_prsr";
+
 const cstring CreateTofinoArchBlock::igIMForDePTypeName = "ingress_intrinsic_metadata_for_deparser_t";
 const cstring CreateTofinoArchBlock::igIMForDePInstName = "ig_intr_md_for_dprsr";
 
+const cstring CreateTofinoArchBlock::igIMForTMTypeName = "ingress_intrinsic_metadata_for_tm_t";
+const cstring CreateTofinoArchBlock::igIMForTMInstName = "ig_intr_md_for_tm";
 
-/*
+const cstring CreateTofinoArchBlock::egIMTypeName = "egress_intrinsic_metadata_t";
+const cstring CreateTofinoArchBlock::egIMArgName = "eg_intr_md";
+
+
+
+bool GetCalleeP4Controls::preorder(const IR::P4Control* control) {
+    visit(control->body);
+    return false;
+}
+
+bool GetCalleeP4Controls::preorder(const IR::MethodCallStatement* mcs) {
+    
+    auto mi = P4::MethodInstance::resolve(mcs, refMap, typeMap);
+    if (mi->isApply()) {
+        auto a = mi->to<P4::ApplyMethod>();
+        const IR::P4Control* p4Control = nullptr;
+        if (auto di = a->object->to<IR::Declaration_Instance>()) {
+            auto inst = P4::Instantiation::resolve(di, refMap, typeMap);
+            if (auto ci = inst->to<P4::ControlInstantiation>()) {
+                p4Control = ci->control;
+                callees->push_back(p4Control);
+                visit(p4Control);
+            }
+        }
+    }
+    return false;
+}
+
+
 const IR::Node* MSAStdMetaSubstituter::preorder(IR::Path* path) {
     return path;
 }
+
+const IR::Node* MSAStdMetaSubstituter::preorder(IR::Argument* arg) {
+    auto type = typeMap->getType(arg->expression, true);
+    if (auto te = type->to<IR::Type_Extern>()) {
+        if (te->getName() == P4::P4CoreLibrary::instance.im.name) {
+            auto args = CreateTofinoArchBlock::createIngressIMArgs();
+            prune();
+            return args;
+        }
+    }
+    return arg;
+}
+
 
 const IR::Node* MSAStdMetaSubstituter::preorder(IR::Parameter* param) {
     auto type = typeMap->getTypeType(param->type, true);
     if (auto te = type->to<IR::Type_Extern>()) {
         if (te->getName() == P4::P4CoreLibrary::instance.im.name) {
             prune();
-            auto tn = new IR::Type_Name(
-                            P4V1::V1Model::instance.standardMetadataType.name); 
-            return new IR::Parameter(param->srcInfo, param->name, 
-                param->annotations, IR::Direction::InOut, tn, 
-                param->defaultValue);
-
+            auto imParams = CreateTofinoArchBlock::createIngressIMParams();
+            return imParams;
         }
     }
     prune();
@@ -59,24 +99,29 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallStatement* mcs) {
     auto mi = P4::MethodInstance::resolve(mcs, refMap, typeMap);
     if (mi->is<P4::ExternMethod>()) {
         auto em = mi->to<P4::ExternMethod>();
-        if (em->method->name.name == P4::P4CoreLibrary::instance.im.setOutPort.name
-            && em->originalExternType->name.name == P4::P4CoreLibrary::instance.im.name) {
+        if (em->originalExternType->name.name != P4::P4CoreLibrary::instance.im.name)
+            return mcs;
+        IR::Expression* pathExp = nullptr;
+        if (em->method->name.name == P4::P4CoreLibrary::instance.im.setOutPort.name){
             // std::cout<<"Method name :"<<em->method->name<<"\n";
             // std::cout<<"decl :"<<em->object<<"\n";
             auto exp = mcs->methodCall->arguments->at(0)->expression;
-
-            auto p4c = findContext<IR::P4Control>();
-            const IR::Parameter* stdMetaParam = getStandardMetadataParam(p4c);
-            BUG_CHECK(stdMetaParam != nullptr,
-                "standard_metadata parameter not available to replace %1%", mcs);
-            auto pathExp = new IR::PathExpression(IR::ID(stdMetaParam->name));
-            auto lexp = new IR::Member(pathExp, 
-                P4V1::V1Model::instance.standardMetadataType.egress_spec.name);
+            pathExp = new IR::PathExpression(
+                            IR::ID(CreateTofinoArchBlock::igIMForTMInstName));
+            auto lexp = new IR::Member(pathExp, "ucast_egress_port");
             prune();
             return new IR::AssignmentStatement(mcs->srcInfo, lexp, exp);
         }
-    }
+        if (em->method->name.name == "drop") {
+            pathExp = new IR::PathExpression(
+                            IR::ID(CreateTofinoArchBlock::igIMForDePInstName));
+            auto lexp = new IR::Member(pathExp, "drop_ctl");
+            auto constant =  new IR::Constant(1, 16);
+            prune();
+            return new IR::AssignmentStatement(mcs->srcInfo, lexp, constant);
+        }
 
+    }
     return mcs;
 }
 
@@ -85,87 +130,37 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
     auto mi = P4::MethodInstance::resolve(mce, refMap, typeMap);
     if (mi->is<P4::ExternMethod>()) {
         auto em = mi->to<P4::ExternMethod>();
-        if (em->originalExternType->name.name 
-            != P4::P4CoreLibrary::instance.im.name)
+        if (em->originalExternType->name.name != P4::P4CoreLibrary::instance.im.name)
             return mce;
 
-        auto p4c = findContext<IR::P4Control>();
-        const IR::Parameter* stdMetaParam = getStandardMetadataParam(p4c);
-        BUG_CHECK(p4c != nullptr, 
-            "MSAStdMetaSubstituter:: unexpected use of %1%", mce);
-        auto pathExp = new IR::PathExpression(IR::ID(stdMetaParam->name));
         if (em->method->name.name 
-            == P4::P4CoreLibrary::instance.im.getOutPort.name) {           
-            auto member = new IR::Member(mce->srcInfo, pathExp,
-                P4V1::V1Model::instance.standardMetadataType.egress_spec.name);
+            == P4::P4CoreLibrary::instance.im.getOutPort.name) {
+            IR::PathExpression* pe = new IR::PathExpression(
+                IR::ID(CreateTofinoArchBlock::igIMForTMInstName));
+            cstring memberName = "ucast_egress_port"; // "egress_port"
+            auto member = new IR::Member(mce->srcInfo, pe, memberName);
             prune();
             return member;
         }
         if (em->method->name.name 
             == P4::P4CoreLibrary::instance.im.getValue.name) {
+            IR::Expression* pathExp = nullptr;
+            pathExp = new IR::PathExpression(
+                            IR::ID(CreateTofinoArchBlock::egIMArgName));
             auto exp = mce->arguments->at(0)->expression;
             auto mem = exp->to<IR::Member>();
             BUG_CHECK(mem != nullptr, "unable to identify arg %1%", exp);
             if (mem->member == "QUEUE_DEPTH_AT_DEQUEUE") {
-                auto m = new IR::Member(mce->srcInfo, pathExp, "enq_qdepth");
+                auto m = new IR::Member(mce->srcInfo, pathExp, "deq_qdepth");
                 auto tc = IR::Type_Bits::get(32, false);
                 auto cm = new IR::Cast(tc, m);
                 prune();
                 return cm;
             }
         }
-        if (em->method->name.name == "drop") {
-            auto pe = new IR::PathExpression("mark_to_drop");
-            auto dropMce = new IR::MethodCallExpression(
-                pe, new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
-            prune();
-            return dropMce;
-        }
-
     }
     return mce;
 }
-
-const IR::Node* MSAStdMetaSubstituter::preorder(IR::AssignmentStatement* as) {
-    auto re = as->right->to<IR::BoolLiteral>();
-    if (!(re != nullptr && re->value))
-        return as;
-    
-    if (auto lm = as->left->to<IR::Member>()) {
-        if (lm->member.name == "drop_flag") {
-            auto type = typeMap->getType(lm->expr);
-            if (auto td = type->to<IR::Type_Struct>()) {
-                if (td->getName() == "csa_standard_metadata_t") {
-                    auto pe = new IR::PathExpression("mark_to_drop");
-                    auto mce = new IR::MethodCallExpression(
-                        pe, new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
-                    auto mcs = new IR::MethodCallStatement(mce);
-                    prune();
-                    return mcs;
-                }
-            }
-        }
-    } 
-    return as;
-}
-
-const IR::Parameter* 
-MSAStdMetaSubstituter::getStandardMetadataParam(const IR::P4Control* p4c) {
-    BUG_CHECK(p4c != nullptr, 
-        "MSAStdMetaSubstituter:: unexpected use of a method call");
-    auto params = p4c->getApplyParameters()->parameters;
-    const IR::Parameter* stdMetaParam = nullptr;
-    for (auto p : params) {
-        if (auto tn = p->type->to<IR::Type_Name>()) {
-            if (tn->path->name.name == 
-                P4V1::V1Model::instance.standardMetadataType.name) {
-                return p;
-            }
-        }
-    }
-    return nullptr;
-}
-*/
 
 
 IR::ParameterList* CreateTofinoArchBlock::getHeaderMetaPL(IR::Direction dirMSAPkt,
@@ -430,14 +425,60 @@ CreateTofinoArchBlock::getControls(const IR::P4Program* prog, bool ingress) {
 }
 
 
-/*
-const IR::Node* CreateTofinoArchBlock::createIngressControl(
-    std::vector<const IR::P4Control*>& p4Controls, IR::Type_Struct*  typeStruct) {
+IR::IndexedVector<IR::Parameter>* CreateTofinoArchBlock::createIngressIMParams() {
+  
+    auto parameters = new IR::IndexedVector<IR::Parameter>();
 
+    auto p = new IR::Parameter(IR::ID(igIMArgName), IR::Direction::In, 
+                                  new IR::Type_Name(igIMTypeName));
+    parameters->push_back(p);
+
+    p = new IR::Parameter(IR::ID(igIMFrmParInstName), IR::Direction::In, 
+                                  new IR::Type_Name(igIMFrmParTypeName));
+    parameters->push_back(p);
+
+    p = new IR::Parameter(IR::ID(igIMForDePInstName), IR::Direction::InOut, 
+                                  new IR::Type_Name(igIMForDePTypeName));
+    parameters->push_back(p);
+
+    p = new IR::Parameter(IR::ID(igIMForTMTypeName), IR::Direction::InOut, 
+                                  new IR::Type_Name(igIMForTMInstName));
+    parameters->push_back(p);
+    return parameters;
+}
+
+IR::Vector<IR::Argument>* CreateTofinoArchBlock::createIngressIMArgs() {
+    std::vector<cstring> argNames;
+    auto args =  new IR::Vector<IR::Argument>();
+    argNames.push_back(igIMArgName);
+    argNames.push_back(igIMFrmParInstName);
+    argNames.push_back(igIMForDePInstName);
+    argNames.push_back(igIMForTMInstName);
+    for (auto an : argNames) {
+      auto arg = new IR::Argument(new IR::PathExpression(an));
+      args->push_back(arg);
+    }
+    return args;
+}
+
+
+const IR::Type_Control* CreateTofinoArchBlock::createIngressTypeControl() {
+    
+    auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::InOut);
+    auto imParams = createIngressIMParams();
+    pl->parameters.pushBackOrAppend(imParams);
+    return new IR::Type_Control(IR::ID(ingressControlName), pl);
+}
+
+const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
+    std::vector<const IR::P4Control*>& p4Controls, IR::Type_Struct*  typeStruct) {
+    auto tc =  CreateTofinoArchBlock::createIngressTypeControl();
     IR::IndexedVector<IR::Declaration> cls;
     auto bs  = new IR::BlockStatement();
 
     for (auto c : p4Controls) {
+      // Every control should go in if-cond, if we are wrapping around pipeline
+      // using resubmit and all.
         auto controlArgs = new IR::Vector<IR::Argument>();
         auto params = c->getApplyParameters()->parameters;
         for (auto p : params) {
@@ -451,15 +492,23 @@ const IR::Node* CreateTofinoArchBlock::createIngressControl(
                     controlArgs->push_back(arg);
                     continue;
                 }
-                if (ts->getName() == P4V1::V1Model::instance.standardMetadataType.name) {
-                    auto pe = new IR::PathExpression(stdMetadataArgName);
-                    auto arg = new IR::Argument(pe);
-                    controlArgs->push_back(arg);
-                    continue;
-                }
                 fieldType = new IR::Type_Name(ts->getName());
             } else if (type->is<IR::Type_Base>()) {
                 fieldType = p->type;
+            } else if (type->is<IR::Type_Extern>()) {
+                auto te = type->to<IR::Type_Extern>();
+                BUG_CHECK(te->getName() == P4::P4CoreLibrary::instance.im.name,
+                    "unexpected extern in controls for ingress block");
+                std::vector<cstring> argNames;
+                argNames.push_back(igIMArgName);
+                argNames.push_back(igIMFrmParInstName);
+                argNames.push_back(igIMForDePInstName);
+                argNames.push_back(igIMForTMInstName);
+                for (auto an : argNames) {
+                    auto arg = new IR::Argument(new IR::PathExpression(an));
+                    controlArgs->push_back(arg);
+                }
+                continue;
             }
             auto itbool = metadataFields.emplace(p->getName());
             if (itbool.second) {
@@ -481,13 +530,26 @@ const IR::Node* CreateTofinoArchBlock::createIngressControl(
         auto mce = new IR::MethodCallExpression(m, controlArgs); 
         auto mcs =new IR::MethodCallStatement(mce);
         bs->push_back(mcs);
+
+        IR::IndexedVector<IR::Type_Declaration> callees;
+        GetCalleeP4Controls getCallees(refMap, typeMap, &callees);
+        c->apply(getCallees);
+        callees.push_back(c);
+
+        for (auto con : callees) {
+            MSAStdMetaSubstituter msStdMetaSubstituter(refMap, typeMap);
+            auto control = con->to<IR::P4Control>()->apply(msStdMetaSubstituter);
+            // std::cout<<"Type_Control : \n"<<control->type<<"\n";
+            updateP4Controls.push_back(control);
+        }
     }
-    auto ic = createTofinoPipelineControl(ingressControlName, bs);
-    ic->controlLocals = cls;
+
+    auto ic = new IR::P4Control(IR::ID(ingressControlName), tc, cls, bs);
     return ic;
 }
 
 
+/*
 const IR::Node* CreateTofinoArchBlock::createEgressControl(
     std::vector<const IR::P4Control*>& p4Controls, IR::Type_Struct*  typeStruct) {
 
@@ -614,10 +676,8 @@ const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
 
     auto ingressControls = getControls(p4program, true);
 
-    /*
-    auto ic = createIngressControl(ingressControls, userMetaStruct);
+    auto ic = createIngressP4Control(ingressControls, userMetaStruct);
     p4program->objects.push_back(ic);
-    */
     p4program->objects.push_back(createTofinoIngressDeparser());
 
     /*
@@ -630,7 +690,21 @@ const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
     p4program->objects.push_back(ec);
     p4program->objects.push_back(createTofinoEgressDeparser());
     */
+
+
     p4program->objects.append(createMainPackageInstance());
+
+
+    for (auto&& ob : p4program->objects) {
+        auto con = ob->to<IR::P4Control>();
+        if (con != nullptr) {
+            // std::cout<<con->getName()<<"\n";
+            auto newCon = updateP4Controls.getDeclaration(con->getName());
+            if (newCon != nullptr) {
+                ob = newCon->to<IR::P4Control>();
+            }
+        }
+    }
     return p4program;
 
 }
