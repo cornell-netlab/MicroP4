@@ -102,8 +102,11 @@ class CreateTofinoArchBlock final : public Transform {
 
     /*
     const IR::Node* createTofinoEgressParser();
-    const IR::Node* createEgressControl(std::vector<const IR::P4Control*>& p4c,
+*/
+    const IR::Type_Control* createEgressTypeControl();
+    const IR::Node* createEgressP4Control(std::vector<const IR::P4Control*>& p4c,
                                         IR::Type_Struct*  typeStruct);
+    /*
     const IR::Node* createTofinoEgressDeparser();
     */
     IR::Vector<IR::Node> createMainPackageInstance();
@@ -158,9 +161,20 @@ class CreateTofinoArchBlock final : public Transform {
     static const cstring egIMTypeName; 
     static const cstring egIMArgName;
 
+    static const cstring egIMFrmParTypeName;
+    static const cstring egIMFrmParInstName;
+    
+    static const cstring egIMForDePTypeName;
+    static const cstring egIMForDePInstName;
+
+    static const cstring egIMForOPTypeName;
+    static const cstring egIMForOPInstName;
 
     static IR::IndexedVector<IR::Parameter>* createIngressIMParams();
     static IR::Vector<IR::Argument>* createIngressIMArgs();
+
+    static IR::IndexedVector<IR::Parameter>* createEgressIMParams();
+    static IR::Vector<IR::Argument>* createEgressIMArgs();
 };
 
 
