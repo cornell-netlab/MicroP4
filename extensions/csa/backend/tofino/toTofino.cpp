@@ -557,10 +557,13 @@ const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
         callees.push_back(c);
 
         for (auto con : callees) {
-            MSAStdMetaSubstituter msStdMetaSubstituter(refMap, typeMap);
-            auto control = con->to<IR::P4Control>()->apply(msStdMetaSubstituter);
+            auto control = con->to<IR::P4Control>();
+            if (updateP4Controls.getDeclaration(control->name) != nullptr)
+                continue;
+            MSAStdMetaSubstituter msStdMetaSubstituter(refMap, typeMap, true);
+            auto substiCon = control->apply(msStdMetaSubstituter);
             // std::cout<<"Type_Control : \n"<<control->type<<"\n";
-            updateP4Controls.push_back(control);
+            updateP4Controls.push_back(substiCon);
         }
     }
 
@@ -666,10 +669,13 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
         callees.push_back(c);
 
         for (auto con : callees) {
+            auto control = con->to<IR::P4Control>();
+            if (updateP4Controls.getDeclaration(control->name) != nullptr)
+                continue;
             MSAStdMetaSubstituter msStdMetaSubstituter(refMap, typeMap, false);
-            auto control = con->to<IR::P4Control>()->apply(msStdMetaSubstituter);
+            auto substiCon = control->apply(msStdMetaSubstituter);
             // std::cout<<"Type_Control : \n"<<control->type<<"\n";
-            updateP4Controls.push_back(control);
+            updateP4Controls.push_back(substiCon);
         }
     }
     auto ec = new IR::P4Control(IR::ID(egressControlName), tc, cls, bs);

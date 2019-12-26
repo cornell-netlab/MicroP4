@@ -24,7 +24,6 @@ class ParserConverter final : public Transform {
 // global throught the pass
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    P4ControlStateReconInfoMap* controlToReconInfoMap;
     cstring noActionName;
     cstring rejectActionName;
     P4::ParserStructure* parserStructure = nullptr;
@@ -60,12 +59,10 @@ class ParserConverter final : public Transform {
     using Transform::postorder;
 
     explicit ParserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-                             P4ControlStateReconInfoMap* controlToReconInfoMap,
                              P4::ParserStructure* parserStructure,
                              const std::vector<unsigned>* initialOffsets,
                              cstring parserMetaStructTypeName)
         : refMap(refMap), typeMap(typeMap), 
-          controlToReconInfoMap(controlToReconInfoMap),
           parserStructure(parserStructure), initialOffsets(initialOffsets),
           parserMetaStructTypeName(parserMetaStructTypeName) { 
         CHECK_NULL(refMap); CHECK_NULL(typeMap);

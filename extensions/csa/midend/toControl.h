@@ -82,8 +82,6 @@ class CPackageToControl final : public Transform {
         return di;
     }
 
-    const IR::Node* createIntermediateDeparser(cstring name);
-    const IR::Node* createIntermediateParser(cstring name);
 
 };
 
@@ -125,6 +123,9 @@ class Converter final : public Transform {
     IR::Vector<IR::Type_Declaration> addInP4ProgramObjects;
 
     bool isDeparser(const IR::P4Control* p4control);
+
+    const IR::Type_Struct* getHeaderStructType(const IR::P4Parser* parser);
+
   public:
     Converter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
               cstring* mainControlTypeName, 

@@ -188,10 +188,12 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                 replicateDecls.emplace(intermediateCSAPacketHeaderInst);
 
                 // declaring header validity map
+                /*
                 cstring hdrValidBitMapVarName = iter->second->headerTypeName + "_valid";
                 auto hdrValidBitMapVar = new IR::Declaration_Variable(hdrValidBitMapVarName, 
                                          iter->second->sharedVariableType);
                 p4control->controlLocals.push_back(hdrValidBitMapVar);
+                */
 
                 // instantiating deparser and parser controls
                 auto intermediateDeparserInst = new IR::Declaration_Instance(
@@ -211,8 +213,10 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                       new IR::PathExpression(intermediateCSAPacketHeaderInst)));
                 dpArgs->push_back(new IR::Argument(
                       new IR::PathExpression(varName)));
+                /*
                 dpArgs->push_back(new IR::Argument(
                       new IR::PathExpression(hdrValidBitMapVarName)));
+                */
                 auto dpe = new IR::PathExpression(intermediateDeparserInst->getName());
                 auto memdp = new IR::Member(dpe, "apply");
                 auto dpMCE = new IR::MethodCallExpression(memdp, dpArgs);
@@ -768,25 +772,37 @@ cstring SlicePipeControl::getUniqueControlName(cstring prefix) {
 
 
 
-
 IR::Type_Declaration* SlicePipeControl::createIntermediateDeparser(
     cstring packetOutTypeName, ControlStateReconInfo* info) {
 
     cstring packetOutPN = "po";
     cstring headerPN = "hdr";
-    cstring validityBitMap = "validHdrs";
     auto pl = new IR::ParameterList();
     auto p1 = new IR::Parameter(packetOutPN, IR::Direction::InOut, 
                                 new IR::Type_Name(packetOutTypeName));
     auto p2 = new IR::Parameter(headerPN, IR::Direction::In,
                                 new IR::Type_Name(info->headerTypeName));
-    auto p3 = new IR::Parameter(validityBitMap, IR::Direction::InOut, 
-                                info->sharedVariableType);
-    pl->push_back(p1); pl->push_back(p2); pl->push_back(p3);
+    pl->push_back(p1); pl->push_back(p2);
     cstring dn = info->controlName+"_inter_dep";
     auto type = new IR::Type_Control(dn, pl);
 
-    auto p4Control = new IR::P4Control(dn, type, new IR::BlockStatement());
+    IR::IndexedVector<IR::Declaration> cls;
+    auto bs = new IR::BlockStatement();
+    auto depName = info->deparser->getName();
+    auto deparserInst = new IR::Declaration_Instance(IR::ID(depName+"_i"), 
+        new IR::Type_Name(depName), new IR::Vector<IR::Argument>());
+    cls.push_back(deparserInst);
+
+    auto dpArgs = new IR::Vector<IR::Argument>();
+    dpArgs->push_back(new IR::Argument(new IR::PathExpression(packetOutPN)));
+    dpArgs->push_back(new IR::Argument(new IR::PathExpression(headerPN)));
+    auto dpe = new IR::PathExpression(IR::ID(depName+"_i"));
+    auto memdp = new IR::Member(dpe, "apply");
+    auto dpMCE = new IR::MethodCallExpression(memdp, dpArgs);
+    bs->push_back(new IR::MethodCallStatement(dpMCE));
+
+    auto p4Control = new IR::P4Control(dn, type, cls, bs);
+
     return p4Control;
 }
 
@@ -801,9 +817,7 @@ IR::Type_Declaration* SlicePipeControl::createIntermediateParser(
                                 new IR::Type_Name(packetInTypeName));
     auto p2 = new IR::Parameter(headerPN, IR::Direction::Out,
                                 new IR::Type_Name(info->headerTypeName));
-    auto p3 = new IR::Parameter(validityBitMap, IR::Direction::In,
-                                info->sharedVariableType);
-    pl->push_back(p1); pl->push_back(p2); pl->push_back(p3);
+    pl->push_back(p1); pl->push_back(p2);
     cstring pn = info->controlName+"_inter_parser";
     auto type = new IR::Type_Control(pn, pl);
 

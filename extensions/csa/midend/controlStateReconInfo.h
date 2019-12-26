@@ -60,6 +60,9 @@ class ControlStateReconInfo {
     cstring controlName;
     cstring headerTypeName;
 
+    IR::P4Control* deparser;
+    IR::P4Control* parser;
+
     // Populated by parserConverter.
     // allPossileFinalValueMaps is used to generate MAT to (de)serialize headers
     P4::ParserStructure* parserStructure = nullptr;
@@ -68,8 +71,9 @@ class ControlStateReconInfo {
     const IR::Type* sharedVariableType;
 
     ControlStateReconInfo(cstring controlName, cstring headerTypeName, 
+                          IR::P4Control* deparser = nullptr,
                           P4::ParserStructure* parserStructure = nullptr) 
-      : controlName(controlName), headerTypeName(headerTypeName), 
+      : controlName(controlName), headerTypeName(headerTypeName), deparser(deparser),
         parserStructure(parserStructure) {
         sharedVariableType = IR::Type::Bits::get(numberOfheaders, false);
     }

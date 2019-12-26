@@ -170,7 +170,7 @@ class SlicePipeControl final : public Transform {
     ControlConstraintStates partitionState;
     const IR::Type_Struct* sharedMetadataStruct;
 
-    std::map<cstring, PartitionInfo> partitionsMap;
+    P4ControlPartitionInfoMap partitionsMap;
     // GetUsedDeclarations* getUsedDeclarations;
 
     cstring msaPktParamName;

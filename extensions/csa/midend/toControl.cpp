@@ -183,6 +183,7 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
     cstring newName = namePrefix+oldName;
     tc->name = newName; 
     typeRenameMap[oldName] = newName;
+
     if (oldName == "micro_parser") {
         // auto p = tc->getApplyParameters()->getParameter(1);
 
@@ -210,6 +211,7 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
                 }
             }
         }
+        /*
         BUG_CHECK(parameterType!=nullptr, 
             "micro_parser expected to have at least one out parameter");
         // auto pt = typeMap->getTypeType(parameterType, true);
@@ -221,6 +223,7 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
                                           pts->getName()));
             // std::cout<<__FILE__<<" "<<__LINE__<<" "<<pts->getName()<<"\n";
         }
+        */
 
     }
     return tc;
@@ -241,7 +244,20 @@ const IR::Node* CPackageToControl::preorder(IR::P4Control* p4control) {
 }
 
 const IR::Node* CPackageToControl::postorder(IR::P4Control* p4control) {
+
+    auto oldName =  p4control->name;
     p4control->name = IR::ID(p4control->type->name.name);
+
+    auto parentCpkg = findContext<IR::P4ComposablePackage>();
+    if (oldName == "micro_deparser") {
+        if (parentCpkg) {
+            auto it = controlToReconInfoMap->find(parentCpkg->name);
+            BUG_CHECK(it != controlToReconInfoMap->end(), 
+                  "no control state reconstruction info found");
+            it->second->deparser = p4control->clone();
+        }
+    }
+
     return p4control;
 }
 
@@ -537,6 +553,38 @@ const IR::Node* Converter::preorder(IR::P4ComposablePackage* cp) {
     return cp;
 }
 
+
+const IR::Type_Struct* Converter::getHeaderStructType(const IR::P4Parser* parser) {
+
+    // First out argument of struct type is considered as struct of headers
+    const IR::Type* parameterType = nullptr;
+    const IR::Type_Struct* pts = nullptr;
+    for (auto p : parser->getApplyParameters()->parameters) {
+        if (p->direction == IR::Direction::Out) {
+            parameterType = p->type;
+            auto pType = typeMap->getTypeType(p->type, true);
+            if (auto pt = pType->to<IR::Type_Struct>()) {
+                bool allHeaders = true;
+                for (auto f : pt->fields) {
+                    auto ft = typeMap->getTypeType(f->type, true);
+                    if (!(ft->is<IR::Type_Header>() || 
+                        ft->is<IR::Type_HeaderUnion>())) {
+                        allHeaders = false;
+                        break;
+                    }
+                }
+                if (allHeaders) {
+                    pts = pt;
+                    break;
+                }
+            }
+        }
+    }
+    BUG_CHECK(parameterType!=nullptr, 
+        "micro_parser expected to have at least one out parameter");
+    return pts;
+}
+
 const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     // std::cout<<"visiting "<<parser->getName()<<"\n";
     cstring parser_fqn = parser->getName();
@@ -557,8 +605,8 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     auto ts = new IR::Type_Struct(IR::ID(parser_fqn+"_meta_t"), fIV);
     addInP4ProgramObjects.push_back(ts);
 
-    ParserConverter pc(refMap, typeMap, controlToReconInfoMap, parserStructure, 
-                       offsetsStack.back(), parser_fqn+"_meta_t");
+    ParserConverter pc(refMap, typeMap, parserStructure, offsetsStack.back(), 
+                       parser_fqn+"_meta_t");
     auto convertedParser = ((IR::Node*)parser)->apply(pc);
 
     xoredHeaderSetsStack.push_back(parserStructure->xoredHeaderSets);
@@ -573,6 +621,14 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
         // std::cout<<"\n";
     }
     offsetsStack.push_back(acceptedPktOffset);
+
+    auto parentCpkg = findContext<IR::P4ComposablePackage>();
+    if (parentCpkg != nullptr) {
+        auto hdrStrType =  getHeaderStructType(parser);
+        controlToReconInfoMap->emplace(parentCpkg->name, 
+              new ControlStateReconInfo(parentCpkg->name, 
+                hdrStrType->name, nullptr, parserStructure));
+    }
 
 
     prune();
@@ -597,6 +653,16 @@ const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
     auto dep = p4Control->apply(dc);
     xoredHeaderSetsStack.pop_back();
 
+    /*
+    auto convertedDeparser = dep->to<IR::P4Control>()->clone();
+    auto parentCpkg = findContext<IR::P4ComposablePackage>();
+    if (parentCpkg != nullptr) {
+        auto iter = controlToReconInfoMap->find(parentCpkg->getName());
+        BUG_CHECK(iter != controlToReconInfoMap->end(), 
+            "parser info not stored for state reconstruction");
+        iter->second->deparser = convertedDeparser;
+    }
+    */
     prune();
     return dep;
 }
