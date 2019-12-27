@@ -12,10 +12,9 @@
 #include "frontends/p4/coreLibrary.h"
 #include "frontends/p4/typeChecking/typeChecker.h"
 
+#include "midend/composablePackageInterpreter.h"  
 
 namespace CSA {
-
-
 
 class StaticAnalyzer : public Inspector {
     P4::ReferenceMap*         refMap;
@@ -31,7 +30,7 @@ class StaticAnalyzer : public Inspector {
     StaticAnalyzer(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
                     P4::ParserStructuresMap* parserStructures, 
                     cstring* mainPackageTypeName, unsigned* minExtLen, 
-                    unsigned* maxExtLen, unsigned* byteStackSize )
+                    unsigned* maxExtLen, unsigned* byteStackSize)
         : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures), 
           mainPackageTypeName(mainPackageTypeName), minExtLen(minExtLen), 
           maxExtLen(maxExtLen), byteStackSize(byteStackSize) {

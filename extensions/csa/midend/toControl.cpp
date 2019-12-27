@@ -611,7 +611,7 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     addInP4ProgramObjects.push_back(ts);
 
     ParserConverter pc(refMap, typeMap, parserStructure, offsetsStack.back(), 
-                       parser_fqn+"_meta_t");
+                       parserMSAMetaStrTypeName);
     auto convertedParser = ((IR::Node*)parser)->apply(pc);
 
     xoredHeaderSetsStack.push_back(parserStructure->xoredHeaderSets);

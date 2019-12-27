@@ -21,6 +21,11 @@ namespace P4 {
 
 class SymbolicValueFactory;
 
+typedef std::pair<std::unordered_set<cstring>, std::unordered_set<cstring>> HdrValidityOpsRecord;
+typedef std::vector<HdrValidityOpsRecord> HdrValidityOpsRecVec;
+typedef std::map<cstring, HdrValidityOpsRecVec*> HdrValidityOpsPkgMap;
+
+
 class ControlBlockInterpreter : public Inspector {
     ReferenceMap*       refMap;
     TypeMap*            typeMap;
@@ -43,15 +48,17 @@ class ControlBlockInterpreter : public Inspector {
     unsigned accumDecrPktLen; // accumulated decrease in packet size by callees
 
 
+    HdrValidityOpsRecVec* xoredHdrValidityOps;
 
     void removeHdrFromXOredHeaderSets(cstring hdrInstName);
  public:
     ControlBlockInterpreter(ReferenceMap* refMap, TypeMap* typeMap, 
-        P4::ParserStructuresMap* parserStructures, cstring parserFQN) 
+        P4::ParserStructuresMap* parserStructures, cstring parserFQN, 
+        HdrValidityOpsRecVec* xoredHdrValidityOps) 
       : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures), 
-        parserFQN(parserFQN) {
+        parserFQN(parserFQN), xoredHdrValidityOps(xoredHdrValidityOps) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
-        CHECK_NULL(parserStructures);
+        CHECK_NULL(parserStructures);  CHECK_NULL(xoredHdrValidityOps);
         factory = new SymbolicValueFactory(typeMap);
         maxIncr = 0;
         maxDecr = 0;

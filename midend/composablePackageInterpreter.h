@@ -10,6 +10,7 @@
 #include "frontends/common/resolveReferences/referenceMap.h"
 #include "frontends/p4/typeMap.h"
 #include "frontends/p4/coreLibrary.h"
+#include "controlBlockInterpreter.h"
 
 
 namespace P4 {
@@ -57,6 +58,8 @@ class ComposablePackageInterpreter : public Inspector {
     unsigned getMaxExtLen() const { return maxExtLen; }
     unsigned getMaxIncrPktLen() const { return maxIncrPktLen; }
     unsigned getMaxDecrPktLen() const { return maxDecrPktLen; }
+
+    static P4::HdrValidityOpsPkgMap hdrValidityOpsPkgMap;
 };
 
 }  // namespace P4

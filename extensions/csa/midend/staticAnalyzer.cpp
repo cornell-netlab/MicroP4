@@ -5,7 +5,7 @@
 
 #include "staticAnalyzer.h"
 #include "midend/parserUnroll.h"
-#include "midend/composablePackageInterpreter.h"  
+// #include "midend/composablePackageInterpreter.h"  
 
 
 namespace CSA {
@@ -15,7 +15,6 @@ Visitor::profile_t StaticAnalyzer::init_apply(const IR::Node* node) {
                 "%1%: expected a P4Program node", node);
     return Inspector::init_apply(node);
 }
-
 
 bool StaticAnalyzer::preorder(const IR::P4Program* p4Program) {
     auto mainDecls = p4Program->getDeclsByName(IR::P4Program::main)->toVector();
