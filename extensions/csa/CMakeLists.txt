@@ -29,6 +29,8 @@ set (CSA_SWITCH_SRCS
     midend/parserConverter.cpp
     midend/deparserConverter.h
     midend/deparserConverter.cpp
+    midend/deparserInverter.h
+    midend/deparserInverter.cpp
     midend/mergeDeclarations.h
     midend/mergeDeclarations.cpp
     midend/slicePipeControl.h

@@ -8,6 +8,7 @@
 #include "slicePipeControl.h"
 #include "toControl.h"
 #include "frontends/p4/methodInstance.h"
+#include "deparserInverter.h"
 
 namespace CSA {
 
@@ -809,21 +810,12 @@ IR::Type_Declaration* SlicePipeControl::createIntermediateDeparser(
 IR::Type_Declaration* SlicePipeControl::createIntermediateParser(
     cstring packetInTypeName, ControlStateReconInfo* info) {
   
-    cstring packetInPN = "pin";
-    cstring headerPN = "hdr";
-    cstring validityBitMap = "validHdrs";
-    auto pl = new IR::ParameterList();
-    auto p1 = new IR::Parameter(packetInPN, IR::Direction::InOut,
-                                new IR::Type_Name(packetInTypeName));
-    auto p2 = new IR::Parameter(headerPN, IR::Direction::Out,
-                                new IR::Type_Name(info->headerTypeName));
-    pl->push_back(p1); pl->push_back(p2);
     cstring pn = info->controlName+"_inter_parser";
-    auto type = new IR::Type_Control(pn, pl);
-
-    auto p4Control = new IR::P4Control(pn, type, new IR::BlockStatement());
+    DeparserInverter dpi(pn, info->headerTypeName, info->headerParamName);
+    IR::P4Control* deparser = info->deparser;
+    auto p4Control = deparser->apply(dpi)->clone();
+    //std::cout<<"\n"<<p4Control<<"\n";
     return p4Control;
-   
 }
 
 cstring SlicePipeControl::getSharedStructTypeName(cstring controlTypeName) {

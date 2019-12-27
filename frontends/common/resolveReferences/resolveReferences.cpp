@@ -110,7 +110,6 @@ ResolutionContext::resolve(IR::ID name, P4::ResolutionType type, bool forwardOK)
             return result;
         }
     }
-
     return &empty;
 }
 

@@ -126,6 +126,7 @@ class Converter final : public Transform {
 
     const IR::Type_Struct* getHeaderStructType(const IR::P4Parser* parser);
 
+    cstring getParamNameOfType(const IR::P4Control* p4c, cstring typeName);
   public:
     Converter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
               cstring* mainControlTypeName, 

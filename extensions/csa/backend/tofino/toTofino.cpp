@@ -65,12 +65,40 @@ bool GetCalleeP4Controls::preorder(const IR::MethodCallStatement* mcs) {
             auto inst = P4::Instantiation::resolve(di, refMap, typeMap);
             if (auto ci = inst->to<P4::ControlInstantiation>()) {
                 p4Control = ci->control;
-                callees->push_back(p4Control);
+                if (callees->getDeclaration(p4Control->name) == nullptr)
+                    callees->push_back(p4Control);
                 visit(p4Control);
             }
         }
     }
     return false;
+}
+
+const IR::Node* MSAStdMetaSubstituter::preorder(IR::P4Program* program) {
+
+    auto ic = ToTofino::getControls(program, partitionsMap, partitions, true);
+    auto ec = ToTofino::getControls(program, partitionsMap, partitions, false);
+    for (auto c : ic) {
+        GetCalleeP4Controls getCallees(refMap, typeMap, &ingressControls);
+        c->apply(getCallees);
+        ingressControls.push_back(c);
+    }
+    for (auto c : ec) {
+        GetCalleeP4Controls getCallees(refMap, typeMap, &egressControls);
+        c->apply(getCallees);
+        egressControls.push_back(c);
+    }
+
+    return program;
+}
+
+
+const IR::Node* MSAStdMetaSubstituter::preorder(IR::P4Control* p4c) {
+    if (ingressControls.getDeclaration(p4c->name) != nullptr)
+        ingress = true;
+    else if (egressControls.getDeclaration(p4c->name) != nullptr)
+        ingress = false;
+    return p4c;
 }
 
 
@@ -218,15 +246,16 @@ IR::P4Control* CreateTofinoArchBlock::createP4Control(cstring name,
     return p4c;
 }
 
-const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
+const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
 
     cstring packetInArgName = "pin";
-    cstring parseTwoBytesStateName = "parse_two_bytes";
+    cstring parseTwoBytesStateName = "parse_two_bytes_stack";
     cstring parseResidualByteStateName = "parse_residual";
     cstring parserCounterInstName = "pc";
     std::vector<std::pair<cstring, unsigned>> pcInstNameMaxPairVec;
     cstring parserCounterTypeName = "ParserCounter";
 
+    std::vector<cstring> statesName;
 
     auto pl = getHeaderMetaPL(IR::Direction::Out, IR::Direction::Out);
     auto pin = new IR::Parameter(IR::ID(packetInArgName), 
@@ -258,10 +287,16 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
         auto di = new IR::Declaration_Instance(pcInstName, 
             new IR::Type_Name(parserCounterTypeName), new IR::Vector<IR::Argument>());
         parserLocals.push_back(di);
+
+        auto hdrStackInstName = ReplaceMSAByteHdrStack::getHdrStackInstName(i);
+        statesName.push_back("parse_"+hdrStackInstName);
     }
 
+    if (extctResidualByteHdr > 0) 
+        statesName.push_back(parseResidualByteStateName);
+    else 
+        statesName.push_back(IR::ParserState::accept);
 
-    
     // creating start state
     IR::IndexedVector<IR::StatOrDecl> components;
     for (unsigned i = 0; i<nc; i++) {
@@ -276,7 +311,7 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
         auto setCounterMCS =  new IR::MethodCallStatement(mce);
         components.push_back(setCounterMCS);
     }
-    auto startPE = new IR::PathExpression(parseTwoBytesStateName);
+    auto startPE = new IR::PathExpression(statesName[0]);
     auto startState = new IR::ParserState(IR::ParserState::start, components, startPE);
     states.push_back(startState);
      
@@ -285,17 +320,9 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
     cstring nextStateName = "";
     for (unsigned i = 0; i<nc; i++) {
         auto hdrStackInstName = ReplaceMSAByteHdrStack::getHdrStackInstName(i);
-        currStateName = "parse_"+hdrStackInstName;
+        currStateName = statesName[i];
+        nextStateName = statesName[i+1];
         auto pcInstName = pcInstNameMaxPairVec[i].first;
-      
-        if (i == nc-1) {
-            if (extctResidualByteHdr > 0) 
-                nextStateName = parseResidualByteStateName;
-            else 
-                nextStateName = IR::ParserState::accept;
-        } else {
-            nextStateName = "parse_"+ ReplaceMSAByteHdrStack::getHdrStackInstName(i+1);
-        }
 
         IR::IndexedVector<IR::StatOrDecl> components;
 
@@ -320,7 +347,7 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
         components.push_back(mcs);
 
         IR::Vector<IR::Expression> ev;
-        pcPE = new IR::PathExpression(parserCounterInstName);
+        pcPE = new IR::PathExpression(pcInstName);
         auto isZeroM = new IR::Member(pcPE, "is_zero");
         auto cond = new IR::MethodCallExpression(isZeroM);
         ev.push_back(cond);
@@ -359,7 +386,7 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressParser() {
 }
 
 
-const IR::Node* CreateTofinoArchBlock::createTofinoIngressDeparser() {
+const IR::P4Control* CreateTofinoArchBlock::createTofinoIngressDeparser() {
     cstring packetOutArgName = "po";
     auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::In);
     auto po = new IR::Parameter(IR::ID(packetOutArgName), 
@@ -370,9 +397,7 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressDeparser() {
     pl->parameters.insert(pl->parameters.begin(),  po);
     pl->push_back(pIgIMForDeP);
 
-
     std::vector<cstring> hdrInsts;
-
     unsigned i = 0;
     for (; i < maxFullStToExct; i++)
         hdrInsts.push_back(ReplaceMSAByteHdrStack::getHdrStackInstName(i));
@@ -380,7 +405,6 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressDeparser() {
         hdrInsts.push_back(ReplaceMSAByteHdrStack::getHdrStackInstName(i));
     
     hdrInsts.push_back(NameConstants::msaOneByteHdrInstName);
-
 
     auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
     auto bs = new IR::BlockStatement();
@@ -401,8 +425,9 @@ const IR::Node* CreateTofinoArchBlock::createTofinoIngressDeparser() {
 }
 
 
-std::vector<const IR::P4Control*>
-CreateTofinoArchBlock::getControls(const IR::P4Program* prog, bool ingress) {
+std::vector<const IR::P4Control*> ToTofino::getControls(const IR::P4Program* prog, 
+                                  const P4ControlPartitionInfoMap* partitionsMap, 
+                          const std::vector<cstring>* partitions, bool ingress) {
   
     std::vector<const IR::P4Control*> controls;
     if (partitions->size() == 1) {
@@ -492,7 +517,8 @@ const IR::Type_Control* CreateTofinoArchBlock::createIngressTypeControl() {
     
     auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::InOut);
     auto imParams = createIngressIMParams();
-    pl->parameters.pushBackOrAppend(imParams);
+    for (auto p : *(imParams))
+        pl->parameters.push_back(p);
     return new IR::Type_Control(IR::ID(ingressControlName), pl);
 }
 
@@ -513,25 +539,36 @@ const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
             auto ts = type->to<IR::Type_Struct>();
             const IR::Type* fieldType = nullptr;
             if (ts != nullptr) {
-                if (ts->getName() == NameConstants::csaPacketStructTypeName) {
+                auto tsn = ts->name;
+                if (tsn == NameConstants::csaPacketStructTypeName) {
                     auto pe = new IR::PathExpression(csaPacketStructInstanceName);
+                    auto arg = new IR::Argument(pe);
+                    controlArgs->push_back(arg);
+                    continue;
+                } else if (tsn == igIMFrmParTypeName 
+                    || tsn == igIMForDePTypeName || tsn == igIMForTMTypeName) {
+                    auto pe = new IR::PathExpression(new IR::Path(p->name));
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
                 }
                 fieldType = new IR::Type_Name(ts->getName());
+            } else if (auto th = type->to<IR::Type_Header>()) {
+                if (th->name == igIMTypeName) {
+                    auto pe = new IR::PathExpression(igIMArgName);
+                    auto arg = new IR::Argument(pe);
+                    controlArgs->push_back(arg);
+                    continue;
+                }
             } else if (type->is<IR::Type_Base>()) {
                 fieldType = p->type;
-            } else if (type->is<IR::Type_Extern>()) {
-                auto te = type->to<IR::Type_Extern>();
-                BUG_CHECK(te->getName() == P4::P4CoreLibrary::instance.im.name,
-                    "unexpected extern in controls for ingress block");
-                IR::Vector<IR::Argument>* args = createIngressIMArgs();
-                controlArgs->pushBackOrAppend(args);
-                continue;
-            }
+            } 
             auto itbool = metadataFields.emplace(p->getName());
             if (itbool.second) {
+                /*
+                std::cout<<"is type name :"<<p->type->is<IR::Type_Name>()<<"\n";
+                std::cout<<p->type<<"\n"<<p->getName()<<"\n";
+                */
                 auto f = new IR::StructField(p->getName(), fieldType);
                 typeStruct->fields.push_back(f);
             }
@@ -551,20 +588,6 @@ const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
         auto mcs =new IR::MethodCallStatement(mce);
         bs->push_back(mcs);
 
-        IR::IndexedVector<IR::Type_Declaration> callees;
-        GetCalleeP4Controls getCallees(refMap, typeMap, &callees);
-        c->apply(getCallees);
-        callees.push_back(c);
-
-        for (auto con : callees) {
-            auto control = con->to<IR::P4Control>();
-            if (updateP4Controls.getDeclaration(control->name) != nullptr)
-                continue;
-            MSAStdMetaSubstituter msStdMetaSubstituter(refMap, typeMap, true);
-            auto substiCon = control->apply(msStdMetaSubstituter);
-            // std::cout<<"Type_Control : \n"<<control->type<<"\n";
-            updateP4Controls.push_back(substiCon);
-        }
     }
 
     auto ic = new IR::P4Control(IR::ID(ingressControlName), tc, cls, bs);
@@ -608,7 +631,8 @@ const IR::Type_Control* CreateTofinoArchBlock::createEgressTypeControl() {
     
     auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::InOut);
     auto imParams = createEgressIMParams();
-    pl->parameters.pushBackOrAppend(imParams);
+    for (auto p : *(imParams)) 
+        pl->parameters.push_back(p);
     return new IR::Type_Control(IR::ID(egressControlName), pl);
 }
 
@@ -627,23 +651,31 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
             auto ts = type->to<IR::Type_Struct>();
             const IR::Type* fieldType = nullptr;
             if (ts != nullptr) {
-                if (ts->getName() == NameConstants::csaPacketStructTypeName) {
+                auto tsn = ts->name;
+                if (tsn == NameConstants::csaPacketStructTypeName) {
                     auto pe = new IR::PathExpression(csaPacketStructInstanceName);
+                    auto arg = new IR::Argument(pe);
+                    controlArgs->push_back(arg);
+                    continue;
+                } else if (tsn == egIMTypeName || tsn == egIMFrmParTypeName 
+                    || tsn == egIMForDePTypeName || tsn == egIMForOPTypeName) {
+                    auto pe = new IR::PathExpression(p->name);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
                 }
                 fieldType = new IR::Type_Name(ts->getName());
+            } else if (auto th = type->to<IR::Type_Header>()) {
+                if (th->name == egIMTypeName) {
+                    auto pe = new IR::PathExpression(Util::SourceInfo(), 
+                        new IR::Path(p->name));
+                    auto arg = new IR::Argument(pe);
+                    controlArgs->push_back(arg);
+                    continue;
+                }
             } else if (type->is<IR::Type_Base>()) {
                 fieldType = p->type;
-            } else if (type->is<IR::Type_Extern>()) {
-                auto te = type->to<IR::Type_Extern>();
-                BUG_CHECK(te->getName() == P4::P4CoreLibrary::instance.im.name,
-                    "unexpected extern in controls for ingress block");
-                IR::Vector<IR::Argument>* args = createEgressIMArgs();
-                controlArgs->pushBackOrAppend(args);
-                continue;
-            }
+            } 
             auto itbool = metadataFields.emplace(p->getName());
             if (itbool.second) {
                 auto f = new IR::StructField(p->getName(), fieldType);
@@ -663,25 +695,185 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
         auto mcs =new IR::MethodCallStatement(mce);
         bs->push_back(mcs);
 
-        IR::IndexedVector<IR::Type_Declaration> callees;
-        GetCalleeP4Controls getCallees(refMap, typeMap, &callees);
-        c->apply(getCallees);
-        callees.push_back(c);
-
-        for (auto con : callees) {
-            auto control = con->to<IR::P4Control>();
-            if (updateP4Controls.getDeclaration(control->name) != nullptr)
-                continue;
-            MSAStdMetaSubstituter msStdMetaSubstituter(refMap, typeMap, false);
-            auto substiCon = control->apply(msStdMetaSubstituter);
-            // std::cout<<"Type_Control : \n"<<control->type<<"\n";
-            updateP4Controls.push_back(substiCon);
-        }
     }
     auto ec = new IR::P4Control(IR::ID(egressControlName), tc, cls, bs);
     return ec;
 }
 
+
+const IR::Node* CreateTofinoArchBlock::createTofinoEgressParser() {
+
+    cstring packetInArgName = "pin";
+    cstring parseTwoBytesStateName = "parse_two_bytes";
+    cstring parseResidualByteStateName = "parse_residual";
+    cstring parserCounterInstName = "pc";
+    std::vector<std::pair<cstring, unsigned>> pcInstNameMaxPairVec;
+    cstring parserCounterTypeName = "ParserCounter";
+
+    std::vector<cstring> statesName;
+
+    auto pl = getHeaderMetaPL(IR::Direction::Out, IR::Direction::Out);
+    auto pin = new IR::Parameter(IR::ID(packetInArgName), 
+        IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetIn.name));
+    pl->parameters.insert(pl->parameters.begin(), pin);
+
+    auto pigIM = new IR::Parameter(IR::ID(egIMArgName), 
+        IR::Direction::Out, new IR::Type_Name(egIMTypeName));
+    pl->parameters.push_back(pigIM);
+    auto tp = new IR::Type_Parser(egressParserName, pl);
+
+    auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
+    
+    IR::IndexedVector<IR::Declaration> parserLocals;
+    IR::IndexedVector<IR::ParserState> states;
+
+    unsigned nc = 0;
+    for (; nc<maxFullStToExct; nc++) {
+        cstring pcInstName = parserCounterInstName+cstring::to_cstring(nc);
+        pcInstNameMaxPairVec.emplace_back(pcInstName, stackSize);
+    }
+    if (maxHdrsToExctResSt > 0) {
+        cstring pcInstName = parserCounterInstName+cstring::to_cstring(nc++);
+        pcInstNameMaxPairVec.emplace_back(pcInstName, maxHdrsToExctResSt);
+    }
+
+    for (unsigned i = 0; i < nc; i++) {
+        auto pcInstName = pcInstNameMaxPairVec[i].first;
+        auto di = new IR::Declaration_Instance(pcInstName, 
+            new IR::Type_Name(parserCounterTypeName), new IR::Vector<IR::Argument>());
+        parserLocals.push_back(di);
+
+        auto hdrStackInstName = ReplaceMSAByteHdrStack::getHdrStackInstName(i);
+        statesName.push_back("parse_"+hdrStackInstName);
+    }
+
+    if (extctResidualByteHdr > 0) 
+        statesName.push_back(parseResidualByteStateName);
+    else 
+        statesName.push_back(IR::ParserState::accept);
+    // creating start state
+    IR::IndexedVector<IR::StatOrDecl> components;
+    for (unsigned i = 0; i<nc; i++) {
+        auto pcInstName = pcInstNameMaxPairVec[i].first;
+        auto counterValue = pcInstNameMaxPairVec[i].second;
+        auto pcPE = new IR::PathExpression(pcInstName);
+        auto setCounterM = new IR::Member(pcPE, "set");
+        auto argPCPE = new IR::Vector<IR::Argument>();
+        auto carg = new IR::Argument(new IR::Constant(counterValue));
+        argPCPE->push_back(carg);
+        auto mce = new IR::MethodCallExpression(setCounterM, argPCPE);
+        auto setCounterMCS =  new IR::MethodCallStatement(mce);
+        components.push_back(setCounterMCS);
+    }
+    auto startPE = new IR::PathExpression(statesName[0]);
+    auto startState = new IR::ParserState(IR::ParserState::start, components, startPE);
+    states.push_back(startState);
+     
+    
+    cstring currStateName = "";
+    cstring nextStateName = "";
+    for (unsigned i = 0; i<nc; i++) {
+        auto hdrStackInstName = ReplaceMSAByteHdrStack::getHdrStackInstName(i);
+        currStateName = statesName[i];
+        nextStateName = statesName[i+1];
+        auto pcInstName = pcInstNameMaxPairVec[i].first;
+      
+        IR::IndexedVector<IR::StatOrDecl> components;
+
+        auto pcPE = new IR::PathExpression(pcInstName);
+        auto decrCtM = new IR::Member(pcPE, "decrement");
+        auto argPCPE = new IR::Vector<IR::Argument>();
+        auto carg = new IR::Argument(new IR::Constant(1));
+        argPCPE->push_back(carg);
+        auto mce = new IR::MethodCallExpression(decrCtM, argPCPE);
+        auto decrCtMCS = new IR::MethodCallStatement(mce);
+        components.push_back(decrCtMCS);
+
+        auto em = new IR::Member(csaPktInstPE->clone(), hdrStackInstName);
+        auto exArg = new IR::Argument(new IR::Member(em, "next"));
+        auto exArgs = new IR::Vector<IR::Argument>();
+        exArgs->push_back(exArg);
+        auto extract = new IR::Member(new IR::PathExpression(packetInArgName),
+            IR::ID(P4::P4CoreLibrary::instance.packetIn.extract.name));
+        auto emptyTypeVec = new IR::Vector<IR::Type>(); 
+        mce = new IR::MethodCallExpression(extract, emptyTypeVec, exArgs);
+        auto mcs = new IR::MethodCallStatement(mce);
+        components.push_back(mcs);
+
+        IR::Vector<IR::Expression> ev;
+        pcPE = new IR::PathExpression(pcInstName);
+        auto isZeroM = new IR::Member(pcPE, "is_zero");
+        auto cond = new IR::MethodCallExpression(isZeroM);
+        ev.push_back(cond);
+        auto ls = new IR::ListExpression(ev);
+        auto selectCases = new IR::Vector<IR::SelectCase>();
+        auto scf = new IR::SelectCase(new IR::BoolLiteral(false), 
+            new IR::PathExpression(currStateName));
+        auto sct = new IR::SelectCase(new IR::BoolLiteral(true), 
+            new IR::PathExpression(nextStateName));
+        selectCases->push_back(scf);
+        selectCases->push_back(sct);
+        auto se = new IR::SelectExpression(ls, *selectCases);
+        auto ps = new IR::ParserState(currStateName, components, se);
+        states.push_back(ps);
+    }   
+
+    if (extctResidualByteHdr > 0) {
+        IR::IndexedVector<IR::StatOrDecl> components;
+        auto em = new IR::Member(csaPktInstPE->clone(), 
+                                 NameConstants::msaOneByteHdrInstName);
+        auto exArgs = new IR::Vector<IR::Argument>();
+        exArgs->push_back(new IR::Argument(em));
+        auto extract = new IR::Member(new IR::PathExpression(packetInArgName),
+            IR::ID(P4::P4CoreLibrary::instance.packetIn.extract.name));
+        auto mce = new IR::MethodCallExpression(extract, exArgs);
+        auto mcs = new IR::MethodCallStatement(mce);
+        components.push_back(mcs);
+        auto pe = new IR::PathExpression(IR::ParserState::accept);
+        auto ps = new IR::ParserState(nextStateName, components, pe);
+        states.push_back(ps);
+    }
+
+    states.push_back(new IR::ParserState(IR::ParserState::accept, nullptr));
+
+    return new IR::P4Parser(egressParserName, tp, parserLocals, states);
+}
+
+const IR::Node* CreateTofinoArchBlock::createTofinoEgressDeparser() {
+    cstring packetOutArgName = "pkt_out";
+    auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::In);
+    auto po = new IR::Parameter(IR::ID(packetOutArgName), 
+        IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetOut.name));
+
+    auto pIgIMForDeP = new IR::Parameter(IR::ID(egIMForDePInstName), 
+        IR::Direction::In, new IR::Type_Name(egIMForDePTypeName));
+    pl->parameters.insert(pl->parameters.begin(),  po);
+    pl->push_back(pIgIMForDeP);
+
+    std::vector<cstring> hdrInsts;
+    unsigned i = 0;
+    for (; i < maxFullStToExct; i++)
+        hdrInsts.push_back(ReplaceMSAByteHdrStack::getHdrStackInstName(i));
+    if (*residualStackSize > 0)
+        hdrInsts.push_back(ReplaceMSAByteHdrStack::getHdrStackInstName(i));
+    
+    hdrInsts.push_back(NameConstants::msaOneByteHdrInstName);
+    auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
+    auto bs = new IR::BlockStatement();
+    for (auto hdrIns : hdrInsts) {
+        auto argExp = new IR::Member(csaPktInstPE->clone(), IR::ID(hdrIns));
+        auto args = new IR::Vector<IR::Argument>();
+        auto arg = new IR::Argument(argExp);
+        args->push_back(arg);
+        auto member = new IR::Member(new IR::PathExpression(packetOutArgName),
+            IR::ID(P4::P4CoreLibrary::instance.packetOut.emit.name));
+        auto emptyTypeVec = new IR::Vector<IR::Type>(); 
+        auto mce = new IR::MethodCallExpression(member, emptyTypeVec, args);
+        auto mcs = new IR::MethodCallStatement(mce);
+        bs->push_back(mcs);
+    }
+    return createP4Control(egressDeparserName, pl, bs);
+}
 
 IR::Vector<IR::Node> CreateTofinoArchBlock::createMainPackageInstance() {
     auto args = new IR::Vector<IR::Argument>();
@@ -699,21 +891,17 @@ IR::Vector<IR::Node> CreateTofinoArchBlock::createMainPackageInstance() {
     auto ptndip = new IR::Argument(new IR::ConstructorCallExpression(tndip, eva->clone()));
     args->push_back(ptndip);
 
-    /*
     auto tnep = new IR::Type_Name(egressParserName);
     auto ptnep = new IR::Argument(new IR::ConstructorCallExpression(tnep, eva->clone()));
     args->push_back(ptnep);
-    */
 
     auto tnec = new IR::Type_Name(egressControlName);
     auto ptnec = new IR::Argument(new IR::ConstructorCallExpression(tnec, eva->clone()));
     args->push_back(ptnec);
   
-    /*
     auto tndep = new IR::Type_Name(egressDeparserName);
     auto ptndep = new IR::Argument(new IR::ConstructorCallExpression(tndep, eva->clone()));
     args->push_back(ptndep);
-    */
 
     cstring pipe = "pipe";
     auto tnpipeline =  new IR::Type_Name("Pipeline");
@@ -730,6 +918,7 @@ IR::Vector<IR::Node> CreateTofinoArchBlock::createMainPackageInstance() {
     return nodes;
 }
 
+
 const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
 
     unsigned maxExtHdr = (*maxExtLen)/(hdrBitWidth);
@@ -737,51 +926,38 @@ const IR::Node* CreateTofinoArchBlock::preorder(IR::P4Program* p4program) {
 
     maxFullStToExct = maxExtHdr / (stackSize);
     maxHdrsToExctResSt = maxExtHdr % (stackSize);
-
     extctResidualByteHdr = (*maxExtLen) % (hdrBitWidth);
-
 
     auto userMetaStruct = createUserMetadataStructType();
     p4program->objects.push_back(userMetaStruct);
-    p4program->objects.push_back(createTofinoIngressParser());
 
-    auto ingressControls = getControls(p4program, true);
+    //ingress
+    auto ip = createTofinoIngressParser();
+    p4program->objects.push_back(ip);
 
+    auto ingressControls = ToTofino::getControls(p4program, partitionsMap, partitions, true);
     auto ic = createIngressP4Control(ingressControls, userMetaStruct);
     p4program->objects.push_back(ic);
-    p4program->objects.push_back(createTofinoIngressDeparser());
 
-    /*
+    auto idp = createTofinoIngressDeparser();
+    p4program->objects.push_back(idp);
+
+    //egress
     p4program->objects.push_back(createTofinoEgressParser());
 
-    */
     std::vector<const IR::P4Control*> egressControls;
     if (partitions->size() > 1)
-        egressControls = getControls(p4program, false);
+        egressControls = ToTofino::getControls(p4program, partitionsMap, partitions, false);
     auto ec = createEgressP4Control(egressControls, userMetaStruct);
     p4program->objects.push_back(ec);
-    /*
-    p4program->objects.push_back(createTofinoEgressDeparser());
-    */
 
+    p4program->objects.push_back(createTofinoEgressDeparser());
 
     p4program->objects.append(createMainPackageInstance());
 
-
-    for (auto&& ob : p4program->objects) {
-        auto con = ob->to<IR::P4Control>();
-        if (con != nullptr) {
-            // std::cout<<con->getName()<<"\n";
-            auto newCon = updateP4Controls.getDeclaration(con->getName());
-            if (newCon != nullptr) {
-                ob = newCon->to<IR::P4Control>();
-            }
-        }
-    }
     return p4program;
 
 }
-
 
 
 }// namespace CSA

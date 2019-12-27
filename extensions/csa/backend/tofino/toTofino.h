@@ -41,12 +41,22 @@ class GetCalleeP4Controls final : public Inspector {
 class MSAStdMetaSubstituter final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
+    const P4ControlPartitionInfoMap* partitionsMap;
+    const std::vector<cstring>* partitions;
 
     bool ingress;
+
+    IR::IndexedVector<IR::Type_Declaration> ingressControls;
+    IR::IndexedVector<IR::Type_Declaration> egressControls;
+
   public:
-    MSAStdMetaSubstituter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, bool ingress = true)
-        : refMap(refMap), typeMap(typeMap), ingress(ingress) {
+    MSAStdMetaSubstituter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
+          const P4ControlPartitionInfoMap* partitionsMap,
+          const std::vector<cstring>* partitions)
+        : refMap(refMap), typeMap(typeMap), partitionsMap(partitionsMap), 
+          partitions(partitions) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
+        CHECK_NULL(partitionsMap); CHECK_NULL(partitions);
     }
 
     const IR::Node* preorder(IR::Path* path) override;
@@ -55,11 +65,15 @@ class MSAStdMetaSubstituter final : public Transform {
 
     const IR::Node* preorder(IR::MethodCallExpression* mce) override;
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
-    /*
+    const IR::Node* preorder(IR::P4Program* program) override;
+
+    const IR::Node* preorder(IR::P4Control* p4c) override;
+
     void end_apply(const IR::Node* node) override { 
+        refMap->clear();
+        typeMap->clear();
         Transform::end_apply(node);
     }
-    */
 };
 
 
@@ -80,9 +94,6 @@ class CreateTofinoArchBlock final : public Transform {
     unsigned maxHdrsToExctResSt;
     unsigned extctResidualByteHdr;
 
-    IR::IndexedVector<IR::Type_Declaration> updateP4Controls;
-
-
     std::set<cstring> metadataFields;
 
     IR::P4Control* createP4Control(cstring name, IR::ParameterList* pl, 
@@ -94,21 +105,20 @@ class CreateTofinoArchBlock final : public Transform {
     IR::Type_Struct* createUserMetadataStructType();
     
 
+    // Ingress
     const IR::Type_Control* createIngressTypeControl();
-    const IR::Node* createTofinoIngressParser();
+    const IR::P4Parser* createTofinoIngressParser();
     const IR::Node* createIngressP4Control(std::vector<const IR::P4Control*>& p4c,
                                          IR::Type_Struct* typeStruct);
-    const IR::Node* createTofinoIngressDeparser();
+    const IR::P4Control* createTofinoIngressDeparser();
 
-    /*
+    // Egress
     const IR::Node* createTofinoEgressParser();
-*/
     const IR::Type_Control* createEgressTypeControl();
     const IR::Node* createEgressP4Control(std::vector<const IR::P4Control*>& p4c,
                                         IR::Type_Struct*  typeStruct);
-    /*
     const IR::Node* createTofinoEgressDeparser();
-    */
+
     IR::Vector<IR::Node> createMainPackageInstance();
 
   public:
@@ -198,16 +208,24 @@ class ToTofino final : public PassManager {
         CHECK_NULL(minExtLen); CHECK_NULL(maxExtLen);
         CHECK_NULL(numFullStacks); CHECK_NULL(residualStackSize);
 
-        // passes.push_back(new MSAStdMetaSubstituter(refMap, typeMap));
-
-        /*
+        passes.push_back(new MSAStdMetaSubstituter(refMap, typeMap, partitionsMap, partitions));
         passes.push_back(new P4::ResolveReferences(refMap, true));
         passes.push_back(new P4::TypeInference(refMap, typeMap, false));
-        */
         passes.push_back(new CreateTofinoArchBlock(refMap, typeMap, 
               ToControl::headerTypeName, partitionsMap, partitions, minExtLen, 
               maxExtLen, hdrBitWidth, stackSize, numFullStacks, 
               residualStackSize));
+    }
+
+
+    static std::vector<const IR::P4Control*> getControls(
+        const IR::P4Program* prog, const P4ControlPartitionInfoMap* partitionsMap, 
+        const std::vector<cstring>* partitions, bool ingress);
+
+    void end_apply(const IR::Node* node) override { 
+        refMap->clear();
+        typeMap->clear();
+        PassManager::end_apply(node);
     }
 
 };

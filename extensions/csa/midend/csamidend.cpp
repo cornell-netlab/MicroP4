@@ -92,37 +92,44 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
                                      &partitionsMap, &controlToReconInfoMap, 
                                      &partitions),
         new P4::MidEndLast(),
+
         new CSA::MergeDeclarations(targetIR), 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
         new CSA::MSAPacketSubstituter(&refMap, &typeMap), 
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
 
+        // These are Tofino specific passes
+        //////////////////////////////////////////
         new CSA::ReplaceMSAByteHdrStack(&refMap, &typeMap, stackSize, 
             newFieldBitWidth, &numFullStacks, &residualStackSize),
-
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
+
         new CSA::ToTofino(&refMap, &typeMap, &partitionsMap, &partitions, 
             &minExtLen, &maxExtLen, newFieldBitWidth, stackSize, &numFullStacks, 
             &residualStackSize),
         new P4::MidEndLast(),
-
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
+        //////////////////////////////////////////
         /*
+
         new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions, 
                            &minExtLen, &maxExtLen),
         new P4::MidEndLast(),
+
         new P4::ResolveReferences(&refMap, true),
+        */
         new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        */
         new P4::MidEndLast(),
         // evaluator
     };

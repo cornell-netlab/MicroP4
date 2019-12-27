@@ -59,6 +59,7 @@ class ControlStateReconInfo {
   public:
     cstring controlName;
     cstring headerTypeName;
+    cstring headerParamName;
 
     IR::P4Control* deparser;
     IR::P4Control* parser;
@@ -71,9 +72,11 @@ class ControlStateReconInfo {
     const IR::Type* sharedVariableType;
 
     ControlStateReconInfo(cstring controlName, cstring headerTypeName, 
+                          cstring headerParamName = "",
                           IR::P4Control* deparser = nullptr,
                           P4::ParserStructure* parserStructure = nullptr) 
-      : controlName(controlName), headerTypeName(headerTypeName), deparser(deparser),
+      : controlName(controlName), headerTypeName(headerTypeName), 
+        headerParamName(headerParamName), deparser(deparser),
         parserStructure(parserStructure) {
         sharedVariableType = IR::Type::Bits::get(numberOfheaders, false);
     }
