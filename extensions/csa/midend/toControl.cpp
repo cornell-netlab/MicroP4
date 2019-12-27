@@ -213,7 +213,6 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
             // std::cout<<__FILE__<<" "<<__LINE__<<" "<<pts->getName()<<"\n";
         }
         */
-
     }
     return tc;
 }
@@ -593,6 +592,7 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     // std::cout<<"visiting "<<parser->getName()<<"\n";
     cstring parser_fqn = parser->getName();
     auto cp = findContext<IR::P4ComposablePackage>();
+    auto hdrStrType = getHeaderStructType(parser);
     if (cp != nullptr)
         parser_fqn = cp->getName() +"_"+ parser->getName();
     // std::cout<<parser_fqn<<"\n";
@@ -604,9 +604,10 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     auto flagType = IR::Type::Bits::get(1, false);
     auto flagField = new IR::StructField(
                          NameConstants::csaParserRejectStatus, flagType);
-    IR::IndexedVector<IR::StructField> fIV;
-    fIV.push_back(flagField);
-    auto ts = new IR::Type_Struct(IR::ID(parser_fqn+"_meta_t"), fIV);
+
+    cstring parserMSAMetaStrTypeName = parser_fqn+"_msa_meta_t";
+    auto ts = createValidityStruct(hdrStrType, parserMSAMetaStrTypeName);
+    ts->fields.push_back(flagField);
     addInP4ProgramObjects.push_back(ts);
 
     ParserConverter pc(refMap, typeMap, parserStructure, offsetsStack.back(), 
@@ -627,7 +628,6 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     offsetsStack.push_back(acceptedPktOffset);
 
     if (cp != nullptr) {
-        auto hdrStrType = getHeaderStructType(parser);
         controlToReconInfoMap->emplace(cp->name, 
               new ControlStateReconInfo(cp->name, 
                 hdrStrType->name, "", nullptr, parserStructure));
@@ -708,6 +708,48 @@ bool Converter::isDeparser(const IR::P4Control* p4Control) {
     }
     return false;
 }
+
+IR::Type_Struct* Converter::createValidityStruct(const IR::Type_Struct* hdrStr, 
+                                                 cstring name) {
+    auto ts = new IR::Type_Struct(name);
+    for (const auto f : hdrStr->fields) {
+        auto ft = typeMap->getTypeType(f->type, true);
+        if (ft->is<IR::Type_Header>() || ft->is<IR::Type_HeaderUnion>()) {
+            auto vft = IR::Type::Bits::get(1, false);
+            cstring fn = f->name + "_valid";
+            auto vf = new IR::StructField(fn, vft);
+            ts->fields.push_back(vf);
+        }
+    }
+    return ts;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

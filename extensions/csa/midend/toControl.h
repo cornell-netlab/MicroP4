@@ -125,6 +125,8 @@ class Converter final : public Transform {
     bool isDeparser(const IR::P4Control* p4control);
 
     const IR::Type_Struct* getHeaderStructType(const IR::P4Parser* parser);
+    IR::Type_Struct* createValidityStruct(const IR::Type_Struct* hdrStr, 
+                                          cstring name);
 
     cstring getParamNameOfType(const IR::P4Control* p4c, cstring typeName);
   public:
