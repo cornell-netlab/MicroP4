@@ -166,7 +166,6 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                 // std::cout<<iter->first<<" - "<<iter->second<<"\n";
                 deparser = createIntermediateDeparser(
                     NameConstants::csaPacketStructTypeName, iter->second);
-                    //ToControl::csaPacketStructTypeName, iter->second);
                 parser = createIntermediateParser(
                     NameConstants::csaPacketStructTypeName, iter->second);
 

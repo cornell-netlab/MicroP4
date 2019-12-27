@@ -212,7 +212,7 @@ class ToTofino final : public PassManager {
         passes.push_back(new P4::ResolveReferences(refMap, true));
         passes.push_back(new P4::TypeInference(refMap, typeMap, false));
         passes.push_back(new CreateTofinoArchBlock(refMap, typeMap, 
-              ToControl::headerTypeName, partitionsMap, partitions, minExtLen, 
+              NameConstants::headerTypeName, partitionsMap, partitions, minExtLen, 
               maxExtLen, hdrBitWidth, stackSize, numFullStacks, 
               residualStackSize));
     }

@@ -9,17 +9,6 @@
 
 namespace CSA {
 
-const cstring ToControl::csaHeaderInstanceName = "msa_packet";
-const cstring ToControl::csaStackInstanceName = "csa_stack";
-const cstring ToControl::csaPacketStructTypeName ="msa_packet_struct_t";
-const cstring ToControl::csaPacketStructName ="csa_packet_struct";
-const cstring ToControl::headerTypeName = "csa_byte_h";
-const cstring ToControl::indicesHeaderTypeName = "csa_indices_h";
-const cstring ToControl::indicesHeaderInstanceName = "indices";
-const cstring ToControl::bitStreamFieldName = "data";
-
-
-
 const cstring AddCSAByteHeader::csaPktStuLenFName = "pkt_len";
 const cstring AddCSAByteHeader::csaPktStuCurrOffsetFName = "curr_offset";
 
@@ -187,6 +176,7 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
     if (oldName == "micro_parser") {
         // auto p = tc->getApplyParameters()->getParameter(1);
 
+        /*
         // First out argument of struct type is considered as struct of headers
         const IR::Type* parameterType = nullptr;
         const IR::Type_Struct* pts = nullptr;
@@ -211,7 +201,6 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
                 }
             }
         }
-        /*
         BUG_CHECK(parameterType!=nullptr, 
             "micro_parser expected to have at least one out parameter");
         // auto pt = typeMap->getTypeType(parameterType, true);
@@ -405,7 +394,7 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
     fiv.push_back(field);
     fiv.push_back(fIndices);
 
-    auto ts = new IR::Type_Struct(ToControl::csaPacketStructTypeName, fiv);
+    auto ts = new IR::Type_Struct(NameConstants::csaPacketStructTypeName, fiv);
 
     p4Program->objects.insert(p4Program->objects.begin(), ts);
     p4Program->objects.insert(p4Program->objects.begin(), csaIndicesHeaderType);
@@ -637,11 +626,10 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     }
     offsetsStack.push_back(acceptedPktOffset);
 
-    auto parentCpkg = findContext<IR::P4ComposablePackage>();
-    if (parentCpkg != nullptr) {
-        auto hdrStrType =  getHeaderStructType(parser);
-        controlToReconInfoMap->emplace(parentCpkg->name, 
-              new ControlStateReconInfo(parentCpkg->name, 
+    if (cp != nullptr) {
+        auto hdrStrType = getHeaderStructType(parser);
+        controlToReconInfoMap->emplace(cp->name, 
+              new ControlStateReconInfo(cp->name, 
                 hdrStrType->name, "", nullptr, parserStructure));
     }
 

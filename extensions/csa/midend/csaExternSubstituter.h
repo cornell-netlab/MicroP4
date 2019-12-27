@@ -10,6 +10,7 @@
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeChecking/typeChecker.h"
 #include "frontends/p4/typeMap.h"
+#include "msaNameConstants.h"
 
 namespace CSA {
 

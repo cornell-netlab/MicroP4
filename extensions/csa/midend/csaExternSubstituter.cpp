@@ -94,8 +94,8 @@ const IR::Node* CSAPacketSubstituter::preorder(IR::P4Control* p4Control) {
     if (p4Control->getName() == controlName) {
         auto mapping = new Mappings(controlName);
         auto newParam = new IR::Parameter(
-            IR::ID(ToControl::csaPacketStructName), IR::Direction::InOut,
-            new IR::Type_Name(ToControl::csaPacketStructTypeName));
+            IR::ID(NameConstants::csaPacketStructName), IR::Direction::InOut,
+            new IR::Type_Name(NameConstants::csaPacketStructTypeName));
 
         auto pl = p4Control->getApplyParameters()->parameters;
         const IR::Parameter* origParam = nullptr;
@@ -436,9 +436,9 @@ const IR::Node* CSAPacketSubstituter::preorder(IR::P4Program* p4Program) {
                     if (auto te = type->to<IR::Type_Extern>()) {
                         if (te->getName() == ToControl::csaPakcetInExternTypeName ||
                             te->getName() == ToControl::csaPakcetOutExternTypeName) {
-                            auto newParam = new IR::Parameter(ToControl::csaPacketStructName,
+                            auto newParam = new IR::Parameter(NameConstants::csaPacketStructName,
                                 IR::Direction::InOut, new IR::Type_Name(
-                                ToControl::csaPacketStructTypeName));
+                                NameConstants::csaPacketStructTypeName));
                             mapping->insertMapping(p, newParam);
                             break;
                         }

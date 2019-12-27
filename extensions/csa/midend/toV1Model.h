@@ -15,6 +15,7 @@
 #include "toControl.h"
 #include "frontends/parsers/parserDriver.h"
 #include "parserConverter.h"
+#include "msaNameConstants.h"
 
 
 namespace CSA {
@@ -138,7 +139,7 @@ class ToV1Model final : public PassManager {
         passes.push_back(new P4::ResolveReferences(refMap, true));
         passes.push_back(new P4::TypeInference(refMap, typeMap, false));
         passes.push_back(new CreateV1ModelArchBlock(refMap, typeMap, 
-                ToControl::headerTypeName, partitionsMap, partitions, 
+                NameConstants::headerTypeName, partitionsMap, partitions, 
                 minExtLen, maxExtLen));
         /*
         passes.push_back(new CreateUserMetadataStructType(refMap, typeMap, 

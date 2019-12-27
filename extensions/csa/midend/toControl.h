@@ -181,18 +181,11 @@ class ToControl final : public PassManager {
         passes.push_back(new Converter(refMap, typeMap, 
               mainControlTypeName, &parserStructures, controlToReconInfoMap));
         passes.push_back(new AddCSAByteHeader(NameConstants::headerTypeName, 
-              bitStreamFieldName, &byteStackSize));
+              NameConstants::bitStreamFieldName, &byteStackSize));
         passes.push_back(new CPackageToControl(refMap, typeMap, 
               mainControlTypeName, controlToReconInfoMap));
     }
-    static const cstring headerTypeName;
-    static const cstring indicesHeaderTypeName;
-    static const cstring indicesHeaderInstanceName;
-    static const cstring bitStreamFieldName;
-    static const cstring csaPacketStructTypeName;
-    static const cstring csaPacketStructName;
-    static const cstring csaHeaderInstanceName;
-    static const cstring csaStackInstanceName;
+
     static const cstring csaPakcetInGetPacketStruct;
     static const cstring csaPakcetOutSetPacketStruct;
     static const cstring csaPakcetOutGetPacketIn;
