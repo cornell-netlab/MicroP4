@@ -14,6 +14,7 @@
 #include "midend/interpreter.h"
 #include "frontends/p4/callGraph.h"
 #include "msaNameConstants.h"
+#include "midend/controlBlockInterpreter.h"
 
 /*
  * This pass converts parser into a MAT
@@ -35,6 +36,8 @@ class DeparserConverter final : public Transform {
 // per deparser
     const std::vector<unsigned>& initialOffsets;
     const std::vector<std::set<cstring>>* xoredHeaderSets;
+    const P4::HdrValidityOpsRecVec* xoredValidityOps;
+
     EmitCallGraph* emitCallGraph;
     IR::IndexedVector<IR::Declaration> varDecls;
     std::map<const IR::MethodCallStatement*, 
@@ -52,6 +55,11 @@ class DeparserConverter final : public Transform {
     // bool -> true -> exact, false->ternary
     std::map<const IR::MethodCallStatement*, 
              std::vector<std::pair<const IR::Expression*, bool>>>  keyElementLists;
+
+    // Only "member" part is stored incase of member.
+    // e.g., for hdr.eth, only <eth, 112> is stored
+    std::vector<std::pair<cstring, unsigned>> keyNamesWidths;
+    std::vector<std::vector<char>> headerKeyValues;
 
     std::map<const IR::MethodCallStatement*, 
              std::vector<std::tuple<IR::ListExpression*, unsigned, IR::P4Action*>>> 
@@ -90,15 +98,31 @@ class DeparserConverter final : public Transform {
 
     bool emitsXORedHdrs(const std::vector<cstring>& vec, const IR::ListExpression* ls);
 
+
+    void resizeReplicateKeyValueVec(size_t nfold);
+    void insertValueKeyValueVec(char v, size_t begin, size_t end);
+    void removeEmptyElementsKeyValueVec();
+    void printHeaderKeyValues();
+
+
+    std::vector<cstring> hdrValidityOpkeyNames;
+    std::vector<std::vector<char>> hdrValidityOpKeyValues;
+
+    void createHdrValidityOpsKeysValues();
+    IR::P4Table* multiplyHdrValidityOpsTable();
+    IR::P4Action* createPushAction(size_t width);
+    IR::P4Action* createPopAction(size_t width);
+
  public:
     using Transform::preorder;
     using Transform::postorder;
 
     explicit DeparserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         const std::vector<unsigned>& initialOffsets,
-        const std::vector<std::set<cstring>>* xoredHeaderSets)
+        const std::vector<std::set<cstring>>* xoredHeaderSets,
+        const P4::HdrValidityOpsRecVec* xoredValidityOps = nullptr)
         : refMap(refMap), typeMap(typeMap), initialOffsets(initialOffsets), 
-          xoredHeaderSets(xoredHeaderSets) {
+          xoredHeaderSets(xoredHeaderSets), xoredValidityOps(xoredValidityOps) {
         setName("DeparserConverter"); 
         symbolicValueFactory = new P4::SymbolicValueFactory(typeMap);
         noActionName = "NoAction";

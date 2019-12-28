@@ -25,19 +25,23 @@ class StaticAnalyzer : public Inspector {
     unsigned* minExtLen;
     unsigned* maxExtLen;
     unsigned* byteStackSize;
+    P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap;
 
  public:
     StaticAnalyzer(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
                     P4::ParserStructuresMap* parserStructures, 
                     cstring* mainPackageTypeName, unsigned* minExtLen, 
-                    unsigned* maxExtLen, unsigned* byteStackSize)
+                    unsigned* maxExtLen, unsigned* byteStackSize, 
+                    P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap)
         : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures), 
           mainPackageTypeName(mainPackageTypeName), minExtLen(minExtLen), 
-          maxExtLen(maxExtLen), byteStackSize(byteStackSize) {
+          maxExtLen(maxExtLen), byteStackSize(byteStackSize),
+          hdrValidityOpsPkgMap(hdrValidityOpsPkgMap) {
 
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(parserStructures); CHECK_NULL(mainPackageTypeName);
         CHECK_NULL(minExtLen); CHECK_NULL(maxExtLen); CHECK_NULL(byteStackSize);
+        CHECK_NULL(hdrValidityOpsPkgMap);
         *minExtLen = 0;
         *maxExtLen = 0;
         *byteStackSize = 0;

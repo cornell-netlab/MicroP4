@@ -11,32 +11,91 @@
 namespace P4 {
 
 
+void ControlBlockInterpreter::replicateHdrValidityOpsVec(size_t nfold) {
+    auto currSize = xoredHdrValidityOps->size();
+    xoredHdrValidityOps->resize(nfold * currSize);
+    for (size_t i = 0; i<currSize; i++) {
+        auto e = (*xoredHdrValidityOps)[i];
+        for (size_t n = 1; n<nfold; n++)
+            (*xoredHdrValidityOps)[i+(n*currSize)] = e;
+    }
+}
+
+void ControlBlockInterpreter::clearCurrOpsRec() {
+    currOpsRec.first.clear();
+    currOpsRec.second.clear();
+}
+
+void ControlBlockInterpreter::insertCurrOpsRecToVecEles(size_t begin, size_t end) {
+    for (size_t i = begin; i<end; i++) {
+        auto& e = (*xoredHdrValidityOps)[i];
+        for (auto hsv : currOpsRec.first)
+            e.first.emplace(hsv);
+        for (auto hsiv : currOpsRec.second)
+            e.second.emplace(hsiv);
+    }
+}
+
+
 bool ControlBlockInterpreter::preorder(const IR::P4Control* p4Control) {
     
+    xoredHdrValidityOps->push_back(currOpsRec);
     visit(p4Control->body);
+
+    std::vector<size_t> emptyElements;
+
+    bool modified = true;
+    while (modified) {
+        modified = false;
+        auto it = xoredHdrValidityOps->begin();
+        for (; it != xoredHdrValidityOps->end(); it++) {
+            auto ef = it->first;
+            auto es = it->second;
+            if (ef.empty() && es.empty()) {
+                modified = true;
+                break;
+            }
+        }
+        if (modified)
+            xoredHdrValidityOps->erase(it);
+    }
+
     return false;
 }
 
 bool ControlBlockInterpreter::preorder(const IR::IfStatement* ifStmt) {
     
+    size_t currSize = xoredHdrValidityOps->size();
+    size_t index = 0;
+    insertCurrOpsRecToVecEles(0, currSize);
+    clearCurrOpsRec();
+    replicateHdrValidityOpsVec(2);
+
     auto currIncr = maxIncr;
     auto currDecr = maxDecr;
-
     auto currAccumDecrPktLen = accumDecrPktLen;
+  
     visit(ifStmt->ifTrue);
+    
     auto trueIncrPktSize = maxIncr;
     auto trueDecrPktSize = maxDecr;
     auto trueAccumDecrPktLen = accumDecrPktLen;
-    
+    insertCurrOpsRecToVecEles(index, index+currSize);
+    index = index + currSize;
+
     // resetting for false branch
+    clearCurrOpsRec();
     maxIncr = currIncr;
     maxDecr = currDecr;
     accumDecrPktLen = currAccumDecrPktLen;
 
     visit(ifStmt->ifFalse);
+    
     auto falseIncrPktSize = maxIncr;
     auto falseDecrPktSize = maxDecr;
     auto falseAccumDecrPktLen = accumDecrPktLen;
+    insertCurrOpsRecToVecEles(index, index+currSize);
+    clearCurrOpsRec();
 
     if (trueIncrPktSize > falseIncrPktSize)
         maxIncr = trueIncrPktSize;
@@ -58,6 +117,12 @@ bool ControlBlockInterpreter::preorder(const IR::IfStatement* ifStmt) {
 
 bool ControlBlockInterpreter::preorder(const IR::SwitchStatement* swStmt) {
 
+    size_t currSize = xoredHdrValidityOps->size();
+    size_t index = 0;
+    insertCurrOpsRecToVecEles(0, currSize);
+    clearCurrOpsRec();
+    replicateHdrValidityOpsVec(swStmt->cases.size());
+
     auto localMaxIncr = maxIncr;
     auto localMaxDecr = maxDecr;
     auto localMaxAccumDecrPktLen = accumDecrPktLen;
@@ -78,6 +143,10 @@ bool ControlBlockInterpreter::preorder(const IR::SwitchStatement* swStmt) {
         accumDecrPktLen = currAccumDecrPktLen;
         maxIncr = currIncr;
         maxDecr = currDecr;
+
+        insertCurrOpsRecToVecEles(index, index+currSize);
+        index = index + currSize;
+        clearCurrOpsRec();
     }
     maxIncr = localMaxIncr;
     maxDecr = localMaxDecr;
@@ -126,11 +195,15 @@ bool ControlBlockInterpreter::preorder(const IR::MethodCallExpression* mce) {
         if (bm->name == IR::Type_Header::setValid) {
             if (auto mem = exp->to<IR::Member>()) {
                 // std::cout<<mem->member<<"\n";
-                removeHdrFromXOredHeaderSets(mem->member);
+                // removeHdrFromXOredHeaderSets(mem->member);
+                currOpsRec.first.emplace(mem->member);
             }
             maxIncr += hs;
         } else if (bm->name == IR::Type_Header::setInvalid) {
             maxDecr += hs;
+            if (auto mem = exp->to<IR::Member>()) {
+                currOpsRec.second.emplace(mem->member);
+            }
         } else {
             return false;
         }
@@ -146,6 +219,12 @@ bool ControlBlockInterpreter::preorder(const IR::P4Table* p4Table) {
 
 bool ControlBlockInterpreter::preorder(const IR::ActionList* al) {
 
+    size_t currSize = xoredHdrValidityOps->size();
+    size_t index = 0;
+    insertCurrOpsRecToVecEles(0, currSize);
+    clearCurrOpsRec();
+    replicateHdrValidityOpsVec(al->actionList.size());
+
     auto localMaxIncr = maxIncr;
     auto localMaxDecr = maxDecr;
 
@@ -159,6 +238,10 @@ bool ControlBlockInterpreter::preorder(const IR::ActionList* al) {
             localMaxDecr = maxDecr;
         maxIncr = currIncr;
         maxDecr = currDecr;
+
+        insertCurrOpsRecToVecEles(index, index+currSize);
+        index = index + currSize;
+        clearCurrOpsRec();
     }
     maxIncr = localMaxIncr;
     maxDecr = localMaxDecr;
@@ -176,7 +259,8 @@ bool ControlBlockInterpreter::preorder(const IR::P4Action* p4action) {
 }
 
 bool ControlBlockInterpreter::preorder(const IR::P4ComposablePackage* p4cp) {
-    ComposablePackageInterpreter cpi(refMap, typeMap, parserStructures);
+    ComposablePackageInterpreter cpi(refMap, typeMap, parserStructures, 
+                                     hdrValidityOpsPkgMap);
     p4cp->apply(cpi);
     maxIncr += cpi.getMaxIncrPktLen();
     maxDecr += cpi.getMaxDecrPktLen();

@@ -34,13 +34,30 @@ bool StaticAnalyzer::preorder(const IR::P4Program* p4Program) {
     auto p4cp = type->to<IR::P4ComposablePackage>();
     *mainPackageTypeName = p4cp->getName();
     visit(p4cp);
+
+
+    for (auto e : *hdrValidityOpsPkgMap) {
+        std::cout<<"\n--- composable package ---\n";
+        std::cout<<e.first<<"\n";
+        for (auto s : *(e.second)) {
+            std::cout<<"setValid [ ";
+            for (auto n : s.first)
+                std::cout<<n<<" ";
+            std::cout<<"], setInValid [  ";
+            for (auto n : s.second)
+                std::cout<<n<<"  ";
+            std::cout<<"]\n";
+        }
+        std::cout<<"----------------------------\n";
+    }
     return false;
 }
 
 
 bool StaticAnalyzer::preorder(const IR::P4ComposablePackage* p4cp) {
 
-    P4::ComposablePackageInterpreter cpi(refMap, typeMap, parserStructures);
+    P4::ComposablePackageInterpreter cpi(refMap, typeMap, parserStructures, 
+                                         hdrValidityOpsPkgMap);
     p4cp->apply(cpi);
 
     *maxExtLen = cpi.getMaxExtLen();

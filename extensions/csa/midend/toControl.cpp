@@ -173,47 +173,6 @@ const IR::Node* CPackageToControl::preorder(IR::Type_Control* tc) {
     tc->name = newName; 
     typeRenameMap[oldName] = newName;
 
-    if (oldName == "micro_parser") {
-        // auto p = tc->getApplyParameters()->getParameter(1);
-
-        /*
-        // First out argument of struct type is considered as struct of headers
-        const IR::Type* parameterType = nullptr;
-        const IR::Type_Struct* pts = nullptr;
-        for (auto p : tc->getApplyParameters()->parameters) {
-            if (p->direction == IR::Direction::Out) {
-                parameterType = p->type;
-                auto pType = typeMap->getTypeType(p->type, true);
-                if (auto pt = pType->to<IR::Type_Struct>()) {
-                    bool allHeaders = true;
-                    for (auto f : pt->fields) {
-                        auto ft = typeMap->getTypeType(f->type, true);
-                        if (!(ft->is<IR::Type_Header>() || 
-                            ft->is<IR::Type_HeaderUnion>())) {
-                            allHeaders = false;
-                            break;
-                        }
-                    }
-                    if (allHeaders) {
-                        pts = pt;
-                        break;
-                    }
-                }
-            }
-        }
-        BUG_CHECK(parameterType!=nullptr, 
-            "micro_parser expected to have at least one out parameter");
-        // auto pt = typeMap->getTypeType(parameterType, true);
-        auto parentCpkg = findContext<IR::P4ComposablePackage>();
-        // auto pts = pt->to<IR::Type_Struct>();
-        if (parentCpkg && pts) {
-            controlToReconInfoMap->emplace(parentCpkg->getName(), 
-                new ControlStateReconInfo(parentCpkg->getName(), 
-                                          pts->getName()));
-            // std::cout<<__FILE__<<" "<<__LINE__<<" "<<pts->getName()<<"\n";
-        }
-        */
-    }
     return tc;
 }
 
@@ -661,7 +620,12 @@ const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
     offsetsStack.pop_back();
     auto& initialOffsets = *(offsetsStack.back());
     auto xoredHeaderSets = xoredHeaderSetsStack.back();
-    DeparserConverter dc(refMap, typeMap, initialOffsets, xoredHeaderSets);
+    const P4::HdrValidityOpsRecVec* xoredValidityOps = nullptr;
+    auto it = hdrValidityOpsPkgMap->find(parentCpkg->name);
+    if (it != hdrValidityOpsPkgMap->end())
+        xoredValidityOps = it->second;
+    DeparserConverter dc(refMap, typeMap, initialOffsets, xoredHeaderSets, 
+                         xoredValidityOps);
 
     auto dep = p4Control->apply(dc);
     xoredHeaderSetsStack.pop_back();

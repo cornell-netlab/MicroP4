@@ -31,6 +31,8 @@ class ControlBlockInterpreter : public Inspector {
     TypeMap*            typeMap;
     P4::ParserStructuresMap* parserStructures;
     cstring parserFQN;
+    HdrValidityOpsRecVec* xoredHdrValidityOps;
+    P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap;
 
     P4::ParserStructure* parserStructure;
     const SymbolicValueFactory* factory;
@@ -48,23 +50,33 @@ class ControlBlockInterpreter : public Inspector {
     unsigned accumDecrPktLen; // accumulated decrease in packet size by callees
 
 
-    HdrValidityOpsRecVec* xoredHdrValidityOps;
+
+    HdrValidityOpsRecord currOpsRec;
+
+    void replicateHdrValidityOpsVec(size_t nfold);
+    void clearCurrOpsRec();
+    void insertCurrOpsRecToVecEles(size_t begin, size_t end);
 
     void removeHdrFromXOredHeaderSets(cstring hdrInstName);
  public:
     ControlBlockInterpreter(ReferenceMap* refMap, TypeMap* typeMap, 
         P4::ParserStructuresMap* parserStructures, cstring parserFQN, 
-        HdrValidityOpsRecVec* xoredHdrValidityOps) 
+        HdrValidityOpsRecVec* xoredHdrValidityOps, 
+        P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap) 
       : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures), 
-        parserFQN(parserFQN), xoredHdrValidityOps(xoredHdrValidityOps) {
+        parserFQN(parserFQN), xoredHdrValidityOps(xoredHdrValidityOps), 
+        hdrValidityOpsPkgMap(hdrValidityOpsPkgMap) {
+
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
-        CHECK_NULL(parserStructures);  CHECK_NULL(xoredHdrValidityOps);
+        CHECK_NULL(parserStructures);  
+        parserStructure = nullptr;
         factory = new SymbolicValueFactory(typeMap);
         maxIncr = 0;
         maxDecr = 0;
+        minIncr = 0;
+        minDecr = 0;
         maxExtLen = 0;
         accumDecrPktLen = 0;
-        parserStructure = nullptr;
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) override { 

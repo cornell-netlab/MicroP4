@@ -11,7 +11,6 @@
 
 namespace P4 {
 
-HdrValidityOpsPkgMap ComposablePackageInterpreter::hdrValidityOpsPkgMap;
 
 Visitor::profile_t ComposablePackageInterpreter::init_apply(const IR::Node* node) { 
     BUG_CHECK(node->is<IR::P4ComposablePackage>(), 
@@ -77,14 +76,14 @@ bool ComposablePackageInterpreter::preorder(const IR::P4Parser* parser) {
 bool ComposablePackageInterpreter::preorder(const IR::P4Control* p4Control) {
 
     auto xoredHdrValidityOps = new P4::HdrValidityOpsRecVec();
-    ControlBlockInterpreter cbi(refMap, typeMap, parserStructures, parser_fqn, xoredHdrValidityOps);
+    ControlBlockInterpreter cbi(refMap, typeMap, parserStructures, parser_fqn, xoredHdrValidityOps, hdrValidityOpsPkgMap);
     p4Control->apply(cbi);
     maxExtLen += cbi.getMaxExtLen();
 
     cstring control_fqn = p4cpCallStack.back() +"_"+ p4Control->getName();
     // std::cout<<control_fqn<<" maxExtLen "<<maxExtLen/8<<"\n";
 
-    hdrValidityOpsPkgMap[p4cpCallStack.back()] = xoredHdrValidityOps;
+    hdrValidityOpsPkgMap->emplace(p4cpCallStack.back(), xoredHdrValidityOps);
 
     maxIncrPktLen = cbi.getMaxIncrPktLen();
     maxDecrPktLen = cbi.getMaxDecrPktLen();

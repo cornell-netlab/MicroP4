@@ -19,6 +19,7 @@ class ComposablePackageInterpreter : public Inspector {
     ReferenceMap*       refMap;
     TypeMap*            typeMap;
     P4::ParserStructuresMap* parserStructures;
+    P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap;
 
     std::vector<cstring> p4cpCallStack;
 
@@ -39,9 +40,12 @@ class ComposablePackageInterpreter : public Inspector {
 
  public:
      ComposablePackageInterpreter(ReferenceMap* refMap, TypeMap* typeMap,
-         P4::ParserStructuresMap* parserStructures)
-       : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures) {
+         P4::ParserStructuresMap* parserStructures, 
+         P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap)
+       : refMap(refMap), typeMap(typeMap), parserStructures(parserStructures),
+        hdrValidityOpsPkgMap(hdrValidityOpsPkgMap) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(parserStructures);
+        CHECK_NULL(hdrValidityOpsPkgMap);
         minExtLen = 0; maxExtLen = 0;
         maxIncrPktLen = 0; maxDecrPktLen = 0;
     }
@@ -59,7 +63,6 @@ class ComposablePackageInterpreter : public Inspector {
     unsigned getMaxIncrPktLen() const { return maxIncrPktLen; }
     unsigned getMaxDecrPktLen() const { return maxDecrPktLen; }
 
-    static P4::HdrValidityOpsPkgMap hdrValidityOpsPkgMap;
 };
 
 }  // namespace P4

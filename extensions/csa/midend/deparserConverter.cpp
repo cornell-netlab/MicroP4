@@ -122,13 +122,18 @@ bool DeparserConverter::isDeparser(const IR::P4Control* p4control) {
 
 void DeparserConverter::initTableWithOffsetEntries(const IR::MethodCallStatement* mcs) {
     
+    auto offsetName = NameConstants::csaPktStuCurrOffsetFName;
     // indicesHeaderInstanceName
     auto ke1 = new IR::Member(new IR::PathExpression(paketOutParamName), 
                               NameConstants::indicesHeaderInstanceName);
-    auto ke2 = new IR::Member(ke1, NameConstants::csaPktStuCurrOffsetFName);
+    auto ke2 = new IR::Member(ke1, offsetName);
     auto keyEle = new IR::KeyElement(ke2, new IR::PathExpression("exact"));
     keyElementLists[mcs].emplace_back(ke2, true);
 
+    keyNamesWidths.emplace_back(offsetName, 0);
+
+    std::vector<char> kv;
+    kv.push_back('o');
     for (auto os : initialOffsets) {
         IR::Vector<IR::Expression> exprList;
         IR::Vector<IR::Entry> entryList;
@@ -136,6 +141,7 @@ void DeparserConverter::initTableWithOffsetEntries(const IR::MethodCallStatement
         exprList.push_back(new IR::Constant(os));
         auto keySetExpr = new IR::ListExpression(exprList);
         keyValueEmitOffsets[mcs].emplace_back(keySetExpr, os, nullptr);
+        headerKeyValues.push_back(kv);
     }
 }
 
@@ -167,7 +173,6 @@ const IR::Node* DeparserConverter::preorder(IR::P4Control* deparser) {
 
     for (auto emit : sorted)
         createID(emit);
-
 
     return deparser;
 }
@@ -202,6 +207,7 @@ const IR::Node* DeparserConverter::postorder(IR::Parameter* param) {
 const IR::Node* DeparserConverter::postorder(IR::P4Control* deparser) {
     // std::cout<<"Deparser Converter \n";
 
+    printHeaderKeyValues();
     auto& controlLocals = deparser->controlLocals;
     controlLocals.append(varDecls);
 
@@ -309,6 +315,16 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
 
     // std::cout<<__func__<<": creating key\n";
     auto exp = getArgHeaderExpression(mcs, width);
+    if (auto hn = exp->to<IR::Member>()){
+        keyNamesWidths.emplace_back(hn->member.name, width);
+    } else if (auto hn = exp->to<IR::PathExpression>()) {
+        keyNamesWidths.emplace_back(hn->path->name, width);
+    }
+
+    auto hdrKVVecSize = headerKeyValues.size();
+    size_t hdrKVVecIndex = 0;
+    resizeReplicateKeyValueVec(2);
+
     auto newMember = new IR::Member(exp->clone(), IR::Type_Header::isValid);
     auto mce = new IR::MethodCallExpression(newMember);
     auto hdrEmitKey = new IR::KeyElement(mce, new IR::PathExpression("exact"));
@@ -323,6 +339,8 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
     simpleExpressionList.insert(simpleExpressionList.begin(), e0);
     auto kse0 = new IR::ListExpression(simpleExpressionList);
     keyValueEmitOffsets[mcs].emplace_back(kse0, offset, nullptr);
+    insertValueKeyValueVec('f', hdrKVVecIndex, hdrKVVecIndex+hdrKVVecSize);
+    hdrKVVecIndex += hdrKVVecSize;
 
     auto iter = controlVar.find(mcs);
     if (iter != controlVar.end()) {
@@ -351,6 +369,8 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
         new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
     auto entry1 = new IR::Entry(kse1, actionBinding1);
     keyValueEmitOffsets[mcs].emplace_back(kse1, offset, emitAct);
+    insertValueKeyValueVec('t', hdrKVVecIndex, hdrKVVecIndex+hdrKVVecSize);
+    hdrKVVecIndex += hdrKVVecSize;
 
     auto actionRef1 = new IR::ActionListElement(actionBinding1->clone());
     actionListElements.push_back(actionRef1);
@@ -381,6 +401,11 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     IR::IndexedVector<IR::Declaration> refdActs;
     IR::Vector<IR::Entry> entries;
     auto exp = getArgHeaderExpression(mcs, width);
+    if (auto hn = exp->to<IR::Member>()){
+        keyNamesWidths.emplace_back(hn->member.name, width);
+    } else if (auto hn = exp->to<IR::PathExpression>()) {
+        keyNamesWidths.emplace_back(hn->path->name, width);
+    }
 
     std::vector<std::pair<const IR::Expression*, bool>> keyExp(keyElementLists[predecessor]);
     keyExp.emplace_back(exp, true);
@@ -388,8 +413,15 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
 
     auto nameStrVec = keyExpToNameStrVec(keyExp);
 
+    auto hdrKVVecSize = headerKeyValues.size();
+    BUG_CHECK(hdrKVVecSize == keyValueEmitOffsets[predecessor].size(), 
+        "headerKeyValues and keyValueEmitOffsets vectors do not have equal size");
+    resizeReplicateKeyValueVec(2);
+
     for (unsigned i=0; i<2; i++) {
+        size_t en = 0;
         for (auto ele : keyValueEmitOffsets[predecessor]) {
+            auto hdrKVVecIndex = hdrKVVecSize * i + en;
             IR::ListExpression* ls = std::get<0>(ele)->clone();
             auto currentEmitOffset = std::get<1>(ele);
             auto action = std::get<2>(ele);
@@ -398,9 +430,12 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
             ls->components.push_back(e);
 
             if (i==1) {
-                if (emitsXORedHdrs(nameStrVec, ls))
+                if (emitsXORedHdrs(nameStrVec, ls)) {
+                    headerKeyValues[hdrKVVecIndex].clear();
                     continue;
+                }
                 auto emitAct = createP4Action(mcs,currentEmitOffset, action);
+                // if (actionDecls[mcs].getDeclaration(emitAct->getName()) == nullptr)
                 actionDecls[mcs].push_back(emitAct);
                 auto actionBinding = new IR::MethodCallExpression(
                               new IR::PathExpression(emitAct->name),
@@ -408,6 +443,7 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
                 auto entry0 = new IR::Entry(ls, actionBinding);
                 entries.push_back(entry0);
                 keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset, emitAct);
+                headerKeyValues[hdrKVVecIndex].push_back('t');
 
             } else {
                 if (action != nullptr) {
@@ -421,17 +457,25 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
                         refdActs.push_back(action);
                 }
                 keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset, action);
+                headerKeyValues[hdrKVVecIndex].push_back('f');
             }
+            en++;
         }
     }
 
-    refdActs.append(actionDecls[mcs]);
+    removeEmptyElementsKeyValueVec();
+    // refdActs.append(actionDecls[mcs]);
+    for (auto ad : actionDecls[mcs]) {
+        if (refdActs.getDeclaration(ad->getName()) == nullptr)
+              refdActs.push_back(ad);
+    }
 
     for (const auto& aIdecl : refdActs) {
         auto amce = new IR::MethodCallExpression(
                             new IR::PathExpression(aIdecl->name.name), 
                             new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
         auto actionRef = new IR::ActionListElement(amce);
+        // std::cout<<"Action Name: "<<aIdecl->name.name<<"\n";
         actionListElements.push_back(actionRef);
     }
 
@@ -501,6 +545,274 @@ bool DeparserConverter::emitsXORedHdrs(const std::vector<cstring>& vec,
             return true;
     }
     return false;
+}
+
+
+IR::Key* DeparserConverter::createKey(const IR::MethodCallStatement* mcs) {
+    
+    IR::Vector<IR::KeyElement> keyElementList;
+    auto vec = keyElementLists[mcs];
+    for (auto ele : vec) {
+        bool mt = ele.second;
+        auto type = typeMap->getType(ele.first);
+        auto exp = ele.first->clone();
+        IR::Expression* keyExp = nullptr;
+        if (type->is<IR::Type_Header>()){
+            auto member = new IR::Member(exp, IR::Type_Header::isValid);
+            keyExp = new IR::MethodCallExpression(member);
+        } else {
+            keyExp = exp;
+        }
+        auto hdrEmitKey = new IR::KeyElement(keyExp, new IR::PathExpression(
+                                                      mt?"exact":"ternary"));
+        keyElementList.push_back(hdrEmitKey);
+    }
+    return new IR::Key(keyElementList);
+}
+
+
+IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* mcs,
+                                      unsigned& currentEmitOffset, 
+                                      const IR::P4Action* ancestorAction) {
+
+    auto p4Action = createP4Action(mcs, currentEmitOffset);
+    auto body = const_cast<IR::BlockStatement*>(p4Action->body);
+    if (ancestorAction != nullptr) {
+        p4Action->name.name = ancestorAction->name.name+"_"+p4Action->name.name;
+        auto mce = new IR::MethodCallExpression(
+            new IR::PathExpression(ancestorAction->name), 
+            new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+        auto mcs= new IR::MethodCallStatement(mce);
+        body->push_back(mcs);
+    }
+    return p4Action;
+}
+
+
+IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* mcs, 
+                                          unsigned& currentEmitOffset) {
+    
+    unsigned width = 0;
+    unsigned emitOffset = 0;
+    auto e = getArgHeaderExpression(mcs, width);
+    IR::IndexedVector<IR::StatOrDecl> actionBlockStatements;
+
+    auto exp = new IR::Member(new IR::PathExpression(paketOutParamName), 
+                                 IR::ID(NameConstants::csaHeaderInstanceName));
+    // auto member = new IR::Member(exp, IR::ID("data"));
+    cstring name;
+    if (e->is<IR::Member>()) 
+        name = e->to<IR::Member>()->member;
+    else 
+        name = e->toString();
+
+    emitOffset = currentEmitOffset + width;
+    name += "_"+cstring::to_cstring(currentEmitOffset/8) + 
+            "_"+ cstring::to_cstring(emitOffset/8);
+
+    auto mcsActions = actionDecls[mcs];
+
+    const IR::IDeclaration* actionDecl = mcsActions.getDeclaration(name);
+    if (actionDecl != nullptr) {
+        return const_cast<IR::P4Action*>(actionDecl->to<IR::P4Action>());
+    }
+
+    
+    auto type = typeMap->getType(e);
+    BUG_CHECK(type->is<IR::Type_Header>(), "expected header type ");
+    auto th = type->to<IR::Type_Header>();
+
+    unsigned start = currentEmitOffset;
+    for (auto f : th->fields) {
+        auto w = symbolicValueFactory->getWidth(f->type);
+        unsigned startByteIndex = start/8;
+        // unsigned startByteBitIndex = start % 8;
+        unsigned startByteBitIndex = 8-(start % 8);
+        
+        start += w;
+        unsigned fwCounter = 0; // field width counter
+        // if (startByteBitIndex != 0) {
+        if (8-startByteBitIndex != 0) {
+            auto bl = new IR::ArrayIndex(exp->clone(), 
+                                         new IR::Constant(startByteIndex));
+            auto member = new IR::Member(bl, IR::ID("data"));
+
+            const IR::Expression* initSlice = nullptr;
+            const IR::Expression* rh = nullptr;
+            // if ((8-startByteBitIndex) <= w) {
+            if (startByteBitIndex <= w) {
+                // initSlice = IR::Slice::make(member, startByteBitIndex, 7);
+                initSlice = IR::Slice::make(member, 0, startByteBitIndex-1);
+                // fwCounter += (8-startByteBitIndex);
+                fwCounter += startByteBitIndex;
+                auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
+                // rh = IR::Slice::make(rMem, w-(8-startByteBitIndex), w-1);
+                rh = IR::Slice::make(rMem, w-startByteBitIndex, w-1);
+                // w = w-(8-startByteBitIndex);
+                w = w-startByteBitIndex;
+            } else {
+                // initSlice = IR::Slice::make(member, startByteBitIndex, 
+                //                            startByteBitIndex+w-1);
+                initSlice = IR::Slice::make(member, startByteBitIndex-w, 
+                                            startByteBitIndex-1);
+                rh = new IR::Member(e->clone(), IR::ID(f->getName()));
+                w = 0;
+            }
+            startByteIndex++;
+            auto as = new IR::AssignmentStatement(initSlice, rh);
+            actionBlockStatements.push_back(as);
+        }
+        while (w >= 8) {
+            auto pe = new IR::ArrayIndex(exp->clone(), 
+                                         new IR::Constant(startByteIndex++));
+            auto lh = new IR::Member(pe, IR::ID("data"));
+            auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
+            auto rh = IR::Slice::make(rMem, w-8, w-1);
+            auto as = new IR::AssignmentStatement(lh, rh);
+            actionBlockStatements.push_back(as);
+            w -=8;
+        }
+        if (w != 0) {
+            auto bl = new IR::ArrayIndex(exp->clone(), 
+                                         new IR::Constant(startByteIndex));
+            auto lh = new IR::Member(bl, IR::ID("data"));
+            // auto endSlice = IR::Slice::make(lh, 0, w-1);
+            auto endSlice = IR::Slice::make(lh, 8-w, 7);
+            auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
+            auto rh = IR::Slice::make(rMem, 0, w-1);
+            auto as = new IR::AssignmentStatement(endSlice, rh);
+            actionBlockStatements.push_back(as);
+        }
+    }
+
+    
+    currentEmitOffset = start;
+
+    auto it = controlVar.find(mcs);
+    if (it != controlVar.end()) {
+        auto cva = new IR::AssignmentStatement(
+                        new IR::PathExpression(it->second.first), 
+                        // new IR::Constant(1, 2));
+                        new IR::BoolLiteral(true));
+        actionBlockStatements.push_back(cva);
+    }
+    auto actionBlock = new IR::BlockStatement(actionBlockStatements);
+    auto action = new IR::P4Action(name, new IR::ParameterList(), actionBlock);
+    return action;
+}
+
+IR::P4Table* DeparserConverter::createP4Table(cstring name, IR::Key* key, 
+                                              IR::ActionList* al, 
+                                              IR::EntriesList* el) {
+
+    IR::IndexedVector<IR::Property> tablePropertyList;
+    auto keyElementListProperty = new IR::Property(IR::ID("key"), key, false);
+    tablePropertyList.push_back(keyElementListProperty);
+
+    auto actionListProperty = new IR::Property(IR::ID("actions"), al, false);
+    tablePropertyList.push_back(actionListProperty);
+
+    auto entriesListProperty = new IR::Property(IR::ID("entries"), el, true);
+    tablePropertyList.push_back(entriesListProperty);
+
+    auto v = new IR::ExpressionValue(new IR::MethodCallExpression(
+                                            new IR::PathExpression(noActionName), 
+                                            new IR::Vector<IR::Argument>()));
+
+    auto defaultActionProp = new IR::Property(IR::ID("default_action"), v, true);
+    tablePropertyList.push_back(defaultActionProp);
+
+
+    auto table = new IR::P4Table(IR::ID(tableName), new IR::TableProperties(tablePropertyList));
+    if(tableDecls.size()){
+    	LOG3("clearing table ");
+    	tableDecls.clear();
+    }
+    tableDecls.push_back(table);
+    return table;
+}
+
+const IR::Expression* 
+DeparserConverter::getArgHeaderExpression(const IR::MethodCallStatement* mcs, 
+                                          unsigned& width) const{
+    auto expression = mcs->methodCall;
+    auto arg0 = expression->arguments->at(1);
+    auto argType = typeMap->getType(arg0, true);
+    width = symbolicValueFactory->getWidth(argType);
+    return arg0->expression;
+}
+
+void DeparserConverter::createID(const IR::MethodCallStatement* emitStmt) {
+
+    unsigned i = 0;
+    auto exp = getArgHeaderExpression(emitStmt, i);
+    auto mem = exp->to<IR::Member>();
+    i = 0;
+    bool flag = true;
+    std::string id;
+    while (flag) {
+        flag = false;
+        id = "emit_"+mem->member+"_"+std::to_string(i);
+        for (const auto& kv : emitIds) {
+            if (kv.second == id) {
+                i++; flag = true; break;
+            }
+        }
+    }
+    emitIds.emplace(emitStmt, cstring(id));
+}
+
+
+void DeparserConverter::resizeReplicateKeyValueVec(size_t nfold) {
+    auto s = headerKeyValues.size();
+    headerKeyValues.resize(s * nfold);
+
+    for (size_t i = 0; i<s; i++) {
+        for (size_t n = 1; n<nfold; n++){
+            headerKeyValues[i+(n*s)] = headerKeyValues[i];
+        }
+    }
+}
+
+
+void DeparserConverter::insertValueKeyValueVec(char v, size_t begin, size_t end) { 
+    for (size_t i = begin; i<end; i++)
+        headerKeyValues[i].push_back(v);
+}
+
+
+void DeparserConverter::removeEmptyElementsKeyValueVec() {
+    std::remove_if(headerKeyValues.begin(), headerKeyValues.end(),
+        [](std::vector<char> x){return x.size() == 0;});
+}
+
+void DeparserConverter::printHeaderKeyValues() {
+    
+    std::cout<<"Printing printHeaderKeyValues----\n";
+    for (auto cv : headerKeyValues) {
+    std::cout<<"\n";
+        for (auto ch : cv) {
+            std::cout<<ch<<" ";
+        }
+    }
+    std::cout<<"\n---------------------------------\n";
+}
+
+
+void DeparserConverter::createHdrValidityOpsKeysValues() {
+
+}
+
+IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable() {
+    return nullptr;
+}
+
+IR::P4Action* DeparserConverter::createPushAction(size_t width) {
+    return nullptr;
+}
+
+IR::P4Action* DeparserConverter::createPopAction(size_t width) {
+    return nullptr;
 }
 
 
@@ -707,218 +1019,6 @@ IR::P4Table* DeparserConverter::mergeAndExtendEmitTables(const IR::P4Table* old_
 }
 */
 
-IR::Key* DeparserConverter::createKey(const IR::MethodCallStatement* mcs) {
-    
-    IR::Vector<IR::KeyElement> keyElementList;
-    auto vec = keyElementLists[mcs];
-    for (auto ele : vec) {
-        bool mt = ele.second;
-        auto type = typeMap->getType(ele.first);
-        auto exp = ele.first->clone();
-        IR::Expression* keyExp = nullptr;
-        if (type->is<IR::Type_Header>()){
-            auto member = new IR::Member(exp, IR::Type_Header::isValid);
-            keyExp = new IR::MethodCallExpression(member);
-        } else {
-            keyExp = exp;
-        }
-        auto hdrEmitKey = new IR::KeyElement(keyExp, new IR::PathExpression(
-                                                      mt?"exact":"ternary"));
-        keyElementList.push_back(hdrEmitKey);
-    }
-    return new IR::Key(keyElementList);
-}
 
-
-IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* mcs,
-                                      unsigned& currentEmitOffset, 
-                                      const IR::P4Action* ancestorAction) {
-
-    auto p4Action = createP4Action(mcs, currentEmitOffset);
-    auto body = const_cast<IR::BlockStatement*>(p4Action->body);
-    if (ancestorAction != nullptr) {
-        auto mce = new IR::MethodCallExpression(
-            new IR::PathExpression(ancestorAction->name), 
-            new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
-        auto mcs= new IR::MethodCallStatement(mce);
-        body->push_back(mcs);
-    }
-    return p4Action;
-}
-
-
-IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* mcs, 
-                                          unsigned& currentEmitOffset) {
-    
-    unsigned width = 0;
-    unsigned emitOffset = 0;
-    auto e = getArgHeaderExpression(mcs, width);
-    IR::IndexedVector<IR::StatOrDecl> actionBlockStatements;
-
-    auto exp = new IR::Member(new IR::PathExpression(paketOutParamName), 
-                                 IR::ID(NameConstants::csaHeaderInstanceName));
-    // auto member = new IR::Member(exp, IR::ID("data"));
-    cstring name;
-    if (e->is<IR::Member>()) 
-        name = e->to<IR::Member>()->member;
-    else 
-        name = e->toString();
-
-    name += "_valid";
-    emitOffset = currentEmitOffset + width;
-    name += "_"+cstring::to_cstring(currentEmitOffset) + 
-            "_"+ cstring::to_cstring(emitOffset);
-
-    auto mcsActions = actionDecls[mcs];
-
-    const IR::IDeclaration* actionDecl = mcsActions.getDeclaration(name);
-    if (actionDecl != nullptr) {
-        return const_cast<IR::P4Action*>(actionDecl->to<IR::P4Action>());
-    }
-
-    
-    auto type = typeMap->getType(e);
-    BUG_CHECK(type->is<IR::Type_Header>(), "expected header type ");
-    auto th = type->to<IR::Type_Header>();
-
-    unsigned start = currentEmitOffset;
-    for (auto f : th->fields) {
-        auto w = symbolicValueFactory->getWidth(f->type);
-        unsigned startByteIndex = start/8;
-        // unsigned startByteBitIndex = start % 8;
-        unsigned startByteBitIndex = 8-(start % 8);
-        
-        start += w;
-        unsigned fwCounter = 0; // field width counter
-        // if (startByteBitIndex != 0) {
-        if (8-startByteBitIndex != 0) {
-            auto bl = new IR::ArrayIndex(exp->clone(), 
-                                         new IR::Constant(startByteIndex));
-            auto member = new IR::Member(bl, IR::ID("data"));
-
-            const IR::Expression* initSlice = nullptr;
-            const IR::Expression* rh = nullptr;
-            // if ((8-startByteBitIndex) <= w) {
-            if (startByteBitIndex <= w) {
-                // initSlice = IR::Slice::make(member, startByteBitIndex, 7);
-                initSlice = IR::Slice::make(member, 0, startByteBitIndex-1);
-                // fwCounter += (8-startByteBitIndex);
-                fwCounter += startByteBitIndex;
-                auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
-                // rh = IR::Slice::make(rMem, w-(8-startByteBitIndex), w-1);
-                rh = IR::Slice::make(rMem, w-startByteBitIndex, w-1);
-                // w = w-(8-startByteBitIndex);
-                w = w-startByteBitIndex;
-            } else {
-                // initSlice = IR::Slice::make(member, startByteBitIndex, 
-                //                            startByteBitIndex+w-1);
-                initSlice = IR::Slice::make(member, startByteBitIndex-w, 
-                                            startByteBitIndex-1);
-                rh = new IR::Member(e->clone(), IR::ID(f->getName()));
-                w = 0;
-            }
-            startByteIndex++;
-            auto as = new IR::AssignmentStatement(initSlice, rh);
-            actionBlockStatements.push_back(as);
-        }
-        while (w >= 8) {
-            auto pe = new IR::ArrayIndex(exp->clone(), 
-                                         new IR::Constant(startByteIndex++));
-            auto lh = new IR::Member(pe, IR::ID("data"));
-            auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
-            auto rh = IR::Slice::make(rMem, w-8, w-1);
-            auto as = new IR::AssignmentStatement(lh, rh);
-            actionBlockStatements.push_back(as);
-            w -=8;
-        }
-        if (w != 0) {
-            auto bl = new IR::ArrayIndex(exp->clone(), 
-                                         new IR::Constant(startByteIndex));
-            auto lh = new IR::Member(bl, IR::ID("data"));
-            // auto endSlice = IR::Slice::make(lh, 0, w-1);
-            auto endSlice = IR::Slice::make(lh, 8-w, 7);
-            auto rMem = new IR::Member(e->clone(), IR::ID(f->getName()));
-            auto rh = IR::Slice::make(rMem, 0, w-1);
-            auto as = new IR::AssignmentStatement(endSlice, rh);
-            actionBlockStatements.push_back(as);
-        }
-    }
-
-    
-    currentEmitOffset = start;
-
-    auto it = controlVar.find(mcs);
-    if (it != controlVar.end()) {
-        auto cva = new IR::AssignmentStatement(
-                        new IR::PathExpression(it->second.first), 
-                        // new IR::Constant(1, 2));
-                        new IR::BoolLiteral(true));
-        actionBlockStatements.push_back(cva);
-    }
-    auto actionBlock = new IR::BlockStatement(actionBlockStatements);
-    auto action = new IR::P4Action(name, new IR::ParameterList(), actionBlock);
-    return action;
-}
-
-IR::P4Table* DeparserConverter::createP4Table(cstring name, IR::Key* key, 
-                                              IR::ActionList* al, 
-                                              IR::EntriesList* el) {
-
-    IR::IndexedVector<IR::Property> tablePropertyList;
-    auto keyElementListProperty = new IR::Property(IR::ID("key"), key, false);
-    tablePropertyList.push_back(keyElementListProperty);
-
-    auto actionListProperty = new IR::Property(IR::ID("actions"), al, false);
-    tablePropertyList.push_back(actionListProperty);
-
-    auto entriesListProperty = new IR::Property(IR::ID("entries"), el, true);
-    tablePropertyList.push_back(entriesListProperty);
-
-    auto v = new IR::ExpressionValue(new IR::MethodCallExpression(
-                                            new IR::PathExpression(noActionName), 
-                                            new IR::Vector<IR::Argument>()));
-
-    auto defaultActionProp = new IR::Property(IR::ID("default_action"), v, true);
-    tablePropertyList.push_back(defaultActionProp);
-
-
-    auto table = new IR::P4Table(IR::ID(tableName), new IR::TableProperties(tablePropertyList));
-    if(tableDecls.size()){
-    	LOG3("clearing table ");
-    	tableDecls.clear();
-    }
-    tableDecls.push_back(table);
-    return table;
-}
-
-const IR::Expression* 
-DeparserConverter::getArgHeaderExpression(const IR::MethodCallStatement* mcs, 
-                                          unsigned& width) const{
-    auto expression = mcs->methodCall;
-    auto arg0 = expression->arguments->at(1);
-    auto argType = typeMap->getType(arg0, true);
-    width = symbolicValueFactory->getWidth(argType);
-    return arg0->expression;
-}
-
-void DeparserConverter::createID(const IR::MethodCallStatement* emitStmt) {
-
-    unsigned i = 0;
-    auto exp = getArgHeaderExpression(emitStmt, i);
-    auto mem = exp->to<IR::Member>();
-    i = 0;
-    bool flag = true;
-    std::string id;
-    while (flag) {
-        flag = false;
-        id = "emit_"+mem->member+"_"+std::to_string(i);
-        for (const auto& kv : emitIds) {
-            if (kv.second == id) {
-                i++; flag = true; break;
-            }
-        }
-    }
-    emitIds.emplace(emitStmt, cstring(id));
-}
 
 }// namespace CSA

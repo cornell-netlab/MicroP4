@@ -116,6 +116,8 @@ class Converter final : public Transform {
 
     P4::ParserStructuresMap *parserStructures;
     P4ControlStateReconInfoMap *controlToReconInfoMap;
+    P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap;
+
     std::vector<std::vector<unsigned>*> offsetsStack;
     std::vector<std::vector<std::set<cstring>>*> xoredHeaderSetsStack;
 
@@ -133,13 +135,16 @@ class Converter final : public Transform {
     Converter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
               cstring* mainControlTypeName, 
               P4::ParserStructuresMap *parserStructures, 
-              P4ControlStateReconInfoMap *controlToReconInfoMap)
+              P4ControlStateReconInfoMap *controlToReconInfoMap,
+              P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap)
         : refMap(refMap), typeMap(typeMap), 
           mainControlTypeName(mainControlTypeName),
           parserStructures(parserStructures),
-          controlToReconInfoMap(controlToReconInfoMap){
+          controlToReconInfoMap(controlToReconInfoMap), 
+          hdrValidityOpsPkgMap(hdrValidityOpsPkgMap) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(mainControlTypeName);  CHECK_NULL(parserStructures);
+        CHECK_NULL(hdrValidityOpsPkgMap);
     }
 
     // control the visit order of P4Parser nodes to visit in 
@@ -161,6 +166,7 @@ class ToControl final : public PassManager {
 
     P4::ParserStructuresMap parserStructures;
     unsigned byteStackSize;
+    P4::HdrValidityOpsPkgMap hdrValidityOpsPkgMap;
 
   public:
     ToControl(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
@@ -179,9 +185,11 @@ class ToControl final : public PassManager {
         passes.push_back(new P4::ParsersUnroll(refMap, typeMap, &parserStructures));
         passes.push_back(new P4::TypeChecking(refMap, typeMap));
         passes.push_back(new StaticAnalyzer(refMap, typeMap, &parserStructures, 
-              mainControlTypeName, minExtLen, maxExtLen, &byteStackSize));
+              mainControlTypeName, minExtLen, maxExtLen, &byteStackSize, 
+              &hdrValidityOpsPkgMap));
         passes.push_back(new Converter(refMap, typeMap, 
-              mainControlTypeName, &parserStructures, controlToReconInfoMap));
+              mainControlTypeName, &parserStructures, controlToReconInfoMap, 
+              &hdrValidityOpsPkgMap));
         passes.push_back(new AddCSAByteHeader(NameConstants::headerTypeName, 
               NameConstants::bitStreamFieldName, &byteStackSize));
         passes.push_back(new CPackageToControl(refMap, typeMap, 
