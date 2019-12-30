@@ -27,8 +27,8 @@ class DeparserConverter final : public Transform {
 
   typedef std::tuple<IR::ListExpression*, unsigned, IR::P4Action*, unsigned> EntryContext;
 
-    
-  typedef std::tuple<unsigned, unsigned, cstring> 
+  // emit index, cumulative moveOffset, hdr name
+  typedef std::tuple<unsigned, int, cstring> 
     EmitIndexMoveOffsetHdr;
 // global throught the pass
     cstring noActionName;

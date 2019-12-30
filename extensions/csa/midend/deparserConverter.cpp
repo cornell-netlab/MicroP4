@@ -956,7 +956,7 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable() {
                 }
 
                 if (value == 't') {
-                    unsigned tempOffset = moveOffset;
+                    int tempOffset = moveOffset;
                     if (setValid)
                         tempOffset = 0;
                     emitData.emplace_back(currOffset, tempOffset, keyNamesWidths[i].first);
@@ -970,6 +970,19 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable() {
                                       hdrValidityOpKeyValues[m].end());
             */
   
+            std::cout<<"\n ------ Entry information ------- \n";
+            for (auto hk : keyNamesWidths)
+                std::cout<<"|"<<hk.first<<"|";
+            for (auto opk : hdrOpKeyNames)
+                std::cout<<"|"<<opk.first<<"("<<opk.second<<")"<<"|";
+            std::cout<<"\n";
+            for (auto k : headerKeyValues[i])
+                std::cout<<"|"<<k<<"|";
+            for (auto opkv : hdrValidityOpKeyValues[m])
+                std::cout<<"|"<<opkv<<"|";
+            std::cout<<"\n";
+            std::cout<<"\n ----------------------------------- \n";
+
             finalKeyValueEmitOffsetsActions.emplace_back(
                 extendEntry(kvEmitOffsets[i], hdrValidityOpKeyValues[m], 
                             emitData));
@@ -1002,7 +1015,7 @@ DeparserConverter::extendEntry(const EntryContext& entry,
         moveWidth = std::get<1>(emitData.back());
 
     std::vector<EmitIndexMoveOffsetHdr> emitOrder;
-    unsigned moveOffset = 0;
+    int moveOffset = 0;
     for (size_t s = emitData.size() ; s > 0 ;) {
         moveOffset = std::get<1>(emitData[s]);
         if (moveOffset < 0) {
@@ -1020,6 +1033,15 @@ DeparserConverter::extendEntry(const EntryContext& entry,
             s--;
         }
     }
+
+    std::cout<<"-------- emit order-----\n";
+    for (auto d : emitOrder) {
+        auto ei = std::get<0>(d);
+        auto mo = std::get<1>(d);
+        auto hn = std::get<2>(d);
+        std::cout<<"["<<ei<<" "<<mo<<" "<<hn<<"]";
+    }
+    std::cout<<"-------------------\n";
 
     
     return EntryContext{ls, initOffset, newAction, moveWidth};
