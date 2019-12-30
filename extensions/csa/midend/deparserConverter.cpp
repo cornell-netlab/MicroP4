@@ -140,9 +140,10 @@ void DeparserConverter::initTableWithOffsetEntries(const IR::MethodCallStatement
         // std::cout<<"initTableWithOffsetEntries an: "<<an<<"\n";
         exprList.push_back(new IR::Constant(os));
         auto keySetExpr = new IR::ListExpression(exprList);
-        keyValueEmitOffsets[mcs].emplace_back(keySetExpr, os, nullptr);
+        keyValueEmitOffsets[mcs].emplace_back(keySetExpr, os, nullptr, os);
         headerKeyValues.push_back(kv);
     }
+    lastMcsEmitted = mcs;
 }
 
 const IR::Node* DeparserConverter::preorder(IR::P4Control* deparser) {
@@ -208,6 +209,8 @@ const IR::Node* DeparserConverter::postorder(IR::P4Control* deparser) {
     // std::cout<<"Deparser Converter \n";
 
     printHeaderKeyValues();
+    createHdrValidityOpsKeysValues();
+
     auto& controlLocals = deparser->controlLocals;
     controlLocals.append(varDecls);
 
@@ -321,6 +324,7 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
         keyNamesWidths.emplace_back(hn->path->name, width);
     }
 
+    lastMcsEmitted = mcs;
     auto hdrKVVecSize = headerKeyValues.size();
     size_t hdrKVVecIndex = 0;
     resizeReplicateKeyValueVec(2);
@@ -338,7 +342,7 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
     IR::Expression* e0 = new IR::BoolLiteral(false);
     simpleExpressionList.insert(simpleExpressionList.begin(), e0);
     auto kse0 = new IR::ListExpression(simpleExpressionList);
-    keyValueEmitOffsets[mcs].emplace_back(kse0, offset, nullptr);
+    keyValueEmitOffsets[mcs].emplace_back(kse0, offset, nullptr, offset);
     insertValueKeyValueVec('f', hdrKVVecIndex, hdrKVVecIndex+hdrKVVecSize);
     hdrKVVecIndex += hdrKVVecSize;
 
@@ -368,7 +372,7 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
         new IR::PathExpression(emitAct->getName()), 
         new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
     auto entry1 = new IR::Entry(kse1, actionBinding1);
-    keyValueEmitOffsets[mcs].emplace_back(kse1, offset, emitAct);
+    keyValueEmitOffsets[mcs].emplace_back(kse1, offset, emitAct, offset);
     insertValueKeyValueVec('t', hdrKVVecIndex, hdrKVVecIndex+hdrKVVecSize);
     hdrKVVecIndex += hdrKVVecSize;
 
@@ -401,9 +405,13 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     IR::IndexedVector<IR::Declaration> refdActs;
     IR::Vector<IR::Entry> entries;
     auto exp = getArgHeaderExpression(mcs, width);
+
+    cstring hdrInstName;
     if (auto hn = exp->to<IR::Member>()){
+        hdrInstName = hn->member.name;
         keyNamesWidths.emplace_back(hn->member.name, width);
     } else if (auto hn = exp->to<IR::PathExpression>()) {
+        hdrInstName = hn->path->name;
         keyNamesWidths.emplace_back(hn->path->name, width);
     }
 
@@ -413,18 +421,29 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
 
     auto nameStrVec = keyExpToNameStrVec(keyExp);
 
+    lastMcsEmitted = mcs;
     auto hdrKVVecSize = headerKeyValues.size();
     BUG_CHECK(hdrKVVecSize == keyValueEmitOffsets[predecessor].size(), 
-        "headerKeyValues and keyValueEmitOffsets vectors do not have equal size");
+        "headerKeyValues size = %1%  and keyValueEmitOffsets size = %2% vectors do not have equal size",
+        hdrKVVecSize, keyValueEmitOffsets[predecessor].size());
+
     resizeReplicateKeyValueVec(2);
 
+    /*
+    std::cout<<mcs<<"\n";
+    std::cout<<hdrInstName<<"\n";
+    */
     for (unsigned i=0; i<2; i++) {
         size_t en = 0;
         for (auto ele : keyValueEmitOffsets[predecessor]) {
             auto hdrKVVecIndex = hdrKVVecSize * i + en;
+            en++;
+
             IR::ListExpression* ls = std::get<0>(ele)->clone();
             auto currentEmitOffset = std::get<1>(ele);
             auto action = std::get<2>(ele);
+            auto initOffset = std::get<3>(ele);
+
             IR::Expression* e = (i==0)?	new IR::BoolLiteral(false):
                                         new IR::BoolLiteral(true);
             ls->components.push_back(e);
@@ -434,6 +453,14 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
                     headerKeyValues[hdrKVVecIndex].clear();
                     continue;
                 }
+                /*
+                if (!isParsableHeader(hdrInstName)) {
+                    // std::cout<<"skipping "<<hdrInstName<<" 1 \n";
+                    // std::cout<<hdrKVVecIndex<<"\n";
+                    headerKeyValues[hdrKVVecIndex].clear();
+                    continue;
+                }
+                */
                 auto emitAct = createP4Action(mcs,currentEmitOffset, action);
                 // if (actionDecls[mcs].getDeclaration(emitAct->getName()) == nullptr)
                 actionDecls[mcs].push_back(emitAct);
@@ -442,7 +469,7 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
                               new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
                 auto entry0 = new IR::Entry(ls, actionBinding);
                 entries.push_back(entry0);
-                keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset, emitAct);
+                keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset, emitAct, initOffset);
                 headerKeyValues[hdrKVVecIndex].push_back('t');
 
             } else {
@@ -456,14 +483,16 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
                     if (a == nullptr)
                         refdActs.push_back(action);
                 }
-                keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset, action);
+                keyValueEmitOffsets[mcs].emplace_back(ls, currentEmitOffset, action, initOffset);
                 headerKeyValues[hdrKVVecIndex].push_back('f');
             }
-            en++;
         }
     }
 
+    // printHeaderKeyValues();
     removeEmptyElementsKeyValueVec();
+    // printHeaderKeyValues();
+
     // refdActs.append(actionDecls[mcs]);
     for (auto ad : actionDecls[mcs]) {
         if (refdActs.getDeclaration(ad->getName()) == nullptr)
@@ -547,6 +576,24 @@ bool DeparserConverter::emitsXORedHdrs(const std::vector<cstring>& vec,
     return false;
 }
 
+bool DeparserConverter::isParsableHeader(cstring hdr) {
+    
+    
+    if (parsedHeaders == nullptr)
+        return true;
+    /*
+    std::cout<<"parsedHeaders ---"<<"\n";
+    for (auto s : *parsedHeaders)
+        std::cout<<s<<"\n";
+    std::cout<<"\n-----------------\n";
+    */
+
+    if (parsedHeaders->find(hdr) == parsedHeaders->end())
+        return false;
+    else
+        return true;
+    
+}
 
 IR::Key* DeparserConverter::createKey(const IR::MethodCallStatement* mcs) {
     
@@ -576,15 +623,29 @@ IR::P4Action* DeparserConverter::createP4Action(const IR::MethodCallStatement* m
                                       const IR::P4Action* ancestorAction) {
 
     auto p4Action = createP4Action(mcs, currentEmitOffset);
-    auto body = const_cast<IR::BlockStatement*>(p4Action->body);
-    if (ancestorAction != nullptr) {
-        p4Action->name.name = ancestorAction->name.name+"_"+p4Action->name.name;
-        auto mce = new IR::MethodCallExpression(
-            new IR::PathExpression(ancestorAction->name), 
-            new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
-        auto mcs= new IR::MethodCallStatement(mce);
-        body->push_back(mcs);
-    }
+    if (ancestorAction == nullptr) 
+        return p4Action;
+
+    if (actionDecls[mcs].getDeclaration(p4Action->name.name) == nullptr)
+        actionDecls[mcs].push_back(p4Action);
+
+    IR::IndexedVector<IR::StatOrDecl> actionBlockStatements;
+    cstring actName = ancestorAction->name.name+"_"+p4Action->name.name;
+
+    auto mce = new IR::MethodCallExpression(
+          new IR::PathExpression(p4Action->name), 
+          new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+    auto ms = new IR::MethodCallStatement(mce);
+    actionBlockStatements.push_back(ms);
+
+    mce = new IR::MethodCallExpression(
+        new IR::PathExpression(ancestorAction->name), 
+        new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+    ms= new IR::MethodCallStatement(mce);
+    actionBlockStatements.push_back(ms);
+
+    auto actionBlock = new IR::BlockStatement(actionBlockStatements);
+    p4Action = new IR::P4Action(actName, new IR::ParameterList(), actionBlock);
     return p4Action;
 }
 
@@ -734,11 +795,18 @@ IR::P4Table* DeparserConverter::createP4Table(cstring name, IR::Key* key,
 
 const IR::Expression* 
 DeparserConverter::getArgHeaderExpression(const IR::MethodCallStatement* mcs, 
-                                          unsigned& width) const{
+                                          unsigned& width) {
     auto expression = mcs->methodCall;
     auto arg0 = expression->arguments->at(1);
     auto argType = typeMap->getType(arg0, true);
     width = symbolicValueFactory->getWidth(argType);
+    
+    if (auto hn = arg0->expression->to<IR::Member>()){
+        hdrSizeByInstName[hn->member.name] = width;
+    } else if (auto hn = arg0->expression->to<IR::PathExpression>()) {
+        hdrSizeByInstName[hn->path->name] = width;
+    }
+
     return arg0->expression;
 }
 
@@ -782,13 +850,15 @@ void DeparserConverter::insertValueKeyValueVec(char v, size_t begin, size_t end)
 
 
 void DeparserConverter::removeEmptyElementsKeyValueVec() {
-    std::remove_if(headerKeyValues.begin(), headerKeyValues.end(),
-        [](std::vector<char> x){return x.size() == 0;});
+    headerKeyValues.erase(
+        std::remove_if(headerKeyValues.begin(), headerKeyValues.end(),
+          [](std::vector<char> x){return x.size() == 0;}),
+        headerKeyValues.end());
 }
 
 void DeparserConverter::printHeaderKeyValues() {
     
-    std::cout<<"Printing printHeaderKeyValues----\n";
+    std::cout<<"Printing printHeaderKeyValues----";
     for (auto cv : headerKeyValues) {
     std::cout<<"\n";
         for (auto ch : cv) {
@@ -800,20 +870,184 @@ void DeparserConverter::printHeaderKeyValues() {
 
 
 void DeparserConverter::createHdrValidityOpsKeysValues() {
+    std::unordered_set<cstring> svOphdrs;
+    std::unordered_set<cstring> sivOphdrs;
+
+    for (const auto& e : *xoredValidityOps) {
+        for (const auto& svset : e.first)
+            svOphdrs.insert(svset);
+        for (const auto& sivset : e.second)
+            sivOphdrs.insert(sivset);
+    }
+    for (auto h : svOphdrs)
+        hdrOpKeyNames.emplace_back(h, true);
+    for (auto h : sivOphdrs)
+        hdrOpKeyNames.emplace_back(h, false);
+
+    /*
+    std::cout<<" All  ops on \n";
+    for (auto h : hdrOpKeyNames)
+        std::cout<<"["<<h.first<<","<<h.second<<"]"<<" ";
+    std::cout<<"\n-------------\n";
+    */
+
+    for (const auto& e : *xoredValidityOps) {
+        std::vector<char> kv;
+        for (const auto& p : hdrOpKeyNames) {
+            const std::unordered_set<cstring>* hdrOpSet = nullptr;
+            if (p.second)
+                hdrOpSet = &(e.first);
+            else
+                hdrOpSet = &(e.second);
+            auto it = hdrOpSet->find(p.first);
+            if (it != hdrOpSet->end())
+                kv.push_back('t');
+            else
+                kv.push_back('f');
+        }
+        hdrValidityOpKeyValues.push_back(kv);
+    }
+
 
 }
 
 IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable() {
+
+
+    // BUG_CHECK(headerKeyValues[i].size() == keyNamesWidths.size(), 
+    //     "value list size does not match with number of keys");
+
+    std::vector<EntryContext> finalKeyValueEmitOffsetsActions;
+
+    auto kvEmitOffsets = keyValueEmitOffsets[lastMcsEmitted];
+
+    std::vector<EmitIndexMoveOffsetHdr> emitData;
+    std::unordered_map<cstring, size_t> keyIndexMap;
+    for (size_t i = 0; i < keyNamesWidths.size(); i++)
+        keyIndexMap.emplace(keyNamesWidths[i].first, i);
+
+    for (size_t m = 0; m < hdrValidityOpKeyValues.size(); m++) {
+        for (size_t i=0; i<headerKeyValues.size(); i++) {
+            int moveOffset = 0;
+            auto currOffset = std::get<3>(kvEmitOffsets[i]);
+            emitData.clear();
+
+            for (size_t j = 0; j<keyNamesWidths.size(); j++) {
+                char value = headerKeyValues[i][j];
+                unsigned width = keyNamesWidths[i].second;
+
+                bool setValid = false;
+                for (size_t n = 0; n < hdrOpKeyNames.size(); n++) { 
+                    auto hn = hdrOpKeyNames[n].first;
+                    bool op = hdrOpKeyNames[n].second;
+                    auto opValue = hdrValidityOpKeyValues[m][n];
+                    
+                    if (hn != keyNamesWidths[i].first)
+                        continue;
+                    if (op && opValue == 't' && value == 'f' ) {
+                        value = 't';
+                        moveOffset += width;
+                        setValid = true;
+                    }
+                    if (!op && opValue == 't' && value == 't') {
+                        moveOffset -= width;
+                    }
+                    break;
+                }
+
+                if (value == 't') {
+                    unsigned tempOffset = moveOffset;
+                    if (setValid)
+                        tempOffset = 0;
+                    emitData.emplace_back(currOffset, tempOffset, keyNamesWidths[i].first);
+                    currOffset += width;
+                }
+            }
+
+            /*
+            headerKeyValues[i].insert(headerKeyValues[i].end(),
+                                      hdrValidityOpKeyValues[m].begin(),
+                                      hdrValidityOpKeyValues[m].end());
+            */
+  
+            finalKeyValueEmitOffsetsActions.emplace_back(
+                extendEntry(kvEmitOffsets[i], hdrValidityOpKeyValues[m], 
+                            emitData));
+        }
+    }
+
+    
     return nullptr;
 }
 
-IR::P4Action* DeparserConverter::createPushAction(size_t width) {
+
+DeparserConverter::EntryContext 
+DeparserConverter::extendEntry(const EntryContext& entry, 
+                              const std::vector<char>& newKVs, 
+                              const std::vector<EmitIndexMoveOffsetHdr>& emitData) {
+  
+    IR::ListExpression* ls = std::get<0>(entry)->clone();
+    auto action = std::get<2>(entry);
+    auto initOffset = std::get<3>(entry);
+    for (auto value : newKVs) {
+        IR::Expression* e = (value=='t')?	new IR::BoolLiteral(true): 
+                                          new IR::BoolLiteral(false);
+        ls->components.push_back(e);
+    }
+
+    IR::P4Action* newAction = nullptr;
+    unsigned moveWidth = 0;
+
+    if (emitData.size() > 0)
+        moveWidth = std::get<1>(emitData.back());
+
+    std::vector<EmitIndexMoveOffsetHdr> emitOrder;
+    unsigned moveOffset = 0;
+    for (size_t s = emitData.size() ; s > 0 ;) {
+        moveOffset = std::get<1>(emitData[s]);
+        if (moveOffset < 0) {
+            auto begin  =  s;
+            while (moveOffset < 0) {
+                s--;
+                moveOffset = std::get<1>(emitData[s]);
+            }
+            auto end = s;
+            for (size_t i = end; i<begin; i++) 
+                emitOrder.push_back(emitData[i]);
+                
+        } else {
+            emitOrder.push_back(emitData[s]);
+            s--;
+        }
+    }
+
+    
+    return EntryContext{ls, initOffset, newAction, moveWidth};
+}
+
+/*
+IR::P4Action* DeparserConverter::createPushAction(unsigned moveInitIndex, 
+                                int moveWidth, const IR::P4Action* hdrAsmtAct) {
+
+    unsigned maxLHSindex = (*byteStackSize)/8;
+    unsigned minLHSindex = (moveInitIndex + moveWidth) / 8;
+    for (unsigned s = maxLHSindex; s > minLHSindex; s--) {
+        // s = s-moveWidth;
+    }
     return nullptr;
 }
 
-IR::P4Action* DeparserConverter::createPopAction(size_t width) {
+IR::P4Action* DeparserConverter::createPopAction(unsigned moveInitIndex, 
+                                int moveWidth, const IR::P4Action* hdrAsmtAct) {
+
+    unsigned maxLHSindex = ((*byteStackSize) + moveWidth)/8;
+    unsigned minLHSindex = (moveInitIndex + moveWidth) / 8;
+    for (unsigned s = minLHSindex; s < maxLHSindex; s++) {
+        // s = s-moveWidth;
+    }
     return nullptr;
 }
+*/
 
 
 /*

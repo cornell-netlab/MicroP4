@@ -25,6 +25,11 @@ typedef P4::CallGraph<const IR::MethodCallStatement*> EmitCallGraph;
 
 class DeparserConverter final : public Transform {
 
+  typedef std::tuple<IR::ListExpression*, unsigned, IR::P4Action*, unsigned> EntryContext;
+
+    
+  typedef std::tuple<unsigned, unsigned, cstring> 
+    EmitIndexMoveOffsetHdr;
 // global throught the pass
     cstring noActionName;
     P4::ReferenceMap* refMap;
@@ -36,9 +41,13 @@ class DeparserConverter final : public Transform {
 // per deparser
     const std::vector<unsigned>& initialOffsets;
     const std::vector<std::set<cstring>>* xoredHeaderSets;
+    const std::set<cstring>* parsedHeaders;
     const P4::HdrValidityOpsRecVec* xoredValidityOps;
+    const unsigned* byteStackSize;
 
     EmitCallGraph* emitCallGraph;
+    std::unordered_map<cstring, unsigned> hdrSizeByInstName;
+
     IR::IndexedVector<IR::Declaration> varDecls;
     std::map<const IR::MethodCallStatement*, 
              IR::IndexedVector<IR::Declaration>> actionDecls;
@@ -60,10 +69,10 @@ class DeparserConverter final : public Transform {
     // e.g., for hdr.eth, only <eth, 112> is stored
     std::vector<std::pair<cstring, unsigned>> keyNamesWidths;
     std::vector<std::vector<char>> headerKeyValues;
+    const IR::MethodCallStatement* lastMcsEmitted = nullptr;
 
-    std::map<const IR::MethodCallStatement*, 
-             std::vector<std::tuple<IR::ListExpression*, unsigned, IR::P4Action*>>> 
-                keyValueEmitOffsets;
+    std::map<const IR::MethodCallStatement*, std::vector<EntryContext>> 
+        keyValueEmitOffsets;
 
     void createTableEntryList(const IR::MethodCallStatement* mcs);
     IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
@@ -87,7 +96,7 @@ class DeparserConverter final : public Transform {
 
     void createID(const IR::MethodCallStatement* emitStmt);
     const IR::Expression* getArgHeaderExpression(const IR::MethodCallStatement* mcs, 
-                                                 unsigned& width) const;
+                                                 unsigned& width);
 
     bool isDeparser(const IR::P4Control* p4control);
 
@@ -98,6 +107,8 @@ class DeparserConverter final : public Transform {
 
     bool emitsXORedHdrs(const std::vector<cstring>& vec, const IR::ListExpression* ls);
 
+    bool isParsableHeader(cstring hdr);
+
 
     void resizeReplicateKeyValueVec(size_t nfold);
     void insertValueKeyValueVec(char v, size_t begin, size_t end);
@@ -105,14 +116,18 @@ class DeparserConverter final : public Transform {
     void printHeaderKeyValues();
 
 
-    std::vector<cstring> hdrValidityOpkeyNames;
+    std::vector<std::pair<cstring, bool>> hdrOpKeyNames;
     std::vector<std::vector<char>> hdrValidityOpKeyValues;
 
     void createHdrValidityOpsKeysValues();
+    EntryContext extendEntry(const EntryContext& entry, 
+          const std::vector<char>& newKVs, const std::vector<EmitIndexMoveOffsetHdr>& emitData);
     IR::P4Table* multiplyHdrValidityOpsTable();
-    IR::P4Action* createPushAction(size_t width);
-    IR::P4Action* createPopAction(size_t width);
+    IR::P4Action* createPushAction(unsigned moveInitIndex, int moveWidth, 
+                                    const IR::P4Action* hdrAsmtAct);
 
+    IR::P4Action* createPopAction(unsigned moveInitIndex, int moveWidth, 
+                                    const IR::P4Action* hdrAsmtAct);
  public:
     using Transform::preorder;
     using Transform::postorder;
@@ -120,9 +135,13 @@ class DeparserConverter final : public Transform {
     explicit DeparserConverter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         const std::vector<unsigned>& initialOffsets,
         const std::vector<std::set<cstring>>* xoredHeaderSets,
-        const P4::HdrValidityOpsRecVec* xoredValidityOps = nullptr)
+        const std::set<cstring>* parsedHeaders = nullptr,
+        const P4::HdrValidityOpsRecVec* xoredValidityOps = nullptr,
+        const unsigned* byteStackSize = nullptr)
         : refMap(refMap), typeMap(typeMap), initialOffsets(initialOffsets), 
-          xoredHeaderSets(xoredHeaderSets), xoredValidityOps(xoredValidityOps) {
+          xoredHeaderSets(xoredHeaderSets),  parsedHeaders(parsedHeaders),
+          xoredValidityOps(xoredValidityOps), 
+          byteStackSize(byteStackSize) {
         setName("DeparserConverter"); 
         symbolicValueFactory = new P4::SymbolicValueFactory(typeMap);
         noActionName = "NoAction";

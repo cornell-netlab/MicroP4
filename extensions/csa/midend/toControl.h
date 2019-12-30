@@ -117,9 +117,11 @@ class Converter final : public Transform {
     P4::ParserStructuresMap *parserStructures;
     P4ControlStateReconInfoMap *controlToReconInfoMap;
     P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap;
+    const unsigned* byteStackSize;
 
     std::vector<std::vector<unsigned>*> offsetsStack;
     std::vector<std::vector<std::set<cstring>>*> xoredHeaderSetsStack;
+    std::vector<std::set<cstring>*> parsedHeadersStack;
 
     IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
     IR::Vector<IR::Type_Declaration> addInP4ProgramObjects;
@@ -136,12 +138,14 @@ class Converter final : public Transform {
               cstring* mainControlTypeName, 
               P4::ParserStructuresMap *parserStructures, 
               P4ControlStateReconInfoMap *controlToReconInfoMap,
-              P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap)
+              P4::HdrValidityOpsPkgMap* hdrValidityOpsPkgMap, 
+              const unsigned* byteStackSize = nullptr)
         : refMap(refMap), typeMap(typeMap), 
           mainControlTypeName(mainControlTypeName),
           parserStructures(parserStructures),
           controlToReconInfoMap(controlToReconInfoMap), 
-          hdrValidityOpsPkgMap(hdrValidityOpsPkgMap) {
+          hdrValidityOpsPkgMap(hdrValidityOpsPkgMap),
+          byteStackSize(byteStackSize) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(mainControlTypeName);  CHECK_NULL(parserStructures);
         CHECK_NULL(hdrValidityOpsPkgMap);
@@ -189,7 +193,7 @@ class ToControl final : public PassManager {
               &hdrValidityOpsPkgMap));
         passes.push_back(new Converter(refMap, typeMap, 
               mainControlTypeName, &parserStructures, controlToReconInfoMap, 
-              &hdrValidityOpsPkgMap));
+              &hdrValidityOpsPkgMap, &byteStackSize));
         passes.push_back(new AddCSAByteHeader(NameConstants::headerTypeName, 
               NameConstants::bitStreamFieldName, &byteStackSize));
         passes.push_back(new CPackageToControl(refMap, typeMap, 

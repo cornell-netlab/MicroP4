@@ -188,6 +188,11 @@ class ParserStructure {
     std::vector<std::set<cstring>>* xoredHeaderSets = 
                                             new std::vector<std::set<cstring>>();
 
+    // parsedHeaders stores all the headers that may be parsed by parser.
+    // Some header instances may not be parsed but only emitted.
+    // This is used in DeparserConverter.
+    std::set<cstring>* parsedHeaders = new std::set<cstring>();
+
     void setParser(const IR::P4Parser* parser) {
         CHECK_NULL(parser);
         callGraph = new StateCallGraph(parser->name);

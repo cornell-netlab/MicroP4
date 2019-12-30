@@ -62,6 +62,9 @@ bool CreateXoredHeaderSets::preorder(const IR::MethodCallStatement* mcs) {
     auto arg1Mem = arg1->expression->to<IR::Member>();
     auto hdrInstName = arg1Mem->member;
     xoredHeaderSet.insert(hdrInstName);
+    std::cout<<"CreateXoredHeaderSets "<<hdrInstName<<"\n";
+    parserStructure->parsedHeaders->insert(hdrInstName.name);
+
     /*
      * auto argType = typeMap->getType(arg1, true);
      * auto hdrType = argType->to<IR::Type_Header>();

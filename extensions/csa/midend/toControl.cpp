@@ -574,6 +574,7 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     auto convertedParser = ((IR::Node*)parser)->apply(pc);
 
     xoredHeaderSetsStack.push_back(parserStructure->xoredHeaderSets);
+    parsedHeadersStack.push_back(parserStructure->parsedHeaders);
     // new start offsets are computed and pushed on offsetsStack.
     auto currentParserOffsets = parserStructure->result->getAcceptedPktOffsets();
     auto acceptedPktOffset = new std::vector<unsigned>();
@@ -620,15 +621,18 @@ const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
     offsetsStack.pop_back();
     auto& initialOffsets = *(offsetsStack.back());
     auto xoredHeaderSets = xoredHeaderSetsStack.back();
+    auto parsedHeaderSet = parsedHeadersStack.back();
     const P4::HdrValidityOpsRecVec* xoredValidityOps = nullptr;
     auto it = hdrValidityOpsPkgMap->find(parentCpkg->name);
     if (it != hdrValidityOpsPkgMap->end())
         xoredValidityOps = it->second;
-    DeparserConverter dc(refMap, typeMap, initialOffsets, xoredHeaderSets, 
-                         xoredValidityOps);
+    DeparserConverter dc(refMap, typeMap, initialOffsets, 
+                         xoredHeaderSets, parsedHeaderSet, 
+                         xoredValidityOps, byteStackSize);
 
     auto dep = p4Control->apply(dc);
     xoredHeaderSetsStack.pop_back();
+    parsedHeadersStack.pop_back();
 
     prune();
     return dep;
