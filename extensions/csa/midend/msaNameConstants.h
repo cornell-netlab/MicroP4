@@ -39,6 +39,7 @@ class NameConstants {
     static const cstring csaPakcetInExternTypeName;
     static const cstring csaPakcetOutExternTypeName;
 
+    static const cstring HeaderValidityOpStrTypeName;
 
     static const cstring csaPktGetPacketStruct;
     static const cstring csaPktSetPacketStruct;

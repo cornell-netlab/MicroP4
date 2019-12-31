@@ -63,6 +63,7 @@ cpackage L3v4 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16
       hdr.ipv6.setValid();
     }
     action default_act() {
+      hdr.ipv4.setInvalid();
       hdr.ipv4_1.setValid();
       nexthop = 0; 
     }

@@ -30,11 +30,14 @@ class DeparserConverter final : public Transform {
   // emit index, cumulative moveOffset, hdr name
   typedef std::tuple<unsigned, int, cstring> 
     EmitIndexMoveOffsetHdr;
+
+
 // global throught the pass
     cstring noActionName;
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
     cstring tableName = "deparser_tbl";
+    cstring hdrVOPTypeParamName = "hdr_vop";
 
     P4::SymbolicValueFactory* symbolicValueFactory;
 
@@ -44,9 +47,11 @@ class DeparserConverter final : public Transform {
     const std::set<cstring>* parsedHeaders;
     const P4::HdrValidityOpsRecVec* xoredValidityOps;
     const unsigned* byteStackSize;
+    IR::Type_Struct* hdrVOPType;
 
     EmitCallGraph* emitCallGraph;
     std::unordered_map<cstring, unsigned> hdrSizeByInstName;
+    std::unordered_map<cstring, const IR::MethodCallStatement*> hdrMCSMap;
 
     IR::IndexedVector<IR::Declaration> varDecls;
     std::map<const IR::MethodCallStatement*, 
@@ -74,11 +79,15 @@ class DeparserConverter final : public Transform {
     std::map<const IR::MethodCallStatement*, std::vector<EntryContext>> 
         keyValueEmitOffsets;
 
-    void createTableEntryList(const IR::MethodCallStatement* mcs);
+
     IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
             unsigned& currentEmitOffset, const IR::P4Action* ancestorAction);
     IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
                            unsigned& currentEmitOffset);
+
+    IR::P4Action* createP4Action(const cstring hdrInstName, 
+                                unsigned currentEmitOffset);
+
     IR::Key* createKey(const IR::MethodCallStatement* mcs);
 
     IR::P4Table* createP4Table(cstring name, IR::Key* key, IR::ActionList* al, 
@@ -119,15 +128,18 @@ class DeparserConverter final : public Transform {
     std::vector<std::pair<cstring, bool>> hdrOpKeyNames;
     std::vector<std::vector<char>> hdrValidityOpKeyValues;
 
+    void createHdrValidityOpsKeysNames(const IR::MethodCallStatement* dummyMCS);
     void createHdrValidityOpsKeysValues();
-    EntryContext extendEntry(const EntryContext& entry, 
-          const std::vector<char>& newKVs, const std::vector<EmitIndexMoveOffsetHdr>& emitData);
-    IR::P4Table* multiplyHdrValidityOpsTable();
-    IR::P4Action* createPushAction(unsigned moveInitIndex, int moveWidth, 
-                                    const IR::P4Action* hdrAsmtAct);
+    EntryContext extendEntry(const IR::MethodCallStatement* mcs,
+        const EntryContext& entry, const std::vector<char>& newKVs, 
+        const std::vector<EmitIndexMoveOffsetHdr>& emitData, 
+        int moveOffset, unsigned currOffset);
+    IR::P4Table* multiplyHdrValidityOpsTable(const IR::MethodCallStatement* dummyMCS);
+    IR::P4Action* createByteMoveP4Action(unsigned moveInitIdx, 
+                                      int moveOffset, unsigned moveBlockSize);
+    
+    void printEIMvOsHdr(const std::vector<EmitIndexMoveOffsetHdr>& v);
 
-    IR::P4Action* createPopAction(unsigned moveInitIndex, int moveWidth, 
-                                    const IR::P4Action* hdrAsmtAct);
  public:
     using Transform::preorder;
     using Transform::postorder;
@@ -137,11 +149,13 @@ class DeparserConverter final : public Transform {
         const std::vector<std::set<cstring>>* xoredHeaderSets,
         const std::set<cstring>* parsedHeaders = nullptr,
         const P4::HdrValidityOpsRecVec* xoredValidityOps = nullptr,
-        const unsigned* byteStackSize = nullptr)
+        const unsigned* byteStackSize = nullptr,
+        IR::Type_Struct* hdrVOPType = nullptr)
         : refMap(refMap), typeMap(typeMap), initialOffsets(initialOffsets), 
           xoredHeaderSets(xoredHeaderSets),  parsedHeaders(parsedHeaders),
           xoredValidityOps(xoredValidityOps), 
-          byteStackSize(byteStackSize) {
+          byteStackSize(byteStackSize),
+          hdrVOPType(hdrVOPType){
         setName("DeparserConverter"); 
         symbolicValueFactory = new P4::SymbolicValueFactory(typeMap);
         noActionName = "NoAction";

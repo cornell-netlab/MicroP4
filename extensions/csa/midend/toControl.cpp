@@ -626,9 +626,14 @@ const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
     auto it = hdrValidityOpsPkgMap->find(parentCpkg->name);
     if (it != hdrValidityOpsPkgMap->end())
         xoredValidityOps = it->second;
+    cstring hdrValidityOpStrTypeName = parentCpkg->name + "_"
+                                  + NameConstants::HeaderValidityOpStrTypeName;
+    auto hdrValidityOpStrType = new IR::Type_Struct(hdrValidityOpStrTypeName);
+    addInP4ProgramObjects.push_back(hdrValidityOpStrType);
     DeparserConverter dc(refMap, typeMap, initialOffsets, 
                          xoredHeaderSets, parsedHeaderSet, 
-                         xoredValidityOps, byteStackSize);
+                         xoredValidityOps, byteStackSize, 
+                         hdrValidityOpStrType);
 
     auto dep = p4Control->apply(dc);
     xoredHeaderSetsStack.pop_back();

@@ -79,9 +79,11 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
                            &controlToReconInfoMap, &minExtLen, &maxExtLen),
         new P4::MidEndLast(),
+
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
+        /*
         // CreateAllPartitions is PassRepeated with ResolveReferences & TypeInference.
         // It will terminate when p4program does not change.
         // Subsequent TypeInference fails due to stale const IR::Path* in
@@ -92,6 +94,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
                                      &partitionsMap, &controlToReconInfoMap, 
                                      &partitions),
         new P4::MidEndLast(),
+        */
 
         /*
         new CSA::MergeDeclarations(targetIR), 

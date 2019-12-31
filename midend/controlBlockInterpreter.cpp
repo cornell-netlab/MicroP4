@@ -45,6 +45,7 @@ bool ControlBlockInterpreter::preorder(const IR::P4Control* p4Control) {
     std::vector<size_t> emptyElements;
 
     bool modified = true;
+    bool dup = false;
     while (modified) {
         modified = false;
         auto it = xoredHdrValidityOps->begin();
@@ -56,8 +57,11 @@ bool ControlBlockInterpreter::preorder(const IR::P4Control* p4Control) {
                 break;
             }
         }
-        if (modified)
+        if (modified && dup) {
             xoredHdrValidityOps->erase(it);
+        }
+        if (modified)
+            dup = true;
     }
 
     return false;
