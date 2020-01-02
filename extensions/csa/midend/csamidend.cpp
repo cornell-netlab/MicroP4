@@ -96,7 +96,6 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
                                      &partitions),
         new P4::MidEndLast(),
 
-        /*
         new CSA::MergeDeclarations(targetIR), 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
@@ -107,6 +106,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::TypeInference(&refMap, &typeMap, false),
         // new P4::MidEndLast(),
 
+        /*
         // These are Tofino specific passes
         //////////////////////////////////////////
         new CSA::ReplaceMSAByteHdrStack(&refMap, &typeMap, stackSize, 
