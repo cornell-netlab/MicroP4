@@ -48,6 +48,7 @@ class DeparserConverter final : public Transform {
     const P4::HdrValidityOpsRecVec* xoredValidityOps;
     const unsigned* byteStackSize;
     IR::Type_Struct* hdrVOPType;
+    cstring parserMSAMetaStrTypeName;
 
     EmitCallGraph* emitCallGraph;
     std::unordered_map<cstring, unsigned> hdrSizeByInstName;
@@ -105,7 +106,8 @@ class DeparserConverter final : public Transform {
 
     void createID(const IR::MethodCallStatement* emitStmt);
     const IR::Expression* getArgHeaderExpression(const IR::MethodCallStatement* mcs, 
-                                                 unsigned& width);
+                                                 unsigned& width, 
+                                                 cstring& hdrInstName);
 
     bool isDeparser(const IR::P4Control* p4control);
 
@@ -150,17 +152,20 @@ class DeparserConverter final : public Transform {
         const std::set<cstring>* parsedHeaders = nullptr,
         const P4::HdrValidityOpsRecVec* xoredValidityOps = nullptr,
         const unsigned* byteStackSize = nullptr,
-        IR::Type_Struct* hdrVOPType = nullptr)
+        IR::Type_Struct* hdrVOPType = nullptr, 
+        cstring parserMSAMetaStrTypeName = "")
         : refMap(refMap), typeMap(typeMap), initialOffsets(initialOffsets), 
           xoredHeaderSets(xoredHeaderSets),  parsedHeaders(parsedHeaders),
           xoredValidityOps(xoredValidityOps), 
           byteStackSize(byteStackSize),
-          hdrVOPType(hdrVOPType){
+          hdrVOPType(hdrVOPType), 
+          parserMSAMetaStrTypeName(parserMSAMetaStrTypeName){
         setName("DeparserConverter"); 
         symbolicValueFactory = new P4::SymbolicValueFactory(typeMap);
         noActionName = "NoAction";
     }
 
+    Visitor::profile_t init_apply(const IR::Node* node) override;
     const IR::Node* preorder(IR::P4Control* deparser) override;
     const IR::Node* postorder(IR::P4Control* deparser) override;
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;

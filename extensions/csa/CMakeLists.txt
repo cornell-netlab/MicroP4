@@ -19,6 +19,8 @@ set (CSA_SWITCH_SRCS
     midend/msaNameConstants.cpp
     midend/staticAnalyzer.h
     midend/staticAnalyzer.cpp
+    midend/scanForHdrVOps.h
+    midend/scanForHdrVOps.cpp
     midend/csamidend.h
     midend/csamidend.cpp
     midend/msaPacketSubstituter.h

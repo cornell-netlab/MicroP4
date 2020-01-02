@@ -145,16 +145,23 @@ cstring ParserConverter::createInitdAction(IR::P4Parser* parser) {
     for (auto f : hdrStruct->fields) {
         if (!f->type->is<IR::Type_Header>())
             ::error("%1% expected to be Header type", f->name);
-
-        auto member = new IR::Member(new IR::PathExpression(param->name), f->name);
-        auto newMember = new IR::Member(member, IR::Type_Header::setInvalid);
-        auto mce = new IR::MethodCallExpression(newMember);
-        auto mcs =  new IR::MethodCallStatement(mce);
-        statOrDeclList->push_back(mcs);
+        
+        cstring hdrValidFlagName = f->name + NameConstants::hdrValidFlagSuffix;
+        auto lhe = new IR::Member(
+            new IR::PathExpression(NameConstants::parserMetaStrParamName), 
+            IR::ID(hdrValidFlagName));
+        auto rhe = new IR::BoolLiteral(false);
+        auto as = new IR::AssignmentStatement(lhe, rhe);
+        statOrDeclList->push_back(as);
+        // auto member = new IR::Member(new IR::PathExpression(param->name), f->name);
+        // auto newMember = new IR::Member(member, IR::Type_Header::setInvalid);
+        // auto mce = new IR::MethodCallExpression(newMember);
+        // auto mcs =  new IR::MethodCallStatement(mce);
+        // statOrDeclList->push_back(mcs);
     }
 
     auto lval = new IR::Member(new IR::PathExpression(
-                                NameConstants::convertedParserMetaParamName),
+                                NameConstants::parserMetaStrParamName),
                                 IR::ID(NameConstants::csaParserRejectStatus));
     auto rval = new IR::Constant(0, 2);
     auto as = new IR::AssignmentStatement(lval, rval);
@@ -173,7 +180,7 @@ void ParserConverter::createRejectAction(IR::P4Parser* parser) {
     rejectActionName = parser->name.name+"_"+"reject";
     auto statOrDeclList = new IR::IndexedVector<IR::StatOrDecl>();
     auto lval = new IR::Member(new IR::PathExpression(
-                                NameConstants::convertedParserMetaParamName),
+                                NameConstants::parserMetaStrParamName),
                                 IR::ID(NameConstants::csaParserRejectStatus));
     auto rval = new IR::Constant(1, 2);
     auto as = new IR::AssignmentStatement(lval, rval);
@@ -505,7 +512,7 @@ const IR::Node* ParserConverter::postorder(IR::P4Parser* parser) {
     newApplyParams->parameters.replace(newApplyParams->parameters.begin(), param);
 
     auto metaParam = new IR::Parameter(pktParam->srcInfo, 
-                      IR::ID(NameConstants::convertedParserMetaParamName), 
+                      IR::ID(NameConstants::parserMetaStrParamName), 
                       IR::Direction::Out,
                       new IR::Type_Name(parserMetaStructTypeName));
     newApplyParams->parameters.push_back(metaParam);
@@ -560,8 +567,21 @@ const IR::Node* ExtractSubstitutor::preorder(IR::MethodCallStatement* mcs) {
     auto mce = new IR::MethodCallExpression(newMember);
     auto setValidMCS =  new IR::MethodCallStatement(mce);
 
+    cstring hdrName = "";
+    if (auto hdrMem = arg1->expression->to<IR::Member>())
+        hdrName = hdrMem->member;
+    if (auto hdrPE = arg1->expression->to<IR::PathExpression>())
+        hdrName = hdrPE->path->name;
+    cstring hdrValidFlagName = hdrName + NameConstants::hdrValidFlagSuffix;
+    auto lhe = new IR::Member(
+          new IR::PathExpression(NameConstants::parserMetaStrParamName), 
+          IR::ID(hdrValidFlagName));
+    auto rhe = new IR::BoolLiteral(true);
+    auto as = new IR::AssignmentStatement(lhe, rhe);
+
     auto retVec = new IR::IndexedVector<IR::StatOrDecl>();
-    retVec->push_back(setValidMCS);
+    // retVec->push_back(setValidMCS);
+    retVec->push_back(as);
     retVec->append(asmtSmts);
     prune();
     return retVec;

@@ -25,20 +25,28 @@ class PartitionInfo {
     IR::P4Control* partition1;
     IR::P4Control* partition2;
 
+    // list of header type instaces on which setValid is called in the first
+    // partition
+    std::vector<std::pair<cstring, cstring>> setVOpHdrTypeInstNamePart1;
+    bool hasSetInvalidOpPart1;
+
+    std::vector<std::pair<cstring, cstring>> setVOpHdrTypeInstNamePart2;
+    bool hasSetInvalidOpPart2;
+
     // These are kept as Type_Declaration to allow optimization depending on
     // architecture.
     // e.g., for It is be possible to generate IngressDeparser as IR::P4Control 
     // and EgressParser as IR::P4Parser for PSA.
-    IR::Type_Declaration* deparser;
-    IR::Type_Declaration* parser;
+    const IR::Type_Declaration* deparser;
+    const IR::Type_Declaration* parser;
 
     PartitionInfo(cstring origControlName, IR::Type_Struct* structType, 
         std::vector<const IR::Declaration_Instance*> sharedDeclInsts,
         std::map<cstring, cstring> param2InstPart1,
         std::map<cstring, cstring> param2InstPart2,
         IR::P4Control* part1, IR::P4Control* part2, 
-        IR::Type_Declaration* deparser = nullptr, 
-        IR::Type_Declaration* parser = nullptr)
+        const IR::Type_Declaration* deparser = nullptr, 
+        const IR::Type_Declaration* parser = nullptr)
       : origControlName(origControlName), sharedStructType(structType), 
         sharedDeclInsts(sharedDeclInsts), param2InstPart1(param2InstPart1),
         param2InstPart2(param2InstPart2), partition1(part1), partition2(part2),
@@ -55,21 +63,27 @@ typedef std::map<cstring, PartitionInfo> P4ControlPartitionInfoMap;
  * state of the partitioned control
  */
 class ControlStateReconInfo {
+    
 
   public:
-    cstring controlName;
+    
+    cstring controlName; // originally P4ComposablePackage package
+
     cstring headerTypeName;
     cstring headerParamName;
 
+
     IR::P4Control* deparser;
-    IR::P4Control* parser;
+
+
+    const IR::P4Control* deparserWoVOPs;
+    cstring deparserHeaderTypeParamName;
+    IR::Vector<IR::Argument>* deparserArgs;
 
     // Populated by parserConverter.
     // allPossileFinalValueMaps is used to generate MAT to (de)serialize headers
     P4::ParserStructure* parserStructure = nullptr;
 
-    unsigned numberOfheaders = 16;
-    const IR::Type* sharedVariableType;
 
     ControlStateReconInfo(cstring controlName, cstring headerTypeName, 
                           cstring headerParamName = "",
@@ -78,16 +92,20 @@ class ControlStateReconInfo {
       : controlName(controlName), headerTypeName(headerTypeName), 
         headerParamName(headerParamName), deparser(deparser),
         parserStructure(parserStructure) {
-        sharedVariableType = IR::Type::Bits::get(numberOfheaders, false);
     }
 
+    const IR::P4Control* getDeparser(bool woVOPs);
+    const IR::P4Control* getParser(bool woVOPs);
+
+    IR::Vector<IR::Argument>* getDeparserArgs();
+    IR::Vector<IR::Argument>* getParserArgs();
+
+    cstring getHeaderInstName();
 };
 
 // This map stores control name argument type which should be deparsed and
 // parsed, in case the control is paritioned.
 typedef std::map<cstring, ControlStateReconInfo*> P4ControlStateReconInfoMap;
-
-
 
 }   // namespace CSA
 #endif  /* _EXTENSIONS_CSA_MIDEND_CONTROLSTATERECONINFO_H_  */

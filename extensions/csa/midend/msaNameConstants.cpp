@@ -26,7 +26,14 @@ const cstring NameConstants::csaPktStuLenFName = "pkt_len";
 const cstring NameConstants::csaPktStuCurrOffsetFName = "curr_offset";
 
 
-const cstring NameConstants::HeaderValidityOpStrTypeName = "hdr_vop_t";
+const cstring NameConstants::headerValidityOpStrTypeName = "hdr_vop_t";
+const cstring NameConstants::headerValidityOpStrParamName = "hdr_vop";
+const cstring NameConstants::parserMetaStrTypeName = "parser_meta_t";
+const cstring NameConstants::parserMetaStrParamName = "parser_meta";
+
+const cstring NameConstants::hdrValidFlagSuffix = "_v";
+const cstring NameConstants::hdrSetValidOpFlagSuffix = "_sv";
+const cstring NameConstants::hdrSetInvalidOpFlagSuffix = "_siv";
 
 // used by CSAPacketSubstituter
 const cstring NameConstants::csaPktGetPacketStruct = "get_packet_struct";
@@ -38,5 +45,4 @@ const cstring NameConstants::csaPakcetOutExternTypeName = "csa_packet_out";
 
 
 const cstring NameConstants::csaParserRejectStatus = "packet_reject";
-const cstring NameConstants::convertedParserMetaParamName = "pr";
 }// namespace CSA

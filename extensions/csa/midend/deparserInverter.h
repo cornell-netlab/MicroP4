@@ -25,8 +25,6 @@ namespace CSA {
 
 class DeparserInverter final : public Transform {
     
-    P4::ReferenceMap* refMap;
-    P4::TypeMap* typeMap;
     cstring newName;
     cstring headerTypeName;
     cstring headerParamName;

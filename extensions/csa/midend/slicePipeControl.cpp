@@ -9,6 +9,7 @@
 #include "toControl.h"
 #include "frontends/p4/methodInstance.h"
 #include "deparserInverter.h"
+#include "scanForHdrVOps.h"
 
 namespace CSA {
 
@@ -154,20 +155,35 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
         // std::cout<<"Second part of control body\n";
         // std::cout<<part2Body<<"\n\n";
 
-        IR::Type_Declaration* deparser = nullptr;
-        IR::Type_Declaration* parser = nullptr;
+        const IR::P4Control* deparser = nullptr;
+        const IR::P4Control* parser = nullptr;
 
         if (isConvertedCPackage) {
+            
+            std::vector<std::pair<cstring, cstring>> svOpHdrs;
+            ScanForHdrVOps scanSVOps(refMap, typeMap, &svOpHdrs);
+            part1Body->apply(scanSVOps);
+            auto numOpsPart1 = svOpHdrs.size();
+            std::cout<<"Num of SetValid Ops in part 1"<<svOpHdrs.size()<<"\n";
+
+            svOpHdrs.clear();
+            part2Body->apply(scanSVOps);
+            auto numOpsPart2 = svOpHdrs.size();
+            std::cout<<"Num of SetValid Ops in part 2"<<svOpHdrs.size()<<"\n";
+
+            BUG_CHECK(numOpsPart1 == 0 || numOpsPart2 == 0, 
+                "yet to enable Set(IN)Valid calls across partitions of %1%", 
+                p4ControlOrigName);
+            
             // Now, we are at the place where we need to do all sorts of state
             // reconstruction between ingress and egress
             auto iter = controlToReconInfoMap->find(p4control->getName());
             if (iter != controlToReconInfoMap->end()) {
                 cstring parsedHeaderTypeName = iter->second->headerTypeName;
                 // std::cout<<iter->first<<" - "<<iter->second<<"\n";
-                deparser = createIntermediateDeparser(
-                    NameConstants::csaPacketStructTypeName, iter->second);
-                parser = createIntermediateParser(
-                    NameConstants::csaPacketStructTypeName, iter->second);
+
+                deparser = iter->second->getDeparser(numOpsPart2 != 0);
+                parser = iter->second->getParser(numOpsPart2 != 0);
 
                 cstring varName = "";
                 // get parsed header instance name from the apply call.
@@ -183,17 +199,9 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                         }
                     }
                 }
-                
                 replicateDecls.emplace(varName);
                 replicateDecls.emplace(intermediateCSAPacketHeaderInst);
 
-                // declaring header validity map
-                /*
-                cstring hdrValidBitMapVarName = iter->second->headerTypeName + "_valid";
-                auto hdrValidBitMapVar = new IR::Declaration_Variable(hdrValidBitMapVarName, 
-                                         iter->second->sharedVariableType);
-                p4control->controlLocals.push_back(hdrValidBitMapVar);
-                */
 
                 // instantiating deparser and parser controls
                 auto intermediateDeparserInst = new IR::Declaration_Instance(
@@ -204,26 +212,28 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                     IR::ID(parser->getName()+"_inst"), 
                     new IR::Type_Name(parser->getName()),
                     new IR::Vector<IR::Argument>());
+
                 p4control->controlLocals.push_back(intermediateDeparserInst);
                 p4control->controlLocals.push_back(intermediateParserInst);
 
                 // deparser and parser apply calls
+                auto deparserArgs = iter->second->getDeparserArgs();
+                auto parserArgs = iter->second->getParserArgs();
+                /*
                 auto dpArgs = new IR::Vector<IR::Argument>();
                 dpArgs->push_back(new IR::Argument(
                       new IR::PathExpression(intermediateCSAPacketHeaderInst)));
                 dpArgs->push_back(new IR::Argument(
                       new IR::PathExpression(varName)));
-                /*
-                dpArgs->push_back(new IR::Argument(
-                      new IR::PathExpression(hdrValidBitMapVarName)));
                 */
+
                 auto dpe = new IR::PathExpression(intermediateDeparserInst->getName());
                 auto memdp = new IR::Member(dpe, "apply");
-                auto dpMCE = new IR::MethodCallExpression(memdp, dpArgs);
+                auto dpMCE = new IR::MethodCallExpression(memdp, deparserArgs);
 
                 auto pe = new IR::PathExpression(intermediateParserInst->getName());
                 auto memp = new IR::Member(pe, "apply");
-                auto pMCE = new IR::MethodCallExpression(memp, dpArgs->clone());
+                auto pMCE = new IR::MethodCallExpression(memp, parserArgs);
 
                 auto dMCS = new IR::MethodCallStatement(dpMCE);
                 auto pMCS = new IR::MethodCallStatement(pMCE);
@@ -259,13 +269,38 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
         p4control->name = p4control->type->name;
         auto sharedStruct = createSharedStructType(&p4control, &p4ControlPart2,
             replicateDecls);
+
+
+        auto pi = new PartitionInfo(p4ControlOrigName, sharedStruct, 
+              sharedLocalDeclInsts, param2InstPart1, param2InstPart2,
+              p4control, p4ControlPart2, deparser, parser);
+       
+        std::cout<<"\n............. Before adding in partMap ....... \n";
+        ScanForHdrVOps scanSVOps(refMap, typeMap, 
+            &(pi->setVOpHdrTypeInstNamePart1));
+        part1Body->apply(scanSVOps);
+        auto numOpsPart1 = pi->setVOpHdrTypeInstNamePart1.size();
+        std::cout<<"Num of SetValid Ops in part 1"<<numOpsPart1<<"\n";
+
         
+        ScanForHdrVOps scanSVOps2(refMap, typeMap, 
+            &(pi->setVOpHdrTypeInstNamePart2));
+        part2Body->apply(scanSVOps2);
+        auto numOpsPart2 = pi->setVOpHdrTypeInstNamePart2.size();
+        std::cout<<"Num of SetValid Ops in part 2"<<numOpsPart2<<"\n";
+
+        BUG_CHECK(numOpsPart1 == 0 || numOpsPart2 == 0, 
+            "yet to enable Set(IN)Valid calls across partitions of %1%", 
+            p4ControlOrigName);
+        std::cout<<"..................................................\n";
+ 
         /*
         std::cout<<"First Control ................ \n";
         std::cout<<p4control<<"\n";
         std::cout<<"Second Control ................ \n";
         std::cout<<p4ControlPart2<<"\n";
         */
+
 
         partitionsMap.emplace(std::piecewise_construct,
             //std::forward_as_tuple(p4ControlOrigName),
@@ -771,7 +806,7 @@ cstring SlicePipeControl::getUniqueControlName(cstring prefix) {
 }
 
 
-
+/*
 IR::Type_Declaration* SlicePipeControl::createIntermediateDeparser(
     cstring packetOutTypeName, ControlStateReconInfo* info) {
 
@@ -789,7 +824,7 @@ IR::Type_Declaration* SlicePipeControl::createIntermediateDeparser(
     IR::IndexedVector<IR::Declaration> cls;
     auto bs = new IR::BlockStatement();
     auto depName = info->deparser->getName();
-    auto deparserInst = new IR::Declaration_Instance(IR::ID(depName+"_i"), 
+    auto deparserInst = new IR::Declaration_Instance(IR::ID(depName+"_inst"), 
         new IR::Type_Name(depName), new IR::Vector<IR::Argument>());
     cls.push_back(deparserInst);
 
@@ -816,6 +851,7 @@ IR::Type_Declaration* SlicePipeControl::createIntermediateParser(
     //std::cout<<"\n"<<p4Control<<"\n";
     return p4Control;
 }
+*/
 
 cstring SlicePipeControl::getSharedStructTypeName(cstring controlTypeName) {
     return "struct_"+controlTypeName+"_t";

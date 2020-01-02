@@ -32,9 +32,9 @@ class CPackageToControl final : public Transform {
 
     // Per P4ComposablePackage state
     std::map<cstring, cstring> typeRenameMap;
-    std::map<cstring, IR::Statement*> mcsMap;
+    std::map<cstring, IR::MethodCallStatement*> mcsMap;
     std::map<cstring, cstring> ctrlInstanceName;
-    // type to args bookkeeping
+    // type to args bookkeeping (locally declared vars are passed as args)
     std::map<cstring, IR::PathExpression*> typeToArgsMap;
     IR::IndexedVector<IR::Declaration> newDeclInsts;
 
@@ -66,7 +66,6 @@ class CPackageToControl final : public Transform {
     const IR::Node* postorder(IR::P4Control* p4control) override;
 
     const IR::Node* preorder(IR::Type_ComposablePackage* tcp) override;
-
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
     const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
 
@@ -157,6 +156,7 @@ class Converter final : public Transform {
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
     // used to visit P4Parser of callee P4ComposablePackage
     const IR::Node* preorder(IR::P4Control* p4Control) override;
+    const IR::Node* preorder(IR::Type_Control* tc) override;
     const IR::Node* preorder(IR::P4Parser* p4Parser) override;
     const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
 

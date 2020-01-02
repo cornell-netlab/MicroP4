@@ -195,6 +195,7 @@ const IR::Node* CPackageToControl::postorder(IR::P4Control* p4control) {
     auto oldName =  p4control->name;
     p4control->name = IR::ID(p4control->type->name.name);
 
+    /*
     auto parentCpkg = findContext<IR::P4ComposablePackage>();
     if (oldName == "micro_deparser") {
         if (parentCpkg) {
@@ -204,6 +205,7 @@ const IR::Node* CPackageToControl::postorder(IR::P4Control* p4control) {
             it->second->deparser = p4control->clone();
         }
     }
+     */
 
     return p4control;
 }
@@ -275,6 +277,23 @@ const IR::Node* CPackageToControl::postorder(IR::P4ComposablePackage* cp) {
     
     auto bs = new IR::BlockStatement();
     addMCSs(bs);
+
+    
+    auto iter = controlToReconInfoMap->find(cp->getName());
+    if(iter != controlToReconInfoMap->end()) {
+        auto itMCSMap = mcsMap.find("micro_deparser");
+        if (itMCSMap != mcsMap.end()) {
+              iter->second->deparserArgs = 
+                itMCSMap->second->methodCall->arguments->clone();
+              cstring tn = iter->second->headerTypeName ;
+                //"_" +cstring::to_cstring(IR::Direction::InOut);
+              auto itTAMap = typeToArgsMap.find(tn);
+              BUG_CHECK(itTAMap != typeToArgsMap.end(), 
+                  "could not find arg for %1%", tn);
+              iter->second-> headerParamName = itTAMap->second->path->name;
+        }
+    }
+
 
     if (mcsMap.find("micro_parser") != mcsMap.end()) {
         // Adding intermediate calls to help CSAPacketSubstituter
@@ -552,8 +571,10 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     cstring parser_fqn = parser->getName();
     auto cp = findContext<IR::P4ComposablePackage>();
     auto hdrStrType = getHeaderStructType(parser);
-    if (cp != nullptr)
-        parser_fqn = cp->getName() +"_"+ parser->getName();
+    cstring cpkgName = "";
+    if (cp != nullptr) 
+        cpkgName = cp->getName();
+    parser_fqn = cpkgName +"_"+ parser->getName();
     // std::cout<<parser_fqn<<"\n";
     auto iter = parserStructures->find(parser_fqn);
     BUG_CHECK(iter != parserStructures->end(), 
@@ -564,7 +585,8 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     auto flagField = new IR::StructField(
                          NameConstants::csaParserRejectStatus, flagType);
 
-    cstring parserMSAMetaStrTypeName = parser_fqn+"_msa_meta_t";
+    cstring parserMSAMetaStrTypeName = 
+                          cpkgName+"_"+NameConstants::parserMetaStrTypeName;
     auto ts = createValidityStruct(hdrStrType, parserMSAMetaStrTypeName);
     ts->fields.push_back(flagField);
     addInP4ProgramObjects.push_back(ts);
@@ -598,10 +620,38 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     return convertedParser;
 }
 
+const IR::Node* Converter::preorder(IR::Type_Control* tc) {
+
+    auto parentCpkg = findContext<IR::P4ComposablePackage>();
+    cstring hdrValidityOpStrTypeName = parentCpkg->name + "_"
+                                  + NameConstants::headerValidityOpStrTypeName;
+
+    cstring parserMSAMetaStrTypeName = 
+          parentCpkg->name+"_"+NameConstants::parserMetaStrTypeName;
+    if (parentCpkg == nullptr)
+        return tc;
+    auto np = new IR::Parameter(
+        IR::ID(NameConstants::headerValidityOpStrParamName), 
+        IR::Direction::Out, new IR::Type_Name(hdrValidityOpStrTypeName));
+
+    auto npm = new IR::Parameter(
+        IR::ID(NameConstants::parserMetaStrParamName), 
+        IR::Direction::In, new IR::Type_Name(parserMSAMetaStrTypeName));
+
+    auto npl = new IR::ParameterList();
+    for (auto p : tc->applyParams->parameters)
+        npl->push_back(p->clone());
+    npl->push_back(npm);
+    npl->push_back(np);
+    tc->applyParams = npl;
+    return tc;
+}
+
 const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
 
     if (!isDeparser(p4Control)) {
-    // std::cout<<"visiting ccccc "<<p4Control->getName()<<"\n";
+    // std::cout<<"visiting "<<p4Control->getName()<<"\n";
+        visit(p4Control->type);
         visit(p4Control->body);
         prune();
         return p4Control;
@@ -610,12 +660,13 @@ const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
     // std::cout<<"visiting ----- "<<p4Control->getName()<<"\n";
     
     auto parentCpkg = findContext<IR::P4ComposablePackage>();
+    
     if (parentCpkg != nullptr) {
         auto iter = controlToReconInfoMap->find(parentCpkg->getName());
         BUG_CHECK(iter != controlToReconInfoMap->end(), 
             "parser info not stored for state reconstruction");
         auto pn = getParamNameOfType(p4Control, iter->second->headerTypeName);
-        iter->second->headerParamName = pn;
+        iter->second->deparserHeaderTypeParamName = pn;
     }
 
     offsetsStack.pop_back();
@@ -627,21 +678,44 @@ const IR::Node* Converter::preorder(IR::P4Control* p4Control) {
     if (it != hdrValidityOpsPkgMap->end())
         xoredValidityOps = it->second;
     cstring hdrValidityOpStrTypeName = parentCpkg->name + "_"
-                                  + NameConstants::HeaderValidityOpStrTypeName;
+                                  + NameConstants::headerValidityOpStrTypeName;
     auto hdrValidityOpStrType = new IR::Type_Struct(hdrValidityOpStrTypeName);
+
+    cstring parserMSAMetaStrTypeName = 
+          parentCpkg->name+"_"+NameConstants::parserMetaStrTypeName;
+
     addInP4ProgramObjects.push_back(hdrValidityOpStrType);
     DeparserConverter dc(refMap, typeMap, initialOffsets, 
                          xoredHeaderSets, parsedHeaderSet, 
                          xoredValidityOps, byteStackSize, 
-                         hdrValidityOpStrType);
-
+                         hdrValidityOpStrType, parserMSAMetaStrTypeName);
     auto dep = p4Control->apply(dc);
+
+    if (parentCpkg != nullptr) {
+
+        auto iter = controlToReconInfoMap->find(parentCpkg->getName());
+        BUG_CHECK(iter != controlToReconInfoMap->end(), 
+            "parser info not stored for state reconstruction");
+
+        iter->second->deparser = dep->to<IR::P4Control>()->clone();
+
+        P4::HdrValidityOpsRecVec emptyVOPVec;
+        DeparserConverter dcWoVOP(refMap, typeMap, initialOffsets, 
+                         xoredHeaderSets, parsedHeaderSet, &emptyVOPVec,
+                         byteStackSize, hdrValidityOpStrType, 
+                         parserMSAMetaStrTypeName);
+        auto deparserWoVOP = p4Control->apply(dcWoVOP);
+        iter->second->deparserWoVOPs = deparserWoVOP->to<IR::P4Control>();
+    }
+
+
     xoredHeaderSetsStack.pop_back();
     parsedHeadersStack.pop_back();
 
     prune();
     return dep;
 }
+
 
 const IR::Node* Converter::preorder(IR::MethodCallStatement* mcs) {
     auto expression = mcs->methodCall;
@@ -670,8 +744,8 @@ bool Converter::isDeparser(const IR::P4Control* p4Control) {
     auto params = p4Control->getApplyParameters();
     for (auto param : params->parameters) {
         auto type = typeMap->getType(param, false);
-        CHECK_NULL(type);
-        if (type->is<IR::Type_Extern>()) {
+        // CHECK_NULL(type);
+        if (type != nullptr && type->is<IR::Type_Extern>()) {
             auto te = type->to<IR::Type_Extern>();
             if (te->name.name == P4::P4CoreLibrary::instance.emitter.name) {
                 // std::cout<<te<<"\n";
@@ -688,8 +762,8 @@ IR::Type_Struct* Converter::createValidityStruct(const IR::Type_Struct* hdrStr,
     for (const auto f : hdrStr->fields) {
         auto ft = typeMap->getTypeType(f->type, true);
         if (ft->is<IR::Type_Header>() || ft->is<IR::Type_HeaderUnion>()) {
-            auto vft = IR::Type::Bits::get(1, false);
-            cstring fn = f->name + "_valid";
+            auto vft = IR::Type_Boolean::get();
+            cstring fn = f->name + NameConstants::hdrValidFlagSuffix;
             auto vf = new IR::StructField(fn, vft);
             ts->fields.push_back(vf);
         }

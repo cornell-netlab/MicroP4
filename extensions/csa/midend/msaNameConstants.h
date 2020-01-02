@@ -39,7 +39,14 @@ class NameConstants {
     static const cstring csaPakcetInExternTypeName;
     static const cstring csaPakcetOutExternTypeName;
 
-    static const cstring HeaderValidityOpStrTypeName;
+    static const cstring headerValidityOpStrTypeName;
+    static const cstring headerValidityOpStrParamName;
+    static const cstring parserMetaStrTypeName;
+    static const cstring parserMetaStrParamName;
+
+    static const cstring hdrValidFlagSuffix;
+    static const cstring hdrSetValidOpFlagSuffix;
+    static const cstring hdrSetInvalidOpFlagSuffix;
 
     static const cstring csaPktGetPacketStruct;
     static const cstring csaPktSetPacketStruct;
@@ -49,7 +56,6 @@ class NameConstants {
 
 
     static const cstring csaParserRejectStatus;
-    static const cstring convertedParserMetaParamName;
   private:
     NameConstants() {}
 

@@ -191,11 +191,13 @@ class SlicePipeControl final : public Transform {
     unsigned uniqueControlIDGen = 0;
 
 
+    /*
     IR::Type_Declaration* createIntermediateDeparser(
         cstring packetOutTypeName, ControlStateReconInfo* info);
 
     IR::Type_Declaration* createIntermediateParser(
         cstring packetInTypeName, ControlStateReconInfo* info);
+    */
 
 
  public:

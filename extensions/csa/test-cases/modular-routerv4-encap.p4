@@ -16,6 +16,7 @@ header ethernet_h {
 
 struct hdr_t {
   ethernet_h eth;
+  ethernet_h eth1;
 }
 
 cpackage ModularRouterv4 : implements Unicast<hdr_t, meta_t, 
@@ -45,6 +46,8 @@ cpackage ModularRouterv4 : implements Unicast<hdr_t, meta_t,
       l3_i.apply(p, im, ia, nh, hdr.eth.ethType);
       forward_tbl.apply(); 
       if (im.get_value(metadata_fields_t.QUEUE_DEPTH_AT_DEQUEUE) > 10) {
+          hdr.eth1.setValid();
+          hdr.eth1.dmac = 0x0;
           im.drop();
       }
     }
@@ -53,6 +56,7 @@ cpackage ModularRouterv4 : implements Unicast<hdr_t, meta_t,
   control micro_deparser(emitter em, pkt p, in hdr_t hdr) {
     apply { 
       em.emit(p, hdr.eth); 
+      em.emit(p, hdr.eth1); 
     }
   }
 }
