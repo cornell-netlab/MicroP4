@@ -3,8 +3,8 @@
  * Email: hks57@cornell.edu
  */
 
-#ifndef _EXTENSIONS_CSA_LINKER_ScanForHdrVOps_H_ 
-#define _EXTENSIONS_CSA_LINKER_ScanForHdrVOps_H_ 
+#ifndef _EXTENSIONS_CSA_LINKER_SCANFORHDRVOPS_H_ 
+#define _EXTENSIONS_CSA_LINKER_SCANFORHDRVOPS_H_ 
 
 #include <vector>
 #include <tuple>
@@ -33,7 +33,6 @@ class ScanForHdrVOps final : public Inspector {
     bool preorder(const IR::MethodCallExpression* mce) override;
 };
 
-
 }  // namespace CSA
 
-#endif /* _EXTENSIONS_CSA_LINKER_ScanForHdrVOps_H_ */
+#endif /* _EXTENSIONS_CSA_LINKER_SCANFORHDRVOPS_H_ */

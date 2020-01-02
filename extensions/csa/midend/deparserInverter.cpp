@@ -33,7 +33,7 @@ const IR::Node* DeparserInverter::preorder(IR::Parameter* p) {
         p->direction = IR::Direction::Out;
     p->name.name = "parse_"+ old;
     newNameMap.emplace(old, p->name.name);
-    std::cout<<old<<" dir "<<cstring::to_cstring(p->direction)<<"\n";
+    // std::cout<<old<<" dir "<<cstring::to_cstring(p->direction)<<"\n";
     return p;
 }
 

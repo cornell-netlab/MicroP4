@@ -5,16 +5,13 @@
 #include "scanForHdrVOps.h"
 #include "frontends/p4/methodInstance.h"
 
-
 namespace CSA {
-
 
 bool ScanForHdrVOps::preorder(const IR::MethodCallExpression* mce) {
 
     auto mt = typeMap->getType(mce->method);
     if (mt  == nullptr)
         return false;
-    std::cout<<"From ScanForHdrVOps "<<mce<<"\n";
     auto mi = P4::MethodInstance::resolve(mce, refMap, typeMap);
     if (mi->is<P4::BuiltInMethod>()) {
         auto bm = mi->to<P4::BuiltInMethod>();
@@ -34,6 +31,5 @@ bool ScanForHdrVOps::preorder(const IR::MethodCallExpression* mce) {
 
     return false;
 }
-
 
 }// namespace CSA

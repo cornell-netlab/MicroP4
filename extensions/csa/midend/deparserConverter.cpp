@@ -242,8 +242,10 @@ const IR::Node* DeparserConverter::postorder(IR::Parameter* param) {
 
 
 const IR::Node* DeparserConverter::postorder(IR::P4Control* deparser) {
+    /*
     if (hdrVOPType != nullptr)
         std::cout<<"postorder Deparser Converter"<< hdrVOPType->name << "\n";
+    */
 
 
     auto& controlLocals = deparser->controlLocals;
@@ -256,7 +258,7 @@ const IR::Node* DeparserConverter::postorder(IR::P4Control* deparser) {
     auto iter = actionDecls.find(sorted[0]);
     if (iter != actionDecls.end()) 
         controlLocals.append(actionDecls[sorted[0]]);
-    std::cout<<"sorted size "<<sorted.size()<<"\n";
+    // std::cout<<"sorted size "<<sorted.size()<<"\n";
     for (unsigned i = 1; i<sorted.size(); i++) {
         for (auto a : actionDecls[sorted[i]]) {
             if (controlLocals.getDeclaration(a->name) == nullptr)
@@ -987,10 +989,12 @@ void DeparserConverter::createHdrValidityOpsKeysNames(
 
     if (hdrOpKeyNames.size() == 0)
         return;
+    /*
     std::cout<<" All  ops on \n";
     for (auto h : hdrOpKeyNames)
         std::cout<<"["<<h.first<<","<<h.second<<"]"<<" ";
     std::cout<<"\n-------------\n";
+    */
 
     std::vector<std::pair<const IR::Expression*, bool>> 
                   keyExp(keyElementLists[lastMcsEmitted]);
@@ -1091,6 +1095,7 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
                 }
             }
   
+            /*
             std::cout<<"\n ------ Entry information ------- \n";
             for (auto hk : keyNamesWidths)
                 std::cout<<"|"<<hk.first<<"|";
@@ -1102,6 +1107,7 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
             for (auto opkv : hdrValidityOpKeyValues[m])
                 std::cout<<"|"<<opkv<<"|";
             std::cout<<"\n ----------------------------------- \n";
+            */
 
             auto ec = extendEntry(dummyMCS, kvEmitOffsets[i], 
                 hdrValidityOpKeyValues[m], emitData, moveOffset, currOffset);
@@ -1145,10 +1151,12 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
                     const std::vector<EmitIndexMoveOffsetHdr>& emitData,
                     int totalMoveOffset, unsigned currOffset) {
   
+    /*
     std::cout<<"\n-------- ----emitData--------\n";
     printEIMvOsHdr(emitData);
     std::cout<<"\ncumulative moveOffset "<<totalMoveOffset/8<<"\n";
     std::cout<<"----------------------------\n";
+    */
 
 
     IR::IndexedVector<IR::Declaration> entryActions;
@@ -1165,7 +1173,7 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
     int moveOffset = 0;
     for (short s = emitData.size()-1 ; s >= 0 ;) {
         moveOffset = std::get<1>(emitData[s]);
-        std::cout<<"moveOffset : "<<moveOffset/8<<"\n";
+        // std::cout<<"moveOffset : "<<moveOffset/8<<"\n";
         if (moveOffset < 0) {
             auto begin = s;
             while (moveOffset < 0 && s >= 0) {
@@ -1178,15 +1186,17 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
                 
         } else {
             auto hn = std::get<2>(emitData[s]);
-            std::cout<<"Adding in emitOrder "<<hn<<"\n";
+            // std::cout<<"Adding in emitOrder "<<hn<<"\n";
             emitOrder.emplace_back(emitData[s]);
             s--;
         }
     }
 
+    /*
     std::cout<<"\n-------- emit order-----\n";
     printEIMvOsHdr(emitOrder);
     std::cout<<"\n-------------------\n";
+    */
 
     cstring actName = "";
     for (auto d : emitData) {

@@ -160,16 +160,16 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
 
         if (isConvertedCPackage) {
             
-            std::vector<std::pair<cstring, cstring>> svOpHdrs;
-            ScanForHdrVOps scanSVOps(refMap, typeMap, &svOpHdrs);
-            part1Body->apply(scanSVOps);
-            auto numOpsPart1 = svOpHdrs.size();
-            std::cout<<"Num of SetValid Ops in part 1"<<svOpHdrs.size()<<"\n";
+            auto numOpsPart1 = setVOpHdrTypeInstNamePart1.size();
+            auto numOpsPart2 = setVOpHdrTypeInstNamePart2.size();
 
-            svOpHdrs.clear();
-            part2Body->apply(scanSVOps);
-            auto numOpsPart2 = svOpHdrs.size();
-            std::cout<<"Num of SetValid Ops in part 2"<<svOpHdrs.size()<<"\n";
+            /*
+            std::cout<<"------ from inside isConvertedCPackage=true ------\n";
+            std::cout<<"------"<<p4ControlOrigName<<"------\n";
+            std::cout<<"Num of SetValid Ops in part 1 "<<numOpsPart1<<"\n";
+            std::cout<<"Num of SetValid Ops in part 2 "<<numOpsPart2<<"\n";
+            std::cout<<"-----------------------------------\n";
+            */
 
             BUG_CHECK(numOpsPart1 == 0 || numOpsPart2 == 0, 
                 "yet to enable Set(IN)Valid calls across partitions of %1%", 
@@ -202,7 +202,6 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                 replicateDecls.emplace(varName);
                 replicateDecls.emplace(intermediateCSAPacketHeaderInst);
 
-
                 // instantiating deparser and parser controls
                 auto intermediateDeparserInst = new IR::Declaration_Instance(
                     IR::ID(deparser->getName()+"_inst"), 
@@ -219,13 +218,6 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
                 // deparser and parser apply calls
                 auto deparserArgs = iter->second->getDeparserArgs();
                 auto parserArgs = iter->second->getParserArgs();
-                /*
-                auto dpArgs = new IR::Vector<IR::Argument>();
-                dpArgs->push_back(new IR::Argument(
-                      new IR::PathExpression(intermediateCSAPacketHeaderInst)));
-                dpArgs->push_back(new IR::Argument(
-                      new IR::PathExpression(varName)));
-                */
 
                 auto dpe = new IR::PathExpression(intermediateDeparserInst->getName());
                 auto memdp = new IR::Member(dpe, "apply");
@@ -275,24 +267,27 @@ const IR::Node* SlicePipeControl::preorder(IR::P4Control* p4control) {
               sharedLocalDeclInsts, param2InstPart1, param2InstPart2,
               p4control, p4ControlPart2, deparser, parser);
        
-        std::cout<<"\n............. Before adding in partMap ....... \n";
-        ScanForHdrVOps scanSVOps(refMap, typeMap, 
-            &(pi->setVOpHdrTypeInstNamePart1));
-        part1Body->apply(scanSVOps);
-        auto numOpsPart1 = pi->setVOpHdrTypeInstNamePart1.size();
-        std::cout<<"Num of SetValid Ops in part 1"<<numOpsPart1<<"\n";
+        setVOpHdrTypeInstNamePart1.clear();
+        setVOpHdrTypeInstNamePart2.clear();
 
-        
-        ScanForHdrVOps scanSVOps2(refMap, typeMap, 
-            &(pi->setVOpHdrTypeInstNamePart2));
+        ScanForHdrVOps scanSVOps(refMap, typeMap, &setVOpHdrTypeInstNamePart1);
+        part1Body->apply(scanSVOps);
+        auto numOpsPart1 = setVOpHdrTypeInstNamePart1.size();
+        ScanForHdrVOps scanSVOps2(refMap, typeMap, &setVOpHdrTypeInstNamePart2);
         part2Body->apply(scanSVOps2);
-        auto numOpsPart2 = pi->setVOpHdrTypeInstNamePart2.size();
+        auto numOpsPart2 = setVOpHdrTypeInstNamePart2.size();
+
+
+        /*
+        std::cout<<"\n.....Slice happended "<<p4ControlOrigName<<" in .... \n";
+        std::cout<<"Num of SetValid Ops in part 1"<<numOpsPart1<<"\n";
         std::cout<<"Num of SetValid Ops in part 2"<<numOpsPart2<<"\n";
+        std::cout<<"..................................................\n";
+        */
 
         BUG_CHECK(numOpsPart1 == 0 || numOpsPart2 == 0, 
             "yet to enable Set(IN)Valid calls across partitions of %1%", 
             p4ControlOrigName);
-        std::cout<<"..................................................\n";
  
         /*
         std::cout<<"First Control ................ \n";
@@ -591,6 +586,17 @@ const IR::Node* SlicePipeControl::preorder(IR::MethodCallExpression* mce) {
             auto iter = partMap.find(p4ControlPart1->getName());
             BUG_CHECK(iter != partMap.end(), 
                 "partition info for %1% does not exist", p4ControlName);
+
+
+            setVOpHdrTypeInstNamePart1 = slicePipeControl.getSetVOPInstNameP1();
+            setVOpHdrTypeInstNamePart2 = slicePipeControl.getSetVOPInstNameP2();
+
+            /*
+            std::cout<<"From Control : "<<ancestorP4Control->name<<"\n";
+            std::cout<<"splitting apply call of Control : "<<p4Control->name<<"\n";
+            std::cout<<" part1 size "<< setVOpHdrTypeInstNamePart1.size()<<"\n";
+            std::cout<<"part 2 size "<<setVOpHdrTypeInstNamePart2.size()<<"\n";
+            */
 
             auto p4C1Name = iter->second.partition1->getName();
             auto p4C2Name = iter->second.partition2->getName();

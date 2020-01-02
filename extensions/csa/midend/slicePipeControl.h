@@ -173,6 +173,11 @@ class SlicePipeControl final : public Transform {
     P4ControlPartitionInfoMap partitionsMap;
     // GetUsedDeclarations* getUsedDeclarations;
 
+    std::vector<std::pair<cstring, cstring>> setVOpHdrTypeInstNamePart1;
+    bool hasSetInvalidOpPart1;
+    std::vector<std::pair<cstring, cstring>> setVOpHdrTypeInstNamePart2;
+    bool hasSetInvalidOpPart2;
+
     cstring msaPktParamName;
 
     void processExternMethodCall(const P4::ExternMethod* em);
@@ -251,6 +256,15 @@ class SlicePipeControl final : public Transform {
                                         getSharedDeclarationInstances() const {
         return sharedLocalDeclInsts;
     }
+
+    std::vector<std::pair<cstring, cstring>> getSetVOPInstNameP1() {
+        return setVOpHdrTypeInstNamePart1;
+    }
+
+    std::vector<std::pair<cstring, cstring>> getSetVOPInstNameP2() {
+        return setVOpHdrTypeInstNamePart2;
+    }
+
     static cstring getSharedStructTypeName(cstring controlTypeName);
 
 };

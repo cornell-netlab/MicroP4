@@ -2,16 +2,19 @@
  * Author: Hardik Soni
  * Email: hks57@cornell.edu
  */
-
 #include "controlStateReconInfo.h"
 #include "deparserConverter.h"
 #include "deparserInverter.h"
+#include "cloneWithFreshPath.h"
 
 namespace CSA {
 
-
 const IR::P4Control* ControlStateReconInfo::getDeparser(bool woVOPs) {
 
+    /*
+    if (woVOPs)
+        std::cout<<"Deparser without VOPs used for "<<controlName<<" ingress \n";
+    */
     const IR::P4Control* depCon = woVOPs ? deparserWoVOPs : deparser;
 
     auto ntc = const_cast<IR::Type_Control*>(depCon->type->to<IR::Type_Control>());
@@ -20,12 +23,18 @@ const IR::P4Control* ControlStateReconInfo::getDeparser(bool woVOPs) {
     auto depName = controlName+"_ingress_deparser";
     ntc->name.name = depName;
     nc->name.name = depName;
-    return nc;
-}
 
+    CloneWithFreshPath cp;
+    auto nw  = nc->apply(cp)->to<IR::P4Control>();
+    return nw;
+}
 
 const IR::P4Control* ControlStateReconInfo::getParser(bool woVOPs) {
 
+    /*
+    if (woVOPs)
+        std::cout<<"Inverting deparser without VOPs for "<<controlName<<" egress \n";
+    */
     const IR::P4Control* depCon = woVOPs ? deparserWoVOPs : deparser;
 
     cstring pn = controlName+"_egress_parser";
@@ -35,19 +44,20 @@ const IR::P4Control* ControlStateReconInfo::getParser(bool woVOPs) {
     return parser;
 }
 
-IR::Vector<IR::Argument>* ControlStateReconInfo::getDeparserArgs() {
-    return deparserArgs->clone();
+const IR::Vector<IR::Argument>* ControlStateReconInfo::getDeparserArgs() {
+    CloneWithFreshPath cp;
+    auto nw  = deparserArgs->apply(cp)->to<IR::Vector<IR::Argument>>();
+    return nw;
 }
 
-IR::Vector<IR::Argument>* ControlStateReconInfo::getParserArgs() {
-    return deparserArgs->clone();
+const IR::Vector<IR::Argument>* ControlStateReconInfo::getParserArgs() {
+    CloneWithFreshPath cp;
+    auto nw  = deparserArgs->apply(cp)->to<IR::Vector<IR::Argument>>();
+    return nw;
 }
 
 cstring ControlStateReconInfo::getHeaderInstName() {
     return headerParamName;
 }
-
-
-
 
 }// namespace CSA

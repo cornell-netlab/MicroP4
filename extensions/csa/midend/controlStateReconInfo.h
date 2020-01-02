@@ -12,10 +12,10 @@
 #include "frontends/p4/typeMap.h"
 #include "midend/parserUnroll.h"
 
-
 namespace CSA {
 
 class PartitionInfo {
+
   public:
     cstring origControlName;
     IR::Type_Struct* sharedStructType; 
@@ -57,24 +57,19 @@ class PartitionInfo {
 typedef std::map<cstring, PartitionInfo> P4ControlPartitionInfoMap;
 
 
-
 /*
  * This class stores required information to reconstruct the packet processing
  * state of the partitioned control
  */
 class ControlStateReconInfo {
     
-
   public:
-    
     cstring controlName; // originally P4ComposablePackage package
 
     cstring headerTypeName;
     cstring headerParamName;
 
-
     IR::P4Control* deparser;
-
 
     const IR::P4Control* deparserWoVOPs;
     cstring deparserHeaderTypeParamName;
@@ -83,7 +78,6 @@ class ControlStateReconInfo {
     // Populated by parserConverter.
     // allPossileFinalValueMaps is used to generate MAT to (de)serialize headers
     P4::ParserStructure* parserStructure = nullptr;
-
 
     ControlStateReconInfo(cstring controlName, cstring headerTypeName, 
                           cstring headerParamName = "",
@@ -97,8 +91,8 @@ class ControlStateReconInfo {
     const IR::P4Control* getDeparser(bool woVOPs);
     const IR::P4Control* getParser(bool woVOPs);
 
-    IR::Vector<IR::Argument>* getDeparserArgs();
-    IR::Vector<IR::Argument>* getParserArgs();
+    const IR::Vector<IR::Argument>* getDeparserArgs();
+    const IR::Vector<IR::Argument>* getParserArgs();
 
     cstring getHeaderInstName();
 };
