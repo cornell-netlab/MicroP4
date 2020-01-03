@@ -18,13 +18,14 @@ class RemoveUnusedApplyParams final : public Transform {
 
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
+    std::unordered_set<cstring>* skipDecl;
  public:
     using Transform::preorder;
     using Transform::postorder;
 
     explicit RemoveUnusedApplyParams(P4::ReferenceMap* refMap, 
         P4::TypeMap* typeMap, std::unordered_set<cstring>* skipDecl)
-      : refMap(refMap), typeMap(typeMap) {
+      : refMap(refMap), typeMap(typeMap), skipDecl(skipDecl) {
         setName("RemoveUnusedApplyParams"); 
     }
     const IR::Node* preorder(IR::Parameter* param) override;

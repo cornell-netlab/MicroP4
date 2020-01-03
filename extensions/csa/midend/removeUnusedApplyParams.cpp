@@ -16,14 +16,14 @@ const IR::Node* RemoveUnusedApplyParams::preorder(IR::MethodCallExpression* mce)
 }
     
 const IR::Node* RemoveUnusedApplyParams::preorder(IR::P4Control* p4control) {
-    if (skipDecl->find(p4control->name) != p4control.end())
+    if (skipDecl!= nullptr && skipDecl->find(p4control->name) != skipDecl->end())
         return p4control;
 
     return p4control;
 }
 
 const IR::Node* RemoveUnusedApplyParams::preorder(IR::Type_Control* tc) {
-    return tc
+    return tc;
 }
 
 const IR::Node* RemoveUnusedApplyParams::preorder(IR::ParameterList* pl) {
