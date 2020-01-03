@@ -26,6 +26,7 @@
 #include "csaExternSubstituter.h"
 #include "parserConverter.h"
 #include "msaPacketSubstituter.h"
+#include "removeMSAConstructs.h"
 #include "staticAnalyzer.h"
 #include "../backend/tofino/replaceByteHdrStack.h"
 #include "../backend/tofino/toTofino.h"
@@ -129,9 +130,10 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
                            &minExtLen, &maxExtLen),
         new P4::MidEndLast(),
 
-        new P4::ResolveReferences(&refMap, true),
         */
 
+        new CSA::RemoveMSAConstructs(), 
+        new P4::ResolveReferences(&refMap, true),
         new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),

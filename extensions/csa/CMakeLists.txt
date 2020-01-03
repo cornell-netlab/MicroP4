@@ -23,6 +23,8 @@ set (CSA_SWITCH_SRCS
     midend/staticAnalyzer.cpp
     midend/scanForHdrVOps.h
     midend/scanForHdrVOps.cpp
+    midend/removeMSAConstructs.h
+    midend/removeMSAConstructs.cpp
     midend/csamidend.h
     midend/csamidend.cpp
     midend/msaPacketSubstituter.h

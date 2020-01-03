@@ -304,8 +304,11 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
         auto counterValue = pcInstNameMaxPairVec[i].second;
         auto pcPE = new IR::PathExpression(pcInstName);
         auto setCounterM = new IR::Member(pcPE, "set");
+
         auto argPCPE = new IR::Vector<IR::Argument>();
-        auto carg = new IR::Argument(new IR::Constant(counterValue));
+        auto castType = IR::Type::Bits::get(8, false);
+        auto cv = new IR::Constant(counterValue);
+        auto carg = new IR::Argument(new IR::Cast(castType, cv));
         argPCPE->push_back(carg);
         auto mce = new IR::MethodCallExpression(setCounterM, argPCPE);
         auto setCounterMCS =  new IR::MethodCallStatement(mce);
@@ -759,7 +762,9 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressParser() {
         auto pcPE = new IR::PathExpression(pcInstName);
         auto setCounterM = new IR::Member(pcPE, "set");
         auto argPCPE = new IR::Vector<IR::Argument>();
-        auto carg = new IR::Argument(new IR::Constant(counterValue));
+        auto castType = IR::Type::Bits::get(8, false);
+        auto cv = new IR::Constant(counterValue);
+        auto carg = new IR::Argument(new IR::Cast(castType, cv));
         argPCPE->push_back(carg);
         auto mce = new IR::MethodCallExpression(setCounterM, argPCPE);
         auto setCounterMCS =  new IR::MethodCallStatement(mce);
