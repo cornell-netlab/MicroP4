@@ -98,7 +98,8 @@ bool ControlBlockInterpreter::preorder(const IR::IfStatement* ifStmt) {
     auto falseIncrPktSize = maxIncr;
     auto falseDecrPktSize = maxDecr;
     auto falseAccumDecrPktLen = accumDecrPktLen;
-    insertCurrOpsRecToVecEles(index, index+currSize);
+    if (ifStmt->ifFalse != nullptr)
+        insertCurrOpsRecToVecEles(index, index+currSize);
     clearCurrOpsRec();
 
     if (trueIncrPktSize > falseIncrPktSize)

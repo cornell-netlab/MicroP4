@@ -388,7 +388,8 @@ IR::P4Table* DeparserConverter::createEmitTable(const IR::MethodCallStatement* m
     hdrMCSMap[hdrInstName] = mcs;
 
     lastMcsEmitted = mcs;
-    auto hdrKVVecSize = headerKeyValues.size();
+    auto hdrKVVecSizeInit = headerKeyValues.size();
+    auto hdrKVVecSize = ((hdrKVVecSizeInit == 0)? 1: hdrKVVecSizeInit); 
     size_t hdrKVVecIndex = 0;
     resizeReplicateKeyValueVec(2);
 
@@ -500,6 +501,10 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
         "headerKeyValues size = %1% != keyValueEmitOffsets size = %2%, in %3%",
         hdrKVVecSize, keyValueEmitOffsets[predecessor].size(), mcs);
 
+    /*
+    std::cout<<"init  extendEmitTable\n   ";
+    printHeaderKeyValues();
+    */
     resizeReplicateKeyValueVec(2);
 
     /*
@@ -922,7 +927,7 @@ void DeparserConverter::createID(const IR::MethodCallStatement* emitStmt) {
 
 void DeparserConverter::resizeReplicateKeyValueVec(size_t nfold) {
     auto s = headerKeyValues.size();
-    headerKeyValues.resize((s != 0?s:s+1) * nfold);
+    headerKeyValues.resize((s == 0? 1:s) * nfold);
 
     for (size_t i = 0; i<s; i++) {
         for (size_t n = 1; n<nfold; n++){
@@ -1099,16 +1104,17 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
             std::cout<<"\n ------ Entry information ------- \n";
             for (auto hk : keyNamesWidths)
                 std::cout<<"|"<<hk.first<<"|";
+            std::cout<<"----";
             for (auto opk : hdrOpKeyNames)
                 std::cout<<"|"<<opk.first<<"("<<opk.second<<")"<<"|";
             std::cout<<"\n";
             for (auto k : headerKeyValues[i])
                 std::cout<<"|"<<k<<"|";
+            std::cout<<"----";
             for (auto opkv : hdrValidityOpKeyValues[m])
                 std::cout<<"|"<<opkv<<"|";
             std::cout<<"\n ----------------------------------- \n";
             */
-
             auto ec = extendEntry(dummyMCS, kvEmitOffsets[i], 
                 hdrValidityOpKeyValues[m], emitData, moveOffset, currOffset);
 

@@ -83,13 +83,15 @@ class FoldLExpSlicesInAsStmts final : public Transform {
     const IR::Expression* lExpMember = nullptr;
     const IR::Expression* currentSubLExpMember = nullptr;
 
+    // <l, h>              
     std::vector<std::pair<unsigned, unsigned>> slices;
     IR::Vector<IR::Expression> rightExprVec;
 
 
     bool match;
     void resetFoldContext();
-    bool matchLExpSliceIndices(const IR::Expression* lexp, unsigned& l, unsigned& h);
+    bool matchLExpSliceIndices(const IR::Expression* lexp, unsigned& l, 
+                               unsigned& h, bool& pushDir);
 
     IR::AssignmentStatement* fold();
   public:

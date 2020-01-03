@@ -254,7 +254,8 @@ void FoldLExpSlicesInAsStmts::resetFoldContext() {
 
 
 bool FoldLExpSlicesInAsStmts::matchLExpSliceIndices(const IR::Expression* lexp, 
-                                                    unsigned& l, unsigned& h) {
+                                                    unsigned& l, unsigned& h, 
+                                                    bool& pushDir) {
     bool first = false;
     if (lExpMember == nullptr) {
         first = true;
@@ -274,19 +275,28 @@ bool FoldLExpSlicesInAsStmts::matchLExpSliceIndices(const IR::Expression* lexp,
     if (first)
         return true;
     auto curL = slices.back().first;
-
+    auto curH = slices.front().second;
+    
     /*
     std::cout<<"lexp :: "<<lexp<<"\n";
     std::cout<<"l = "<<l<<"\n";
     std::cout<<"h = "<<h<<"\n";
     std::cout<<"curL = "<<curL<<"\n";
+    std::cout<<"curH = "<<curH<<"\n";
     */
-    if (curL != h+1)
+
+    if (!(curL == h+1 || curH+1 == l))
         return false;
+
+    if (curL == h+1)
+        pushDir = true;
+    if (curH+1 == l)
+        pushDir = false;
 
     currentSubLExpMember = currExpr->e0;
     match = true;
     visit(le->e0);
+
     return match;
 }
 
@@ -389,9 +399,17 @@ const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::AssignmentStatement* as) {
     // std::cout<<as<<"\n";
 
     unsigned l=0, h=0;
-    if (matchLExpSliceIndices(as->left, l, h)) {
-        rightExprVec.push_back(as->right);
-        slices.emplace_back(l, h);
+    bool pushDir = true;
+    if (matchLExpSliceIndices(as->left, l, h, pushDir)) {
+        if (pushDir) {
+            rightExprVec.push_back(as->right);
+            slices.emplace_back(l, h);
+        }
+        else {
+            rightExprVec.insert(rightExprVec.begin(), as->right);
+            slices.emplace(slices.begin(), l, h);
+        }
+            
         prune();
         return nullptr;
     }
