@@ -12,7 +12,6 @@
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
 #include "midend/interpreter.h"
-#include "frontends/p4/callGraph.h"
 #include "msaNameConstants.h"
 
 namespace CSA {

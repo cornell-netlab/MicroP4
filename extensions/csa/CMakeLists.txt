@@ -25,6 +25,10 @@ set (CSA_SWITCH_SRCS
     midend/scanForHdrVOps.cpp
     midend/removeMSAConstructs.h
     midend/removeMSAConstructs.cpp
+    midend/removeUnusedApplyParams.h
+    midend/removeUnusedApplyParams.cpp
+    midend/hdrToStructs.h
+    midend/hdrToStructs.cpp
     midend/csamidend.h
     midend/csamidend.cpp
     midend/msaPacketSubstituter.h
@@ -45,8 +49,6 @@ set (CSA_SWITCH_SRCS
     midend/toControl.cpp
     midend/toV1Model.h
     midend/toV1Model.cpp
-    midend/csaExternSubstituter.h
-    midend/csaExternSubstituter.cpp
     backend/tofino/replaceByteHdrStack.h
     backend/tofino/replaceByteHdrStack.cpp
     backend/tofino/toTofino.h

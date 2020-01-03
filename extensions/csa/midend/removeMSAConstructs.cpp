@@ -12,6 +12,7 @@ const IR::Node* RemoveMSAConstructs::preorder(IR::Type_Extern* te) {
     if (te->getName() == P4::P4CoreLibrary::instance.pkt.name ||
         te->getName() == P4::P4CoreLibrary::instance.extractor.name || 
         te->getName() == P4::P4CoreLibrary::instance.emitter.name ||
+        te->getName() == P4::P4CoreLibrary::instance.im.name ||
         te->getName() == "multicast_engine" ||
         te->getName() == "in_buf" ||
         te->getName() == "out_buf" ||

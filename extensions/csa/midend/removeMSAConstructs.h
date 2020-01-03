@@ -30,4 +30,4 @@ class RemoveMSAConstructs final : public Transform {
 
 }  // namespace CSA
 
-#endif /* _EXTENSIONS_CSA_LINKER_PARSERCONVERTER_H_ */
+#endif /* _EXTENSIONS_CSA_MIDEND_REMOVEMSACONSTRUCTS_H_ */

@@ -30,6 +30,7 @@
 #include "staticAnalyzer.h"
 #include "../backend/tofino/replaceByteHdrStack.h"
 #include "../backend/tofino/toTofino.h"
+#include "hdrToStructs.h"
 
 namespace CSA {
 
@@ -66,7 +67,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
     // For tofino backend pass
     // I will split this pass later
     unsigned stackSize = 32;
-    unsigned newFieldBitWidth = 16;
+    unsigned newFieldBitWidth = 8;
     unsigned numFullStacks;
     unsigned residualStackSize;
 
@@ -109,6 +110,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
 
         // These are Tofino specific passes
         //////////////////////////////////////////
+
         new CSA::ReplaceMSAByteHdrStack(&refMap, &typeMap, stackSize, 
             newFieldBitWidth, &numFullStacks, &residualStackSize),
 
@@ -132,6 +134,9 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
 
         */
 
+        new CSA::HdrToStructs(&refMap, &typeMap),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
         new CSA::RemoveMSAConstructs(), 
         new P4::ResolveReferences(&refMap, true),
         new P4::RemoveAllUnusedDeclarations(&refMap),

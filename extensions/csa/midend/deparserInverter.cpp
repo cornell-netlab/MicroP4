@@ -7,10 +7,7 @@
 #include <list>
 #include <vector>
 #include <unordered_set>
-#include "deparserConverter.h"
-#include "frontends/p4/coreLibrary.h"
-#include "frontends/p4/parserCallGraph.h"
-#include "frontends/p4/methodInstance.h"
+#include "deparserInverter.h"
 
 
 namespace CSA {
