@@ -74,6 +74,7 @@ class RmUnusedApplyParams : public PassRepeated {
     }
 
     void end_apply(const IR::Node* node) override { 
+        refMap->clear();
         typeMap->clear();
         PassManager::end_apply(node);
     }

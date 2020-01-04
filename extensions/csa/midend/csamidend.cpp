@@ -32,6 +32,7 @@
 #include "../backend/tofino/toTofino.h"
 #include "hdrToStructs.h"
 #include "removeUnusedApplyParams.h"
+#include "cloneWithFreshPath.h"
 
 namespace CSA {
 
@@ -163,7 +164,11 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         // Transform pass after it before.
         new CSA::RmUnusedApplyParams(&refMap, &typeMap, 
                                      &(TofinoConstants::archP4ControlNames)),
+        new CSA::CloneWithFreshPath(),
         new P4::ResolveReferences(&refMap, true),
+        new P4::RemoveAllUnusedDeclarations(&refMap),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
 
         // evaluator
