@@ -17,12 +17,11 @@ const IR::P4Control* ControlStateReconInfo::getDeparser(bool woVOPs) {
     */
     const IR::P4Control* depCon = woVOPs ? deparserWoVOPs : deparser;
 
-    auto ntc = const_cast<IR::Type_Control*>(depCon->type->to<IR::Type_Control>());
-    auto nc = const_cast<IR::P4Control*>(depCon);
-
-    auto depName = controlName+"_ingress_deparser";
-    ntc->name.name = depName;
-    nc->name.name = depName;
+    cstring depName = controlName+"_ingress_deparser";
+    auto tc = depCon->type->to<IR::Type_Control>();
+    auto ntc = new IR::Type_Control(depName, tc->applyParams->clone());
+    auto nc = new IR::P4Control(depName, ntc, *(depCon->controlLocals.clone()), 
+        depCon->body->clone());
 
     CloneWithFreshPath cp;
     auto nw  = nc->apply(cp)->to<IR::P4Control>();

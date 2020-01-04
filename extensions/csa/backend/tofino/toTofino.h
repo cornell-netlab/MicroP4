@@ -187,6 +187,12 @@ class CreateTofinoArchBlock final : public Transform {
     static IR::Vector<IR::Argument>* createEgressIMArgs();
 };
 
+class TofinoConstants {
+  public:
+    static const std::unordered_set<cstring> archP4ControlNames;
+  private:
+    explicit TofinoConstants() {}
+};
 
 
 

@@ -31,6 +31,7 @@
 #include "../backend/tofino/replaceByteHdrStack.h"
 #include "../backend/tofino/toTofino.h"
 #include "hdrToStructs.h"
+#include "removeUnusedApplyParams.h"
 
 namespace CSA {
 
@@ -142,7 +143,29 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
+
+        /*
         new P4::MidEndLast(),
+
+        new CSA::RemoveUnusedApplyParams(&refMap, &typeMap, 
+                                     &(TofinoConstants::archP4ControlNames)),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
+
+        new CSA::RemoveUnusedApplyParams(&refMap, &typeMap, 
+                                     &(TofinoConstants::archP4ControlNames)),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
+        new P4::MidEndLast(),
+        */
+        // RmUnusedApplyParams should be final pass. It makes translation legible
+        // for ease debugging on target. It is PassRepeated. so needs a dummy
+        // Transform pass after it before.
+        new CSA::RmUnusedApplyParams(&refMap, &typeMap, 
+                                     &(TofinoConstants::archP4ControlNames)),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::MidEndLast(),
+
         // evaluator
     };
 

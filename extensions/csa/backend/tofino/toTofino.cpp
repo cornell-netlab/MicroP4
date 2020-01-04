@@ -50,6 +50,14 @@ const cstring CreateTofinoArchBlock::egIMForOPInstName = "eg_intr_md_for_oport";
 
 
 
+
+const std::unordered_set<cstring> TofinoConstants::archP4ControlNames = {
+    CreateTofinoArchBlock::ingressDeparserName,
+    CreateTofinoArchBlock::egressDeparserName,
+    CreateTofinoArchBlock::ingressControlName,
+    CreateTofinoArchBlock::egressControlName
+};
+
 bool GetCalleeP4Controls::preorder(const IR::P4Control* control) {
     visit(control->body);
     return false;
