@@ -1005,14 +1005,26 @@ void DeparserConverter::createHdrValidityOpsKeysNames(
                   keyExp(keyElementLists[lastMcsEmitted]);
     auto pe = new IR::PathExpression(IR::ID(hdrVOPTypeParamName));
     for (auto n : hdrOpKeyNames) {
-        cstring fn = n.first + (n.second ? "_sv" : "siv");
+        cstring fn = n.first + (n.second ? 
+            NameConstants::hdrSetValidOpFlagSuffix :
+            NameConstants::hdrSetInvalidOpFlagSuffix);
         
         auto bitType = IR::Type_Boolean::get();
         auto f = new IR::StructField(IR::ID(fn), bitType);
-        hdrVOPType->fields.push_back(f);
+        if (hdrVOPType->fields.getDeclaration(f->name) == nullptr)
+            hdrVOPType->fields.push_back(f);
         
         auto exp = new IR::Member(pe->clone(), IR::ID(fn));
         keyExp.emplace_back(exp, true);
+
+        cstring fnInverse = n.first + (n.second ? 
+            NameConstants::hdrSetInvalidOpFlagSuffix 
+            : NameConstants::hdrSetValidOpFlagSuffix);
+        auto bitTypeInverse = IR::Type_Boolean::get();
+        auto fInverse = new IR::StructField(IR::ID(fnInverse), bitTypeInverse);
+        if (hdrVOPType->fields.getDeclaration(fInverse->name) == nullptr)
+            hdrVOPType->fields.push_back(fInverse);
+
 
     }
     keyElementLists[dummyMCS] = keyExp;

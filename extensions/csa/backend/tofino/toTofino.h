@@ -35,7 +35,6 @@ class GetCalleeP4Controls final : public Inspector {
             "%1%: expected a P4Control node", node);
         return Inspector::init_apply(node);
     }
-
 };
 
 class MSAStdMetaSubstituter final : public Transform {

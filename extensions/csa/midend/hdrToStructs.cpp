@@ -105,7 +105,7 @@ const IR::Node* HdrToStructs::preorder(IR::MethodCallStatement* mcs) {
         IR::ID(hdrSIVOPFlagName));
 
     auto cf = new IR::BoolLiteral(false);
-    auto ct = new IR::Constant(true);
+    auto ct = new IR::BoolLiteral(true);
 
     IR:: AssignmentStatement* as0 = nullptr;
     IR:: AssignmentStatement* as1 = nullptr;

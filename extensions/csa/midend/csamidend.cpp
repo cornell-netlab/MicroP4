@@ -69,7 +69,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
     // For tofino backend pass
     // I will split this pass later
     unsigned stackSize = 32;
-    unsigned newFieldBitWidth = 8;
+    unsigned newFieldBitWidth = 16;
     unsigned numFullStacks;
     unsigned residualStackSize;
 
@@ -140,8 +140,6 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new CSA::RemoveMSAConstructs(), 
-        new P4::ResolveReferences(&refMap, true),
-        new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
 

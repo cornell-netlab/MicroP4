@@ -45,6 +45,8 @@ set (CSA_SWITCH_SRCS
     midend/mergeDeclarations.cpp
     midend/slicePipeControl.h
     midend/slicePipeControl.cpp
+    midend/deadFieldElimination.h
+    midend/deadFieldElimination.cpp
     midend/toControl.h
     midend/toControl.cpp
     midend/toV1Model.h
@@ -53,6 +55,8 @@ set (CSA_SWITCH_SRCS
     backend/tofino/replaceByteHdrStack.cpp
     backend/tofino/toTofino.h
     backend/tofino/toTofino.cpp
+    backend/tofino/annotateFields.h
+    backend/tofino/annotateFields.cpp
     )
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
 
