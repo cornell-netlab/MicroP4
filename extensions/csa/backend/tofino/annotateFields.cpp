@@ -37,6 +37,20 @@ const IR::Node* AnnotateFields::preorder(IR::P4Program* p4program) {
     return p4program;
 }
 const IR::Node* AnnotateFields::preorder(IR::Type_Struct* ts) {
+
+    if (ts->getName() == NameConstants::csaPacketStructTypeName) {
+        IR::Vector<IR::Expression> expr;
+        auto annos = new IR::Annotations();
+        for (auto s : fieldFQDN) {
+            expr.clear();
+            expr.push_back(new IR::StringLiteral(cstring::to_cstring("ingress")));
+            expr.push_back(new IR::StringLiteral(s));
+            expr.push_back(new IR::StringLiteral(cstring::to_cstring("Normal")));
+            annos->add(new IR::Annotation(IR::ID("pa_container_type"), expr));
+        }
+        ts->annotations = annos;
+    }
+    prune();
     return ts;
 }
     

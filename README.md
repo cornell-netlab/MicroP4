@@ -23,9 +23,10 @@ There are example module programs `l2.p4` and `l3.p4` at following location
 ```
 
 Execute following set of commands from `microp4/build`
+Currently, I have disabled arch flag for v1model. Default arch is tofino.
 ```bash
 
 ./p4c-msa  -o ../extensions/csa/msa-v2-example/l3.json ../extensions/csa/msa-v2-example/l3.p4
 
-./p4c-msa  --arch=v1model -l ../extensions/csa/msa-v2-example/l3.json  ../extensions/csa/msa-v2-example/modular-router.p4
+./p4c-msa -I ./p4include/ -l ../extensions/csa/msa-v2-example/l3.json  ../extensions/csa/msa-v2-example/modular-router.p4
 ```
