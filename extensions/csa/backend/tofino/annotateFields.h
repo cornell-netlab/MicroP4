@@ -13,21 +13,46 @@
 
 namespace CSA {
 
+/*
+ * Initially, this pass is planned for only Tofino2 to insert ContainerType
+ * pragmas on msa_header instances.
+ * e.g.,
+ * @pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[11].data", "normal")
+ */
+
+class LearnConcatenatedFields final : public Inspector {
+
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+    std::vector<cstring>* fieldFQDN;
+ public:
+    using Inspector::preorder;
+
+    explicit LearnConcatenatedFields(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, std::vector<cstring>* fieldFQDN)
+      : refMap(refMap), typeMap(typeMap), 
+        fieldFQDN(fieldFQDN) {
+        setName("LearnConcatenatedFields"); 
+    }
+    bool preorder(const IR::AssignmentStatement* asmt) override;
+};
+
 class AnnotateFields final : public Transform {
 
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
 
+    std::vector<cstring> fieldFQDN;
+
  public:
     using Transform::preorder;
     using Transform::postorder;
 
-    explicit AnnotateFields(P4::ReferenceMap* refMap, 
-        P4::TypeMap* typeMap, std::vector<cstring>* skipDecl)
+    explicit AnnotateFields(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
       : refMap(refMap), typeMap(typeMap) {
         setName("AnnotateFields"); 
     }
-    const IR::Node* preorder(IR::AssignmentStatement* asmt) override;
+    const IR::Node* preorder(IR::P4Program* p4program) override;
+    const IR::Node* preorder(IR::Type_Struct* ts) override;
 };
 
 }  // namespace CSA

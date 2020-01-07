@@ -5,67 +5,10 @@
 #include "frontends/p4/methodInstance.h"
 #include "deadFieldElimination.h"
 #include "msaNameConstants.h"
+#include "identifyStorage.h"
+
 
 namespace CSA {
-
-
-bool IdentifyStorage::preorder(const IR::Slice* slice) {
-    visit(slice->e0);
-    return false;
-}
-
-bool IdentifyStorage::preorder(const IR::ArrayIndex* ai) {
-    visit(ai->left);
-    return false;
-}
-
-bool IdentifyStorage::preorder(const IR::Member* mem) {
-    auto type = typeMap->getType(mem->expr, true);
-
-    if (auto ht = type->to<IR::Type_Header>()) {
-        if ((ht->getName() == NameConstants::multiByteHdrTypeName) ||
-            (ht->getName() == NameConstants::headerTypeName))  {
-            msaHeaderStorage = true;
-            typeStruct = nullptr;
-            return false;
-        }
-    }
-
-    if (auto ts = type->to<IR::Type_Struct>()) {
-        msaHeaderStorage = false;
-        if (typeStruct != nullptr) {
-            multipleStorages = true;
-            typeStruct = nullptr;
-            fieldName = "";
-        } else {
-            fieldName = mem->member;
-            typeStruct = ts;
-        }
-    }
-    return false;
-}
-
-bool IdentifyStorage::preorder(const IR::PathExpression* pe) {
-    auto type = typeMap->getType(pe, true);
-    auto ts = type->to<IR::Type_Struct>();
-    return false;
-}
-
-bool IdentifyStorage::isMSAHeaderStorage() {
-    return msaHeaderStorage;
-}
-
-bool IdentifyStorage::hasMultipleStorages() {
-    return multipleStorages;
-}
-
-cstring IdentifyStorage::getFieldName() {
-    return fieldName;
-}
-
-const IR::Type_Struct* IdentifyStorage::getStructType() {
-    return typeStruct;
-}
 
 bool FindModifiedFields::preorder(const IR::AssignmentStatement* asmt) {
 
@@ -99,7 +42,6 @@ bool FindModifiedFields::preorder(const IR::AssignmentStatement* asmt) {
     return true;
 }
 
-
 bool FindModifiedFields::preorder(const IR::Member* mem) {
     auto type = typeMap->getType(mem->expr, true);
     auto ts = type->to<IR::Type_Struct>();
@@ -128,7 +70,5 @@ void FindModifiedFields::filterUserDefinedHdrType(std::unordered_map<cstring,
     for (auto r : remove)
         map->erase(r);
 }
-
-
 
 }// namespace CSA

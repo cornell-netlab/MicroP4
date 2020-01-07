@@ -94,10 +94,10 @@ int main(int argc, char *const argv[]) {
         CSA::CSAMidEnd csaMidend(options);
         program = csaMidend.run(program, precompiledP4Programs);
         if (options.arch == nullptr)
-            options.arch = "v1model";
+            options.arch = "tofino";
 
         Util::PathName fname(options.file);
-        Util::PathName newName(fname.getBasename() + options.arch + "." + fname.getExtension());
+        Util::PathName newName(fname.getBasename() + "-"+options.arch + "." + fname.getExtension());
         auto fn = Util::PathName(options.dumpFolder).join(newName.toString());
         cstring fileName = fn.toString();
         auto stream = openFile(fileName, true);

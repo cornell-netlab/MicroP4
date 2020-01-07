@@ -13,42 +13,6 @@
 
 namespace CSA {
 
-class IdentifyStorage final : public Inspector {
-
-    P4::ReferenceMap* refMap;
-    P4::TypeMap* typeMap;
-
-    const IR::Type_Struct* typeStruct;
-    cstring fieldName;
-    bool msaHeaderStorage;
-    bool multipleStorages;
-
-  public:
-    explicit IdentifyStorage(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
-      : refMap(refMap), typeMap(typeMap) {
-    }
-
-    Visitor::profile_t init_apply(const IR::Node* node) {
-        typeStruct = nullptr;
-        fieldName = "";
-        msaHeaderStorage = false;
-        multipleStorages = false;
-        BUG_CHECK(node->is<IR::Expression>(), "expected an expression");
-        return Inspector::init_apply(node);
-    }
-
-    bool preorder(const IR::Slice* slice) override;
-    bool preorder(const IR::ArrayIndex* ai) override;
-    bool preorder(const IR::Member* member) override;
-    bool preorder(const IR::PathExpression* pe) override;
-
-    bool isMSAHeaderStorage();
-    bool hasMultipleStorages();
-    cstring getFieldName();
-    const IR::Type_Struct* getStructType();
-
-};
-
 class FindModifiedFields final : public Inspector {
 
     P4::ReferenceMap* refMap;
@@ -144,7 +108,6 @@ class DeadFieldElimination final : public PassManager {
         PassManager::end_apply(node);
     }
 };
-
 
 }  // namespace CSA
 

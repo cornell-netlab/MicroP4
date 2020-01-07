@@ -45,6 +45,8 @@ set (CSA_SWITCH_SRCS
     midend/mergeDeclarations.cpp
     midend/slicePipeControl.h
     midend/slicePipeControl.cpp
+    midend/identifyStorage.h
+    midend/identifyStorage.cpp
     midend/deadFieldElimination.h
     midend/deadFieldElimination.cpp
     midend/toControl.h

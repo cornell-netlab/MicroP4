@@ -458,15 +458,17 @@ std::vector<const IR::P4Control*> ToTofino::getControls(const IR::P4Program* pro
     if (!ingress) {
        i = 1;
     }
+    /*
     std::cout<<"Partition Map size: "<<partitionsMap->size()<<"\n";
     std::cout<<"Total Partitions: "<<partitions->size()<<"\n";
+    */
     for (; i<partitions->size(); i = i+2) {
         if (i == partitions->size()-1) {
             auto it = partitionsMap->find((*partitions)[i-1]);
             BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
             auto pi = it->second;
 
-            std::cout<<"Name : "<<pi.partition2->getName()<<"\n";
+            // std::cout<<"Name : "<<pi.partition2->getName()<<"\n";
             auto cv = prog->getDeclsByName(pi.partition2->getName())->toVector();
             BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
                                        pi.partition2->getName());
@@ -478,7 +480,7 @@ std::vector<const IR::P4Control*> ToTofino::getControls(const IR::P4Program* pro
             BUG_CHECK(it != partitionsMap->end(), "P4Control partition not found");
             auto pi = it->second;
          
-            std::cout<<"Name : "<<pi.partition1->getName()<<"\n";
+            // std::cout<<"Name : "<<pi.partition1->getName()<<"\n";
             auto cv = prog->getDeclsByName(pi.partition1->getName())->toVector();
             BUG_CHECK(cv->size() == 1, "expected one P4Control with name %1%", 
                                        pi.partition1->getName());
