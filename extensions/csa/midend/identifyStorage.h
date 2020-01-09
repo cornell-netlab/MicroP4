@@ -18,25 +18,24 @@ class IdentifyStorage final : public Inspector {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
 
-    const IR::Type_Struct* typeStruct;
-    cstring fieldName;
+    std::vector<const IR::Type*> types;
+    std::vector<cstring> names;
     bool msaHeaderStorage;
-    bool multipleStorages;
     int arrayIndex;
 
-
     short level;
+    short argLevel;
   public:
     explicit IdentifyStorage(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         short level = 0)
-      : refMap(refMap), typeMap(typeMap), level(level) {
+      : refMap(refMap), typeMap(typeMap), argLevel(level) {
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) {
-        typeStruct = nullptr;
-        fieldName = "";
+        types.clear();
+        names.clear();
+        level = argLevel;
         msaHeaderStorage = false;
-        multipleStorages = false;
         arrayIndex = -1;
         BUG_CHECK(node->is<IR::Expression>(), "expected an expression");
         return Inspector::init_apply(node);
@@ -47,9 +46,8 @@ class IdentifyStorage final : public Inspector {
     bool preorder(const IR::PathExpression* pe) override;
 
     bool isMSAHeaderStorage();
-    bool hasMultipleStorages();
-    cstring getFieldName();
-    const IR::Type_Struct* getStructType();
+    cstring getName(unsigned level);
+    const IR::Type* getType(unsigned level);
     int getArrayIndex();
 
 };

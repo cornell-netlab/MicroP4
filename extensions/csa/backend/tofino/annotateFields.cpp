@@ -20,10 +20,10 @@ bool LearnConcatenatedFields::preorder(const IR::AssignmentStatement* asmt) {
         // std::cout<<" --- "<<asmt<<" --- \n";
         // std::cout<<"ArrayIndex : "<<is.getArrayIndex()<<"\n";
         auto c = is.getArrayIndex();
-        auto fn = is.getFieldName();
+        auto fn = is.getName(1);
         cstring str = CreateTofinoArchBlock::csaPacketStructInstanceName +
           "."+fn+"["+cstring::to_cstring(c)+"]."+NameConstants::bitStreamFieldName;
-        fieldFQDN->emplace_back(str);
+        fieldFQDN->emplace(str);
         // std::cout<<" --- "<<str<<" --- \n";
     }
     return false;
@@ -44,6 +44,11 @@ const IR::Node* AnnotateFields::preorder(IR::Type_Struct* ts) {
         for (auto s : fieldFQDN) {
             expr.clear();
             expr.push_back(new IR::StringLiteral(cstring::to_cstring("ingress")));
+            expr.push_back(new IR::StringLiteral(s));
+            expr.push_back(new IR::StringLiteral(cstring::to_cstring("Normal")));
+            annos->add(new IR::Annotation(IR::ID("pa_container_type"), expr));
+            expr.clear();
+            expr.push_back(new IR::StringLiteral(cstring::to_cstring("egress")));
             expr.push_back(new IR::StringLiteral(s));
             expr.push_back(new IR::StringLiteral(cstring::to_cstring("Normal")));
             annos->add(new IR::Annotation(IR::ID("pa_container_type"), expr));

@@ -24,11 +24,12 @@ class LearnConcatenatedFields final : public Inspector {
 
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    std::vector<cstring>* fieldFQDN;
+    std::unordered_set<cstring>* fieldFQDN;
  public:
     using Inspector::preorder;
 
-    explicit LearnConcatenatedFields(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, std::vector<cstring>* fieldFQDN)
+    explicit LearnConcatenatedFields(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
+        std::unordered_set<cstring>* fieldFQDN)
       : refMap(refMap), typeMap(typeMap), 
         fieldFQDN(fieldFQDN) {
         setName("LearnConcatenatedFields"); 
@@ -41,7 +42,7 @@ class AnnotateFields final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
 
-    std::vector<cstring> fieldFQDN;
+    std::unordered_set<cstring> fieldFQDN;
 
  public:
     using Transform::preorder;
