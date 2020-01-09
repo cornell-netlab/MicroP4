@@ -79,7 +79,7 @@ parser ParserImpl (packet_in pin, out multifunctional_hdr_t parsed_hdr,
     }    
 }
 
-control ingress(inout multifunctional_hdr_t parsed_hdr, inout multifunctional_meta_t meta,
+control egress(inout multifunctional_hdr_t parsed_hdr, inout multifunctional_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
                          action drop_action() {
             meta.drop_flag = 1;
@@ -137,7 +137,7 @@ control ingress(inout multifunctional_hdr_t parsed_hdr, inout multifunctional_me
 	}
 }
     
-control egress(inout multifunctional_hdr_t parsed_hdr, inout multifunctional_meta_t meta,
+control ingress(inout multifunctional_hdr_t parsed_hdr, inout multifunctional_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
       action set_dmac(bit<48> dmac, bit<9> port) {
           // P4Runtime error...
