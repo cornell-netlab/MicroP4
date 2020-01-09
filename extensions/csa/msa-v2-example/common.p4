@@ -26,17 +26,32 @@ cpackage L3v6(pkt p, im_t im, in empty_t ia, out bit<128> nh,
 
 cpackage Filter_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<8> l4proto);
+                 
+cpackage Nat_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<8> l4proto);
 
 cpackage Nat_L3(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);
 
-cpackage Nat_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<1> change, inout bit<8> l4proto);
-/*
-ecn (pkt p, inout sm_t sm  es_t es, in empty_t ia, out empty_t oa, 
-    inout empty_t ioa);
+cpackage FilterL3_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+                 
+cpackage FilterL3_v6(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
 
 
-swtrace (pkt p, inout sm_t sm  es_t es, in empty_t ia, out empty_t oa, 
-    inout swtrace_inout_t ioa);
-*/
+cpackage Vlan(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+                 
+
+cpackage SR_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+                 
+cpackage SR_v6(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+                 
+cpackage Mpls_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);
+                 
+cpackage Mpls_v6(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout bit<16> etherType);

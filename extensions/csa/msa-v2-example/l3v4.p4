@@ -23,12 +23,12 @@ header ipv4_h {
   bit<16> dstAddr; 
 }
 
-struct l3_hdr_t {
+struct l3v4_hdr_t {
   ipv4_h ipv4;
 }
 
-cpackage L3v4 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16>> {
-  parser micro_parser(extractor ex, pkt p, im_t im, out l3_hdr_t hdr, inout l3_meta_t meta,
+cpackage L3v4 : implements Unicast<l3v4_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16>> {
+  parser micro_parser(extractor ex, pkt p, im_t im, out l3v4_hdr_t hdr, inout l3_meta_t meta,
                         in empty_t ia, inout bit<16> ethType) { //inout arg
     state start {
       transition select(ethType){
@@ -41,7 +41,7 @@ cpackage L3v4 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16
     }
   }
 
-  control micro_control(pkt p, im_t im, inout l3_hdr_t hdr, inout l3_meta_t m,
+  control micro_control(pkt p, im_t im, inout l3v4_hdr_t hdr, inout l3_meta_t m,
                           in empty_t e, out bit<16> nexthop, 
                           inout bit<16> ethType) { // nexthop out arg
     action process(bit<16> nh) {
@@ -61,7 +61,7 @@ cpackage L3v4 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16
     apply { ipv4_lpm_tbl.apply(); }
   }
 
-  control micro_deparser(emitter em, pkt p, in l3_hdr_t h) {
+  control micro_deparser(emitter em, pkt p, in l3v4_hdr_t h) {
     apply { 
       em.emit(p, h.ipv4); 
     }

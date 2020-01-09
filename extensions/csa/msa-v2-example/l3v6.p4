@@ -20,12 +20,12 @@ header ipv6_h {
   bit<128> dstAddr;  
 }
 
-struct l3_hdr_t {
+struct l3v6_hdr_t {
   ipv6_h ipv6;
 }
 
-cpackage L3v6 : implements Unicast<l3_hdr_t, l3_meta_t, empty_t, bit<128>, bit<16>> {
-  parser micro_parser(extractor ex, pkt p, im_t im, out l3_hdr_t hdr, inout l3_meta_t meta,  
+cpackage L3v6 : implements Unicast<l3v6_hdr_t, l3_meta_t, empty_t, bit<128>, bit<16>> {
+  parser micro_parser(extractor ex, pkt p, im_t im, out l3v6_hdr_t hdr, inout l3_meta_t meta,  
                         in empty_t ia, inout bit<16> ethType) { //inout arg
 state start {
       transition select(ethType){
@@ -38,7 +38,7 @@ state start {
     }
   }
 
-  control micro_control(pkt p, im_t im, inout l3_hdr_t hdr, inout l3_meta_t m,
+  control micro_control(pkt p, im_t im, inout l3v6_hdr_t hdr, inout l3_meta_t m,
                           in empty_t e, out bit<128> nexthop, 
                           inout bit<16> ethType) { // nexthop out arg
 	action process(bit<128> nexthop_ipv6_addr){
@@ -53,7 +53,7 @@ state start {
     apply { ipv6_lpm_tbl.apply(); }
   }
 
-  control micro_deparser(emitter em, pkt p, in l3_hdr_t h) {
+  control micro_deparser(emitter em, pkt p, in l3v6_hdr_t h) {
     apply { 
       em.emit(p, h.ipv6); 
     }

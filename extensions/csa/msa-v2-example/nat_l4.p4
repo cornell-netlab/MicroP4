@@ -28,7 +28,7 @@ cpackage Nat_L4 : implements Unicast<nat_hdr_t, meta_t,
                         in empty_t ia, inout bit<8> l4proto) {
     state start {
       transition select(l4proto) {
-        0x06: parse_tcp;
+        0x06: parse_tcp; 
       }
     }
     state parse_tcp {

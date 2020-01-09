@@ -8,7 +8,8 @@
 
 #define TABLE_SIZE 1024
 
-struct meta_t { 
+struct natl3_meta_t {
+	bit<1> change; 
 }
 
 header ipv4_h {
@@ -31,9 +32,9 @@ struct hdr_t {
   ipv4_h ipv4;
 }
 
-cpackage Nat_L3 : implements Unicast<hdr_t, empty_t, 
+cpackage Nat_L3 : implements Unicast<hdr_t, natl3_meta_t, 
                                      empty_t, empty_t, bit<16>> {
-  parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout meta_t meta,
+  parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout natl3_meta_t meta,
                         in empty_t ia, inout bit<16> etherType) {
     state start {
       transition select(etherType) {
@@ -48,12 +49,12 @@ cpackage Nat_L3 : implements Unicast<hdr_t, empty_t,
 
   }
   
-control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
+control micro_control(pkt p, im_t im, inout hdr_t hdr, inout natl3_meta_t m,
                           in empty_t ia, out empty_t oa, inout bit<16> etherType) {
-    bit<1> change=0;
+    
     Nat_L4() nat4_i;
     action change_srcAddr() {
-            change = 1;
+            m.change = 1;
        }
    table srcAddr_tbl{
     	key = {
@@ -69,7 +70,7 @@ control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
     
     apply {
     srcAddr_tbl.apply();
-    nat4_i.apply(p, im, ia, oa, change, hdr.ipv4.protocol);
+    nat4_i.apply(p, im, ia, oa, hdr.ipv4.protocol);
     }
   }
   control micro_deparser(emitter em, pkt p, in hdr_t hdr) {
@@ -78,4 +79,3 @@ control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
     }
   }
 }
-
