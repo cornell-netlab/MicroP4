@@ -61,7 +61,7 @@ parser ParserImpl (packet_in pin, out routerv6qos_hdr_t parsed_hdr,
   
 }
 
-control ingress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta,
+control egress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
      action drop_action() {
    		 meta.drop_flag = 1;
@@ -90,7 +90,7 @@ control ingress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t met
 	}
 }
     
-control egress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta,
+control ingress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
       action set_dmac(bit<48> dmac, bit<9> port) {
           // P4Runtime error...
