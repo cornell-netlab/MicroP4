@@ -27,9 +27,11 @@ class DeparserConverter final : public Transform {
 
   typedef std::tuple<IR::ListExpression*, unsigned, IR::P4Action*, unsigned> EntryContext;
 
-  // emit index, cumulative moveOffset, hdr name
+  // currOffset, cumulative moveOffset, hdr name
+  // Current offset is index for the state of stack after parsing.
+  // emitIndex would be currOffset+moveOffset for deparsing
   typedef std::tuple<unsigned, int, cstring> 
-    EmitIndexMoveOffsetHdr;
+    CurrOSMoveOSHdr;
 
 
 // global throught the pass
@@ -134,13 +136,13 @@ class DeparserConverter final : public Transform {
     void createHdrValidityOpsKeysValues();
     EntryContext extendEntry(const IR::MethodCallStatement* mcs,
         const EntryContext& entry, const std::vector<char>& newKVs, 
-        const std::vector<EmitIndexMoveOffsetHdr>& emitData, 
+        const std::vector<CurrOSMoveOSHdr>& emitData, 
         int moveOffset, unsigned currOffset);
     IR::P4Table* multiplyHdrValidityOpsTable(const IR::MethodCallStatement* dummyMCS);
     IR::P4Action* createByteMoveP4Action(unsigned moveInitIdx, 
                                       int moveOffset, unsigned moveBlockSize);
     
-    void printEIMvOsHdr(const std::vector<EmitIndexMoveOffsetHdr>& v);
+    void printEIMvOsHdr(const std::vector<CurrOSMoveOSHdr>& v);
 
  public:
     using Transform::preorder;

@@ -533,6 +533,14 @@ const IR::Node* ReduceConcatExpression::preorder(IR::Concat* concat) {
     FlattenConcatExpression fce(&exprVec);
     concat->apply(fce);
 
+    /*
+    std::cout<<"ReduceConcatExpression::preorder(IR::Concat* concat): "<<concat<<"\n";
+    std::cout<<"---exprVec---\n";
+    for (auto e : exprVec)
+        std::cout<<e<<"\n";
+    std::cout<<"---exprVec---\n";
+    */
+
     const IR::Slice* curr = nullptr;
     unsigned curL = 0;
     unsigned h = 0;
@@ -565,7 +573,7 @@ const IR::Node* ReduceConcatExpression::preorder(IR::Concat* concat) {
                 curL = 0;
                 h = 0;
             }
-            concatVec.push_back(e);
+            concatVec.push_back(exp);
         }
     }
 
@@ -573,6 +581,13 @@ const IR::Node* ReduceConcatExpression::preorder(IR::Concat* concat) {
         auto re = reduce(curr, curL, h);
         concatVec.push_back(re);
     }
+    /*
+    std::cout<<"---concatVec---\n";
+    for (auto e : concatVec)
+        std::cout<<e<<"\n";
+    std::cout<<"---concatVec---\n";
+    std::cout<<"before createConcat call : "<<concat<<"\n";
+    */
     return createConcat(concatVec);
 }
 
