@@ -58,13 +58,13 @@ control micro_control(pkt p, im_t im, inout hdr_t hdr, inout natl3_meta_t m,
        }
    table srcAddr_tbl{
     	key = {
-    		hdr.ipv4.srcAddr : lpm;
+    		hdr.ipv4.srcAddr : exact;
     	}
     	actions = {
     		change_srcAddr;
     	}
     	const entries = {
-    	     0x0a000200 &&& 0xffffff00: change_srcAddr();
+    	     0x0a000256 : change_srcAddr();
     	}
    }
     
@@ -79,3 +79,5 @@ control micro_control(pkt p, im_t im, inout hdr_t hdr, inout natl3_meta_t m,
     }
   }
 }
+
+Nat_L3() main;

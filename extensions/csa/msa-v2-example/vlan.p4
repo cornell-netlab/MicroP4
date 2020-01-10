@@ -13,7 +13,6 @@ struct vlan_meta_t {
 }
 
 header vlan_h {
-  bit<16> tpid;
   bit<3> pcp;
   bit<1> dei;
   bit<12> vid;
@@ -78,15 +77,11 @@ control micro_control(pkt p, im_t im, inout vlan_hdr_t hdr, inout vlan_meta_t m,
     	     (0, 20): modify_action();
     	     (0,25): untag_vlan();
     	     (0,30): forward_action(0x10);
-    	}
+       	}
     }
     
     apply {
-    if (hdr.vlan.ethType==0x0800)
-      l3v4_i.apply(p, im, ia, nh_v4, hdr.vlan.ethType);           
-    else if (hdr.vlan.ethType==0x86DD) 
-      l3v6_i.apply(p, im, ia, nh_v6, hdr.vlan.ethType);
-    vlan_tbl.apply();
+      vlan_tbl.apply();
     }
   }
   

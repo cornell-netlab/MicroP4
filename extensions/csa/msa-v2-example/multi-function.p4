@@ -89,7 +89,7 @@ cpackage ModularMultiFunction : implements Unicast<main_hdr_t, main_meta_t,
       im.set_out_port(port);
     }
     table forward_tbl {
-      key = { nh : lpm; } 
+      key = { nh : exact; } 
       actions = { forward; }
     }
     apply { 

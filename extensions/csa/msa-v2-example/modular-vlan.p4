@@ -49,6 +49,8 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
       actions = { forward; }
     }
     apply { 
+    nhv4 = 16w10;
+    nhv6 = 128w10;
     if(hdr.eth.ethType==0x8100) 
       vlan.apply(p, im, ia, oa, hdr.eth.ethType);
     else if (hdr.eth.ethType==0x0800)
