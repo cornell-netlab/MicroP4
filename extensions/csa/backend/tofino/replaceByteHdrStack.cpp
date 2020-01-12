@@ -18,7 +18,6 @@ bool CompareExpression::preorder(const IR::Member* mem) {
     return false;
 }
 
-
 bool CompareExpression::preorder(const IR::PathExpression* pe) {
 
     auto curr = currExpr->to<IR::PathExpression>();
@@ -31,7 +30,6 @@ bool CompareExpression::preorder(const IR::PathExpression* pe) {
         *match = false;
     return false;
 }
-
 
 bool CompareExpression::preorder(const IR::ArrayIndex* ai) {
 
@@ -50,7 +48,6 @@ bool CompareExpression::preorder(const IR::ArrayIndex* ai) {
     return false;
 }
 
-
 bool CompareExpression::preorder(const IR::Constant* c) {
 
     auto curr = currExpr->to<IR::Constant>();
@@ -62,9 +59,6 @@ bool CompareExpression::preorder(const IR::Constant* c) {
         *match = false;
     return false;
 }
-
-
-
 
 const IR::Node* ReplaceByteHdrStack::postorder(IR::P4Program* program) {
 
@@ -78,7 +72,6 @@ const IR::Node* ReplaceByteHdrStack::postorder(IR::P4Program* program) {
     return program;
 }
 
-
 const IR::Node* ReplaceByteHdrStack::preorder(IR::Type_Header* typeHdr) { 
 
     auto hdrName = typeHdr->getName();
@@ -87,7 +80,6 @@ const IR::Node* ReplaceByteHdrStack::preorder(IR::Type_Header* typeHdr) {
     fieldName = typeHdr->fields.at(0)->getName();
     return typeHdr;
 }
-
 
 const IR::Node* ReplaceByteHdrStack::preorder(IR::Type_Struct* typeStruct) {
 
@@ -140,7 +132,6 @@ const IR::Node* ReplaceByteHdrStack::preorder(IR::Type_Struct* typeStruct) {
     return typeStruct;
 }
 
-
 const IR::Node* ReplaceByteHdrStack::preorder(IR::Member* member) {
     
     IR::Expression* subExp = nullptr;
@@ -166,8 +157,6 @@ const IR::Node* ReplaceByteHdrStack::preorder(IR::Member* member) {
     prune();
     return slice;
 }
-
-
 
 const IR::Node* ReplaceByteHdrStack::preorder(IR::Slice* slice) {
 
@@ -223,7 +212,6 @@ int ReplaceByteHdrStack::getIndexOfByteStack(const IR::Member* member,
     return cnst->asUnsigned();
 } 
 
-
 bool ReplaceByteHdrStack::translateIndexAndSlice(unsigned in, unsigned h, unsigned l, 
     unsigned& stackNumber, unsigned& stackIndex, unsigned& nh, unsigned& nl) {
 
@@ -244,14 +232,12 @@ bool ReplaceByteHdrStack::translateIndexAndSlice(unsigned in, unsigned h, unsign
     return true;
 }
 
-
 void FoldLExpSlicesInAsStmts::resetFoldContext() {
     lExpMember = nullptr;
     currentSubLExpMember = nullptr;
     slices.clear();
     rightExprVec.clear();
 }
-
 
 bool FoldLExpSlicesInAsStmts::matchLExpSliceIndices(const IR::Expression* lexp, 
                                                     unsigned& l, unsigned& h, 
@@ -308,6 +294,7 @@ IR::AssignmentStatement* FoldLExpSlicesInAsStmts::fold() {
     
     unsigned h = slices.front().second;
     unsigned l = slices.back().first;
+
     auto ls = IR::Slice::make(les, l, h);
     
     BUG_CHECK(rightExprVec.size() > 0, "bug in FoldLExpSlicesInAsStmts");
@@ -341,7 +328,6 @@ const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::Member* mem) {
     prune();
     return mem;
 }
-
 
 const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::ArrayIndex* ai) {
     auto curr = currentSubLExpMember->to<IR::ArrayIndex>();
@@ -378,7 +364,6 @@ const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::PathExpression* pe) {
     return pe;
 }
 
-
 const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::Constant* c) {
     auto curr = currentSubLExpMember->to<IR::Constant>();
     if (curr == nullptr) {
@@ -392,7 +377,6 @@ const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::Constant* c) {
     return c;
 
 }
-
 
 const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::AssignmentStatement* as) {
 
@@ -409,11 +393,9 @@ const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::AssignmentStatement* as) {
             rightExprVec.insert(rightExprVec.begin(), as->right);
             slices.emplace(slices.begin(), l, h);
         }
-            
         prune();
         return nullptr;
     }
-
     if (rightExprVec.size() != 0) {
         auto asfolded = fold();
         resetFoldContext();
@@ -425,7 +407,6 @@ const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::AssignmentStatement* as) {
     }
     return as;
 }
-
 
 const IR::Node* FoldLExpSlicesInAsStmts::postorder(IR::StatOrDecl* sd) {
 
@@ -446,7 +427,6 @@ const IR::Node* FoldLExpSlicesInAsStmts::postorder(IR::StatOrDecl* sd) {
     }
     return sd;
 }
-
 
 const IR::Node* FoldLExpSlicesInAsStmts::preorder(IR::BlockStatement* bs) {
 
@@ -485,9 +465,6 @@ bool FlattenConcatExpression::preorder(const IR::Concat* concat) {
         exprVec->push_back(concat->right);
     return false;
 }
-
-
-
 
 bool ReduceConcatExpression::checkReducibility(const IR::Slice* curr, const IR::Slice* exp,
                                             unsigned curL, unsigned& newL) {
@@ -591,9 +568,22 @@ const IR::Node* ReduceConcatExpression::preorder(IR::Concat* concat) {
     return createConcat(concatVec);
 }
 
+const IR::Node* RemoveExplicitSlices::preorder(IR::Slice* slice) {
+
+    auto l = slice->getL();
+    if (l != 0)
+      return slice;
+    auto t = typeMap->getType(slice->e0, true);
+    auto tb = t->to<IR::Type_Bits>();
+    if (tb == nullptr)
+        return slice;
+    if (tb->size == slice->getH()+1)
+        return slice->e0;
+    return slice;
+}
+
 cstring ReplaceMSAByteHdrStack::getHdrStackInstName(unsigned sn) {
     return NameConstants::csaHeaderInstanceName+"_s"+ cstring::to_cstring(sn);
 }
-
 
 }

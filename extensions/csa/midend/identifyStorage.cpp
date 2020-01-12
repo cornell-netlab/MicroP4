@@ -20,6 +20,7 @@ bool IdentifyStorage::preorder(const IR::Member* mem) {
     if (level < 0) {
         return false;
     }
+    // std::cout<<"preorder level : "<<level<<" mem : "<<mem<<"\n";
     auto type = typeMap->getType(mem, true);
 
     if (auto ts = type->to<IR::Type_Stack>()) {
@@ -31,15 +32,11 @@ bool IdentifyStorage::preorder(const IR::Member* mem) {
         if ((ht->getName() == NameConstants::multiByteHdrTypeName) ||
             (ht->getName() == NameConstants::headerTypeName))  {
             msaHeaderStorage = true;
-            names.emplace_back(mem->member);
             return false;
         }
     }
-
-    if (auto ts = type->to<IR::Type_Struct>()) {
-        names.emplace_back(mem->member);
-        types.emplace_back(ts);
-    }
+    names.emplace_back(mem->member);
+    types.emplace_back(type);
 
     level--;
     visit(mem->expr);
@@ -47,17 +44,23 @@ bool IdentifyStorage::preorder(const IR::Member* mem) {
 }
 
 bool IdentifyStorage::preorder(const IR::PathExpression* pe) {
+    if (level < 0)
+        return false;
+    // std::cout<<"preorder level : "<<level<<" pe : "<<pe<<"\n";
     auto type = typeMap->getType(pe, true);
-    auto ts = type->to<IR::Type_Struct>();
+    names.emplace_back(pe->path->name);
+    types.emplace_back(type);
+    level --;
     return false;
 }
 
-cstring IdentifyStorage::getName(unsigned level) {
-    return names[level];
+cstring IdentifyStorage::getName(unsigned l) {
+    return names[l];
 }
 
-const IR::Type* IdentifyStorage::getType(unsigned level) {
-    return types[level];
+const IR::Type* IdentifyStorage::getType(unsigned l) {
+    // std::cout<<"return l "<<l<<" size "<<types.size()<<"\n";
+    return types[l];
 }
 
 int IdentifyStorage::getArrayIndex() {
