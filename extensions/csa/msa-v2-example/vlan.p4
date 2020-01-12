@@ -47,7 +47,7 @@ control micro_control(pkt p, im_t im, inout vlan_hdr_t hdr, inout vlan_meta_t m,
     bit<128> nh_v6;
     
     action drop_action() {
-            im.set_out_port(0x00); // Drop packet
+            im.drop(); // Drop packet
        }
        
     action forward_action( PortId_t port) {
