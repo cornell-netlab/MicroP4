@@ -1226,7 +1226,9 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
         actName += hn+"_"+cstring::to_cstring(ei/8)+
                       "_"+cstring::to_cstring((ei+width)/8)+"_";
     }
-    actName+= "MO_Emit_"+cstring::to_cstring(totalMoveOffset/8);
+    cstring moStr = cstring::to_cstring(std::abs(totalMoveOffset/8));
+    moStr = totalMoveOffset>0 ? moStr : "mi"+moStr;
+    actName+= "MO_Emit_"+moStr;
 
     std::vector<IR::P4Action*> actionCallOrder;
     for (auto d : emitOrder) {
@@ -1322,8 +1324,12 @@ IR::P4Action* DeparserConverter::createByteMoveP4Action(unsigned moveInitIdx,
 
     IR::IndexedVector<IR::StatOrDecl> actionBlockStatements;
     std::vector<IR::StatOrDecl*> asms;
+
+    cstring moStr = cstring::to_cstring(std::abs(moveOffset/8));
+    moStr = moveOffset>0 ? moStr : "mi"+moStr;
+
     cstring actName = "move_" + cstring::to_cstring(moveInitIdx/8) + "_" +
-      cstring::to_cstring(moveOffset/8) +"_"+ cstring::to_cstring(moveBlockSize/8);
+      moStr +"_"+ cstring::to_cstring(moveBlockSize/8);
 
     auto exp = new IR::Member(new IR::PathExpression(paketOutParamName), 
                                  IR::ID(NameConstants::csaHeaderInstanceName));

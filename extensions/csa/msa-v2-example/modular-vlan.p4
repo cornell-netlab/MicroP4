@@ -35,8 +35,7 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     Vlan() vlan;
-    bit<16> nhv4;
-    bit<128> nhv6;
+    bit<16> nh;
     L3v4() l3v4_i;
     L3v6() l3v6_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
@@ -45,12 +44,11 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
       im.set_out_port(port);
     }
     table forward_tbl {
-      key = { nhv4 : lpm; nhv6 : lpm;} 
+      key = { nh : exact; } 
       actions = { forward; }
     }
     apply { 
-    nhv4 = 16w10;
-    nhv6 = 128w10;
+    nh = 16w10;
     // vlan should return something more than ethType to decide if routing is
     // required or not
     if(hdr.eth.ethType==0x8100)
@@ -58,9 +56,9 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
     
     // then, this block can go in an if condition.
     if (hdr.eth.ethType==0x0800)
-      l3v4_i.apply(p, im, ia, nhv4, hdr.eth.ethType);
+      l3v4_i.apply(p, im, ia, nh, hdr.eth.ethType);
     else if (hdr.eth.ethType==0x86DD) 
-      l3v6_i.apply(p, im, ia, nhv6, hdr.eth.ethType);
+      l3v6_i.apply(p, im, ia, nh, hdr.eth.ethType);
 
     forward_tbl.apply(); 
     }

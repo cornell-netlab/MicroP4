@@ -21,7 +21,7 @@ cpackage ecnv6(pkt p, im_t im, in empty_t ia, out empty_t oa,
 cpackage L3v4(pkt p, im_t im, in empty_t ia, out bit<16> nh, 
                  inout bit<16> etherType);
                  
-cpackage L3v6(pkt p, im_t im, in empty_t ia, out bit<128> nh,
+cpackage L3v6(pkt p, im_t im, in empty_t ia, out bit<16> nh,
                  inout bit<16> etherType);
 
 cpackage Filter_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 

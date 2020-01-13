@@ -30,7 +30,7 @@ cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t,
 
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
-    bit<128> nh;
+    bit<16> nh;
     L3v6() l3_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
@@ -38,7 +38,7 @@ cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t,
       im.set_out_port(port);
     }
     table forward_tbl {
-      key = { nh : lpm; } 
+      key = { nh : exact; } 
       actions = { forward; }
     }
     apply { 

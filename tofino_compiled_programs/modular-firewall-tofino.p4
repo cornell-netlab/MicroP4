@@ -19,7 +19,7 @@ struct msa_packet_struct_t {
     csa_indices_h      indices;
     msa_byte_h         msa_byte;
     msa_twobytes_h[32] msa_hdr_stack_s0;
-    msa_twobytes_h[3]  msa_hdr_stack_s1;
+    msa_twobytes_h[5]  msa_hdr_stack_s1;
 }
 
 struct ModularFirewall_parser_meta_t {
@@ -57,190 +57,6 @@ struct swtrace_inout_t {
     bit<16> ipv4_total_len;
 }
 
-struct filter_meta_t {
-    bit<16> sport;
-    bit<16> dport;
-}
-
-struct udp_h {
-    bit<16> sport;
-    bit<16> dport;
-}
-
-struct tcp_h {
-    bit<16> sport;
-    bit<16> dport;
-}
-
-struct callee_hdr_t {
-    tcp_h tcp;
-    udp_h udp;
-}
-
-control Filter_L4_micro_parser(inout msa_packet_struct_t p, out callee_hdr_t hdr, inout filter_meta_t meta, inout bit<8> l4proto, out Filter_L4_parser_meta_t parser_meta) {
-    action micro_parser_init() {
-        parser_meta.tcp_v = false;
-        parser_meta.udp_v = false;
-        parser_meta.packet_reject = 1w0b0;
-    }
-    action micro_parser_reject() {
-        parser_meta.packet_reject = 1w0b1;
-    }
-    action i_432_parse_udp_0() {
-        parser_meta.udp_v = true;
-        hdr.udp.sport = p.msa_hdr_stack_s0[27].data[15:0];
-        hdr.udp.dport = p.msa_hdr_stack_s0[28].data[15:0];
-        meta.sport = hdr.udp.sport;
-        meta.dport = hdr.udp.dport;
-    }
-    action i_240_parse_udp_0() {
-        parser_meta.udp_v = true;
-        hdr.udp.sport = p.msa_hdr_stack_s0[15].data[15:0];
-        hdr.udp.dport = p.msa_hdr_stack_s0[16].data[15:0];
-        meta.sport = hdr.udp.sport;
-        meta.dport = hdr.udp.dport;
-    }
-    action i_432_parse_tcp_0() {
-        parser_meta.tcp_v = true;
-        hdr.tcp.sport = p.msa_hdr_stack_s0[27].data[15:0];
-        hdr.tcp.dport = p.msa_hdr_stack_s0[28].data[15:0];
-        meta.sport = hdr.tcp.sport;
-        meta.dport = hdr.tcp.dport;
-    }
-    action i_240_parse_tcp_0() {
-        parser_meta.tcp_v = true;
-        hdr.tcp.sport = p.msa_hdr_stack_s0[15].data[15:0];
-        hdr.tcp.dport = p.msa_hdr_stack_s0[16].data[15:0];
-        meta.sport = hdr.tcp.sport;
-        meta.dport = hdr.tcp.dport;
-    }
-    table parser_tbl {
-        key = {
-            p.indices.curr_offset: exact;
-            l4proto              : ternary;
-        }
-        actions = {
-            i_432_parse_tcp_0();
-            i_432_parse_udp_0();
-            micro_parser_reject();
-            i_240_parse_tcp_0();
-            i_240_parse_udp_0();
-            NoAction();
-        }
-        const entries = {
-                        (16w240, 8w0x6) : i_240_parse_tcp_0();
-
-                        (16w240, 8w0x17) : i_240_parse_udp_0();
-
-                        (16w240, default) : micro_parser_reject();
-
-                        (16w432, 8w0x6) : i_432_parse_tcp_0();
-
-                        (16w432, 8w0x17) : i_432_parse_udp_0();
-
-                        (16w432, default) : micro_parser_reject();
-
-        }
-
-        const default_action = NoAction();
-    }
-    apply {
-        micro_parser_init();
-        parser_tbl.apply();
-    }
-}
-
-control Filter_L4_micro_control(inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm, inout filter_meta_t m) {
-    @name(".NoAction") action NoAction_0() {
-    }
-    @name("Filter_L4.micro_control.drop_action") action drop_action() {
-        ig_intr_md_for_tm.ucast_egress_port = 9w0x0;
-    }
-    @name("Filter_L4.micro_control.filter_tbl") table filter_tbl_0 {
-        key = {
-            m.sport: exact @name("m.sport") ;
-            m.dport: exact @name("m.dport") ;
-        }
-        actions = {
-            drop_action();
-            @defaultonly NoAction_0();
-        }
-        const entries = {
-                        (16w0x4000, default) : drop_action();
-
-                        (default, 16w0x4000) : drop_action();
-
-        }
-
-        default_action = NoAction_0();
-    }
-    apply {
-        filter_tbl_0.apply();
-    }
-}
-
-control Filter_L4_micro_deparser(inout msa_packet_struct_t p, in callee_hdr_t hdr, in Filter_L4_parser_meta_t parser_meta) {
-    action tcp_54_58() {
-        p.msa_hdr_stack_s0[27].data[15:0] = hdr.tcp.sport[15:0];
-        p.msa_hdr_stack_s0[28].data[15:0] = hdr.tcp.dport[15:0];
-    }
-    action tcp_30_34() {
-        p.msa_hdr_stack_s0[15].data[15:0] = hdr.tcp.sport[15:0];
-        p.msa_hdr_stack_s0[16].data[15:0] = hdr.tcp.dport[15:0];
-    }
-    action udp_54_58() {
-        p.msa_hdr_stack_s0[27].data[15:0] = hdr.udp.sport[15:0];
-        p.msa_hdr_stack_s0[28].data[15:0] = hdr.udp.dport[15:0];
-    }
-    action udp_30_34() {
-        p.msa_hdr_stack_s0[15].data[15:0] = hdr.udp.sport[15:0];
-        p.msa_hdr_stack_s0[16].data[15:0] = hdr.udp.dport[15:0];
-    }
-    table deparser_tbl {
-        key = {
-            p.indices.curr_offset: exact;
-            parser_meta.tcp_v    : exact;
-            parser_meta.udp_v    : exact;
-        }
-        actions = {
-            tcp_54_58();
-            tcp_30_34();
-            udp_54_58();
-            udp_30_34();
-            NoAction();
-        }
-        const entries = {
-                        (16w432, true, false) : tcp_54_58();
-
-                        (16w240, true, false) : tcp_30_34();
-
-                        (16w432, false, true) : udp_54_58();
-
-                        (16w240, false, true) : udp_30_34();
-
-        }
-
-        const default_action = NoAction();
-    }
-    apply {
-        deparser_tbl.apply();
-    }
-}
-
-control Filter_L4(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm, inout bit<8> inout_param) {
-    Filter_L4_micro_parser() Filter_L4_micro_parser_inst;
-    Filter_L4_micro_control() Filter_L4_micro_control_inst;
-    Filter_L4_micro_deparser() Filter_L4_micro_deparser_inst;
-    callee_hdr_t callee_hdr_t_var;
-    filter_meta_t filter_meta_t_var;
-    Filter_L4_parser_meta_t Filter_L4_parser_meta_t_var;
-    apply {
-        Filter_L4_micro_parser_inst.apply(msa_packet_struct_t_var, callee_hdr_t_var, filter_meta_t_var, inout_param, Filter_L4_parser_meta_t_var);
-        Filter_L4_micro_control_inst.apply(ig_intr_md_for_tm, filter_meta_t_var);
-        Filter_L4_micro_deparser_inst.apply(msa_packet_struct_t_var, callee_hdr_t_var, Filter_L4_parser_meta_t_var);
-    }
-}
-
 struct l3_meta_t {
 }
 
@@ -255,8 +71,8 @@ struct ipv4_h {
     bit<8>  ttl;
     bit<8>  protocol;
     bit<16> hdrChecksum;
-    bit<16> srcAddr;
-    bit<16> dstAddr;
+    bit<32> srcAddr;
+    bit<32> dstAddr;
 }
 
 struct l3v4_hdr_t {
@@ -276,30 +92,30 @@ control L3v4_micro_parser(inout msa_packet_struct_t p, out l3v4_hdr_t hdr, inout
         hdr.ipv4.version = p.msa_hdr_stack_s0[27].data[15:12];
         hdr.ipv4.ihl = p.msa_hdr_stack_s0[27].data[11:8];
         hdr.ipv4.diffserv = p.msa_hdr_stack_s0[27].data[7:0];
-        hdr.ipv4.totalLen = p.msa_hdr_stack_s0[28].data[15:0];
-        hdr.ipv4.identification = p.msa_hdr_stack_s0[29].data[15:0];
+        hdr.ipv4.totalLen = p.msa_hdr_stack_s0[28].data;
+        hdr.ipv4.identification = p.msa_hdr_stack_s0[29].data;
         hdr.ipv4.flags = p.msa_hdr_stack_s0[30].data[15:13];
         hdr.ipv4.fragOffset = p.msa_hdr_stack_s0[30].data[12:0];
         hdr.ipv4.ttl = p.msa_hdr_stack_s0[31].data[15:8];
         hdr.ipv4.protocol = p.msa_hdr_stack_s0[31].data[7:0];
-        hdr.ipv4.hdrChecksum = p.msa_hdr_stack_s1[0].data[15:0];
-        hdr.ipv4.srcAddr = p.msa_hdr_stack_s1[1].data[15:0];
-        hdr.ipv4.dstAddr = p.msa_hdr_stack_s1[2].data[15:0];
+        hdr.ipv4.hdrChecksum = p.msa_hdr_stack_s1[0].data;
+        hdr.ipv4.srcAddr = p.msa_hdr_stack_s1[1].data ++ p.msa_hdr_stack_s1[2].data;
+        hdr.ipv4.dstAddr = p.msa_hdr_stack_s1[3].data ++ p.msa_hdr_stack_s1[4].data;
     }
-    action i_240_parse_ipv4_0() {
+    action i_272_parse_ipv4_0() {
         parser_meta.ipv4_v = true;
-        hdr.ipv4.version = p.msa_hdr_stack_s0[15].data[15:12];
-        hdr.ipv4.ihl = p.msa_hdr_stack_s0[15].data[11:8];
-        hdr.ipv4.diffserv = p.msa_hdr_stack_s0[15].data[7:0];
-        hdr.ipv4.totalLen = p.msa_hdr_stack_s0[16].data[15:0];
-        hdr.ipv4.identification = p.msa_hdr_stack_s0[17].data[15:0];
-        hdr.ipv4.flags = p.msa_hdr_stack_s0[18].data[15:13];
-        hdr.ipv4.fragOffset = p.msa_hdr_stack_s0[18].data[12:0];
-        hdr.ipv4.ttl = p.msa_hdr_stack_s0[19].data[15:8];
-        hdr.ipv4.protocol = p.msa_hdr_stack_s0[19].data[7:0];
-        hdr.ipv4.hdrChecksum = p.msa_hdr_stack_s0[20].data[15:0];
-        hdr.ipv4.srcAddr = p.msa_hdr_stack_s0[21].data[15:0];
-        hdr.ipv4.dstAddr = p.msa_hdr_stack_s0[22].data[15:0];
+        hdr.ipv4.version = p.msa_hdr_stack_s0[17].data[15:12];
+        hdr.ipv4.ihl = p.msa_hdr_stack_s0[17].data[11:8];
+        hdr.ipv4.diffserv = p.msa_hdr_stack_s0[17].data[7:0];
+        hdr.ipv4.totalLen = p.msa_hdr_stack_s0[18].data;
+        hdr.ipv4.identification = p.msa_hdr_stack_s0[19].data;
+        hdr.ipv4.flags = p.msa_hdr_stack_s0[20].data[15:13];
+        hdr.ipv4.fragOffset = p.msa_hdr_stack_s0[20].data[12:0];
+        hdr.ipv4.ttl = p.msa_hdr_stack_s0[21].data[15:8];
+        hdr.ipv4.protocol = p.msa_hdr_stack_s0[21].data[7:0];
+        hdr.ipv4.hdrChecksum = p.msa_hdr_stack_s0[22].data;
+        hdr.ipv4.srcAddr = p.msa_hdr_stack_s0[23].data ++ p.msa_hdr_stack_s0[24].data;
+        hdr.ipv4.dstAddr = p.msa_hdr_stack_s0[25].data ++ p.msa_hdr_stack_s0[26].data;
     }
     table parser_tbl {
         key = {
@@ -309,13 +125,13 @@ control L3v4_micro_parser(inout msa_packet_struct_t p, out l3v4_hdr_t hdr, inout
         actions = {
             i_432_parse_ipv4_0();
             micro_parser_reject();
-            i_240_parse_ipv4_0();
+            i_272_parse_ipv4_0();
             NoAction();
         }
         const entries = {
-                        (16w240, 16w0x800) : i_240_parse_ipv4_0();
+                        (16w272, 16w0x800) : i_272_parse_ipv4_0();
 
-                        (16w240, default) : micro_parser_reject();
+                        (16w272, default) : micro_parser_reject();
 
                         (16w432, 16w0x800) : i_432_parse_ipv4_0();
 
@@ -355,25 +171,11 @@ control L3v4_micro_control(inout l3v4_hdr_t hdr, out bit<16> nexthop) {
 }
 
 control L3v4_micro_deparser(inout msa_packet_struct_t p, in l3v4_hdr_t h, in L3v4_parser_meta_t parser_meta) {
-    action ipv4_54_70() {
-        p.msa_hdr_stack_s0[27].data[15:0] = h.ipv4.version[3:0] ++ h.ipv4.ihl[3:0] ++ h.ipv4.diffserv[7:0];
-        p.msa_hdr_stack_s0[28].data[15:0] = h.ipv4.totalLen[15:0];
-        p.msa_hdr_stack_s0[29].data[15:0] = h.ipv4.identification[15:0];
-        p.msa_hdr_stack_s0[30].data[15:0] = h.ipv4.flags[2:0] ++ h.ipv4.fragOffset[12:0];
-        p.msa_hdr_stack_s0[31].data[15:0] = h.ipv4.ttl[7:0] ++ h.ipv4.protocol[7:0];
-        p.msa_hdr_stack_s1[0].data[15:0] = h.ipv4.hdrChecksum[15:0];
-        p.msa_hdr_stack_s1[1].data[15:0] = h.ipv4.srcAddr[15:0];
-        p.msa_hdr_stack_s1[2].data[15:0] = h.ipv4.dstAddr[15:0];
+    action ipv4_54_74() {
+        p.msa_hdr_stack_s0[31].data = h.ipv4.ttl ++ h.ipv4.protocol;
     }
-    action ipv4_30_46() {
-        p.msa_hdr_stack_s0[15].data[15:0] = h.ipv4.version[3:0] ++ h.ipv4.ihl[3:0] ++ h.ipv4.diffserv[7:0];
-        p.msa_hdr_stack_s0[16].data[15:0] = h.ipv4.totalLen[15:0];
-        p.msa_hdr_stack_s0[17].data[15:0] = h.ipv4.identification[15:0];
-        p.msa_hdr_stack_s0[18].data[15:0] = h.ipv4.flags[2:0] ++ h.ipv4.fragOffset[12:0];
-        p.msa_hdr_stack_s0[19].data[15:0] = h.ipv4.ttl[7:0] ++ h.ipv4.protocol[7:0];
-        p.msa_hdr_stack_s0[20].data[15:0] = h.ipv4.hdrChecksum[15:0];
-        p.msa_hdr_stack_s0[21].data[15:0] = h.ipv4.srcAddr[15:0];
-        p.msa_hdr_stack_s0[22].data[15:0] = h.ipv4.dstAddr[15:0];
+    action ipv4_34_54() {
+        p.msa_hdr_stack_s0[21].data = h.ipv4.ttl ++ h.ipv4.protocol;
     }
     table deparser_tbl {
         key = {
@@ -381,14 +183,14 @@ control L3v4_micro_deparser(inout msa_packet_struct_t p, in l3v4_hdr_t h, in L3v
             parser_meta.ipv4_v   : exact;
         }
         actions = {
-            ipv4_54_70();
-            ipv4_30_46();
+            ipv4_54_74();
+            ipv4_34_54();
             NoAction();
         }
         const entries = {
-                        (16w432, true) : ipv4_54_70();
+                        (16w432, true) : ipv4_54_74();
 
-                        (16w240, true) : ipv4_30_46();
+                        (16w272, true) : ipv4_34_54();
 
         }
 
@@ -409,6 +211,182 @@ control L3v4(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_
         L3v4_micro_parser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, inout_param, L3v4_parser_meta_t_var);
         L3v4_micro_control_inst.apply(l3v4_hdr_t_var, out_param);
         L3v4_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, L3v4_parser_meta_t_var);
+    }
+}
+
+struct filter_meta_t {
+    bit<16> sport;
+    bit<16> dport;
+}
+
+struct udp_h {
+    bit<16> sport;
+    bit<16> dport;
+}
+
+struct tcp_h {
+    bit<16> sport;
+    bit<16> dport;
+}
+
+struct callee_hdr_t {
+    tcp_h tcp;
+    udp_h udp;
+}
+
+control Filter_L4_micro_parser(inout msa_packet_struct_t p, out callee_hdr_t hdr, inout filter_meta_t meta, inout bit<8> l4proto, out Filter_L4_parser_meta_t parser_meta) {
+    action micro_parser_init() {
+        parser_meta.tcp_v = false;
+        parser_meta.udp_v = false;
+        parser_meta.packet_reject = 1w0b0;
+    }
+    action micro_parser_reject() {
+        parser_meta.packet_reject = 1w0b1;
+    }
+    action i_432_parse_udp_0() {
+        parser_meta.udp_v = true;
+        hdr.udp.sport = p.msa_hdr_stack_s0[27].data;
+        hdr.udp.dport = p.msa_hdr_stack_s0[28].data;
+        meta.sport = hdr.udp.sport;
+        meta.dport = hdr.udp.dport;
+    }
+    action i_272_parse_udp_0() {
+        parser_meta.udp_v = true;
+        hdr.udp.sport = p.msa_hdr_stack_s0[17].data;
+        hdr.udp.dport = p.msa_hdr_stack_s0[18].data;
+        meta.sport = hdr.udp.sport;
+        meta.dport = hdr.udp.dport;
+    }
+    action i_432_parse_tcp_0() {
+        parser_meta.tcp_v = true;
+        hdr.tcp.sport = p.msa_hdr_stack_s0[27].data;
+        hdr.tcp.dport = p.msa_hdr_stack_s0[28].data;
+        meta.sport = hdr.tcp.sport;
+        meta.dport = hdr.tcp.dport;
+    }
+    action i_272_parse_tcp_0() {
+        parser_meta.tcp_v = true;
+        hdr.tcp.sport = p.msa_hdr_stack_s0[17].data;
+        hdr.tcp.dport = p.msa_hdr_stack_s0[18].data;
+        meta.sport = hdr.tcp.sport;
+        meta.dport = hdr.tcp.dport;
+    }
+    table parser_tbl {
+        key = {
+            p.indices.curr_offset: exact;
+            l4proto              : ternary;
+        }
+        actions = {
+            i_432_parse_tcp_0();
+            i_432_parse_udp_0();
+            micro_parser_reject();
+            i_272_parse_tcp_0();
+            i_272_parse_udp_0();
+            NoAction();
+        }
+        const entries = {
+                        (16w272, 8w0x6) : i_272_parse_tcp_0();
+
+                        (16w272, 8w0x17) : i_272_parse_udp_0();
+
+                        (16w272, default) : micro_parser_reject();
+
+                        (16w432, 8w0x6) : i_432_parse_tcp_0();
+
+                        (16w432, 8w0x17) : i_432_parse_udp_0();
+
+                        (16w432, default) : micro_parser_reject();
+
+        }
+
+        const default_action = NoAction();
+    }
+    apply {
+        micro_parser_init();
+        parser_tbl.apply();
+    }
+}
+
+control Filter_L4_micro_control(inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout filter_meta_t m) {
+    @name(".NoAction") action NoAction_0() {
+    }
+    @name("Filter_L4.micro_control.drop_action") action drop_action() {
+        ig_intr_md_for_dprsr.drop_ctl = 3w0x1;
+    }
+    @name("Filter_L4.micro_control.filter_tbl") table filter_tbl_0 {
+        key = {
+            m.sport: exact @name("m.sport") ;
+            m.dport: exact @name("m.dport") ;
+        }
+        actions = {
+            drop_action();
+            @defaultonly NoAction_0();
+        }
+        const entries = {
+                        (16w0x4000, default) : drop_action();
+
+                        (default, 16w0x4000) : drop_action();
+
+        }
+
+        default_action = NoAction_0();
+    }
+    apply {
+        filter_tbl_0.apply();
+    }
+}
+
+control Filter_L4_micro_deparser(inout msa_packet_struct_t p, in callee_hdr_t hdr, in Filter_L4_parser_meta_t parser_meta) {
+    action tcp_54_58() {
+    }
+    action tcp_34_38() {
+    }
+    action udp_54_58() {
+    }
+    action udp_34_38() {
+    }
+    table deparser_tbl {
+        key = {
+            p.indices.curr_offset: exact;
+            parser_meta.tcp_v    : exact;
+            parser_meta.udp_v    : exact;
+        }
+        actions = {
+            tcp_54_58();
+            tcp_34_38();
+            udp_54_58();
+            udp_34_38();
+            NoAction();
+        }
+        const entries = {
+                        (16w432, true, false) : tcp_54_58();
+
+                        (16w272, true, false) : tcp_34_38();
+
+                        (16w432, false, true) : udp_54_58();
+
+                        (16w272, false, true) : udp_34_38();
+
+        }
+
+        const default_action = NoAction();
+    }
+    apply {
+        deparser_tbl.apply();
+    }
+}
+
+control Filter_L4(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout bit<8> inout_param) {
+    Filter_L4_micro_parser() Filter_L4_micro_parser_inst;
+    Filter_L4_micro_control() Filter_L4_micro_control_inst;
+    Filter_L4_micro_deparser() Filter_L4_micro_deparser_inst;
+    callee_hdr_t callee_hdr_t_var;
+    filter_meta_t filter_meta_t_var;
+    Filter_L4_parser_meta_t Filter_L4_parser_meta_t_var;
+    apply {
+        Filter_L4_micro_parser_inst.apply(msa_packet_struct_t_var, callee_hdr_t_var, filter_meta_t_var, inout_param, Filter_L4_parser_meta_t_var);
+        Filter_L4_micro_control_inst.apply(ig_intr_md_for_dprsr, filter_meta_t_var);
+        Filter_L4_micro_deparser_inst.apply(msa_packet_struct_t_var, callee_hdr_t_var, Filter_L4_parser_meta_t_var);
     }
 }
 
@@ -453,41 +431,41 @@ control ModularFirewall_micro_parser(inout msa_packet_struct_t p, out hdr_t hdr,
         parser_meta.ipv6_v = true;
         hdr.ipv6.version = p.msa_hdr_stack_s0[7].data[15:12];
         hdr.ipv6.class = p.msa_hdr_stack_s0[7].data[11:4];
-        hdr.ipv6.label = p.msa_hdr_stack_s0[7].data[3:0] ++ p.msa_hdr_stack_s0[8].data[15:0];
-        hdr.ipv6.totalLen = p.msa_hdr_stack_s0[9].data[15:0];
+        hdr.ipv6.label = p.msa_hdr_stack_s0[7].data[3:0] ++ p.msa_hdr_stack_s0[8].data;
+        hdr.ipv6.totalLen = p.msa_hdr_stack_s0[9].data;
         hdr.ipv6.nexthdr = p.msa_hdr_stack_s0[10].data[15:8];
         hdr.ipv6.hoplimit = p.msa_hdr_stack_s0[10].data[7:0];
-        hdr.ipv6.srcAddr = p.msa_hdr_stack_s0[11].data[15:0] ++ p.msa_hdr_stack_s0[12].data[15:0] ++ p.msa_hdr_stack_s0[13].data[15:0] ++ p.msa_hdr_stack_s0[14].data[15:0] ++ p.msa_hdr_stack_s0[15].data[15:0] ++ p.msa_hdr_stack_s0[16].data[15:0] ++ p.msa_hdr_stack_s0[17].data[15:0] ++ p.msa_hdr_stack_s0[18].data[15:0];
-        hdr.ipv6.dstAddr = p.msa_hdr_stack_s0[19].data[15:0] ++ p.msa_hdr_stack_s0[20].data[15:0] ++ p.msa_hdr_stack_s0[21].data[15:0] ++ p.msa_hdr_stack_s0[22].data[15:0] ++ p.msa_hdr_stack_s0[23].data[15:0] ++ p.msa_hdr_stack_s0[24].data[15:0] ++ p.msa_hdr_stack_s0[25].data[15:0] ++ p.msa_hdr_stack_s0[26].data[15:0];
+        hdr.ipv6.srcAddr = p.msa_hdr_stack_s0[11].data ++ p.msa_hdr_stack_s0[12].data ++ p.msa_hdr_stack_s0[13].data ++ p.msa_hdr_stack_s0[14].data ++ p.msa_hdr_stack_s0[15].data ++ p.msa_hdr_stack_s0[16].data ++ p.msa_hdr_stack_s0[17].data ++ p.msa_hdr_stack_s0[18].data;
+        hdr.ipv6.dstAddr = p.msa_hdr_stack_s0[19].data ++ p.msa_hdr_stack_s0[20].data ++ p.msa_hdr_stack_s0[21].data ++ p.msa_hdr_stack_s0[22].data ++ p.msa_hdr_stack_s0[23].data ++ p.msa_hdr_stack_s0[24].data ++ p.msa_hdr_stack_s0[25].data ++ p.msa_hdr_stack_s0[26].data;
         m.l4proto = hdr.ipv6.nexthdr;
         parser_meta.eth_v = true;
-        hdr.eth.dmac = p.msa_hdr_stack_s0[0].data[15:0] ++ p.msa_hdr_stack_s0[1].data[15:0] ++ p.msa_hdr_stack_s0[2].data[15:0];
-        hdr.eth.smac = p.msa_hdr_stack_s0[3].data[15:0] ++ p.msa_hdr_stack_s0[4].data[15:0] ++ p.msa_hdr_stack_s0[5].data[15:0];
-        hdr.eth.ethType = p.msa_hdr_stack_s0[6].data[15:0];
+        hdr.eth.dmac = p.msa_hdr_stack_s0[0].data ++ p.msa_hdr_stack_s0[1].data ++ p.msa_hdr_stack_s0[2].data;
+        hdr.eth.smac = p.msa_hdr_stack_s0[3].data ++ p.msa_hdr_stack_s0[4].data ++ p.msa_hdr_stack_s0[5].data;
+        hdr.eth.ethType = p.msa_hdr_stack_s0[6].data;
     }
     action i_0_parse_ipv4_0() {
         parser_meta.ipv4_v = true;
         hdr.ipv4.version = p.msa_hdr_stack_s0[7].data[15:12];
         hdr.ipv4.ihl = p.msa_hdr_stack_s0[7].data[11:8];
         hdr.ipv4.diffserv = p.msa_hdr_stack_s0[7].data[7:0];
-        hdr.ipv4.totalLen = p.msa_hdr_stack_s0[8].data[15:0];
-        hdr.ipv4.identification = p.msa_hdr_stack_s0[9].data[15:0];
+        hdr.ipv4.totalLen = p.msa_hdr_stack_s0[8].data;
+        hdr.ipv4.identification = p.msa_hdr_stack_s0[9].data;
         hdr.ipv4.flags = p.msa_hdr_stack_s0[10].data[15:13];
         hdr.ipv4.fragOffset = p.msa_hdr_stack_s0[10].data[12:0];
         hdr.ipv4.ttl = p.msa_hdr_stack_s0[11].data[15:8];
         hdr.ipv4.protocol = p.msa_hdr_stack_s0[11].data[7:0];
-        hdr.ipv4.hdrChecksum = p.msa_hdr_stack_s0[12].data[15:0];
-        hdr.ipv4.srcAddr = p.msa_hdr_stack_s0[13].data[15:0];
-        hdr.ipv4.dstAddr = p.msa_hdr_stack_s0[14].data[15:0];
+        hdr.ipv4.hdrChecksum = p.msa_hdr_stack_s0[12].data;
+        hdr.ipv4.srcAddr = p.msa_hdr_stack_s0[13].data ++ p.msa_hdr_stack_s0[14].data;
+        hdr.ipv4.dstAddr = p.msa_hdr_stack_s0[15].data ++ p.msa_hdr_stack_s0[16].data;
         m.l4proto = hdr.ipv4.protocol;
         parser_meta.eth_v = true;
-        hdr.eth.dmac = p.msa_hdr_stack_s0[0].data[15:0] ++ p.msa_hdr_stack_s0[1].data[15:0] ++ p.msa_hdr_stack_s0[2].data[15:0];
-        hdr.eth.smac = p.msa_hdr_stack_s0[3].data[15:0] ++ p.msa_hdr_stack_s0[4].data[15:0] ++ p.msa_hdr_stack_s0[5].data[15:0];
-        hdr.eth.ethType = p.msa_hdr_stack_s0[6].data[15:0];
+        hdr.eth.dmac = p.msa_hdr_stack_s0[0].data ++ p.msa_hdr_stack_s0[1].data ++ p.msa_hdr_stack_s0[2].data;
+        hdr.eth.smac = p.msa_hdr_stack_s0[3].data ++ p.msa_hdr_stack_s0[4].data ++ p.msa_hdr_stack_s0[5].data;
+        hdr.eth.ethType = p.msa_hdr_stack_s0[6].data;
     }
     table parser_tbl {
         key = {
-            p.msa_hdr_stack_s0[6].data[15:0]: ternary;
+            p.msa_hdr_stack_s0[6].data: ternary;
         }
         actions = {
             i_0_parse_ipv4_0();
@@ -512,7 +490,7 @@ control ModularFirewall_micro_parser(inout msa_packet_struct_t p, out hdr_t hdr,
     }
 }
 
-control ModularFirewall_micro_control(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm, inout hdr_t hdr, inout meta_t m) {
+control ModularFirewall_micro_control(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm, inout hdr_t hdr, inout meta_t m) {
     @name(".NoAction") action NoAction_0() {
     }
     bit<16> nh_0;
@@ -534,7 +512,7 @@ control ModularFirewall_micro_control(inout msa_packet_struct_t msa_packet_struc
         default_action = NoAction_0();
     }
     apply {
-        filter_0.apply(msa_packet_struct_t_var, ig_intr_md_for_tm, m.l4proto);
+        filter_0.apply(msa_packet_struct_t_var, ig_intr_md_for_dprsr, m.l4proto);
         l3_i_0.apply(msa_packet_struct_t_var, nh_0, hdr.eth.ethType);
         forward_tbl_0.apply();
     }
@@ -542,13 +520,12 @@ control ModularFirewall_micro_control(inout msa_packet_struct_t msa_packet_struc
 
 control ModularFirewall_micro_deparser(inout msa_packet_struct_t p, in hdr_t hdr, in ModularFirewall_parser_meta_t parser_meta) {
     action eth_0_14() {
-        p.msa_hdr_stack_s0[0].data[15:0] = hdr.eth.dmac[47:32];
-        p.msa_hdr_stack_s0[1].data[15:0] = hdr.eth.dmac[31:16];
-        p.msa_hdr_stack_s0[2].data[15:0] = hdr.eth.dmac[15:0];
-        p.msa_hdr_stack_s0[3].data[15:0] = hdr.eth.smac[47:32];
-        p.msa_hdr_stack_s0[4].data[15:0] = hdr.eth.smac[31:16];
-        p.msa_hdr_stack_s0[5].data[15:0] = hdr.eth.smac[15:0];
-        p.msa_hdr_stack_s0[6].data[15:0] = hdr.eth.ethType[15:0];
+        p.msa_hdr_stack_s0[0].data = hdr.eth.dmac[47:32];
+        p.msa_hdr_stack_s0[1].data = hdr.eth.dmac[31:16];
+        p.msa_hdr_stack_s0[2].data = hdr.eth.dmac[15:0];
+        p.msa_hdr_stack_s0[3].data = hdr.eth.smac[47:32];
+        p.msa_hdr_stack_s0[4].data = hdr.eth.smac[31:16];
+        p.msa_hdr_stack_s0[5].data = hdr.eth.smac[15:0];
     }
     table deparser_tbl {
         key = {
@@ -570,7 +547,7 @@ control ModularFirewall_micro_deparser(inout msa_packet_struct_t p, in hdr_t hdr
     }
 }
 
-control ModularFirewall(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm) {
+control ModularFirewall(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm) {
     ModularFirewall_micro_parser() ModularFirewall_micro_parser_inst;
     ModularFirewall_micro_control() ModularFirewall_micro_control_inst;
     ModularFirewall_micro_deparser() ModularFirewall_micro_deparser_inst;
@@ -579,7 +556,7 @@ control ModularFirewall(inout msa_packet_struct_t msa_packet_struct_t_var, inout
     ModularFirewall_parser_meta_t ModularFirewall_parser_meta_t_var;
     apply {
         ModularFirewall_micro_parser_inst.apply(msa_packet_struct_t_var, hdr_t_var, meta_t_var, ModularFirewall_parser_meta_t_var);
-        ModularFirewall_micro_control_inst.apply(msa_packet_struct_t_var, ig_intr_md_for_tm, hdr_t_var, meta_t_var);
+        ModularFirewall_micro_control_inst.apply(msa_packet_struct_t_var, ig_intr_md_for_dprsr, ig_intr_md_for_tm, hdr_t_var, meta_t_var);
         ModularFirewall_micro_deparser_inst.apply(msa_packet_struct_t_var, hdr_t_var, ModularFirewall_parser_meta_t_var);
     }
 }
@@ -595,7 +572,7 @@ parser msa_tofino_ig_parser(packet_in pin, out msa_packet_struct_t mpkt, out msa
     ParserCounter() pc1;
     state start {
         pc0.set((bit<8>)32);
-        pc1.set((bit<8>)3);
+        pc1.set((bit<8>)5);
         transition parse_msa_hdr_stack_s0;
     }
     state parse_msa_hdr_stack_s0 {
@@ -619,7 +596,7 @@ parser msa_tofino_ig_parser(packet_in pin, out msa_packet_struct_t mpkt, out msa
 control msa_tofino_ig_control(inout msa_packet_struct_t mpkt, inout msa_user_metadata_t msa_um, in ingress_intrinsic_metadata_t ig_intr_md, in ingress_intrinsic_metadata_from_parser_t ig_intr_md_from_prsr, inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm) {
     ModularFirewall() ModularFirewall_inst;
     apply {
-        ModularFirewall_inst.apply(mpkt, ig_intr_md_for_tm);
+        ModularFirewall_inst.apply(mpkt, ig_intr_md_for_dprsr, ig_intr_md_for_tm);
     }
 }
 
@@ -636,7 +613,7 @@ parser msa_tofino_eg_parser(packet_in pin, out msa_packet_struct_t mpkt, out msa
     ParserCounter() pc1;
     state start {
         pc0.set((bit<8>)32);
-        pc1.set((bit<8>)3);
+        pc1.set((bit<8>)5);
         transition parse_msa_hdr_stack_s0;
     }
     state parse_msa_hdr_stack_s0 {
