@@ -1107,7 +1107,6 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
                     moveOffset += width;
                     continue;
                 }
-
                 if (value == 't') {
                     if (!setInvalid)
                         emitData.emplace_back(currOffset, moveOffset, keyNamesWidths[j].first);
@@ -1116,6 +1115,7 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
                 }
             }
   
+            /*
             std::cout<<"\n ------ Entry information ------- \n";
             for (auto hk : keyNamesWidths)
                 std::cout<<"|"<<hk.first<<"|";
@@ -1129,9 +1129,9 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
             for (auto opkv : hdrValidityOpKeyValues[m])
                 std::cout<<"|"<<opkv<<"|";
             std::cout<<"\n ----------------------------------- \n";
+            */
             auto ec = extendEntry(dummyMCS, kvEmitOffsets[i], 
                 hdrValidityOpKeyValues[m], emitData, moveOffset, currOffset);
-
             auto ls = std::get<0>(ec);
             auto emitAct = std::get<2>(ec);
             auto actionBinding = new IR::MethodCallExpression(
@@ -1171,12 +1171,13 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
                     const std::vector<CurrOSMoveOSHdr>& emitData,
                     int totalMoveOffset, unsigned currOffset) {
   
+    /*
     std::cout<<"\n-------- ----emitData--------\n";
     printEIMvOsHdr(emitData);
     std::cout<<"cumulative moveOffset "<<totalMoveOffset/8<<"\n";
     std::cout<<"currOffset "<<currOffset/8<<"\n";
     std::cout<<"----------------------------\n";
-
+    */
 
     IR::IndexedVector<IR::Declaration> entryActions;
     IR::ListExpression* ls = std::get<0>(entry)->clone();
@@ -1211,9 +1212,11 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
         }
     }
 
+    /*
     std::cout<<"\n-------- emit order-----\n";
     printEIMvOsHdr(emitOrder);
     std::cout<<"\n-------------------\n";
+    */
 
     cstring actName = "";
     for (auto d : emitData) {
@@ -1223,7 +1226,9 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
         actName += hn+"_"+cstring::to_cstring(ei/8)+
                       "_"+cstring::to_cstring((ei+width)/8)+"_";
     }
-    actName+= "MO_Emit_"+cstring::to_cstring(totalMoveOffset/8);
+    cstring moStr = cstring::to_cstring(std::abs(totalMoveOffset/8));
+    moStr = totalMoveOffset>0 ? moStr : "mi"+moStr;
+    actName+= "MO_Emit_"+moStr;
 
     std::vector<IR::P4Action*> actionCallOrder;
     for (auto d : emitOrder) {
@@ -1247,12 +1252,11 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
 
     IR::P4Action* resMoveAct = nullptr;
     unsigned resiBlockSize = *byteStackSize - currOffset;
-
-
+    /*
     std::cout<<"--------------1-------------\n";
     std::cout<<"currOffset : "<<currOffset/8<<" totalMoveOffset : "
       <<totalMoveOffset/8<<" resiBlockSize : "<<resiBlockSize/8<<"\n";
-
+    */
     unsigned lhsMin =  (currOffset + totalMoveOffset);
     unsigned lhsMax =  lhsMin + resiBlockSize ;
     if (lhsMin <= *byteStackSize && lhsMax > *byteStackSize)
@@ -1262,11 +1266,12 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
     if (totalMoveOffset != 0 && resiBlockSize !=0 )
         resMoveAct = createByteMoveP4Action(currOffset, totalMoveOffset, 
                                             resiBlockSize);
-
+    /*
     std::cout<<"--------------2-------------\n";
     std::cout<<"currOffset : "<<currOffset/8<<" totalMoveOffset : "
       <<totalMoveOffset/8<<" resiBlockSize : "<<resiBlockSize/8<<"\n";
-
+    */
+    
     if (resMoveAct != nullptr) {
         if (totalMoveOffset < 0)
             actionCallOrder.push_back(resMoveAct);
@@ -1319,8 +1324,12 @@ IR::P4Action* DeparserConverter::createByteMoveP4Action(unsigned moveInitIdx,
 
     IR::IndexedVector<IR::StatOrDecl> actionBlockStatements;
     std::vector<IR::StatOrDecl*> asms;
+
+    cstring moStr = cstring::to_cstring(std::abs(moveOffset/8));
+    moStr = moveOffset>0 ? moStr : "mi"+moStr;
+
     cstring actName = "move_" + cstring::to_cstring(moveInitIdx/8) + "_" +
-      cstring::to_cstring(moveOffset/8) +"_"+ cstring::to_cstring(moveBlockSize/8);
+      moStr +"_"+ cstring::to_cstring(moveBlockSize/8);
 
     auto exp = new IR::Member(new IR::PathExpression(paketOutParamName), 
                                  IR::ID(NameConstants::csaHeaderInstanceName));

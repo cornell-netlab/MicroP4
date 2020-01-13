@@ -19,7 +19,6 @@ namespace CSA {
  * e.g.,
  * @pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[11].data", "normal")
  */
-
 class LearnConcatenatedFields final : public Inspector {
 
     P4::ReferenceMap* refMap;

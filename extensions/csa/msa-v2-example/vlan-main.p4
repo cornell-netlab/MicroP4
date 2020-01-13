@@ -24,7 +24,6 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
                                             empty_t, empty_t, empty_t> {
   parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout meta_t m,
                         in empty_t ia, inout empty_t ioa) {
-
     state start {
       ex.extract(p, hdr.eth);
       transition accept;
@@ -44,17 +43,29 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
       im.set_out_port(port);
     }
     table forward_tbl {
-      key = { nh : lpm;} 
+      key = { nh : exact; } 
       actions = { forward; }
     }
     apply { 
     nh = 16w10;
-    if(hdr.eth.ethType==0x8100) 
+/*    if(hdr.eth.ethType==0x8100) 
       vlan.apply(p, im, ia, oa, hdr.eth.ethType);
     else if (hdr.eth.ethType==0x0800)
       l3v4_i.apply(p, im, ia, nh, hdr.eth.ethType);
     else if (hdr.eth.ethType==0x86DD) 
+      l3v6_i.apply(p, im, ia, nh, hdr.eth.ethType);*/
+      
+    // vlan should return something more than ethType to decide if routing is
+    // required or not
+    if(hdr.eth.ethType==0x8100)
+      vlan.apply(p, im, ia, oa, hdr.eth.ethType);
+    
+    // then, this block can go in an if condition.
+    if (hdr.eth.ethType==0x0800)
+      l3v4_i.apply(p, im, ia, nh, hdr.eth.ethType);
+    else if (hdr.eth.ethType==0x86DD) 
       l3v6_i.apply(p, im, ia, nh, hdr.eth.ethType);
+
     forward_tbl.apply(); 
     }
   }

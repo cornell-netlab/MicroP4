@@ -27,16 +27,16 @@ struct l3v6_hdr_t {
 cpackage L3v6 : implements Unicast<l3v6_hdr_t, l3_meta_t, empty_t, bit<16>, bit<16>> {
   parser micro_parser(extractor ex, pkt p, im_t im, out l3v6_hdr_t hdr, inout l3_meta_t meta,  
                         in empty_t ia, inout bit<16> ethType) { //inout arg
-state start {
-      transition select(ethType){
-        0x86DD : parse_ipv6;
-      }
-    }
-    state parse_ipv6 {
-      ex.extract(p, hdr.ipv6);
-      transition accept;
-    }
-  }
+	state start {
+	      transition select(ethType){
+	        0x86DD : parse_ipv6;
+	      }
+	    }
+	    state parse_ipv6 {
+	      ex.extract(p, hdr.ipv6);
+	      transition accept;
+	    }
+	  }
 
   control micro_control(pkt p, im_t im, inout l3v6_hdr_t hdr, inout l3_meta_t m,
                           in empty_t e, out bit<16> nexthop, 
@@ -45,9 +45,13 @@ state start {
 	  hdr.ipv6.hoplimit = hdr.ipv6.hoplimit - 1;
       nexthop = nh;
     }
+    action default_act() {
+      nexthop = 0; 
+    }
     table ipv6_lpm_tbl {
       key = { hdr.ipv6.dstAddr : lpm ;} 
-      actions = { process; }
+      actions = { process; default_act;}
+      default_action = default_act;
       
     }
     apply { ipv6_lpm_tbl.apply(); }

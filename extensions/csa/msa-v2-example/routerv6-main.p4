@@ -38,7 +38,7 @@ cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t,
       im.set_out_port(port);
     }
     table forward_tbl {
-      key = { nh : lpm; } 
+      key = { nh : exact; } 
       actions = { forward; }
     }
     apply { 

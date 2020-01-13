@@ -10,6 +10,7 @@
 #include "lib/ordered_map.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
+#include "frontends/p4/typeChecking/typeChecker.h"
 
 /*
  * This pass replaces the stack of single byte headers to multiple stacks of
@@ -144,6 +145,16 @@ class ReduceConcatExpression final : public Transform {
     const IR::Node* preorder(IR::Concat* concat) override;
 };
 
+class RemoveExplicitSlices final : public Transform {
+
+    P4::ReferenceMap*       refMap;
+    P4::TypeMap*            typeMap;
+  public:
+    RemoveExplicitSlices(P4::ReferenceMap* refMap, P4::TypeMap* typeMap) 
+      : refMap(refMap), typeMap(typeMap) {
+    }
+    const IR::Node* preorder(IR::Slice* slice) override;
+};
 
 class ReplaceMSAByteHdrStack final : public PassManager {
 

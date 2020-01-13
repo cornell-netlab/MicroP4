@@ -24,6 +24,8 @@ class FindModifiedFields final : public Inspector {
 
     void filterUserDefinedHdrType(std::unordered_map<cstring, 
                                               std::unordered_set<cstring>>* map);
+    void printHdrTypeInstToFields(
+        std::unordered_map<cstring, std::unordered_set<cstring>>* mapSet);
   public:
     explicit FindModifiedFields(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         std::unordered_set<cstring>* allUDefHdrTypeInst,
@@ -38,17 +40,13 @@ class FindModifiedFields final : public Inspector {
         CHECK_NULL(modHdrTyInFns);  CHECK_NULL(accHdrTypeFns);
 
     }
-
     bool preorder(const IR::AssignmentStatement* asmt) override;
     bool preorder(const IR::Member* member) override;
     void postorder(const IR::P4Program* program) override;
-
     Visitor::profile_t init_apply(const IR::Node* node) {
         return Inspector::init_apply(node);
     }
-
 };
-
 
 class EntryContext {
     std::unordered_map<const IR::P4Action*,
@@ -56,6 +54,9 @@ class EntryContext {
   public:
     EntryContext() {}
     void insert(const IR::P4Action*, const IR::AssignmentStatement*);
+
+    bool diffDelAsStmt(EntryContext* ec);
+    bool exists(const IR::P4Action* act, const IR::AssignmentStatement* asmt);
 };
 
 class TableContext {
@@ -63,8 +64,11 @@ class TableContext {
   public:
     TableContext() {}
     EntryContext* instantiateEntryContext(const IR::Entry* entry);
-};
 
+    bool canEliminateDeadField();
+
+    bool exists(const IR::P4Action* act, const IR::AssignmentStatement* asmt);
+};
 
 /*
  * This l-value store comparison is with type-checking, not just string matching.
@@ -75,6 +79,7 @@ class CompareStorageExp final : public Inspector {
     P4::TypeMap* typeMap;
     const IR::Expression* expr;
     bool result;
+    const IR::Expression* curr;
 
   public:
     explicit CompareStorageExp(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
@@ -85,7 +90,8 @@ class CompareStorageExp final : public Inspector {
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) {
-        result = false;
+        result = true;
+        curr = expr;
         BUG_CHECK(node->is<IR::Expression>(), "expected an expression");
         return Inspector::init_apply(node);
     }
@@ -93,12 +99,12 @@ class CompareStorageExp final : public Inspector {
     bool preorder(const IR::ArrayIndex* ai) override;
     bool preorder(const IR::Member* member) override;
     bool preorder(const IR::PathExpression* pe) override;
+    bool preorder(const IR::Constant* c) override;
 
     bool isMatch() {
         return result;
     }
 };
-
 
 /*
  *  This passe checks if its safe to remove write-back in actions of deparser
@@ -115,27 +121,28 @@ class ApplyDepActCSTR final : public Inspector {
     P4::TypeMap* typeMap;
     std::unordered_map<cstring, std::unordered_set<cstring>>* modHdrTyInFns;
     
-    std::unordered_map<const IR::P4Table*, TableContext*> tblCtxtMap;
+    std::unordered_map<const IR::P4Table*, TableContext*>* tblCtxtMap;
     TableContext* currTblCtxt;
     EntryContext* currEntCtxt;
 
     IR::Vector<IR::Expression> delWritesOn; 
     void insertEntryInCurrTblCtxt(const IR::Entry* entry);
 
-
  public:
     using Inspector::preorder;
     using Inspector::postorder;
 
     explicit ApplyDepActCSTR(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-        std::unordered_map<cstring, std::unordered_set<cstring>>* modHdrTyInFns)
-      : refMap(refMap), typeMap(typeMap), modHdrTyInFns(modHdrTyInFns) {
+        std::unordered_map<cstring, std::unordered_set<cstring>>* modHdrTyInFns,
+        std::unordered_map<const IR::P4Table*, TableContext*>* tblCtxtMap)
+      : refMap(refMap), typeMap(typeMap), modHdrTyInFns(modHdrTyInFns),
+        tblCtxtMap(tblCtxtMap) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(modHdrTyInFns);
+        CHECK_NULL(tblCtxtMap);
         setName("ApplyDepActCSTR"); 
     }
     bool preorder(const IR::P4Control* p4control) override;
     bool preorder(const IR::P4Table* p4table) override;
-    void postorder(const IR::P4Table* p4table) override;
     bool preorder(const IR::Entry* entry) override;
 
     bool preorder(const IR::P4Action* p4action) override;
@@ -148,6 +155,24 @@ class ApplyDepActCSTR final : public Inspector {
     }
 };
 
+class RemoveWritebacks final : public Transform {
+
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+    std::unordered_map<const IR::P4Table*, TableContext*>* tblCtxtMap;
+
+    TableContext* currTblCtxt;
+    const IR::P4Action* origP4ActionPtr;
+  public:
+    explicit RemoveWritebacks(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
+        std::unordered_map<const IR::P4Table*, TableContext*>* tblCtxtMap)
+      : refMap(refMap), typeMap(typeMap), tblCtxtMap(tblCtxtMap) {
+        CHECK_NULL(tblCtxtMap);
+        setName("RemoveWritebacks"); 
+    }
+    const IR::Node* preorder(IR::P4Action* p4action) override;
+    const IR::Node* preorder(IR::AssignmentStatement* asmt) override;
+};
 
 class DeadFieldElimination final : public PassManager {
 
@@ -157,6 +182,8 @@ class DeadFieldElimination final : public PassManager {
     std::unordered_set<cstring> allUDefHdrTypeInst;
     std::unordered_map<cstring, std::unordered_set<cstring>> modHdrTypeInstToFields;
     std::unordered_map<cstring, std::unordered_set<cstring>> accHdrTypeInstToFields;
+
+    std::unordered_map<const IR::P4Table*, TableContext*> tblCtxtMap;
  public:
 
     explicit DeadFieldElimination(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
@@ -166,9 +193,11 @@ class DeadFieldElimination final : public PassManager {
         passes.push_back(new FindModifiedFields(refMap, typeMap, 
               &allUDefHdrTypeInst, &modHdrTypeInstToFields, 
               &accHdrTypeInstToFields));
+        passes.push_back(new ApplyDepActCSTR(refMap, typeMap, 
+              &modHdrTypeInstToFields, &tblCtxtMap));
+        passes.push_back(new RemoveWritebacks(refMap, typeMap, &tblCtxtMap));
 
     }
-
     Visitor::profile_t init_apply(const IR::Node* node) override { 
         return PassManager::init_apply(node);
     }

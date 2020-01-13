@@ -28,12 +28,13 @@
 #include "msaPacketSubstituter.h"
 #include "removeMSAConstructs.h"
 #include "staticAnalyzer.h"
-#include "../backend/tofino/replaceByteHdrStack.h"
-#include "../backend/tofino/toTofino.h"
-#include "../backend/tofino/annotateFields.h"
 #include "hdrToStructs.h"
 #include "removeUnusedApplyParams.h"
 #include "cloneWithFreshPath.h"
+#include "deadFieldElimination.h"
+#include "../backend/tofino/replaceByteHdrStack.h"
+#include "../backend/tofino/toTofino.h"
+#include "../backend/tofino/annotateFields.h"
 
 namespace CSA {
 
@@ -79,15 +80,15 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::MergeDeclarations(irs),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
         // new CSA::DebugPass(),
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
                            &controlToReconInfoMap, &minExtLen, &maxExtLen),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
 
 
         // CreateAllPartitions is PassRepeated with ResolveReferences & TypeInference.
@@ -99,7 +100,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::CreateAllPartitions(&refMap, &typeMap, &mainP4ControlTypeName,
                                      &partitionsMap, &controlToReconInfoMap, 
                                      &partitions),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
 
         new CSA::MergeDeclarations(targetIR), 
         new P4::ResolveReferences(&refMap, true),
@@ -109,7 +110,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
 
         // These are Tofino specific passes
         //////////////////////////////////////////
@@ -119,12 +120,15 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        new CSA::RemoveExplicitSlices(&refMap, &typeMap),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
+        // new P4::MidEndLast(),
 
         new CSA::ToTofino(&refMap, &typeMap, &partitionsMap, &partitions, 
             &minExtLen, &maxExtLen, newFieldBitWidth, stackSize, &numFullStacks, 
             &residualStackSize),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         //////////////////////////////////////////
@@ -168,6 +172,8 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::RemoveAllUnusedDeclarations(&refMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
+        new P4::MidEndLast(),
+        new CSA::DeadFieldElimination(&refMap, &typeMap),
         // new CSA::AnnotateFields(&refMap, &typeMap),
         new P4::MidEndLast(),
 

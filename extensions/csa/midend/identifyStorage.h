@@ -27,8 +27,8 @@ class IdentifyStorage final : public Inspector {
     short argLevel;
   public:
     explicit IdentifyStorage(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-        short level = 0)
-      : refMap(refMap), typeMap(typeMap), argLevel(level) {
+        short l = 0)
+      : refMap(refMap), typeMap(typeMap), argLevel(l) {
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) {
@@ -37,8 +37,15 @@ class IdentifyStorage final : public Inspector {
         level = argLevel;
         msaHeaderStorage = false;
         arrayIndex = -1;
+        // std::cout<<"IdentifyStorage init_apply node: "<<node<<"\n";
         BUG_CHECK(node->is<IR::Expression>(), "expected an expression");
         return Inspector::init_apply(node);
+    }
+
+    void end_apply(const IR::Node* node) override {
+        types.resize(argLevel+1, nullptr);
+        names.resize(argLevel+1, "");
+        return Inspector::end_apply(node);
     }
 
     bool preorder(const IR::ArrayIndex* ai) override;

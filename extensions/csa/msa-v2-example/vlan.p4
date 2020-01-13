@@ -41,10 +41,6 @@ cpackage Vlan : implements Unicast<vlan_hdr_t, vlan_meta_t,
   
 control micro_control(pkt p, im_t im, inout vlan_hdr_t hdr, inout vlan_meta_t m,
                           in empty_t ia, out empty_t oa, inout bit<16> ethType) {
-    L3v4() l3v4_i;
-    L3v6() l3v6_i;
-    bit<16> nh_v4;
-    bit<128> nh_v6;
     
     action drop_action() {
             im.drop(); // Drop packet
