@@ -48,7 +48,7 @@ cpackage Mpls : implements Unicast<mpls_hdr_t, mpls_meta_t,
 control micro_control(pkt p, im_t im, inout mpls_hdr_t hdr, inout mpls_meta_t m,
                           in empty_t ia, out empty_t oa, inout bit<16> ioa) {
     action drop_action() {
-            im.set_out_port(0x00); // Drop packet
+            im.drop(); // Drop packet
        }
    action encap(){
    			m.ethType = 0x8847;

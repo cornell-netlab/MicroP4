@@ -359,21 +359,6 @@ void ApplyDepActCSTR::insertEntryInCurrTblCtxt(const IR::Entry* entry) {
     currEntCtxt = currTblCtxt->instantiateEntryContext(entry);
 }
 
-/*
-const IR::Node* RemoveWritebacks::preorder(IR::P4Table* p4table) {
-    auto c = findContext<IR::P4Control>();
-    auto orig = getOriginal()->to<IR::P4Table>();
-    auto it = tblCtxtMap->find(orig);
-    if (it != tblCtxtMap->end()) {
-        std::cout<<"found control "<<c->name<<" table "<<p4table->name<<"\n";
-        currTblCtxt = it->second;
-    }
-    else
-        std::cout<<"not found control "<<c->name<<" table "<<p4table->name<<"\n";
-    return p4table;
-}
-*/
-
 const IR::Node* RemoveWritebacks::preorder(IR::P4Action* p4action) {
     origP4ActionPtr = getOriginal()->to<IR::P4Action>(); 
     return p4action;
@@ -383,7 +368,6 @@ const IR::Node* RemoveWritebacks::preorder(IR::AssignmentStatement* asmt) {
     auto act = findContext<IR::P4Action>();
     if (act == nullptr)
         return asmt;
-
     auto orig = getOriginal()->to<IR::AssignmentStatement>();
     for (const auto& tt : (*tblCtxtMap))
     if (tt.second->exists(origP4ActionPtr, orig))

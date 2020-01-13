@@ -51,12 +51,17 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
     apply { 
     nhv4 = 16w10;
     nhv6 = 128w10;
-    if(hdr.eth.ethType==0x8100) 
+    // vlan should return something more than ethType to decide if routing is
+    // required or not
+    if(hdr.eth.ethType==0x8100)
       vlan.apply(p, im, ia, oa, hdr.eth.ethType);
-    else if (hdr.eth.ethType==0x0800)
+    
+    // then, this block can go in an if condition.
+    if (hdr.eth.ethType==0x0800)
       l3v4_i.apply(p, im, ia, nhv4, hdr.eth.ethType);
     else if (hdr.eth.ethType==0x86DD) 
       l3v6_i.apply(p, im, ia, nhv6, hdr.eth.ethType);
+
     forward_tbl.apply(); 
     }
   }

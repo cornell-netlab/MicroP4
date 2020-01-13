@@ -170,7 +170,6 @@ class RemoveWritebacks final : public Transform {
         CHECK_NULL(tblCtxtMap);
         setName("RemoveWritebacks"); 
     }
-    // const IR::Node* preorder(IR::P4Table* p4table) override;
     const IR::Node* preorder(IR::P4Action* p4action) override;
     const IR::Node* preorder(IR::AssignmentStatement* asmt) override;
 };

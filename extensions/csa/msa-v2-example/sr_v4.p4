@@ -59,7 +59,7 @@ cpackage SR_v4 : implements Unicast<callee_hdr_t, filter_meta_t,
 control micro_control(pkt p, im_t im, inout callee_hdr_t hdr, inout filter_meta_t m,
                           in empty_t ia, out empty_t oa, inout bit<16> ioa) {
     action drop_action() {
-            im.set_out_port(0x00); // Drop packet
+            im.drop(); // Drop packet
        }
     table filter_tbl{
     	key = {
