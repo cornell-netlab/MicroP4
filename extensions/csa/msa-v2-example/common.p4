@@ -42,8 +42,8 @@ cpackage FilterL3_v6(pkt p, im_t im, in empty_t ia, out empty_t oa,
 cpackage Vlan(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);
 
-cpackage Mpls(pkt p, im_t im, in bit<16> nh, out empty_t oa, 
-                 inout bit<16> etherType);
+cpackage MplsLSR(pkt p, im_t im, in empty_t ia, out bit<16> nh,
+                 inout empty_t ioa);
                                   
 cpackage SR_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);

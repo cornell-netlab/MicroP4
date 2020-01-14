@@ -35,7 +35,7 @@ cpackage MPRouter : implements Unicast<hdr_t, meta_t,
     bit<16> nh;
     L3v4() l3v4_i;
     L3v6() l3v6_i;
-    Mpls() mpls_i;
+    MplsLSR() mpls_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
@@ -51,9 +51,8 @@ cpackage MPRouter : implements Unicast<hdr_t, meta_t,
         l3v4_i.apply(p, im, ia, nh, ioa);
       else if (hdr.eth.ethType == 0x86DD)
         l3v6_i.apply(p, im, ia, nh, ioa);
-
-      if (nh == 16w0)
-        mpls_i.apply(p, im, nh, oa, hdr.eth.ethType);
+      else if (hdr.eth.ethType == 0x8847)
+        mpls_i.apply(p, im, ia, nh, ioa);
 
       forward_tbl.apply(); 
     }

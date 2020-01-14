@@ -35,8 +35,8 @@ ECNv6.json:
 vlan.json:
 	$(MSA) $(COMPILE_SUBMODULE) vlan.json vlan.p4
 
-mpls.json:
-	$(MSA) $(COMPILE_SUBMODULE) mpls.json mpls.p4
+# mpls-lsr.json:
+#	$(MSA) $(COMPILE_SUBMODULE) mpls-lsr.json mpls-lsr.p4
 
 filter: Filter_L4.json L3v4.json
 	$(MSA) $(COMPILE_MODEL) filter_l4.json,l3v4.json firewall-main.p4
@@ -59,18 +59,18 @@ routingv6: L3v6.json
 routingv46: L3v4.json L3v6.json
 	$(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json routerv46-main.p4
 
-mprouting: L3v4.json L3v6.json mpls.json
-	$(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json,mpls.json mprouter-main.p4
+# mprouting: L3v4.json L3v6.json mpls-lsr.json 
+#	 $(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json,mpls-lsr.json mprouter-main.p4
 
 vlan: vlan.json L3v4.json L3v6.json
 	$(MSA) $(COMPILE_MODEL) vlan.json,l3v4.json,l3v6.json vlan-main.p4
 	
-mpls: mpls.json
-	$(MSA) $(COMPILE_MODEL) mpls.json mpls-main.p4
+# mpls: mpls.json
+# 	$(MSA) $(COMPILE_MODEL) mpls.json mpls-main.p4
 
 multifunction: Filter_L4.json  Nat_L4.json Nat_L3.json Nat_L3_model ECNv4.json L3v4.json
 	$(MSA) $(COMPILE_MODEL) filter_l4.json,nat_l3.json,ecnv4.json,l3v4.json multi-function-main.p4
 
-all: filter  qosv6 routingv4 routingv6 vlan mpls # qosv4 nat multifunction
+all: filter qosv6 routingv4 routingv6 routingv46 vlan  # qosv4 nat multifunction
 
 clean: rm -f *json
