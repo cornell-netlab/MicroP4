@@ -1,11 +1,13 @@
+#include <core.p4>
+#if __TARGET_TOFINO__ == 2
+#include <t2na.p4>
+#else
+#include <tna.p4>
+#endif
+
 header msa_twobytes_h {
     bit<16> data;
 }
-
-#include <core.p4>
-#include <tofino.p4>
-#include <tna.p4>
-
 header msa_byte_h {
     bit<8> data;
 }
@@ -15,6 +17,10 @@ header csa_indices_h {
     bit<16> curr_offset;
 }
 
+#if __TARGET_TOFINO__ == 2
+@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[11].data", "normal")
+@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[10].data", "normal")
+#endif
 struct msa_packet_struct_t {
     csa_indices_h      indices;
     msa_byte_h         msa_byte;
