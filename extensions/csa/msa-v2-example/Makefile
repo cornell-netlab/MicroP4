@@ -56,6 +56,12 @@ routingv4: L3v4.json
 routingv6: L3v6.json
 	$(MSA) $(COMPILE_MODEL) l3v6.json routerv6-main.p4
 
+routingv46: L3v4.json L3v6.json
+	$(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json routerv46-main.p4
+
+mprouting: L3v4.json L3v6.json mpls.json
+	$(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json,mpls.json mprouter-main.p4
+
 vlan: vlan.json L3v4.json L3v6.json
 	$(MSA) $(COMPILE_MODEL) vlan.json,l3v4.json,l3v6.json vlan-main.p4
 	

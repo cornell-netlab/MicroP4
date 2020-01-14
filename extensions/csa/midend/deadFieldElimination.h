@@ -70,6 +70,36 @@ class TableContext {
     bool exists(const IR::P4Action* act, const IR::AssignmentStatement* asmt);
 };
 
+class CommonStorageSubExp final : public Inspector {
+
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+    std::unordered_map<cstring, std::unordered_set<cstring>>* modHdrTyInFns;
+    bool result;
+
+  public:
+    explicit CommonStorageSubExp(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
+        std::unordered_map<cstring, std::unordered_set<cstring>>* modHdrTyInFns)
+      : refMap(refMap), typeMap(typeMap), modHdrTyInFns(modHdrTyInFns) {
+        result = false;
+        setName("CommonStorageSubExp"); 
+    }
+
+    Visitor::profile_t init_apply(const IR::Node* node) {
+        result = false;
+        BUG_CHECK(node->is<IR::Expression>(), "expected an expression");
+        return Inspector::init_apply(node);
+    }
+
+    bool preorder(const IR::Member* member) override;
+    bool preorder(const IR::Concat* c) override;
+
+    bool has() {
+        return result;
+    }
+};
+
+
 /*
  * This l-value store comparison is with type-checking, not just string matching.
  */
@@ -85,7 +115,7 @@ class CompareStorageExp final : public Inspector {
     explicit CompareStorageExp(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         const IR::Expression* expr)
       : refMap(refMap), typeMap(typeMap), expr(expr) {
-        result = false;
+        result = true;
         setName("CompareStorageExp"); 
     }
 
@@ -140,6 +170,7 @@ class ApplyDepActCSTR final : public Inspector {
         CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(modHdrTyInFns);
         CHECK_NULL(tblCtxtMap);
         setName("ApplyDepActCSTR"); 
+        visitDagOnce = false;
     }
     bool preorder(const IR::P4Control* p4control) override;
     bool preorder(const IR::P4Table* p4table) override;

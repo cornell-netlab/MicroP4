@@ -487,6 +487,7 @@ IR::P4Table* DeparserConverter::extendEmitTable(const IR::MethodCallStatement* m
     }
     */
     keyNamesWidths.emplace_back(hdrInstName, width);
+    // std::cout<<"hdrInstName extendEmitTable "<<hdrInstName<<"\n";
     hdrMCSMap[hdrInstName] = mcs;
 
     std::vector<std::pair<const IR::Expression*, bool>> keyExp(keyElementLists[predecessor]);
@@ -1077,6 +1078,7 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
             int moveOffset = 0;
             auto currOffset = std::get<3>(kvEmitOffsets[i]);
             emitData.clear();
+            // std::cout<<"\n------------------------------------------------\n";
             for (size_t j = 0; j<keyNamesWidths.size(); j++) {
                 char value = headerKeyValues[i][j];
                 unsigned width = keyNamesWidths[j].second;
@@ -1103,13 +1105,15 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
                     }
                 }
                 if (setValid) {
-                    emitData.emplace_back(currOffset+moveOffset, 0, keyNamesWidths[j].first);
+                    emitData.emplace_back(currOffset+moveOffset, 0, 
+                        keyNamesWidths[j].first);
                     moveOffset += width;
                     continue;
                 }
                 if (value == 't') {
                     if (!setInvalid)
-                        emitData.emplace_back(currOffset, moveOffset, keyNamesWidths[j].first);
+                        emitData.emplace_back(currOffset, moveOffset, 
+                            keyNamesWidths[j].first);
                     currOffset += width;
                     continue;
                 }
@@ -1172,7 +1176,7 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
                     int totalMoveOffset, unsigned currOffset) {
   
     /*
-    std::cout<<"\n-------- ----emitData--------\n";
+    std::cout<<"\n-----------emitData--------\n";
     printEIMvOsHdr(emitData);
     std::cout<<"cumulative moveOffset "<<totalMoveOffset/8<<"\n";
     std::cout<<"currOffset "<<currOffset/8<<"\n";
@@ -1188,21 +1192,24 @@ DeparserConverter::extendEntry(const IR::MethodCallStatement* mcs,
         ls->components.push_back(e);
     }
 
-
     std::vector<CurrOSMoveOSHdr> emitOrder;
     int moveOffset = 0;
     for (short s = emitData.size()-1 ; s >= 0 ;) {
         moveOffset = std::get<1>(emitData[s]);
         // std::cout<<"moveOffset : "<<moveOffset/8<<"\n";
         if (moveOffset < 0) {
-            auto begin = s;
+            // auto begin = s;
+            auto it = emitOrder.end();
             while (moveOffset < 0 && s >= 0) {
-                s--;
                 moveOffset = std::get<1>(emitData[s]);
+                it = emitOrder.insert(it, emitData[s]);
+                s--;
             }
+            /*
             auto end = s;
             for (short i = end; i<begin; i++) 
                 emitOrder.emplace_back(emitData[i]);
+            */
                 
         } else {
             auto hn = std::get<2>(emitData[s]);

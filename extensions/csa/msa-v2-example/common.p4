@@ -19,10 +19,10 @@ cpackage ecnv6(pkt p, im_t im, in empty_t ia, out empty_t oa,
                  inout bit<16> etherType);
                  
 cpackage L3v4(pkt p, im_t im, in empty_t ia, out bit<16> nh, 
-                 inout bit<16> etherType);
+                 inout empty_t ioa);
                  
 cpackage L3v6(pkt p, im_t im, in empty_t ia, out bit<16> nh,
-                 inout bit<16> etherType);
+                 inout empty_t ioa);
 
 cpackage Filter_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<8> l4proto);
@@ -42,7 +42,7 @@ cpackage FilterL3_v6(pkt p, im_t im, in empty_t ia, out empty_t oa,
 cpackage Vlan(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);
 
-cpackage Mpls(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+cpackage Mpls(pkt p, im_t im, in bit<16> nh, out empty_t oa, 
                  inout bit<16> etherType);
                                   
 cpackage SR_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 

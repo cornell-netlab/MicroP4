@@ -1,13 +1,13 @@
 /*
- * Author: Myriana Rifai
- * Email: myriana.rifai@nokia-bell-labs.com
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
  */
 
 #include"msa.p4"
 #include"common.p4"
 
-struct meta_t {
-
+struct meta_t { 
+	bit<8> l4proto;
 }
 
 header ethernet_h {
@@ -20,7 +20,7 @@ struct hdr_t {
   ethernet_h eth;
 }
 
-cpackage ModularVlan: implements Unicast<hdr_t, meta_t, 
+cpackage MPRouter : implements Unicast<hdr_t, meta_t, 
                                             empty_t, empty_t, empty_t> {
   parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout meta_t m,
                         in empty_t ia, inout empty_t ioa) {
@@ -32,7 +32,6 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
 
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
-    Vlan() vlan;
     bit<16> nh;
     L3v4() l3v4_i;
     L3v6() l3v6_i;
@@ -46,20 +45,13 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
       actions = { forward; }
     }
     apply { 
-    nh = 16w10;
-      
-    // vlan should return something more than ethType to decide if routing is
-    // required or not
-    if(hdr.eth.ethType==0x8100)
-      vlan.apply(p, im, ia, oa, ioa);
-    
-    // then, this block can go in an if condition.
-    if (hdr.eth.ethType==0x0800)
-      l3v4_i.apply(p, im, ia, nh, ioa);
-    else if (hdr.eth.ethType==0x86DD) 
-      l3v6_i.apply(p, im, ia, nh, ioa);
+      nh = 16w0;
+      if (hdr.eth.ethType == 0x0800)
+        l3v4_i.apply(p, im, ia, nh, ioa);
+      else if (hdr.eth.ethType == 0x86DD)
+        l3v6_i.apply(p, im, ia, nh, ioa);
 
-    forward_tbl.apply(); 
+      forward_tbl.apply(); 
     }
   }
 
@@ -70,7 +62,7 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
   }
 }
 
-ModularVlan() main;
+MPRouter() main;
 
 
  

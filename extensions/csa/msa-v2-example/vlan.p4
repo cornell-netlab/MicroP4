@@ -47,7 +47,7 @@ control micro_control(pkt p, im_t im, inout vlan_hdr_t hdr, inout vlan_meta_t m,
        }
        
     action forward_action( PortId_t port) {
-            im.set_out_port(port); // Drop packet
+            im.set_out_port(port); 
        }
     action modify_action() {
            hdr.vlan.pcp = 3;

@@ -41,9 +41,14 @@ cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t,
       key = { nh : exact; } 
       actions = { forward; }
     }
-    apply { 
-      l3_i.apply(p, im, ia, nh, hdr.eth.ethType);
-      forward_tbl.apply(); 
+    apply {
+      if (hdr.eth.ethType == 0x86DD) {
+        l3_i.apply(p, im, ia, nh, ioa);
+        forward_tbl.apply(); 
+      } else {
+        im.drop();
+      }
+
     }
   }
 

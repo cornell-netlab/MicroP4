@@ -173,6 +173,38 @@ bool TableContext::exists(const IR::P4Action* act, const IR::AssignmentStatement
     return false;
 }
 
+
+bool CommonStorageSubExp::preorder(const IR::Member* member) {
+    
+    IdentifyStorage is(refMap, typeMap, 1);
+    member->apply(is);
+    if (!is.isMSAHeaderStorage()) {
+        auto instName = is.getName(1);
+        auto type = is.getType(1);
+        if (type == nullptr)
+            return false;
+        auto ts = type->to<IR::Type_StructLike>();
+        if (ts == nullptr)
+            return false;
+        auto fieldName = is.getName(0);
+        cstring key = ts->name+"."+instName;
+        // std::cout<<" key : "<<key<<"\n";
+        auto it = modHdrTyInFns->find(key);
+        if (it != modHdrTyInFns->end() && 
+            it->second.find(fieldName) != it->second.end()) {
+            result = true;
+        }
+    }
+    return false;
+}
+
+bool CommonStorageSubExp::preorder(const IR::Concat* c) {
+    visit(c->left);
+    if (!result)
+        visit(c->right);
+    return false;
+}
+
 bool CompareStorageExp::preorder(const IR::ArrayIndex* ai) {
     auto ca = curr->to<IR::ArrayIndex>();
     if (ca == nullptr) {
@@ -273,7 +305,7 @@ bool ApplyDepActCSTR::preorder(const IR::P4Table* p4table) {
 
 
 bool ApplyDepActCSTR::preorder(const IR::Entry* entry) {
-    // std::cout<<"Entry : "<<entry<<"\n";
+    // std::cout<<"------------------ Entry : "<<entry<<"---------------\n";
     delWritesOn.clear();
     insertEntryInCurrTblCtxt(entry);
     visit(entry->action);
@@ -314,6 +346,8 @@ bool ApplyDepActCSTR::preorder(const IR::AssignmentStatement* asmt) {
     IdentifyStorage isL(refMap, typeMap, 1);
     asmt->right->apply(isR);
     asmt->left->apply(isL);
+
+    /*
     if (isL.isMSAHeaderStorage() && !(isR.isMSAHeaderStorage())) {
         // std::cout<<" First if :  \n";
         auto instName = isR.getName(1);
@@ -334,6 +368,23 @@ bool ApplyDepActCSTR::preorder(const IR::AssignmentStatement* asmt) {
             currEntCtxt->insert(p4action, asmt);
             // std::cout<<"storing in currEntCtxt to delete: "<<asmt<<"\n";
         }
+    }
+    */
+
+    if(isL.isMSAHeaderStorage() && !(isR.isMSAHeaderStorage())) {
+        CommonStorageSubExp css(refMap, typeMap, modHdrTyInFns);
+        asmt->right->apply(css);
+        if(css.has()) {
+            // std::cout<<"Delete any more writes on : "<<asmt->left;
+            // std::cout<<" : "<<p4action->name<<"\n";
+            delWritesOn.push_back(asmt->left);
+        } else {
+            // RHS is not modified, therefore it is safe to delete write-back
+            // assignment statement in deparser
+            currEntCtxt->insert(p4action, asmt);
+            // std::cout<<"storing in currEntCtxt to delete: "<<asmt<<"\n";
+        }
+            
     }
 
     if (isL.isMSAHeaderStorage() && isR.isMSAHeaderStorage()) {

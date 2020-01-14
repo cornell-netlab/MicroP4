@@ -42,8 +42,10 @@ cpackage ModularRouterv4 : implements Unicast<hdr_t, meta_t,
       actions = { forward; }
     }
     apply { 
-      l3_i.apply(p, im, ia, nh, hdr.eth.ethType);
-      forward_tbl.apply(); 
+      if (hdr.eth.ethType == 0x0800) {
+        l3_i.apply(p, im, ia, nh, ioa);
+        forward_tbl.apply(); 
+      } 
       if (im.get_value(metadata_fields_t.QUEUE_DEPTH_AT_DEQUEUE) == (bit<32>)64) {
           im.drop();
       }

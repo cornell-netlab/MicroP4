@@ -294,6 +294,14 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                 toAppendStats.emplace(nextAppendName, actionBlockStatements);
 		        	  LOG3("adding info about what to append "<< nextAppendName);
 		        }
+
+            if (actionList.getDeclaration(newActionName) == nullptr) {
+                auto mce = new IR::MethodCallExpression(
+                      new IR::PathExpression(newActionName));
+                auto actionRef = new IR::ActionListElement(mce);
+                actionList.push_back(actionRef);
+            }
+
        
 		        auto actionBlock = new IR::BlockStatement(actionBlockStatements);
 		        auto action = new IR::P4Action(state->srcInfo, newActionName,
@@ -374,101 +382,102 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
             }
 
 				    if (newKeyEles.size()) {
-          	if (oldEntries->size()) {
-                // revisit all previously created entries
-                for (auto e: *oldEntries) {
-                    auto actionBinding = e->getAction();
-                    auto an = getActionName(stateInfo, initOffset);
-                    IR::Vector<IR::Expression> suffExprList;
-							      if (actionBinding->toString() == an) {
-                        for (auto kseNSI : stateInfo->nextParserStateInfo) {
-                            exprList.clear(); suffExprList.clear();
-                            auto keySetExpr = e->getKeys();
-                            exprList = (keySetExpr->to<IR::ListExpression>())->components;
-                            auto nextStateInfo = kseNSI.second;
-					                  cstring actionName = getActionName(nextStateInfo, 
-                                                               initOffset);
-					                  //LOG3("actionName"<< actionName);
-                            if (nextStateInfo->state->name == IR::ParserState::accept)
-                                continue;
-                    
-                            auto mce = new IR::MethodCallExpression(
-                                              new IR::PathExpression(actionName), 
-                                              new IR::Vector<IR::Type>(),
-                                              new IR::Vector<IR::Argument>());
-                            auto actionRef = new IR::ActionListElement(mce);
-                            // if actionlist contains action don't add
-                            if (!actionList.getDeclaration(actionName))
-						                    actionList.push_back(actionRef);
-              					    //entry processing
-                            auto caseKeysetExp = kseNSI.first->clone();
-								            if (hasSelectExpression(state)){
-                                suffExprList.push_back(caseKeysetExp);
-                                if (!unsubstKeyAdded) {
-                                    for (auto c=prefExprList.size()+1; c<initialOffsets->size(); c++)
-                                        suffExprList.push_back(new IR::DefaultExpression());
+                if (oldEntries->size()) {
+                    // revisit all previously created entries
+                    for (auto e: *oldEntries) {
+                        auto actionBinding = e->getAction();
+                        auto an = getActionName(stateInfo, initOffset);
+                        IR::Vector<IR::Expression> suffExprList;
+							          if (actionBinding->toString() == an) {
+                            for (auto kseNSI : stateInfo->nextParserStateInfo) {
+                                exprList.clear(); suffExprList.clear();
+                                auto keySetExpr = e->getKeys();
+                                exprList = (keySetExpr->to<IR::ListExpression>())->components;
+                                auto nextStateInfo = kseNSI.second;
+					                      cstring actionName = getActionName(nextStateInfo, 
+                                                                   initOffset);
+					                      //LOG3("actionName"<< actionName);
+                                if (nextStateInfo->state->name == IR::ParserState::accept)
+                                    continue;
+                        
+                                // if actionlist contains action don't add
+                                if (!actionList.getDeclaration(actionName)) {
+                                    auto mce = new IR::MethodCallExpression(
+                                        new IR::PathExpression(actionName), 
+                                        new IR::Vector<IR::Type>(),
+                                        new IR::Vector<IR::Argument>());
+                                    auto actionRef = new IR::ActionListElement(mce);
+						                        actionList.push_back(actionRef);
                                 }
-                                exprList.append(prefExprList);
-                                exprList.append(suffExprList);
-                                //  LOG3("caseKeysetExp" << caseKeysetExp);
-								            }
-								            keySetExpr = new IR::ListExpression(exprList);
-    		          					actionBinding = new IR::MethodCallExpression(
-									                            new IR::PathExpression(actionName),
-                              							  new IR::Vector<IR::Type>(), 
-                                              new IR::Vector<IR::Argument>());
+              	 	  	 		    //entry processing
+                                auto caseKeysetExp = kseNSI.first->clone();
+								                if (hasSelectExpression(state)){
+                                    suffExprList.push_back(caseKeysetExp);
+                                    if (!unsubstKeyAdded) {
+                                        for (auto c=prefExprList.size()+1; c<initialOffsets->size(); c++)
+                                            suffExprList.push_back(new IR::DefaultExpression());
+                                    }
+                                    exprList.append(prefExprList);
+                                    exprList.append(suffExprList);
+                                    //  LOG3("caseKeysetExp" << caseKeysetExp);
+								                }
+								                keySetExpr = new IR::ListExpression(exprList);
+    		             	 				actionBinding = new IR::MethodCallExpression(
+								 	                               new IR::PathExpression(actionName),
+                                  							  new IR::Vector<IR::Type>(), 
+                                                  new IR::Vector<IR::Argument>());
+                                auto entry = new IR::Entry(keySetExpr, actionBinding);
+                                entryList.push_back(entry);
+                                // LOG3("entry added "<<entry);
+                                // LOG3("binded action path expression"<< actionName);
+							              }   
+                        } else {
+                            // else add default value
+                            auto keySetExpr = e->getKeys();
+                            exprList.clear();
+                            exprList = (keySetExpr->to<IR::ListExpression>())->components;
+                            //LOG3("not action, appending default");
+                            exprList.push_back(new IR::DefaultExpression());
+                       
+                            if (!unsubstKeyAdded) {
+                                for (auto c=1; c<newKeyEles.size(); c++)
+                                    exprList.push_back(new IR::DefaultExpression());
+                            }
+                            keySetExpr = new IR::ListExpression(exprList);
                             auto entry = new IR::Entry(keySetExpr, actionBinding);
+                            //LOG3("entry added"<<entry);
                             entryList.push_back(entry);
-                            // LOG3("entry added "<<entry);
-                            // LOG3("binded action path expression"<< actionName);
-							          }   
-                    } else {
-                        // else add default value
-                        auto keySetExpr = e->getKeys();
+						            }
+                    } 
+                } else {
+                    for (auto kseNSI : stateInfo->nextParserStateInfo) {
                         exprList.clear();
-                        exprList = (keySetExpr->to<IR::ListExpression>())->components;
-                        //LOG3("not action, appending default");
-                        exprList.push_back(new IR::DefaultExpression());
-
-                        if (!unsubstKeyAdded) {
-                            for (auto c=1; c<newKeyEles.size(); c++)
-                                exprList.push_back(new IR::DefaultExpression());
-                        }
-                        keySetExpr = new IR::ListExpression(exprList);
-                        auto entry = new IR::Entry(keySetExpr, actionBinding);
-                        //LOG3("entry added"<<entry);
-                        entryList.push_back(entry);
-						        }
-                } 
-            } else {
-                for (auto kseNSI : stateInfo->nextParserStateInfo) {
-                    exprList.clear();
-                    auto nextStateInfo = kseNSI.second;
-					          cstring actionName = getActionName(nextStateInfo, 
+                        auto nextStateInfo = kseNSI.second;
+                        cstring actionName = getActionName(nextStateInfo, 
                                                            initOffset);
-                    if (hasSelectExpression(state)) {
-                        auto caseKeysetExp = kseNSI.first->clone();
-                        exprList.push_back(caseKeysetExp);
-							          //LOG3("caseKeysetExp" << caseKeysetExp);
+                        if (hasSelectExpression(state)) {
+                            auto caseKeysetExp = kseNSI.first->clone();
+                            exprList.push_back(caseKeysetExp);
+                            //LOG3("caseKeysetExp" << caseKeysetExp);
+                        }
+                        auto keySetExpr = new IR::ListExpression(exprList);
+                        auto actionBinding = new IR::MethodCallExpression(
+                            new IR::PathExpression(actionName),
+                            new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+                        //LOG3("binded action path expression"<< actionName);
+                        auto entry = new IR::Entry(keySetExpr, actionBinding);
+                        entryList.push_back(entry);
+                        
+                        if (!actionList.getDeclaration(actionBinding->toString())) {
+                            auto mce = new IR::MethodCallExpression(
+                                new IR::PathExpression(actionBinding->toString()), 
+                                new IR::Vector<IR::Type>(),
+                                new IR::Vector<IR::Argument>());
+                            auto actionRef = new IR::ActionListElement(mce);
+                            actionList.push_back(actionRef);
+                        }
                     }
-						        auto keySetExpr = new IR::ListExpression(exprList);
-                    auto actionBinding = new IR::MethodCallExpression(
-                    new IR::PathExpression(actionName),
-                    new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
-                    //LOG3("binded action path expression"<< actionName);
-                    auto entry = new IR::Entry(keySetExpr, actionBinding);
-                    entryList.push_back(entry);
-
-                    auto mce = new IR::MethodCallExpression(
-                          new IR::PathExpression(actionBinding->toString()), 
-                          new IR::Vector<IR::Type>(),
-                          new IR::Vector<IR::Argument>());
-                    auto actionRef = new IR::ActionListElement(mce);
-                    if (!actionList.getDeclaration(actionBinding->toString()))
-                        actionList.push_back(actionRef);
-
                 }
-				    }
             }
 		    }
     }

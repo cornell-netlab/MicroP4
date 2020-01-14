@@ -21,9 +21,17 @@ struct msa_packet_struct_t {
     msa_twobytes_h[27] msa_hdr_stack_s0;
 }
 
-struct ModularRouterv6_parser_meta_t {
+struct MPRouter_parser_meta_t {
     bool   eth_v;
     bit<1> packet_reject;
+}
+
+struct L3v4_parser_meta_t {
+    bool   ipv4_v;
+    bit<1> packet_reject;
+}
+
+struct L3v4_hdr_vop_t {
 }
 
 struct L3v6_parser_meta_t {
@@ -34,7 +42,7 @@ struct L3v6_parser_meta_t {
 struct L3v6_hdr_vop_t {
 }
 
-struct ModularRouterv6_hdr_vop_t {
+struct MPRouter_hdr_vop_t {
 }
 
 struct empty_t {
@@ -46,6 +54,128 @@ struct swtrace_inout_t {
 }
 
 struct l3_meta_t {
+}
+
+struct ipv4_h {
+    bit<4>  version;
+    bit<4>  ihl;
+    bit<8>  diffserv;
+    bit<16> totalLen;
+    bit<16> identification;
+    bit<3>  flags;
+    bit<13> fragOffset;
+    bit<8>  ttl;
+    bit<8>  protocol;
+    bit<16> hdrChecksum;
+    bit<32> srcAddr;
+    bit<32> dstAddr;
+}
+
+struct l3v4_hdr_t {
+    ipv4_h ipv4;
+}
+
+control L3v4_micro_parser(inout msa_packet_struct_t p, out l3v4_hdr_t hdr, out L3v4_parser_meta_t parser_meta) {
+    action micro_parser_init() {
+        parser_meta.ipv4_v = false;
+        parser_meta.packet_reject = 1w0b0;
+    }
+    action i_112_start_0() {
+        parser_meta.ipv4_v = true;
+        hdr.ipv4.version = p.msa_hdr_stack_s0[7].data[15:12];
+        hdr.ipv4.ihl = p.msa_hdr_stack_s0[7].data[11:8];
+        hdr.ipv4.diffserv = p.msa_hdr_stack_s0[7].data[7:0];
+        hdr.ipv4.totalLen = p.msa_hdr_stack_s0[8].data;
+        hdr.ipv4.identification = p.msa_hdr_stack_s0[9].data;
+        hdr.ipv4.flags = p.msa_hdr_stack_s0[10].data[15:13];
+        hdr.ipv4.fragOffset = p.msa_hdr_stack_s0[10].data[12:0];
+        hdr.ipv4.ttl = p.msa_hdr_stack_s0[11].data[15:8];
+        hdr.ipv4.protocol = p.msa_hdr_stack_s0[11].data[7:0];
+        hdr.ipv4.hdrChecksum = p.msa_hdr_stack_s0[12].data;
+        hdr.ipv4.srcAddr = p.msa_hdr_stack_s0[13].data ++ p.msa_hdr_stack_s0[14].data;
+        hdr.ipv4.dstAddr = p.msa_hdr_stack_s0[15].data ++ p.msa_hdr_stack_s0[16].data;
+    }
+    table parser_tbl {
+        key = {
+            p.indices.curr_offset: exact;
+        }
+        actions = {
+            i_112_start_0();
+            NoAction();
+        }
+        const entries = {
+                        16w112 : i_112_start_0();
+
+        }
+
+        const default_action = NoAction();
+    }
+    apply {
+        micro_parser_init();
+        parser_tbl.apply();
+    }
+}
+
+control L3v4_micro_control(inout l3v4_hdr_t hdr, out bit<16> nexthop) {
+    @name("L3v4.micro_control.process") action process(bit<16> nh) {
+        hdr.ipv4.ttl = hdr.ipv4.ttl + 8w255;
+        nexthop = nh;
+    }
+    @name("L3v4.micro_control.default_act") action default_act() {
+        nexthop = 16w0;
+    }
+    @name("L3v4.micro_control.ipv4_lpm_tbl") table ipv4_lpm_tbl_0 {
+        key = {
+            hdr.ipv4.dstAddr : lpm @name("hdr.ipv4.dstAddr") ;
+            hdr.ipv4.diffserv: ternary @name("hdr.ipv4.diffserv") ;
+        }
+        actions = {
+            process();
+            default_act();
+        }
+        default_action = default_act();
+    }
+    apply {
+        ipv4_lpm_tbl_0.apply();
+    }
+}
+
+control L3v4_micro_deparser(inout msa_packet_struct_t p, in l3v4_hdr_t h, in L3v4_parser_meta_t parser_meta) {
+    action ipv4_14_34() {
+        p.msa_hdr_stack_s0[11].data = h.ipv4.ttl ++ h.ipv4.protocol;
+    }
+    table deparser_tbl {
+        key = {
+            p.indices.curr_offset: exact;
+            parser_meta.ipv4_v   : exact;
+        }
+        actions = {
+            ipv4_14_34();
+            NoAction();
+        }
+        const entries = {
+                        (16w112, true) : ipv4_14_34();
+
+        }
+
+        const default_action = NoAction();
+    }
+    apply {
+        deparser_tbl.apply();
+    }
+}
+
+control L3v4(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
+    L3v4_micro_parser() L3v4_micro_parser_inst;
+    L3v4_micro_control() L3v4_micro_control_inst;
+    L3v4_micro_deparser() L3v4_micro_deparser_inst;
+    l3v4_hdr_t l3v4_hdr_t_var;
+    L3v4_parser_meta_t L3v4_parser_meta_t_var;
+    apply {
+        L3v4_micro_parser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, L3v4_parser_meta_t_var);
+        L3v4_micro_control_inst.apply(l3v4_hdr_t_var, out_param);
+        L3v4_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, L3v4_parser_meta_t_var);
+    }
 }
 
 struct ipv6_h {
@@ -164,6 +294,7 @@ control L3v6(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_
 }
 
 struct meta_t {
+    bit<8> l4proto;
 }
 
 struct ethernet_h {
@@ -176,7 +307,7 @@ struct hdr_t {
     ethernet_h eth;
 }
 
-control ModularRouterv6_micro_parser(inout msa_packet_struct_t p, out hdr_t hdr, out ModularRouterv6_parser_meta_t parser_meta) {
+control MPRouter_micro_parser(inout msa_packet_struct_t p, out hdr_t hdr, out MPRouter_parser_meta_t parser_meta) {
     action micro_parser_init() {
         parser_meta.eth_v = false;
         parser_meta.packet_reject = 1w0b0;
@@ -193,17 +324,18 @@ control ModularRouterv6_micro_parser(inout msa_packet_struct_t p, out hdr_t hdr,
     }
 }
 
-control ModularRouterv6_micro_control(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm, inout hdr_t hdr) {
+control MPRouter_micro_control(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm, inout hdr_t hdr) {
     @name(".NoAction") action NoAction_0() {
     }
     bit<16> nh_0;
-    @name("ModularRouterv6.micro_control.l3_i") L3v6() l3_i_0;
-    @name("ModularRouterv6.micro_control.forward") action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
+    @name("MPRouter.micro_control.l3v4_i") L3v4() l3v4_i_0;
+    @name("MPRouter.micro_control.l3v6_i") L3v6() l3v6_i_0;
+    @name("MPRouter.micro_control.forward") action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
         hdr.eth.dmac = dmac;
         hdr.eth.smac = smac;
         ig_intr_md_for_tm.ucast_egress_port = port;
     }
-    @name("ModularRouterv6.micro_control.forward_tbl") table forward_tbl_0 {
+    @name("MPRouter.micro_control.forward_tbl") table forward_tbl_0 {
         key = {
             nh_0: exact @name("nh") ;
         }
@@ -214,16 +346,17 @@ control ModularRouterv6_micro_control(inout msa_packet_struct_t msa_packet_struc
         default_action = NoAction_0();
     }
     apply {
-        if (hdr.eth.ethType == 16w0x86dd) {
-            l3_i_0.apply(msa_packet_struct_t_var, nh_0);
-            forward_tbl_0.apply();
-        }
+        nh_0 = 16w0;
+        if (hdr.eth.ethType == 16w0x800) 
+            l3v4_i_0.apply(msa_packet_struct_t_var, nh_0);
         else 
-            ig_intr_md_for_dprsr.drop_ctl = 3w0x1;
+            if (hdr.eth.ethType == 16w0x86dd) 
+                l3v6_i_0.apply(msa_packet_struct_t_var, nh_0);
+        forward_tbl_0.apply();
     }
 }
 
-control ModularRouterv6_micro_deparser(inout msa_packet_struct_t p, in hdr_t hdr, in ModularRouterv6_parser_meta_t parser_meta) {
+control MPRouter_micro_deparser(inout msa_packet_struct_t p, in hdr_t hdr, in MPRouter_parser_meta_t parser_meta) {
     action eth_0_14() {
         p.msa_hdr_stack_s0[0].data = hdr.eth.dmac[47:32];
         p.msa_hdr_stack_s0[1].data = hdr.eth.dmac[31:16];
@@ -252,16 +385,16 @@ control ModularRouterv6_micro_deparser(inout msa_packet_struct_t p, in hdr_t hdr
     }
 }
 
-control ModularRouterv6(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm) {
-    ModularRouterv6_micro_parser() ModularRouterv6_micro_parser_inst;
-    ModularRouterv6_micro_control() ModularRouterv6_micro_control_inst;
-    ModularRouterv6_micro_deparser() ModularRouterv6_micro_deparser_inst;
+control MPRouter(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm) {
+    MPRouter_micro_parser() MPRouter_micro_parser_inst;
+    MPRouter_micro_control() MPRouter_micro_control_inst;
+    MPRouter_micro_deparser() MPRouter_micro_deparser_inst;
     hdr_t hdr_t_var;
-    ModularRouterv6_parser_meta_t ModularRouterv6_parser_meta_t_var;
+    MPRouter_parser_meta_t MPRouter_parser_meta_t_var;
     apply {
-        ModularRouterv6_micro_parser_inst.apply(msa_packet_struct_t_var, hdr_t_var, ModularRouterv6_parser_meta_t_var);
-        ModularRouterv6_micro_control_inst.apply(msa_packet_struct_t_var, ig_intr_md_for_dprsr, ig_intr_md_for_tm, hdr_t_var);
-        ModularRouterv6_micro_deparser_inst.apply(msa_packet_struct_t_var, hdr_t_var, ModularRouterv6_parser_meta_t_var);
+        MPRouter_micro_parser_inst.apply(msa_packet_struct_t_var, hdr_t_var, MPRouter_parser_meta_t_var);
+        MPRouter_micro_control_inst.apply(msa_packet_struct_t_var, ig_intr_md_for_tm, hdr_t_var);
+        MPRouter_micro_deparser_inst.apply(msa_packet_struct_t_var, hdr_t_var, MPRouter_parser_meta_t_var);
     }
 }
 
@@ -288,9 +421,9 @@ parser msa_tofino_ig_parser(packet_in pin, out msa_packet_struct_t mpkt, out msa
 }
 
 control msa_tofino_ig_control(inout msa_packet_struct_t mpkt, inout msa_user_metadata_t msa_um, in ingress_intrinsic_metadata_t ig_intr_md, in ingress_intrinsic_metadata_from_parser_t ig_intr_md_from_prsr, inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm) {
-    ModularRouterv6() ModularRouterv6_inst;
+    MPRouter() MPRouter_inst;
     apply {
-        ModularRouterv6_inst.apply(mpkt, ig_intr_md_for_dprsr, ig_intr_md_for_tm);
+        MPRouter_inst.apply(mpkt, ig_intr_md_for_tm);
     }
 }
 
