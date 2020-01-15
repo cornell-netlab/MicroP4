@@ -4,10 +4,10 @@
 #else
 #include <tna.p4>
 #endif
-
 header msa_twobytes_h {
     bit<16> data;
 }
+
 header msa_byte_h {
     bit<8> data;
 }
@@ -46,9 +46,20 @@ struct ModularRouterv6_hdr_vop_t {
 struct empty_t {
 }
 
+struct eth_meta_t {
+    bit<48> dmac;
+    bit<48> smac;
+    bit<16> ethType;
+}
+
 struct swtrace_inout_t {
     bit<4>  ipv4_ihl;
     bit<16> ipv4_total_len;
+}
+
+struct mplslr_inout_t {
+    bit<16> eth_type;
+    bit<16> next_hop;
 }
 
 struct l3_meta_t {
@@ -117,6 +128,8 @@ control L3v6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
     @name("L3v6.micro_control.ipv6_lpm_tbl") table ipv6_lpm_tbl_0 {
         key = {
             hdr.ipv6.dstAddr: lpm @name("hdr.ipv6.dstAddr") ;
+            hdr.ipv6.class  : ternary @name("hdr.ipv6.class") ;
+            hdr.ipv6.label  : ternary @name("hdr.ipv6.label") ;
         }
         actions = {
             process();
