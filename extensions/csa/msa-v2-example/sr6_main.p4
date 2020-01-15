@@ -82,7 +82,7 @@ control micro_control(pkt p, im_t im, inout sr_hdr_t hdr, inout sr_meta_t m,
     // perform forwarding 
     apply {
     	if (hdr.ipv6.nexthdr == 43)
-    		srv6.apply(p, im, ia, oa, main_hdr.eth.ethType);
+    		srv6.apply(p, im, ia, oa,hdr.ipv6.nexthdr);
     	else if (hdr.eth.ethType == 0x86DD)
     		l3_i.apply(p, im, ia, nh, ioa);
       	forward_tbl.apply();

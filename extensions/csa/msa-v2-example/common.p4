@@ -56,8 +56,8 @@ cpackage MplsLR(pkt p, im_t im, in empty_t ia, out empty_t oa,
 cpackage SR_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);
                  
-cpackage SR_v6(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<16> etherType);
+cpackage SR_v6(pkt p, im_t im, in empty_t ia, out bit<16> oa, 
+                 inout bit<8> nexthdr);
                  
 
                  
