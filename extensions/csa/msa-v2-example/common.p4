@@ -7,6 +7,12 @@
 
 struct empty_t { }
 
+struct eth_meta_t {
+  bit<48> dmac;
+  bit<48> smac;
+  bit<16> ethType; 
+}
+
 struct swtrace_inout_t {
   bit<4> ipv4_ihl;
   bit<16> ipv4_total_len;
@@ -46,6 +52,9 @@ cpackage FilterL3_v6(pkt p, im_t im, in empty_t ia, out empty_t oa,
 
 cpackage Vlan(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);
+                 
+cpackage VXlan(pkt p, im_t im, in empty_t ia, out empty_t oa, 
+                 inout eth_meta_t ethhdr);
 
 cpackage MplsLSR(pkt p, im_t im, in empty_t ia, out bit<16> nh,
                  inout mplslr_inout_t ioa);
