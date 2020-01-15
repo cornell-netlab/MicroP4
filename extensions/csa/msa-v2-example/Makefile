@@ -35,8 +35,11 @@ ECNv6.json:
 vlan.json:
 	$(MSA) $(COMPILE_SUBMODULE) vlan.json vlan.p4
 
-# mpls-lsr.json:
-#	$(MSA) $(COMPILE_SUBMODULE) mpls-lsr.json mpls-lsr.p4
+mpls-lsr.json:
+	$(MSA) $(COMPILE_SUBMODULE) mpls-lsr.json mpls-lsr.p4
+
+mpls-lsr-x.json:
+	$(MSA) $(COMPILE_SUBMODULE) mpls-lsr-x.json mpls-lsr-x.p4
 
 filter: Filter_L4.json L3v4.json
 	$(MSA) $(COMPILE_MODEL) filter_l4.json,l3v4.json firewall-main.p4
@@ -59,8 +62,8 @@ routingv6: L3v6.json
 routingv46: L3v4.json L3v6.json
 	$(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json routerv46-main.p4
 
-# mprouting: L3v4.json L3v6.json mpls-lsr.json 
-#	 $(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json,mpls-lsr.json mprouter-main.p4
+mprouting: L3v4.json L3v6.json mpls-lsr-x.json 
+	$(MSA) $(COMPILE_MODEL) l3v4.json,l3v6.json,mpls-lsr-x.json mprouter-main.p4
 
 vlan: vlan.json L3v4.json L3v6.json
 	$(MSA) $(COMPILE_MODEL) vlan.json,l3v4.json,l3v6.json vlan-main.p4

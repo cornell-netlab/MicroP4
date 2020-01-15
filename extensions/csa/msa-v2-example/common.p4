@@ -12,6 +12,11 @@ struct swtrace_inout_t {
   bit<16> ipv4_total_len;
 }
 
+struct mplslr_inout_t {
+  bit<16> eth_type;
+  bit<16> next_hop;
+}
+
 cpackage ecnv4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);
                  
@@ -43,6 +48,9 @@ cpackage Vlan(pkt p, im_t im, in empty_t ia, out empty_t oa,
                  inout bit<16> etherType);
 
 cpackage MplsLSR(pkt p, im_t im, in empty_t ia, out bit<16> nh,
+                 inout mplslr_inout_t ioa);
+
+cpackage MplsLR(pkt p, im_t im, in empty_t ia, out empty_t oa,
                  inout empty_t ioa);
                                   
 cpackage SR_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
