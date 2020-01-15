@@ -61,19 +61,28 @@ cpackage SR_v4 : implements Unicast<sr4_hdr_t, sr4_meta_t,
   }
   
   
-control micro_control(pkt p, im_t im, inout sr4_hdr_t hdr, inout sr4_meta_t m,
-                          in empty_t ia, out empty_t oa, inout bit<16> ioa) {
+  control micro_control(pkt p, im_t im, inout sr4_hdr_t hdr, inout sr4_meta_t m,
+                          in empty_t ia, out bit<16> nh, inout bit<16> ioa) {
 // source routing 
 // need to check that the node's ip address matches one of the addresses in the sr header 
 // if it does not match and we are using strict source routing (option 9) then we drop 
 // if it does not match and we use loose source routing then we try to use one of the ip addresses as the nexthop, if we cannot then we set our own nexthop 
+
+// HS: should find_nexthop() be used in this case?
+// I think if the node has 10 l3 neighbours, the table can have 90 entries to
+// decide if the node can use one of the ip address in the list as a neighbour.
+// if any of its neighbour is in the list.. 
+
 // if it matches then the nexthop is set to the next address in the list 
 // the header is not modified
+//
+    bit<32> neighbour;
     action drop_action() {
-            im.drop(); // Drop packet
-       }
-    action set_nexthop() {
+      im.drop(); // Drop packet
+    }
+    action set_nexthop(bit<32> nexhHopAddr) {
     //TODO
+      neighbour = nextHopAddr;
     }
     action find_nexthop() {
     //TODO
@@ -94,7 +103,9 @@ control micro_control(pkt p, im_t im, inout sr4_hdr_t hdr, inout sr4_meta_t m,
     	actions = {
     		drop_action;
     		set_nexthop;
-    		find_nexthop
+    		find_nexthop; // HS: according to me find is similar to set_nexthop with
+        // caveat that ip value in entry and in the arg of action would be the
+        // same.
     	}
     	const entries = {
     	   (5x03, ROUTER_IP,_, _ , _, _,_,_,_,_): set_nexthop(hdr.sr.2nd_address);
@@ -105,7 +116,16 @@ control micro_control(pkt p, im_t im, inout sr4_hdr_t hdr, inout sr4_meta_t m,
     	   (5x03,_,_,_,_,_, ROUTER_IP,_,_): set_nexthop(hdr.sr.7th_address);
     	   (5x03, _, _ , _, _,ROUTER_IP,_,_): set_nexthop(hdr.sr.8th_address);
     	   (5x03, _, _ , _, _,_,_,_,ROUTER_IP,_): set_nexthop(hdr.sr.9th_address);
+
+    	   (5x03, N1,_, _ , _, _,_,_,_,_): set_nexthop(N1);
+    	   (5x03, _,N1, _ , _, _,_,_,_,_): set_nexthop(N1);
+    	   (5x03, _,_, N1 , _, _,_,_,_,_): set_nexthop(N1); 
+         // skipped other 6 permutation for N1
+    	   (5x03, N2,_, _ , _, _,_,_,_,_): set_nexthop(N2);
+    	   (5x03, _,N2, _ , _, _,_,_,_,_): set_nexthop(N2);
+    	   (5x03, _,_, N2 , _, _,_,_,_,_): set_nexthop(N2);
     	   (5x03, _,_, _ , _, _,_,_,_,_): find_nexthop();
+        
     	   (5x09, ROUTER_IP,_, _ , _, _,_,_,_,_): set_nexthop(hdr.sr.2nd_address);
     	   (5x09, _,ROUTER_IP, _ , _, _,_,_,_,_): set_nexthop(hdr.sr.3rd_address);
     	   (5x09, _,_,ROUTER_IP, _, _,_,_,_,_): set_nexthop(hdr.sr.4th_address);
@@ -119,9 +139,21 @@ control micro_control(pkt p, im_t im, inout sr4_hdr_t hdr, inout sr4_meta_t m,
     	   
     	}
     }
+    		set_out_arg(bit<16> n) {
+         nh = n; 
+        }
+     table set_out_nh_tbl{
+    	key = {
+    	  neighbour: exact;
+    	}
+    	actions = {
+    		set_out_arg;
+      }
+    }
     
     apply {
       		sr4_tbl.apply();
+          set_out_nh_tbl.apply();
     }
   }
   control micro_deparser(emitter em, pkt p, in sr4_hdr_t hdr) {
