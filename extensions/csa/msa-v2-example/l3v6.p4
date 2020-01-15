@@ -46,6 +46,8 @@ cpackage L3v6 : implements Unicast<l3v6_hdr_t, l3_meta_t, empty_t, bit<16>, empt
     table ipv6_lpm_tbl {
       key = { 
         hdr.ipv6.dstAddr : lpm;
+        hdr.ipv6.class : ternary;
+        hdr.ipv6.label : ternary;
       } 
       actions = {
         process; 

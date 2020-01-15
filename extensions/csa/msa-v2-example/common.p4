@@ -57,10 +57,10 @@ cpackage VXlan(pkt p, im_t im, in empty_t ia, out empty_t oa,
                  inout eth_meta_t ethhdr);
 
 cpackage MplsLSR(pkt p, im_t im, in empty_t ia, out bit<16> nh,
-                 inout mplslr_inout_t ioa);
+                 inout bit<16> eth_type);
 
 cpackage MplsLR(pkt p, im_t im, in empty_t ia, out empty_t oa,
-                 inout empty_t ioa);
+                 inout mplslr_inout_t ioa);
                                   
 cpackage SR_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
                  inout bit<16> etherType);

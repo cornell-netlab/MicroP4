@@ -632,7 +632,7 @@ const IR::Node* Converter::preorder(IR::Type_Control* tc) {
         return tc;
     auto np = new IR::Parameter(
         IR::ID(NameConstants::headerValidityOpStrParamName), 
-        IR::Direction::Out, new IR::Type_Name(hdrValidityOpStrTypeName));
+        IR::Direction::InOut, new IR::Type_Name(hdrValidityOpStrTypeName));
 
     auto npm = new IR::Parameter(
         IR::ID(NameConstants::parserMetaStrParamName), 

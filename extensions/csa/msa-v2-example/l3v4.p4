@@ -50,7 +50,8 @@ cpackage L3v4 : implements Unicast<l3v4_hdr_t, l3_meta_t, empty_t, bit<16>, empt
 
     table ipv4_lpm_tbl {
       key = { 
-        hdr.ipv4.dstAddr : lpm; 
+        hdr.ipv4.dstAddr : lpm;
+        hdr.ipv4.diffserv : ternary;
       } 
       actions = { 
         process; 

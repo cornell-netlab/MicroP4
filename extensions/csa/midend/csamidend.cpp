@@ -140,6 +140,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::MidEndLast(),
 
         */
+        new P4::MidEndLast(),
         new CSA::HdrToStructs(&refMap, &typeMap),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),

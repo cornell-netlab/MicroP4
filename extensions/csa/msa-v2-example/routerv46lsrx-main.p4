@@ -6,10 +6,6 @@
 #include"msa.p4"
 #include"common.p4"
 
-struct meta_t { 
-	bit<8> l4proto;
-}
-
 header ethernet_h {
   bit<48> dmac;
   bit<48> smac;
@@ -20,9 +16,9 @@ struct hdr_t {
   ethernet_h eth;
 }
 
-cpackage MPRouter : implements Unicast<hdr_t, meta_t, 
+cpackage MPRouter : implements Unicast<hdr_t, empty_t, 
                                             empty_t, empty_t, empty_t> {
-  parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout meta_t m,
+  parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout empty_t m,
                         in empty_t ia, inout empty_t ioa) {
     state start {
       ex.extract(p, hdr.eth);
@@ -30,7 +26,7 @@ cpackage MPRouter : implements Unicast<hdr_t, meta_t,
     }
   }
 
-  control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
+  control micro_control(pkt p, im_t im, inout hdr_t hdr, inout empty_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
     L3v4() l3v4_i;
@@ -52,7 +48,7 @@ cpackage MPRouter : implements Unicast<hdr_t, meta_t,
       else if (hdr.eth.ethType == 0x86DD)
         l3v6_i.apply(p, im, ia, nh, ioa);
       else if (hdr.eth.ethType == 0x8847)
-        mpls_i.apply(p, im, ia, nh, ioa);
+        mpls_i.apply(p, im, ia, nh, hdr.eth.ethType);
 
       forward_tbl.apply(); 
     }

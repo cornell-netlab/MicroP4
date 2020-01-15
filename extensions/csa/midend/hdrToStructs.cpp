@@ -80,7 +80,7 @@ const IR::Node* HdrToStructs::preorder(IR::MethodCallExpression* mce) {
     auto rm = new IR::Member(
         new IR::PathExpression(NameConstants::headerValidityOpStrParamName), 
         IR::ID(hdrSVFlagName));
-    auto borExpr = new IR::BOr(lm, rm);
+    auto borExpr = new IR::LOr(lm, rm);
     prune();
     return borExpr;
 }

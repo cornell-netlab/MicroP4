@@ -48,9 +48,20 @@ struct MPRouter_hdr_vop_t {
 struct empty_t {
 }
 
+struct eth_meta_t {
+    bit<48> dmac;
+    bit<48> smac;
+    bit<16> ethType;
+}
+
 struct swtrace_inout_t {
     bit<4>  ipv4_ihl;
     bit<16> ipv4_total_len;
+}
+
+struct mplslr_inout_t {
+    bit<16> eth_type;
+    bit<16> next_hop;
 }
 
 struct l3_meta_t {
@@ -126,7 +137,8 @@ control L3v4_micro_control(inout l3v4_hdr_t hdr, out bit<16> nexthop) {
     }
     @name("L3v4.micro_control.ipv4_lpm_tbl") table ipv4_lpm_tbl_0 {
         key = {
-            hdr.ipv4.dstAddr: lpm @name("hdr.ipv4.dstAddr") ;
+            hdr.ipv4.dstAddr : lpm @name("hdr.ipv4.dstAddr") ;
+            hdr.ipv4.diffserv: ternary @name("hdr.ipv4.diffserv") ;
         }
         actions = {
             process();
@@ -240,6 +252,8 @@ control L3v6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
     @name("L3v6.micro_control.ipv6_lpm_tbl") table ipv6_lpm_tbl_0 {
         key = {
             hdr.ipv6.dstAddr: lpm @name("hdr.ipv6.dstAddr") ;
+            hdr.ipv6.class  : ternary @name("hdr.ipv6.class") ;
+            hdr.ipv6.label  : ternary @name("hdr.ipv6.label") ;
         }
         actions = {
             process();

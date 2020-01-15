@@ -9,30 +9,22 @@
 #define TABLE_SIZE 1024
 #define MPLS_ZONE_TTL 8w32
 
-struct mpls_meta_t {
-  bit<16> ethType;
-}
-
-
 header mpls_h {
   bit<32> label;
   bit<16> exp;
   bit<8> bos;
   bit<8> ttl; 
 }
-
-
 struct mpls_hdr_t {
   mpls_h mpls0;
   mpls_h mpls1;
 }
 
-
-cpackage MplsLSR : implements Unicast<mpls_hdr_t, mpls_meta_t, 
-                                  empty_t, bit<16>, empty_t> {
+cpackage MplsLSR : implements Unicast<mpls_hdr_t, empty_t, 
+                                  empty_t, bit<16>, bit<16> > {
   parser micro_parser(extractor ex, pkt p, im_t im, out mpls_hdr_t hdr, 
-                      inout mpls_meta_t meta, in empty_t ia, 
-                      inout empty_t ioa) {
+                      inout empty_t meta, in empty_t ia, 
+                      inout bit<16> eth_type) {
     state start {
       ex.extract(p, hdr.mpls0);
       transition select(hdr.mpls0.bos) {
@@ -47,14 +39,14 @@ cpackage MplsLSR : implements Unicast<mpls_hdr_t, mpls_meta_t,
     }
   }
   
-  control micro_control(pkt p, im_t im, inout mpls_hdr_t hdr, inout mpls_meta_t m,
-                        in empty_t ia, out bit<16> nextHop, inout empty_t ioa) {
+  control micro_control(pkt p, im_t im, inout mpls_hdr_t hdr, inout empty_t m,
+                        in empty_t ia, out bit<16> nextHop, 
+                        inout bit<16> eth_type) {
     action drop_action() {
       im.drop(); // Drop packet
     }
 
     action encap1(){
-      m.ethType = 0x8847;
       hdr.mpls1.setValid();
       
       hdr.mpls1.label = hdr.mpls0.label;
@@ -69,17 +61,16 @@ cpackage MplsLSR : implements Unicast<mpls_hdr_t, mpls_meta_t,
     }
 
     action encap0(){
-      m.ethType = 0x8847;
       hdr.mpls0.setValid();
       hdr.mpls0.label = 32w0x4000;
       hdr.mpls0.ttl = MPLS_ZONE_TTL;
       nextHop = 16w10;
     }
 
-    action decap() {
-      m.ethType = 0x0800;
+    action decap(bit<16> t) {
       hdr.mpls0.setInvalid();
       nextHop = 16w10;
+      eth_type = t;
     }
     
     action replace() {
@@ -90,6 +81,8 @@ cpackage MplsLSR : implements Unicast<mpls_hdr_t, mpls_meta_t,
     
     table mpls_tbl{
     	key = {
+    		hdr.mpls1.isValid() : exact;
+    		hdr.mpls0.isValid() : exact;
     		hdr.mpls0.ttl : ternary;
     		hdr.mpls0.label : ternary;
     	}
