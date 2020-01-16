@@ -1,0 +1,172 @@
+/*
+ * Author: Myriana Rifai
+ * Email: myriana.rifai@nokia-bell-labs.com
+ */
+
+#include"msa.p4"
+#include"common.p4"
+
+#define TABLE_SIZE 1024
+#define ROUTER_IP 0x0a000256
+#define N1 0x0a000256
+#define N2 0x0a000256
+
+struct sr4_meta_t {
+
+}
+
+header option_h {
+	bit<8> useless;
+	bit<8> option_num;
+	bit<8> len;
+	bit<8> data_pointer; 
+}
+
+header sr4_h {
+	bit<32> addr1;
+	bit<32> addr2;
+	bit<32> addr3;
+	bit<32> addr4;
+	bit<32> addr5;
+	bit<32> addr6;
+}
+
+struct sr4_hdr_t {
+  option_h option;
+  sr4_h	sr;
+}
+
+
+
+cpackage SRv4 : implements Unicast<sr4_hdr_t, sr4_meta_t, 
+                                     empty_t, bit<16>, empty_t> {
+  parser micro_parser(extractor ex, pkt p, im_t im, out sr4_hdr_t hdr, inout sr4_meta_t meta,
+                        in empty_t ia, inout empty_t ioa) {
+                        
+    state start {
+    	ex.extract(p, hdr.option);
+    	transition select (hdr.option.option_num){
+    		8w0x03: parse_src_routing; // loose 
+    		8w0x09: parse_src_routing; //strict
+    	}
+    }
+    
+    state parse_src_routing {
+    	ex.extract(p, hdr.sr);
+      transition accept;
+    }
+  }
+  
+  
+  control micro_control(pkt p, im_t im, inout sr4_hdr_t hdr, inout sr4_meta_t m,
+                          in empty_t ia, out bit<16> nh, inout empty_t ioa) {
+// source routing 
+// need to check that the node's ip address matches one of the addresses in the sr header 
+// if it does not match and we are using strict source routing (option 9) then we drop 
+// if it does not match and we use loose source routing then we try to use one of the ip addresses as the nexthop, if we cannot then we set our own nexthop 
+
+// HS: should find_nexthop() be used in this case?
+// I think if the node has 10 l3 neighbours, the table can have 90 entries to
+// decide if the node can use one of the ip address in the list as a neighbour.
+// if any of its neighbour is in the list.. 
+
+// if it matches then the nexthop is set to the next address in the list 
+// the header is not modified
+//
+    bit<32> neighbour = 32w0;
+    action drop_action() {
+      im.drop(); // Drop packet
+    }
+
+    action set_nexthop(bit<32> nextHopAddr) {
+      neighbour = nextHopAddr;
+    }
+    action set_nexthop_addr2() {
+      neighbour = hdr.sr.addr2;
+    }
+    action set_nexthop_addr3() {
+      neighbour = hdr.sr.addr3;
+    }
+    action set_nexthop_addr4() {
+      neighbour = hdr.sr.addr4;
+    }
+    action set_nexthop_addr5() {
+      neighbour = hdr.sr.addr5;
+    }
+    action set_nexthop_addr6() {
+      neighbour = hdr.sr.addr6;
+    }
+    /*
+    action find_nexthop() {
+    //TODO
+    }
+    */
+    table sr4_tbl{
+    	key = {
+    	hdr.option.option_num: exact;
+    	hdr.sr.addr1: exact;
+    	hdr.sr.addr2: exact;
+    	hdr.sr.addr3: exact;
+    	hdr.sr.addr4: exact;
+    	hdr.sr.addr5: exact;
+    	hdr.sr.addr6: exact;
+    	}
+    	actions = {
+    		drop_action;
+        set_nexthop_addr2;
+        set_nexthop_addr3;
+        set_nexthop_addr4;
+        set_nexthop_addr5;
+        set_nexthop_addr6;
+        set_nexthop;
+    	}
+    	const entries = {
+    	   (8w0x03, ROUTER_IP,_, _ , _, _,_): set_nexthop_addr2();
+    	   (8w0x03, _,ROUTER_IP, _ , _, _,_): set_nexthop_addr3();
+    	   (8w0x03, _,_,ROUTER_IP, _, _,_): set_nexthop_addr4();
+    	   (8w0x03,_,_,_,ROUTER_IP, _,_): set_nexthop_addr5();
+    	   (8w0x03,_,_,_,_, ROUTER_IP,_): set_nexthop_addr6();
+
+    	   (8w0x03, N1,_, _ , _, _,_): set_nexthop(N1);
+    	   (8w0x03, _,N1, _ , _, _,_): set_nexthop(N1);
+    	   (8w0x03, _,_, N1 , _, _,_): set_nexthop(N1); 
+         // skipped other 6 permutation for N1
+    	   (8w0x03, N2,_, _ , _, _,_): set_nexthop(N2);
+    	   (8w0x03, _,N2, _ , _, _,_): set_nexthop(N2);
+    	   (8w0x03, _,_, N2 , _, _,_): set_nexthop(N2);
+    	   // (8w0x03, _,_, _ , _, _,_,_,_,_): find_nexthop();
+        
+    	   (8w0x09, ROUTER_IP,_, _ , _, _,_): set_nexthop_addr2();
+    	   (8w0x09, _,ROUTER_IP, _ , _, _,_): set_nexthop_addr3();
+    	   (8w0x09, _,_,ROUTER_IP, _, _,_): set_nexthop_addr4();
+    	   (8w0x09,_,_,_,ROUTER_IP, _,_): set_nexthop_addr5();
+    	   (8w0x09,_,_,_,_, ROUTER_IP,_): set_nexthop_addr6();
+    	   (8w0x09, _,_, _ , _, _,_): drop_action();
+    	}
+    }
+    action set_out_arg(bit<16> n) {
+      nh = n; 
+    }
+     table set_out_nh_tbl{
+    	key = {
+    	  neighbour: exact;
+    	}
+    	actions = {
+    		set_out_arg;
+      }
+    }
+    
+    apply {
+      nh = 16w0;
+      sr4_tbl.apply();
+      set_out_nh_tbl.apply();
+    }
+  }
+  control micro_deparser(emitter em, pkt p, in sr4_hdr_t hdr) {
+    apply {
+      em.emit(p, hdr.option); 
+      em.emit(p, hdr.sr);
+    }
+  }
+}
+

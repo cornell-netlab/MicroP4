@@ -182,6 +182,7 @@ control micro_control(pkt p, im_t im, inout sr6_hdr_t hdr, inout sr6_meta_t m,
     
     apply {
       		sr6_tbl.apply();
+          set_out_nh_tbl.apply();
     }
   }
   control micro_deparser(emitter em, pkt p, in sr6_hdr_t hdr) {
