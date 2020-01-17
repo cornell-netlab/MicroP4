@@ -575,7 +575,7 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     if (cp != nullptr) 
         cpkgName = cp->getName();
     parser_fqn = cpkgName +"_"+ parser->getName();
-    // std::cout<<parser_fqn<<"\n";
+    std::cout<<parser_fqn<<"\n";
     auto iter = parserStructures->find(parser_fqn);
     BUG_CHECK(iter != parserStructures->end(), 
         "Parser %1% of %2% is not evaluated", parser->name, cp->getName());
@@ -599,6 +599,11 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     parsedHeadersStack.push_back(parserStructure->parsedHeaders);
     // new start offsets are computed and pushed on offsetsStack.
     auto currentParserOffsets = parserStructure->result->getAcceptedPktOffsets();
+
+    std::sort(currentParserOffsets.begin(), currentParserOffsets.end());
+    auto it = std::unique(currentParserOffsets.begin(), currentParserOffsets.end());
+    currentParserOffsets.resize(std::distance(currentParserOffsets.begin(),it));
+
     auto acceptedPktOffset = new std::vector<unsigned>();
     for (const auto& currentOffset : *(offsetsStack.back())) {
         for (auto o : currentParserOffsets) {

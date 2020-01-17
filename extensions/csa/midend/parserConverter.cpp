@@ -51,6 +51,9 @@ const IR::Node* ParserConverter::preorder(IR::P4Parser* parser) {
     auto mcs = new IR::MethodCallStatement(mce);
     statOrDeclsOfControlBody.push_back(mcs);
 
+    for (auto i : (*initialOffsets))
+        std::cout<<i<<" ";
+    std::cout<<"\n";
     if (!(initialOffsets->size() == 1 &&  (*initialOffsets)[0] == 0)) {
         initTableWithOffsetEntries(sorted[0]->getName());
         // std::cout<<"----------------------"<<parser->name<<"\n";

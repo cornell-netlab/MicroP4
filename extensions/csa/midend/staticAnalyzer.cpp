@@ -50,6 +50,7 @@ bool StaticAnalyzer::preorder(const IR::P4Program* p4Program) {
         }
         std::cout<<"----------------------------\n";
     }
+    std::cout<<"End of StaticAnalyzer\n";
     return false;
 }
 
