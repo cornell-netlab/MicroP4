@@ -31,7 +31,7 @@ cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t,
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
-    L3v6() l3_i;
+    IPv6() ipv6_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
@@ -43,7 +43,7 @@ cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t,
     }
     apply {
       if (hdr.eth.ethType == 0x86DD) {
-        l3_i.apply(p, im, ia, nh, ioa);
+        ipv6_i.apply(p, im, ia, nh, ioa);
         forward_tbl.apply(); 
       } else {
         im.drop();

@@ -15,20 +15,32 @@ header mpls_h {
   bit<8> bos;
   bit<8> ttl; 
 }
+
+
 struct mpls_hdr_t {
   mpls_h mpls0;
   mpls_h mpls1;
 }
 
+
 /*
- * This assumes having at least one MPLS header on packet
+ * If there is no MPLS header on packet, it can impose one.
+ * If there is more than one it can remove.
+ * It can also swap or find next hop based on the top(0th) MPLS header.
  */
-cpackage MplsLSR : implements Unicast<mpls_hdr_t, empty_t, 
-                                  empty_t, bit<16>, bit<16> > {
+cpackage MplsLR : implements Unicast<mpls_hdr_t, empty_t, 
+                                  empty_t, empty_t, mplslr_inout_t> {
   parser micro_parser(extractor ex, pkt p, im_t im, out mpls_hdr_t hdr, 
-                      inout empty_t meta, in empty_t ia, 
-                      inout bit<16> eth_type) {
+                      inout empty_t meta, in empty_t ia, inout mplslr_inout_t ioa) {
+                      
     state start {
+      transition select(ioa.eth_type) {
+        16w0x8847 : parse_mpls0;
+        _ : accept;
+      }
+    }
+
+    state parse_mpls0 {
       ex.extract(p, hdr.mpls0);
       transition select(hdr.mpls0.bos) {
         8w0 : parse_mpls1;
@@ -43,13 +55,13 @@ cpackage MplsLSR : implements Unicast<mpls_hdr_t, empty_t,
   }
   
   control micro_control(pkt p, im_t im, inout mpls_hdr_t hdr, inout empty_t m,
-                        in empty_t ia, out bit<16> nextHop, 
-                        inout bit<16> eth_type) {
+                        in empty_t ia, out empty_t oa, inout mplslr_inout_t ioa) {
     action drop_action() {
       im.drop(); // Drop packet
     }
 
     action encap1(){
+      ioa.eth_type = 0x8847;
       hdr.mpls1.setValid();
       
       hdr.mpls1.label = hdr.mpls0.label;
@@ -60,34 +72,36 @@ cpackage MplsLSR : implements Unicast<mpls_hdr_t, empty_t,
       hdr.mpls0.label = 32w0x0400;
       hdr.mpls0.ttl = MPLS_ZONE_TTL;
       hdr.mpls1.bos = 8w0;
-      nextHop = 16w10;
+      ioa.next_hop = 16w10;
     }
 
     action encap0(){
+      ioa.eth_type = 0x8847;
       hdr.mpls0.setValid();
       hdr.mpls0.label = 32w0x4000;
       hdr.mpls0.ttl = MPLS_ZONE_TTL;
-      nextHop = 16w10;
+      ioa.next_hop = 16w10;
     }
 
-    action decap(bit<16> t) {
+    action decap() {
+      ioa.eth_type = 0x0800;
       hdr.mpls0.setInvalid();
-      nextHop = 16w10;
-      eth_type = t;
+      ioa.next_hop = 16w10;
     }
     
     action replace() {
       // hdr.mpls0.label = 20w0x4000;
       hdr.mpls0.ttl = hdr.mpls0.ttl -1;
-      nextHop = 16w10;
+      ioa.next_hop = 16w10;
     }
     
     table mpls_tbl{
     	key = {
-    		hdr.mpls1.isValid() : exact;
     		hdr.mpls0.isValid() : exact;
-    		hdr.mpls0.ttl : ternary;
-    		hdr.mpls0.label : ternary;
+    		hdr.mpls0.ttl : exact;
+    		hdr.mpls0.label : exact;
+        ioa.next_hop : exact;
+        ioa.eth_type : exact;
     	}
     	actions = {
     		drop_action;
@@ -107,7 +121,6 @@ cpackage MplsLSR : implements Unicast<mpls_hdr_t, empty_t,
     }
     
     apply {
-          nextHop = 16w0;
       		mpls_tbl.apply();
     }
   }

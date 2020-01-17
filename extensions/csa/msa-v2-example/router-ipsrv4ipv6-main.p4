@@ -29,10 +29,8 @@ cpackage MPRouter : implements Unicast<hdr_t, empty_t,
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout empty_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
-    IPv4() ipv4_i;
+    IPSRv4() ipsrv4_i;
     IPv6() ipv6_i;
-    MplsLR() mpls_i;
-    mplslr_inout_t mplsio;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
@@ -45,16 +43,9 @@ cpackage MPRouter : implements Unicast<hdr_t, empty_t,
     apply { 
       nh = 16w0;
       if (hdr.eth.ethType == 0x0800)
-        ipv4_i.apply(p, im, ia, nh, ioa);
+        ipsrv4_i.apply(p, im, ia, nh, ioa);
       else if (hdr.eth.ethType == 0x86DD)
         ipv6_i.apply(p, im, ia, nh, ioa);
-
-      mplsio.eth_type = hdr.eth.ethType;
-      mplsio.next_hop = nh;
-      if (nh == 16w0)
-        mpls_i.apply(p, im, ia, oa, mplsio);
-      hdr.eth.ethType = mplsio.eth_type;
-      nh = mplsio.next_hop;
 
       forward_tbl.apply(); 
     }

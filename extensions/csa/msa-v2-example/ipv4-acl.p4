@@ -1,0 +1,137 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
+#include"msa.p4"
+#include"common.p4"
+
+
+
+/*************** an alternative approach ***************/
+struct no_hdr_t {}
+cpackage IPv4ACL : implements Unicast<no_hdr_t, empty_t, 
+                                  ipv4_acl_in_t, empty_t, acl_result_t> {
+  parser micro_parser(extractor ex, pkt p, im_t im, out no_hdr_t hdr, 
+                      inout empty_t meta, 
+                      in ipv4_acl_in_t ia, inout acl_result_t ioa) {
+    state start {
+      transition accept;
+    }
+  }
+
+  control micro_control(pkt p, im_t im, inout no_hdr_t hdr, inout empty_t m,
+                          in ipv4_acl_in_t ia, out empty_t oa, 
+                          inout acl_result_t ioa) {
+    action set_hard_drop() {
+      ioa.hard_drop = 1w1;
+      ioa.soft_drop = 1w0;
+    }
+    action set_soft_drop() {
+      ioa.hard_drop = 1w0;
+      ioa.soft_drop = 1w1;
+    }
+    action allow() {
+      ioa.hard_drop = 1w0;
+      ioa.soft_drop = 1w0;
+    }
+
+    table ipv4_filter {
+      key = { 
+        ia.sa : ternary;
+        ia.da : ternary;
+      } 
+      actions = { 
+        set_hard_drop; 
+        set_soft_drop;
+        allow;
+      }
+      default_action = allow;
+
+    }
+    apply { 
+      if (ioa.hard_drop == 1w0)
+        ipv4_filter.apply(); 
+    }
+  }
+
+  control micro_deparser(emitter em, pkt p, in no_hdr_t h) {
+    apply { 
+    }
+  }
+}
+
+
+/*******************************************************/
+/*
+header ipv4filter_h {
+  bit<4> version;
+  bit<4> ihl;
+  bit<8> diffserv;
+  bit<16> totalLen;
+  bit<16> identification;
+  bit<3> flags;
+  bit<13> fragOffset;
+  bit<8> ttl;
+  bit<8> protocol;
+  bit<16> hdrChecksum;
+  bit<32> srcAddr;
+  bit<32> dstAddr; 
+}
+
+struct ipv4filter_hdr_t {
+  ipv4filter_h ipv4f;
+}
+
+cpackage IPv4Filter : implements Unicast<ipv4filter_hdr_t, empty_t, 
+                                      empty_t, empty_t, acl_result_t> {
+
+  parser micro_parser(extractor ex, pkt p, im_t im, out ipv4filter_hdr_t hdr, 
+                      inout empty_t meta, in empty_t ia, inout acl_result_t ioa) {
+    state start {
+      ex.extract(p, hdr.ipv4f);
+      transition accept;
+    }
+  }
+
+  control micro_control(pkt p, im_t im, inout ipv4filter_hdr_t hdr, inout empty_t m,
+                          in empty_t ia, out empty_t oa, 
+                          inout acl_result_t ioa) {
+    action set_hard_drop() {
+      ioa.hard_drop = 1w1;
+      ioa.soft_drop = 1w0;
+    }
+    action set_soft_drop() {
+      ioa.hard_drop = 1w0;
+      ioa.soft_drop = 1w1;
+    }
+    action allow() {
+      ioa.hard_drop = 1w0;
+      ioa.soft_drop = 1w0;
+    }
+
+    table ipv4_filter {
+      key = { 
+        hdr.ipv4f.srcAddr : exact;
+        hdr.ipv4f.dstAddr : exact;
+      } 
+      actions = { 
+        set_hard_drop; 
+        set_soft_drop;
+        allow;
+      }
+      default_action = allow;
+
+    }
+    apply { 
+      ipv4_filter.apply(); 
+    }
+  }
+
+  control micro_deparser(emitter em, pkt p, in ipv4filter_hdr_t h) {
+    apply { 
+      em.emit(p, h.ipv4f); 
+    }
+  }
+}
+*/

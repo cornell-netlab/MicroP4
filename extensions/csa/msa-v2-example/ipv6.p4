@@ -24,7 +24,7 @@ struct l3v6_hdr_t {
   ipv6_h ipv6;
 }
 
-cpackage L3v6 : implements Unicast<l3v6_hdr_t, l3_meta_t, empty_t, bit<16>, empty_t> {
+cpackage IPv6 : implements Unicast<l3v6_hdr_t, l3_meta_t, empty_t, bit<16>, empty_t> {
   parser micro_parser(extractor ex, pkt p, im_t im, out l3v6_hdr_t hdr, inout l3_meta_t meta,  
                         in empty_t ia, inout empty_t ioa) { //inout arg
     state start {

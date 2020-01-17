@@ -6,7 +6,6 @@
 #include"msa.p4"
 #include"common.p4"
 
-struct l3_meta_t { }
 
 header ipv4_h {
   bit<4> version;
@@ -23,21 +22,21 @@ header ipv4_h {
   bit<32> dstAddr; 
 }
 
-struct l3v4_hdr_t {
+struct ipv4_hdr_t {
   ipv4_h ipv4;
 }
 
-cpackage L3SRv4 : implements Unicast<l3v4_hdr_t, l3_meta_t, empty_t, bit<16>, empty_t> {
+cpackage IPSRv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empty_t> {
 
-  parser micro_parser(extractor ex, pkt p, im_t im, out l3v4_hdr_t hdr, 
-                      inout l3_meta_t meta, in empty_t ia, inout empty_t ioa) {
+  parser micro_parser(extractor ex, pkt p, im_t im, out ipv4_hdr_t hdr, 
+                      inout empty_t meta, in empty_t ia, inout empty_t ioa) {
     state start {
       ex.extract(p, hdr.ipv4);
       transition accept;
     }
   }
 
-  control micro_control(pkt p, im_t im, inout l3v4_hdr_t hdr, inout l3_meta_t m,
+  control micro_control(pkt p, im_t im, inout ipv4_hdr_t hdr, inout empty_t m,
                           in empty_t ia, out bit<16> nexthop, 
                           inout empty_t ioa) { // nexthop out arg
     SRv4() srv4;
@@ -69,7 +68,7 @@ cpackage L3SRv4 : implements Unicast<l3v4_hdr_t, l3_meta_t, empty_t, bit<16>, em
     }
   }
 
-  control micro_deparser(emitter em, pkt p, in l3v4_hdr_t h) {
+  control micro_deparser(emitter em, pkt p, in ipv4_hdr_t h) {
     apply { 
       em.emit(p, h.ipv4); 
     }

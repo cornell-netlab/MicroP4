@@ -23,53 +23,54 @@ struct mplslr_inout_t {
   bit<16> next_hop;
 }
 
-cpackage ecnv4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<16> etherType);
-                 
-cpackage ecnv6(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<16> etherType);
-                 
-cpackage L3v4(pkt p, im_t im, in empty_t ia, out bit<16> nh, 
-                 inout empty_t ioa);
-                 
-cpackage L3v6(pkt p, im_t im, in empty_t ia, out bit<16> nh,
-                 inout empty_t ioa);
 
-cpackage Filter_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<8> l4proto);
+struct acl_result_t {
+  // hard drop can not be overridden
+  bit<1> hard_drop;
+  // soft drop can be overridden
+  bit<1> soft_drop;
+}
+
+struct l3_inout_t {
+  acl_result_t acl;
+  bit<16> next_hop;
+  bit<16> eth_type;
+}
+
+struct ipv4_acl_in_t {
+  bit<32> sa;
+  bit<32> da;
+}
+
+cpackage Vlan(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout bit<16> etherType);
                  
-cpackage Nat_L4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<8> l4proto);
-
-cpackage Nat_L3(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<16> etherType);
-
-cpackage FilterL3_v4(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<16> etherType);
+cpackage IPv4(pkt p, im_t im, 
+          in empty_t ia, out bit<16> nh, inout empty_t ioa);
                  
-cpackage FilterL3_v6(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<16> etherType);
+cpackage IPv4ACL(pkt p, im_t im, 
+          in ipv4_acl_in_t ia, out empty_t oa, inout acl_result_t ioa);
 
-cpackage Vlan(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout bit<16> etherType);
+cpackage IPv4NatACL(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout acl_result_t ioa);
+
+cpackage IPv6(pkt p, im_t im, 
+          in empty_t ia, out bit<16> nh, inout empty_t ioa);
                  
-cpackage VXlan(pkt p, im_t im, in empty_t ia, out empty_t oa, 
-                 inout eth_meta_t ethhdr);
+cpackage VXlan(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout eth_meta_t ethhdr);
 
-cpackage MplsLSR(pkt p, im_t im, in empty_t ia, out bit<16> nh,
-                 inout bit<16> eth_type);
+cpackage MplsLR(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout mplslr_inout_t ioa);
 
-cpackage MplsLR(pkt p, im_t im, in empty_t ia, out empty_t oa,
-                 inout mplslr_inout_t ioa);
+cpackage MplsLSR(pkt p, im_t im, 
+          in empty_t ia, out bit<16> nh, inout bit<16> eth_type);
                                   
-cpackage SRv4(pkt p, im_t im, in empty_t ia, out bit<16> nh, 
-                 inout empty_t ioa);
+cpackage SRv4(pkt p, im_t im, 
+          in empty_t ia, out bit<16> nh, inout empty_t ioa);
 
-cpackage L3SRv4(pkt p, im_t im, in empty_t ia, out bit<16> nh, 
-                 inout empty_t ioa);
+cpackage IPSRv4(pkt p, im_t im, 
+          in empty_t ia, out bit<16> nh,  inout empty_t ioa);
 
-cpackage SRv6(pkt p, im_t im, in empty_t ia, out bit<16> oa, 
-                 inout bit<8> nexthdr);
-                 
-
-                 
+cpackage L3(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa,  inout l3_inout_t ioa);

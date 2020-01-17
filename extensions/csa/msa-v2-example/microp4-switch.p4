@@ -6,6 +6,8 @@
 #include"msa.p4"
 #include"common.p4"
 
+struct meta_t { }
+
 header ethernet_h {
   bit<48> dmac;
   bit<48> smac;
@@ -16,9 +18,9 @@ struct hdr_t {
   ethernet_h eth;
 }
 
-cpackage MPRouter : implements Unicast<hdr_t, empty_t, 
+cpackage MicroP4Switch : implements Unicast<hdr_t, meta_t, 
                                             empty_t, empty_t, empty_t> {
-  parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout empty_t m,
+  parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout meta_t meta,
                         in empty_t ia, inout empty_t ioa) {
     state start {
       ex.extract(p, hdr.eth);
@@ -26,28 +28,37 @@ cpackage MPRouter : implements Unicast<hdr_t, empty_t,
     }
   }
 
-  control micro_control(pkt p, im_t im, inout hdr_t hdr, inout empty_t m,
+  control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
-    bit<16> nh;
-    L3SRv4() l3srv4_i;
-    L3v6() l3v6_i;
+    L3() l3_i;
+    l3_inout_t l3ioa;
+
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
       im.set_out_port(port);
     }
     table forward_tbl {
-      key = { nh : exact; } 
+      key = { l3ioa.next_hop : exact; } 
       actions = { forward; }
     }
     apply { 
-      nh = 16w0;
-      if (hdr.eth.ethType == 0x0800)
-        l3srv4_i.apply(p, im, ia, nh, ioa);
-      else if (hdr.eth.ethType == 0x86DD)
-        l3v6_i.apply(p, im, ia, nh, ioa);
-
-      forward_tbl.apply(); 
+      l3ioa.next_hop = 16w0;
+      l3ioa.eth_type = hdr.eth.ethType;
+      l3ioa.acl.hard_drop = 1w0;
+      l3ioa.acl.soft_drop = 1w0;
+      if (l3ioa.eth_type == 0x0800) {
+        l3_i.apply(p, im, ia, oa, l3ioa);
+        if (l3ioa.acl.hard_drop == 1w0 && l3ioa.acl.soft_drop == 1w0)
+          forward_tbl.apply(); 
+        else
+          im.drop();
+      } 
+      /*
+      if (im.get_value(metadata_fields_t.QUEUE_DEPTH_AT_DEQUEUE) == (bit<32>)64) {
+          im.drop();
+      }
+      */
     }
   }
 
@@ -58,7 +69,7 @@ cpackage MPRouter : implements Unicast<hdr_t, empty_t,
   }
 }
 
-MPRouter() main;
+MicroP4Switch() main;
 
 
  

@@ -31,7 +31,7 @@ cpackage ModularRouterv4 : implements Unicast<hdr_t, meta_t,
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
-    L3v4() l3_i;
+    IPv4() ipv4_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
@@ -43,7 +43,7 @@ cpackage ModularRouterv4 : implements Unicast<hdr_t, meta_t,
     }
     apply { 
       if (hdr.eth.ethType == 0x0800) {
-        l3_i.apply(p, im, ia, nh, ioa);
+        ipv4_i.apply(p, im, ia, nh, ioa);
         forward_tbl.apply(); 
       } 
       if (im.get_value(metadata_fields_t.QUEUE_DEPTH_AT_DEQUEUE) == (bit<32>)64) {
