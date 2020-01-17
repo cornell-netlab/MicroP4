@@ -9,9 +9,9 @@
 #define TABLE_SIZE 1024
 
 
-struct routerv6qos_meta_t { 
+struct routerv6_meta_t { 
   bit<8> if_index;
-  bit<128> next_hop;
+  bit<16> next_hop;
   bit<1> drop_flag;
 }
  
@@ -23,7 +23,7 @@ header ethernet_h {
 
 header ipv6_h {
   bit<4> version;
-  bit<8> ecn;
+  bit<8> class;
   bit<20> label;
   bit<16> totalLen;
   bit<8> nexthdr;
@@ -33,13 +33,13 @@ header ipv6_h {
 }
 
 
-struct routerv6qos_hdr_t {
+struct routerv6_hdr_t {
   ethernet_h ethernet;
   ipv6_h ipv6;
 }
 
-parser ParserImpl (packet_in pin, out routerv6qos_hdr_t parsed_hdr, 
-                inout routerv6qos_meta_t meta, 
+parser ParserImpl (packet_in pin, out routerv6_hdr_t parsed_hdr, 
+                inout routerv6_meta_t meta, 
                 inout standard_metadata_t standard_metadata) {
  state start {
 	   meta.if_index = (bit<8>)standard_metadata.ingress_port;
@@ -61,9 +61,9 @@ parser ParserImpl (packet_in pin, out routerv6qos_hdr_t parsed_hdr,
   
 }
 
-control egress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta,
+control egress(inout routerv6_hdr_t parsed_hdr, inout routerv6_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
-     action drop_action() {
+  action drop_action() {
    		 meta.drop_flag = 1;
     }
  
@@ -76,11 +76,11 @@ control egress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta
                 drop_action;
                 NoAction;
             }
-            /*
+            
             const entries = {
-                16w5 : drop_action();
+                19w64 : drop_action();
             }
-            */
+           
             size = MAC_TABLE_SIZE;
             default_action = NoAction;
         }	
@@ -90,7 +90,7 @@ control egress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta
 	}
 }
     
-control ingress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t meta,
+control ingress(inout routerv6_hdr_t parsed_hdr, inout routerv6_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
       action set_dmac(bit<48> dmac, bit<9> port) {
           // P4Runtime error...
@@ -109,8 +109,8 @@ control ingress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t met
                 set_dmac;
             }
             const entries = {
-                0x0a000201 : set_dmac(0x000000000002, 9w2);
-                0x0a000301 : set_dmac(0x000000000003, 9w3);
+                16w15 : set_dmac(0x000000000002, 9w2);
+                16w32 : set_dmac(0x000000000003, 9w3);
             }
             default_action = drop_action;
             // size = TABLE_SIZE;
@@ -135,14 +135,26 @@ control ingress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t met
         }
  
       
-     action process(bit<128> nexthop_ipv6_addr, bit<9> port){
-      parsed_hdr.ipv6.hoplimit = parsed_hdr.ipv6.hoplimit - 1;
-      meta.next_hop = nexthop_ipv6_addr;
-      standard_metadata.egress_port = port;
+    action process(bit<16> nexthop, bit<9> port){
+	      parsed_hdr.ipv6.hoplimit = parsed_hdr.ipv6.hoplimit - 1;
+	      meta.next_hop = nexthop;
+	      standard_metadata.egress_port = port;
     }
+    action default_act() {
+      meta.next_hop = 0; 
+    }
+     
     table ipv6_lpm_tbl {
-      key = { parsed_hdr.ipv6.dstAddr : lpm ;} 
-      actions = { process; }
+      key = { 
+      	parsed_hdr.ipv6.dstAddr : lpm ;
+        parsed_hdr.ipv6.class : ternary;
+        parsed_hdr.ipv6.label : ternary;
+        } 
+      actions = { 
+	      process; 
+	      default_act;
+	   }
+	  default_action = default_act;    
       
     }
     
@@ -155,7 +167,7 @@ control ingress(inout routerv6qos_hdr_t parsed_hdr, inout routerv6qos_meta_t met
 	}
 }
 
-control DeparserImpl(packet_out packet, in  routerv6qos_hdr_t hdr) {
+control DeparserImpl(packet_out packet, in  routerv6_hdr_t hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv6); 
@@ -163,12 +175,12 @@ control DeparserImpl(packet_out packet, in  routerv6qos_hdr_t hdr) {
 }
 
 
-control verifyChecksum(inout  routerv6qos_hdr_t hdr, inout routerv6qos_meta_t meta) {
+control verifyChecksum(inout  routerv6_hdr_t hdr, inout routerv6_meta_t meta) {
     apply {
     }
 }
 
-control computeChecksum(inout  routerv6qos_hdr_t hdr, inout routerv6qos_meta_t meta) {
+control computeChecksum(inout  routerv6_hdr_t hdr, inout routerv6_meta_t meta) {
     apply {
     }
 }

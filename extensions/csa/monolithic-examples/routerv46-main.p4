@@ -8,9 +8,9 @@
 #define MAC_TABLE_SIZE 32
 
 
-struct routerv4qos_meta_t { 
+struct routerv46_meta_t { 
   bit<8> if_index;
-  bit<32> next_hop;
+  bit<16> next_hop;
   bit<1> drop_flag;
 }
  
@@ -37,13 +37,25 @@ header ipv4_h {
 }
 
 
-struct routerv4qos_hdr_t {
-  ethernet_h ethernet;
-  ipv4_h ipv4;
+header ipv6_h {
+  bit<4> version;
+  bit<8> class;
+  bit<20> label;
+  bit<16> totalLen;
+  bit<8> nexthdr;
+  bit<8> hoplimit;
+  bit<128> srcAddr;
+  bit<128> dstAddr;  
 }
 
-parser ParserImpl (packet_in pin, out routerv4qos_hdr_t parsed_hdr, 
-                inout routerv4qos_meta_t meta, 
+struct routerv46_hdr_t {
+  ethernet_h ethernet;
+  ipv4_h ipv4;
+  ipv6_h ipv6;
+}
+
+parser ParserImpl (packet_in pin, out routerv46_hdr_t parsed_hdr, 
+                inout routerv46_meta_t meta, 
                 inout standard_metadata_t standard_metadata) {
  state start {
 	   meta.if_index = (bit<8>)standard_metadata.ingress_port;
@@ -54,6 +66,7 @@ parser ParserImpl (packet_in pin, out routerv4qos_hdr_t parsed_hdr,
       pin.extract(parsed_hdr.ethernet);
       transition select(parsed_hdr.ethernet.etherType){
         0x0800: parse_ipv4;
+        0x86DD: parse_ipv6;
         _ : accept;
       }
     }
@@ -62,10 +75,15 @@ parser ParserImpl (packet_in pin, out routerv4qos_hdr_t parsed_hdr,
       pin.extract(parsed_hdr.ipv4);
       transition accept;
     }
+    
+    state parse_ipv6 {
+      pin.extract(parsed_hdr.ipv6);
+      transition accept;
+    }
   
 }
 
-control egress(inout routerv4qos_hdr_t parsed_hdr, inout routerv4qos_meta_t meta,
+control egress(inout routerv46_hdr_t parsed_hdr, inout routerv46_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
      action drop_action() {
    		 meta.drop_flag = 1;
@@ -80,11 +98,11 @@ control egress(inout routerv4qos_hdr_t parsed_hdr, inout routerv4qos_meta_t meta
                 drop_action;
                 NoAction;
             }
-            /*
+            
             const entries = {
-                16w5 : drop_action();
+                19w64 : drop_action();
             }
-            */
+           
             size = MAC_TABLE_SIZE;
             default_action = NoAction;
         }	
@@ -94,7 +112,7 @@ control egress(inout routerv4qos_hdr_t parsed_hdr, inout routerv4qos_meta_t meta
 	}
 }
     
-control ingress(inout routerv4qos_hdr_t parsed_hdr, inout routerv4qos_meta_t meta,
+control ingress(inout routerv46_hdr_t parsed_hdr, inout routerv46_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
       action set_dmac(bit<48> dmac, bit<9> port) {
           // P4Runtime error...
@@ -113,8 +131,8 @@ control ingress(inout routerv4qos_hdr_t parsed_hdr, inout routerv4qos_meta_t met
                 set_dmac;
             }
             const entries = {
-                0x0a000201 : set_dmac(0x000000000002, 9w2);
-                0x0a000301 : set_dmac(0x000000000003, 9w3);
+                16w15 : set_dmac(0x000000000002, 9w2);
+                16w32 : set_dmac(0x000000000003, 9w3);
             }
             default_action = drop_action;
             // size = TABLE_SIZE;
@@ -139,37 +157,72 @@ control ingress(inout routerv4qos_hdr_t parsed_hdr, inout routerv4qos_meta_t met
         }
  
       
-    action process(bit<32> nexthop_ipv4_addr, bit<9> port){
+    action process_v4(bit<16> nexthop, bit<9> port){
       parsed_hdr.ipv4.ttl = parsed_hdr.ipv4.ttl - 1;
-      meta.next_hop = nexthop_ipv4_addr;
+      meta.next_hop = nexthop;
       standard_metadata.egress_port = port;
     }
+    
+    action default_act() {
+    	meta.next_hop = 0;
+    }
     table ipv4_lpm_tbl {
-      key = { parsed_hdr.ipv4.dstAddr : lpm ;} 
-      actions = { process; }
+      key = { 
+	      parsed_hdr.ipv4.dstAddr : lpm;
+	      parsed_hdr.ipv4.diffserv : ternary;
+      } 
+      actions = { 
+	      process_v4; 
+	      default_act;
+      }
+      default_action = default_act;
     }
 
+   
+    action process_v6(bit<16> nexthop, bit<9> port){
+	      parsed_hdr.ipv6.hoplimit = parsed_hdr.ipv6.hoplimit - 1;
+	      meta.next_hop = nexthop;
+	      standard_metadata.egress_port = port;
+    }
+     
+    table ipv6_lpm_tbl {
+      key = { 
+      	parsed_hdr.ipv6.dstAddr : lpm ;
+        parsed_hdr.ipv6.class : ternary;
+        parsed_hdr.ipv6.label : ternary;
+        } 
+      actions = { 
+	      process_v6; 
+	      default_act;
+	   }
+	  default_action = default_act;    
+      
+    }
 	apply{
-	 ipv4_lpm_tbl.apply();
+	if(parsed_hdr.ethernet.etherType == 0x0800)
+		ipv4_lpm_tbl.apply();
+	else if (parsed_hdr.ethernet.etherType == 0x86DD)
+		ipv6_lpm_tbl.apply();
 	 dmac.apply(); 
      smac.apply();
 	}
 }
 
-control DeparserImpl(packet_out packet, in  routerv4qos_hdr_t hdr) {
+control DeparserImpl(packet_out packet, in  routerv46_hdr_t hdr) {
     apply {
         packet.emit(hdr.ethernet);
-        packet.emit(hdr.ipv4); 
+        packet.emit(hdr.ipv4);
+        packet.emit(hdr.ipv6);  
     }
 }
 
 
-control verifyChecksum(inout  routerv4qos_hdr_t hdr, inout routerv4qos_meta_t meta) {
+control verifyChecksum(inout  routerv46_hdr_t hdr, inout routerv46_meta_t meta) {
     apply {
     }
 }
 
-control computeChecksum(inout  routerv4qos_hdr_t hdr, inout routerv4qos_meta_t meta) {
+control computeChecksum(inout  routerv46_hdr_t hdr, inout routerv46_meta_t meta) {
     apply {
     }
 }
