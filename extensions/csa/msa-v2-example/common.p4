@@ -42,6 +42,11 @@ struct ipv4_acl_in_t {
   bit<32> da;
 }
 
+struct ipv6_acl_in_t {
+  bit<128> sa;
+  bit<128> da;
+}
+
 cpackage Vlan(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout bit<16> etherType);
                  
@@ -56,7 +61,13 @@ cpackage IPv4NatACL(pkt p, im_t im,
 
 cpackage IPv6(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh, inout empty_t ioa);
-                 
+
+cpackage IPv6ACL(pkt p, im_t im, 
+          in ipv6_acl_in_t ia, out empty_t oa, inout acl_result_t ioa);
+
+cpackage IPv6NatACL(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout acl_result_t ioa);
+
 cpackage VXlan(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout eth_meta_t ethhdr);
 

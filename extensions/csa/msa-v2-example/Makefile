@@ -54,11 +54,17 @@ IPv4-ACL.json:
 IPv4-NAT-ACL.json:
 	$(MSA) $(COMPILE_SUBMODULE) ipv4-nat-acl.json ipv4-nat-acl.p4
 
+IPv6-ACL.json:
+	$(MSA) $(COMPILE_SUBMODULE) ipv6-acl.json ipv6-acl.p4
+
+IPv6-NAT-ACL.json:
+	$(MSA) $(COMPILE_SUBMODULE) ipv6-nat-acl.json ipv6-nat-acl.p4
+
 L3.json:
 	$(MSA) $(COMPILE_SUBMODULE) l3.json l3.p4
 
-microp4-switch: IPv4.json IPv4-ACL.json IPv4-NAT-ACL.json L3.json
-	$(MSA) $(COMPILE_MAIN) ipv4.json,ipv4-acl.json,ipv4-nat-acl.json,l3.json microp4-switch.p4
+microp4-switch: IPv4.json IPv4-ACL.json IPv4-NAT-ACL.json IPv6.json IPv6-ACL.json IPv6-NAT-ACL.json L3.json
+	$(MSA) $(COMPILE_MAIN) ipv4.json,ipv4-acl.json,ipv4-nat-acl.json,ipv6.json,ipv6-acl.json,ipv6-nat-acl.json,l3.json microp4-switch.p4
 
 all: routingv4 routingv6 routingv46 routingv46lsrx routingv46lrx routingl3srv4ipv6
 

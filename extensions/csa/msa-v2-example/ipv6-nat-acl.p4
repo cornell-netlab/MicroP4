@@ -1,0 +1,75 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
+#include"msa.p4"
+#include"common.p4"
+
+header ipv6_nat_acl_h {
+  bit<64> u1;
+  bit<128> srcAddr;
+  bit<128> dstAddr;  
+}
+
+struct ipv6_nat_acl_hdr_t {
+  ipv6_nat_acl_h ipv6nf;
+}
+
+
+cpackage IPv6NatACL : implements Unicast<ipv6_nat_acl_hdr_t, empty_t, empty_t, 
+                                         empty_t, acl_result_t> {
+
+  parser micro_parser(extractor ex, pkt p, im_t im, out ipv6_nat_acl_hdr_t hdr, 
+                      inout empty_t meta, in empty_t ia, 
+                      inout acl_result_t ioa) {
+    state start {
+      ex.extract(p, hdr.ipv6nf);
+      transition accept;
+    }
+  }
+
+  control micro_control(pkt p, im_t im, inout ipv6_nat_acl_hdr_t hdr, 
+                        inout empty_t meta, in empty_t ia, 
+                        out empty_t oa, inout acl_result_t ioa) {
+
+    IPv6ACL() acl_i;
+    ipv6_acl_in_t  ft_in;
+    bit<32> nsrc = 32w0;
+    action set_ipv6_src(bit<128> is) {
+      hdr.ipv6nf.srcAddr = is;
+    }
+    action set_ipv6_dst(bit<128> id) {
+      hdr.ipv6nf.dstAddr = id;
+    }
+    action na(){}
+
+    table ipv6_nat {
+      key = { 
+        hdr.ipv6nf.srcAddr : exact;
+        hdr.ipv6nf.dstAddr : exact;
+      } 
+      actions = { 
+        set_ipv6_src;
+        set_ipv6_dst;
+        na;
+      }
+      default_action = na();
+    }
+
+    apply { 
+      ft_in.sa = hdr.ipv6nf.srcAddr;
+      ft_in.da = hdr.ipv6nf.dstAddr;
+      ipv6_nat.apply(); 
+      ft_in.da = hdr.ipv6nf.dstAddr;
+      acl_i.apply(p, im, ft_in, oa, ioa);
+    }
+  }
+
+  control micro_deparser(emitter em, pkt p, in ipv6_nat_acl_hdr_t h) {
+    apply { 
+      em.emit(p, h.ipv6nf); 
+    }
+  }
+}
+
