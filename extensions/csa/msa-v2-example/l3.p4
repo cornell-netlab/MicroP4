@@ -29,6 +29,8 @@ cpackage L3 : implements Unicast<l3_hdr_t, empty_t, empty_t, empty_t, l3_inout_t
     IPv4NatACL() ipv4_nat_acl_i;
     IPv6() ipv6_i;
     IPv6NatACL() ipv6_nat_acl_i;
+    // MplsLR() mpls_i;
+    // mplslr_inout_t mplsio;
     empty_t e;
     apply { 
       if (ioa.eth_type == 16w0x0800) {
@@ -40,8 +42,14 @@ cpackage L3 : implements Unicast<l3_hdr_t, empty_t, empty_t, empty_t, l3_inout_t
         ipv6_i.apply(p, im, ia, ioa.next_hop, e);
       }
       
-      if (ioa.eth_type == 16w0x8847) {
-      }
+      /*
+      mplsio.eth_type = ioa.eth_type;
+      mplsio.next_hop = ioa.next_hop;
+      if (ioa.next_hop == 16w0)
+        mpls_i.apply(p, im, ia, oa, mplsio);
+      ioa.eth_type = mplsio.eth_type;
+      ioa.next_hop = mplsio.next_hop;
+      */
       
     }
   }

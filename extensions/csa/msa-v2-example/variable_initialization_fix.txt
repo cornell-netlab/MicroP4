@@ -1,0 +1,5 @@
+
+      MplsLR_hdr_vop_t_var.mpls1_sv = false;
+      MplsLR_hdr_vop_t_var.mpls1_siv = false;
+      MplsLR_hdr_vop_t_var.mpls0_sv = false;
+      MplsLR_hdr_vop_t_var.mpls0_siv = false;

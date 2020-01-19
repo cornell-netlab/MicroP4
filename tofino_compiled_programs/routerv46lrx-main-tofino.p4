@@ -4,7 +4,6 @@
 #else
 #include <tna.p4>
 #endif
-
 header msa_twobytes_h {
     bit<16> data;
 }
@@ -18,14 +17,10 @@ header csa_indices_h {
     bit<16> curr_offset;
 }
 
-#if __TARGET_TOFINO__ == 2
-@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[11].data", "normal")
-@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[10].data", "normal")
-#endif
 struct msa_packet_struct_t {
     csa_indices_h      indices;
     msa_byte_h         msa_byte;
-    msa_twobytes_h[31] msa_hdr_stack_s0;
+    msa_twobytes_h[30] msa_hdr_stack_s0;
 }
 
 struct MPRouter_parser_meta_t {
@@ -33,20 +28,20 @@ struct MPRouter_parser_meta_t {
     bit<1> packet_reject;
 }
 
-struct L3v4_parser_meta_t {
+struct IPv4_parser_meta_t {
     bool   ipv4_v;
     bit<1> packet_reject;
 }
 
-struct L3v4_hdr_vop_t {
+struct IPv4_hdr_vop_t {
 }
 
-struct L3v6_parser_meta_t {
+struct IPv6_parser_meta_t {
     bool   ipv6_v;
     bit<1> packet_reject;
 }
 
-struct L3v6_hdr_vop_t {
+struct IPv6_hdr_vop_t {
 }
 
 struct MplsLR_parser_meta_t {
@@ -80,16 +75,33 @@ struct swtrace_inout_t {
 }
 
 struct mplslr_inout_t {
-    bit<16> eth_type;
     bit<16> next_hop;
+    bit<16> eth_type;
 }
 
-struct l3_meta_t {
+struct acl_result_t {
+    bit<1> hard_drop;
+    bit<1> soft_drop;
+}
+
+struct l3_inout_t {
+    acl_result_t acl;
+    bit<16>      next_hop;
+    bit<16>      eth_type;
+}
+
+struct ipv4_acl_in_t {
+    bit<32> sa;
+    bit<32> da;
+}
+
+struct ipv6_acl_in_t {
+    bit<128> sa;
+    bit<128> da;
 }
 
 struct ipv4_h {
-    bit<4>  version;
-    bit<4>  ihl;
+    bit<8>  ihl_version;
     bit<8>  diffserv;
     bit<16> totalLen;
     bit<16> identification;
@@ -102,19 +114,18 @@ struct ipv4_h {
     bit<32> dstAddr;
 }
 
-struct l3v4_hdr_t {
+struct ipv4_hdr_t {
     ipv4_h ipv4;
 }
 
-control L3v4_micro_parser(inout msa_packet_struct_t p, out l3v4_hdr_t hdr, out L3v4_parser_meta_t parser_meta) {
+control IPv4_micro_parser(inout msa_packet_struct_t p, out ipv4_hdr_t hdr, out IPv4_parser_meta_t parser_meta) {
     action micro_parser_init() {
         parser_meta.ipv4_v = false;
         parser_meta.packet_reject = 1w0b0;
     }
     action i_112_start_0() {
         parser_meta.ipv4_v = true;
-        hdr.ipv4.version = p.msa_hdr_stack_s0[7].data[15:12];
-        hdr.ipv4.ihl = p.msa_hdr_stack_s0[7].data[11:8];
+        hdr.ipv4.ihl_version = p.msa_hdr_stack_s0[7].data[15:8];
         hdr.ipv4.diffserv = p.msa_hdr_stack_s0[7].data[7:0];
         hdr.ipv4.totalLen = p.msa_hdr_stack_s0[8].data;
         hdr.ipv4.identification = p.msa_hdr_stack_s0[9].data;
@@ -147,15 +158,15 @@ control L3v4_micro_parser(inout msa_packet_struct_t p, out l3v4_hdr_t hdr, out L
     }
 }
 
-control L3v4_micro_control(inout l3v4_hdr_t hdr, out bit<16> nexthop) {
-    @name("L3v4.micro_control.process") action process(bit<16> nh) {
+control IPv4_micro_control(inout ipv4_hdr_t hdr, out bit<16> nexthop) {
+    @name("IPv4.micro_control.process") action process(bit<16> nh) {
         hdr.ipv4.ttl = hdr.ipv4.ttl + 8w255;
         nexthop = nh;
     }
-    @name("L3v4.micro_control.default_act") action default_act() {
+    @name("IPv4.micro_control.default_act") action default_act() {
         nexthop = 16w0;
     }
-    @name("L3v4.micro_control.ipv4_lpm_tbl") table ipv4_lpm_tbl_0 {
+    @name("IPv4.micro_control.ipv4_lpm_tbl") table ipv4_lpm_tbl_0 {
         key = {
             hdr.ipv4.dstAddr : lpm @name("hdr.ipv4.dstAddr") ;
             hdr.ipv4.diffserv: ternary @name("hdr.ipv4.diffserv") ;
@@ -171,7 +182,7 @@ control L3v4_micro_control(inout l3v4_hdr_t hdr, out bit<16> nexthop) {
     }
 }
 
-control L3v4_micro_deparser(inout msa_packet_struct_t p, in l3v4_hdr_t h, in L3v4_parser_meta_t parser_meta) {
+control IPv4_micro_deparser(inout msa_packet_struct_t p, in ipv4_hdr_t h, in IPv4_parser_meta_t parser_meta) {
     action ipv4_14_34() {
         p.msa_hdr_stack_s0[11].data = h.ipv4.ttl ++ h.ipv4.protocol;
     }
@@ -196,17 +207,20 @@ control L3v4_micro_deparser(inout msa_packet_struct_t p, in l3v4_hdr_t h, in L3v
     }
 }
 
-control L3v4(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
-    L3v4_micro_parser() L3v4_micro_parser_inst;
-    L3v4_micro_control() L3v4_micro_control_inst;
-    L3v4_micro_deparser() L3v4_micro_deparser_inst;
-    l3v4_hdr_t l3v4_hdr_t_var;
-    L3v4_parser_meta_t L3v4_parser_meta_t_var;
+control IPv4(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
+    IPv4_micro_parser() IPv4_micro_parser_inst;
+    IPv4_micro_control() IPv4_micro_control_inst;
+    IPv4_micro_deparser() IPv4_micro_deparser_inst;
+    ipv4_hdr_t ipv4_hdr_t_var;
+    IPv4_parser_meta_t IPv4_parser_meta_t_var;
     apply {
-        L3v4_micro_parser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, L3v4_parser_meta_t_var);
-        L3v4_micro_control_inst.apply(l3v4_hdr_t_var, out_param);
-        L3v4_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, L3v4_parser_meta_t_var);
+        IPv4_micro_parser_inst.apply(msa_packet_struct_t_var, ipv4_hdr_t_var, IPv4_parser_meta_t_var);
+        IPv4_micro_control_inst.apply(ipv4_hdr_t_var, out_param);
+        IPv4_micro_deparser_inst.apply(msa_packet_struct_t_var, ipv4_hdr_t_var, IPv4_parser_meta_t_var);
     }
+}
+
+struct l3_meta_t {
 }
 
 struct ipv6_h {
@@ -224,7 +238,7 @@ struct l3v6_hdr_t {
     ipv6_h ipv6;
 }
 
-control L3v6_micro_parser(inout msa_packet_struct_t p, out l3v6_hdr_t hdr, out L3v6_parser_meta_t parser_meta) {
+control IPv6_micro_parser(inout msa_packet_struct_t p, out l3v6_hdr_t hdr, out IPv6_parser_meta_t parser_meta) {
     action micro_parser_init() {
         parser_meta.ipv6_v = false;
         parser_meta.packet_reject = 1w0b0;
@@ -261,15 +275,15 @@ control L3v6_micro_parser(inout msa_packet_struct_t p, out l3v6_hdr_t hdr, out L
     }
 }
 
-control L3v6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
-    @name("L3v6.micro_control.process") action process(bit<16> nh) {
+control IPv6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
+    @name("IPv6.micro_control.process") action process(bit<16> nh) {
         hdr.ipv6.hoplimit = hdr.ipv6.hoplimit + 8w255;
         nexthop = nh;
     }
-    @name("L3v6.micro_control.default_act") action default_act() {
+    @name("IPv6.micro_control.default_act") action default_act() {
         nexthop = 16w0;
     }
-    @name("L3v6.micro_control.ipv6_lpm_tbl") table ipv6_lpm_tbl_0 {
+    @name("IPv6.micro_control.ipv6_lpm_tbl") table ipv6_lpm_tbl_0 {
         key = {
             hdr.ipv6.dstAddr: lpm @name("hdr.ipv6.dstAddr") ;
             hdr.ipv6.class  : ternary @name("hdr.ipv6.class") ;
@@ -286,7 +300,7 @@ control L3v6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
     }
 }
 
-control L3v6_micro_deparser(inout msa_packet_struct_t p, in l3v6_hdr_t h, in L3v6_parser_meta_t parser_meta) {
+control IPv6_micro_deparser(inout msa_packet_struct_t p, in l3v6_hdr_t h, in IPv6_parser_meta_t parser_meta) {
     action ipv6_14_54() {
         p.msa_hdr_stack_s0[10].data = h.ipv6.nexthdr ++ h.ipv6.hoplimit;
     }
@@ -311,22 +325,22 @@ control L3v6_micro_deparser(inout msa_packet_struct_t p, in l3v6_hdr_t h, in L3v
     }
 }
 
-control L3v6(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
-    L3v6_micro_parser() L3v6_micro_parser_inst;
-    L3v6_micro_control() L3v6_micro_control_inst;
-    L3v6_micro_deparser() L3v6_micro_deparser_inst;
+control IPv6(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
+    IPv6_micro_parser() IPv6_micro_parser_inst;
+    IPv6_micro_control() IPv6_micro_control_inst;
+    IPv6_micro_deparser() IPv6_micro_deparser_inst;
     l3v6_hdr_t l3v6_hdr_t_var;
-    L3v6_parser_meta_t L3v6_parser_meta_t_var;
+    IPv6_parser_meta_t IPv6_parser_meta_t_var;
     apply {
-        L3v6_micro_parser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, L3v6_parser_meta_t_var);
-        L3v6_micro_control_inst.apply(l3v6_hdr_t_var, out_param);
-        L3v6_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, L3v6_parser_meta_t_var);
+        IPv6_micro_parser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, IPv6_parser_meta_t_var);
+        IPv6_micro_control_inst.apply(l3v6_hdr_t_var, out_param);
+        IPv6_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, IPv6_parser_meta_t_var);
     }
 }
 
 struct mpls_h {
-    bit<32> label;
-    bit<16> exp;
+    bit<24> label;
+    bit<8>  exp;
     bit<8>  bos;
     bit<8>  ttl;
 }
@@ -349,28 +363,28 @@ control MplsLR_micro_parser(inout msa_packet_struct_t p, out mpls_hdr_t hdr, ino
     }
     action i_112_parse_mpls0_0() {
         parser_meta.mpls0_v = true;
-        hdr.mpls0.label = p.msa_hdr_stack_s0[7].data ++ p.msa_hdr_stack_s0[8].data;
-        hdr.mpls0.exp = p.msa_hdr_stack_s0[9].data;
-        hdr.mpls0.bos = p.msa_hdr_stack_s0[10].data[15:8];
-        hdr.mpls0.ttl = p.msa_hdr_stack_s0[10].data[7:0];
+        hdr.mpls0.label = p.msa_hdr_stack_s0[7].data ++ p.msa_hdr_stack_s0[8].data[15:8];
+        hdr.mpls0.exp = p.msa_hdr_stack_s0[8].data[7:0];
+        hdr.mpls0.bos = p.msa_hdr_stack_s0[9].data[15:8];
+        hdr.mpls0.ttl = p.msa_hdr_stack_s0[9].data[7:0];
     }
     action i_112_parse_mpls1_0() {
         parser_meta.mpls1_v = true;
-        hdr.mpls1.label = p.msa_hdr_stack_s0[11].data ++ p.msa_hdr_stack_s0[12].data;
-        hdr.mpls1.exp = p.msa_hdr_stack_s0[13].data;
-        hdr.mpls1.bos = p.msa_hdr_stack_s0[14].data[15:8];
-        hdr.mpls1.ttl = p.msa_hdr_stack_s0[14].data[7:0];
+        hdr.mpls1.label = p.msa_hdr_stack_s0[10].data ++ p.msa_hdr_stack_s0[11].data[15:8];
+        hdr.mpls1.exp = p.msa_hdr_stack_s0[11].data[7:0];
+        hdr.mpls1.bos = p.msa_hdr_stack_s0[12].data[15:8];
+        hdr.mpls1.ttl = p.msa_hdr_stack_s0[12].data[7:0];
         parser_meta.mpls0_v = true;
-        hdr.mpls0.label = p.msa_hdr_stack_s0[7].data ++ p.msa_hdr_stack_s0[8].data;
-        hdr.mpls0.exp = p.msa_hdr_stack_s0[9].data;
-        hdr.mpls0.bos = p.msa_hdr_stack_s0[10].data[15:8];
-        hdr.mpls0.ttl = p.msa_hdr_stack_s0[10].data[7:0];
+        hdr.mpls0.label = p.msa_hdr_stack_s0[7].data ++ p.msa_hdr_stack_s0[8].data[15:8];
+        hdr.mpls0.exp = p.msa_hdr_stack_s0[8].data[7:0];
+        hdr.mpls0.bos = p.msa_hdr_stack_s0[9].data[15:8];
+        hdr.mpls0.ttl = p.msa_hdr_stack_s0[9].data[7:0];
     }
     table parser_tbl {
         key = {
-            p.indices.curr_offset            : exact;
-            ioa.eth_type                     : ternary;
-            p.msa_hdr_stack_s0[10].data[15:8]: ternary;
+            p.indices.curr_offset           : exact;
+            ioa.eth_type                    : ternary;
+            p.msa_hdr_stack_s0[9].data[15:8]: ternary;
         }
         actions = {
             i_112_start_0();
@@ -394,31 +408,29 @@ control MplsLR_micro_parser(inout msa_packet_struct_t p, out mpls_hdr_t hdr, ino
     }
 }
 
-control MplsLR_micro_control(inout ingress_intrinsic_metadata_for_deparser_t
-ig_intr_md_for_dprsr, inout mpls_hdr_t hdr, inout mplslr_inout_t ioa, in
-MplsLR_parser_meta_t parser_meta, inout MplsLR_hdr_vop_t hdr_vop) {
+control MplsLR_micro_control(inout ingress_intrinsic_metadata_for_deparser_t ig_intr_md_for_dprsr, inout mpls_hdr_t hdr, inout mplslr_inout_t ioa, in MplsLR_parser_meta_t parser_meta, inout MplsLR_hdr_vop_t hdr_vop) {
     @name(".NoAction") action NoAction_0() {
     }
     @name("MplsLR.micro_control.drop_action") action drop_action() {
         ig_intr_md_for_dprsr.drop_ctl = 3w0x1;
     }
-    @name("MplsLR.micro_control.encap1") action encap1() {
+    @name("MplsLR.micro_control.encap1") action encap1(bit<24> lbl) {
         ioa.eth_type = 16w0x8847;
         hdr_vop.mpls1_sv = true;
         hdr_vop.mpls1_siv = false;
         hdr.mpls1.label = hdr.mpls0.label;
         hdr.mpls1.ttl = hdr.mpls0.ttl;
         hdr.mpls1.exp = hdr.mpls0.exp;
-        hdr.mpls0.label = 32w0x400;
+        hdr.mpls0.label = lbl;
         hdr.mpls0.ttl = 8w32;
         hdr.mpls1.bos = 8w0;
         ioa.next_hop = 16w10;
     }
-    @name("MplsLR.micro_control.encap0") action encap0() {
+    @name("MplsLR.micro_control.encap0") action encap0(bit<24> lbl) {
         ioa.eth_type = 16w0x8847;
         hdr_vop.mpls0_sv = true;
         hdr_vop.mpls0_siv = false;
-        hdr.mpls0.label = 32w0x4000;
+        hdr.mpls0.label = lbl;
         hdr.mpls0.ttl = 8w32;
         ioa.next_hop = 16w10;
     }
@@ -456,145 +468,145 @@ MplsLR_parser_meta_t parser_meta, inout MplsLR_hdr_vop_t hdr_vop) {
 }
 
 control MplsLR_micro_deparser(inout msa_packet_struct_t p, in mpls_hdr_t hdr, in MplsLR_parser_meta_t parser_meta, in MplsLR_hdr_vop_t hdr_vop) {
-    action mpls0_14_22() {
-        p.msa_hdr_stack_s0[7].data = hdr.mpls0.label[31:16];
-        p.msa_hdr_stack_s0[8].data = hdr.mpls0.label[15:0];
-        p.msa_hdr_stack_s0[10].data = hdr.mpls0.bos ++ hdr.mpls0.ttl;
+    action mpls0_14_20() {
+        p.msa_hdr_stack_s0[7].data = hdr.mpls0.label[23:8];
+        p.msa_hdr_stack_s0[8].data = hdr.mpls0.label[7:0] ++ hdr.mpls0.exp;
+        p.msa_hdr_stack_s0[9].data = hdr.mpls0.bos ++ hdr.mpls0.ttl;
     }
-    action mpls1_14_22() {
-        p.msa_hdr_stack_s0[7].data = hdr.mpls1.label[31:16];
-        p.msa_hdr_stack_s0[8].data = hdr.mpls1.label[15:0];
-        p.msa_hdr_stack_s0[9].data = hdr.mpls1.exp;
-        p.msa_hdr_stack_s0[10].data = hdr.mpls1.bos ++ hdr.mpls1.ttl;
+    action mpls1_14_20() {
+        p.msa_hdr_stack_s0[7].data = hdr.mpls1.label[23:8];
+        p.msa_hdr_stack_s0[8].data = hdr.mpls1.label[7:0] ++ hdr.mpls1.exp;
+        p.msa_hdr_stack_s0[9].data = hdr.mpls1.bos ++ hdr.mpls1.ttl;
     }
-    action mpls1_22_30() {
-        p.msa_hdr_stack_s0[11].data = hdr.mpls1.label[31:16];
-        p.msa_hdr_stack_s0[12].data = hdr.mpls1.label[15:0];
-        p.msa_hdr_stack_s0[13].data = hdr.mpls1.exp;
-        p.msa_hdr_stack_s0[14].data = hdr.mpls1.bos ++ hdr.mpls1.ttl;
+    action mpls1_20_26() {
+        p.msa_hdr_stack_s0[10].data = hdr.mpls1.label[23:8];
+        p.msa_hdr_stack_s0[11].data = hdr.mpls1.label[7:0] ++ hdr.mpls1.exp;
+        p.msa_hdr_stack_s0[12].data = hdr.mpls1.bos ++ hdr.mpls1.ttl;
     }
-    action move_14_8_40() {
-        p.msa_hdr_stack_s0[30].data = p.msa_hdr_stack_s0[26].data;
-        p.msa_hdr_stack_s0[29].data = p.msa_hdr_stack_s0[25].data;
-        p.msa_hdr_stack_s0[28].data = p.msa_hdr_stack_s0[24].data;
-        p.msa_hdr_stack_s0[27].data = p.msa_hdr_stack_s0[23].data;
-        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[22].data;
-        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[21].data;
-        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[20].data;
-        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[19].data;
-        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[18].data;
-        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[17].data;
-        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[16].data;
-        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[15].data;
-        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[14].data;
-        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[13].data;
-        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[12].data;
-        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[11].data;
-        p.msa_hdr_stack_s0[14].data = p.msa_hdr_stack_s0[10].data;
-        p.msa_hdr_stack_s0[13].data = p.msa_hdr_stack_s0[9].data;
-        p.msa_hdr_stack_s0[12].data = p.msa_hdr_stack_s0[8].data;
-        p.msa_hdr_stack_s0[11].data = p.msa_hdr_stack_s0[7].data;
+    action move_14_6_40() {
+        p.msa_hdr_stack_s0[29].data = p.msa_hdr_stack_s0[26].data;
+        p.msa_hdr_stack_s0[28].data = p.msa_hdr_stack_s0[25].data;
+        p.msa_hdr_stack_s0[27].data = p.msa_hdr_stack_s0[24].data;
+        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[23].data;
+        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[22].data;
+        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[21].data;
+        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[20].data;
+        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[19].data;
+        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[18].data;
+        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[17].data;
+        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[16].data;
+        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[15].data;
+        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[14].data;
+        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[13].data;
+        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[12].data;
+        p.msa_hdr_stack_s0[14].data = p.msa_hdr_stack_s0[11].data;
+        p.msa_hdr_stack_s0[13].data = p.msa_hdr_stack_s0[10].data;
+        p.msa_hdr_stack_s0[12].data = p.msa_hdr_stack_s0[9].data;
+        p.msa_hdr_stack_s0[11].data = p.msa_hdr_stack_s0[8].data;
+        p.msa_hdr_stack_s0[10].data = p.msa_hdr_stack_s0[7].data;
     }
-    action mpls0_14_22_MO_Emit_8() {
-        move_14_8_40();
-        mpls0_14_22();
+    action mpls0_14_20_MO_Emit_6() {
+        move_14_6_40();
+        mpls0_14_20();
     }
-    action mpls0_14_22_MO_Emit_mi0() {
-        mpls0_14_22();
+    action mpls0_14_20_MO_Emit_mi0() {
+        mpls0_14_20();
     }
-    action move_14_8_8() {
+    action move_14_6_6() {
     }
-    action move_22_8_32() {
-        p.msa_hdr_stack_s0[30].data = p.msa_hdr_stack_s0[26].data;
-        p.msa_hdr_stack_s0[29].data = p.msa_hdr_stack_s0[25].data;
-        p.msa_hdr_stack_s0[28].data = p.msa_hdr_stack_s0[24].data;
-        p.msa_hdr_stack_s0[27].data = p.msa_hdr_stack_s0[23].data;
-        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[22].data;
-        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[21].data;
-        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[20].data;
-        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[19].data;
-        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[18].data;
-        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[17].data;
-        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[16].data;
-        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[15].data;
-        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[14].data;
-        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[13].data;
-        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[12].data;
-        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[11].data;
+    action move_20_6_34() {
+        p.msa_hdr_stack_s0[29].data = p.msa_hdr_stack_s0[26].data;
+        p.msa_hdr_stack_s0[28].data = p.msa_hdr_stack_s0[25].data;
+        p.msa_hdr_stack_s0[27].data = p.msa_hdr_stack_s0[24].data;
+        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[23].data;
+        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[22].data;
+        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[21].data;
+        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[20].data;
+        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[19].data;
+        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[18].data;
+        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[17].data;
+        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[16].data;
+        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[15].data;
+        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[14].data;
+        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[13].data;
+        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[12].data;
+        p.msa_hdr_stack_s0[14].data = p.msa_hdr_stack_s0[11].data;
+        p.msa_hdr_stack_s0[13].data = p.msa_hdr_stack_s0[10].data;
     }
-    action mpls0_14_22_mpls1_14_22_MO_Emit_8() {
-        move_22_8_32();
-        move_14_8_8();
-        mpls1_22_30();
-        mpls0_14_22();
+    action mpls0_14_20_mpls1_14_20_MO_Emit_6() {
+        move_20_6_34();
+        move_14_6_6();
+        mpls1_20_26();
+        mpls0_14_20();
     }
-    action mpls0_14_22_mpls1_22_30_MO_Emit_mi0() {
-        mpls1_22_30();
-        mpls0_14_22();
+    action mpls0_14_20_mpls1_20_26_MO_Emit_mi0() {
+        mpls1_20_26();
+        mpls0_14_20();
     }
-    action mpls1_14_22_MO_Emit_8() {
-        move_14_8_40();
-        mpls1_14_22();
+    action mpls1_14_20_MO_Emit_6() {
+        move_14_6_40();
+        mpls1_14_20();
     }
-    action mpls0_14_22_mpls1_22_30_MO_Emit_8() {
-        move_22_8_32();
-        mpls1_22_30();
-        mpls0_14_22();
+    action mpls0_14_20_mpls1_20_26_MO_Emit_6() {
+        move_20_6_34();
+        mpls1_20_26();
+        mpls0_14_20();
     }
-    action mpls1_14_22_MO_Emit_mi0() {
-        mpls1_14_22();
+    action mpls1_14_20_MO_Emit_mi0() {
+        mpls1_14_20();
     }
     action MO_Emit_mi0() {
     }
-    action move_22_mi8_40() {
-        p.msa_hdr_stack_s0[7].data = p.msa_hdr_stack_s0[11].data;
-        p.msa_hdr_stack_s0[8].data = p.msa_hdr_stack_s0[12].data;
-        p.msa_hdr_stack_s0[9].data = p.msa_hdr_stack_s0[13].data;
-        p.msa_hdr_stack_s0[10].data = p.msa_hdr_stack_s0[14].data;
-        p.msa_hdr_stack_s0[11].data = p.msa_hdr_stack_s0[15].data;
-        p.msa_hdr_stack_s0[12].data = p.msa_hdr_stack_s0[16].data;
-        p.msa_hdr_stack_s0[13].data = p.msa_hdr_stack_s0[17].data;
-        p.msa_hdr_stack_s0[14].data = p.msa_hdr_stack_s0[18].data;
-        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[19].data;
-        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[20].data;
-        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[21].data;
-        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[22].data;
-        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[23].data;
-        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[24].data;
-        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[25].data;
-        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[26].data;
-        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[27].data;
-        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[28].data;
-        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[29].data;
-        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[30].data;
+    action move_20_mi6_40() {
+        p.msa_hdr_stack_s0[7].data = p.msa_hdr_stack_s0[10].data;
+        p.msa_hdr_stack_s0[8].data = p.msa_hdr_stack_s0[11].data;
+        p.msa_hdr_stack_s0[9].data = p.msa_hdr_stack_s0[12].data;
+        p.msa_hdr_stack_s0[10].data = p.msa_hdr_stack_s0[13].data;
+        p.msa_hdr_stack_s0[11].data = p.msa_hdr_stack_s0[14].data;
+        p.msa_hdr_stack_s0[12].data = p.msa_hdr_stack_s0[15].data;
+        p.msa_hdr_stack_s0[13].data = p.msa_hdr_stack_s0[16].data;
+        p.msa_hdr_stack_s0[14].data = p.msa_hdr_stack_s0[17].data;
+        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[18].data;
+        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[19].data;
+        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[20].data;
+        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[21].data;
+        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[22].data;
+        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[23].data;
+        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[24].data;
+        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[25].data;
+        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[26].data;
+        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[27].data;
+        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[28].data;
+        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[29].data;
     }
-    action MO_Emit_mi8() {
-        move_22_mi8_40();
+    action MO_Emit_mi6() {
+        move_20_mi6_40();
     }
-    action move_30_mi8_32() {
-        p.msa_hdr_stack_s0[11].data = p.msa_hdr_stack_s0[15].data;
-        p.msa_hdr_stack_s0[12].data = p.msa_hdr_stack_s0[16].data;
-        p.msa_hdr_stack_s0[13].data = p.msa_hdr_stack_s0[17].data;
-        p.msa_hdr_stack_s0[14].data = p.msa_hdr_stack_s0[18].data;
-        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[19].data;
-        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[20].data;
-        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[21].data;
-        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[22].data;
-        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[23].data;
-        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[24].data;
-        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[25].data;
-        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[26].data;
-        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[27].data;
-        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[28].data;
-        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[29].data;
-        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[30].data;
+    action move_26_mi6_34() {
+        p.msa_hdr_stack_s0[10].data = p.msa_hdr_stack_s0[13].data;
+        p.msa_hdr_stack_s0[11].data = p.msa_hdr_stack_s0[14].data;
+        p.msa_hdr_stack_s0[12].data = p.msa_hdr_stack_s0[15].data;
+        p.msa_hdr_stack_s0[13].data = p.msa_hdr_stack_s0[16].data;
+        p.msa_hdr_stack_s0[14].data = p.msa_hdr_stack_s0[17].data;
+        p.msa_hdr_stack_s0[15].data = p.msa_hdr_stack_s0[18].data;
+        p.msa_hdr_stack_s0[16].data = p.msa_hdr_stack_s0[19].data;
+        p.msa_hdr_stack_s0[17].data = p.msa_hdr_stack_s0[20].data;
+        p.msa_hdr_stack_s0[18].data = p.msa_hdr_stack_s0[21].data;
+        p.msa_hdr_stack_s0[19].data = p.msa_hdr_stack_s0[22].data;
+        p.msa_hdr_stack_s0[20].data = p.msa_hdr_stack_s0[23].data;
+        p.msa_hdr_stack_s0[21].data = p.msa_hdr_stack_s0[24].data;
+        p.msa_hdr_stack_s0[22].data = p.msa_hdr_stack_s0[25].data;
+        p.msa_hdr_stack_s0[23].data = p.msa_hdr_stack_s0[26].data;
+        p.msa_hdr_stack_s0[24].data = p.msa_hdr_stack_s0[27].data;
+        p.msa_hdr_stack_s0[25].data = p.msa_hdr_stack_s0[28].data;
+        p.msa_hdr_stack_s0[26].data = p.msa_hdr_stack_s0[29].data;
     }
-    action move_22_mi8_8() {
+    action move_20_mi6_6() {
     }
-    action mpls1_22_30_MO_Emit_mi8() {
-        move_22_mi8_8();
-        mpls1_14_22();
-        move_30_mi8_32();
+    action mpls1_20_26_MO_Emit_mi6() {
+        move_20_mi6_6();
+        mpls1_14_20();
+        move_26_mi6_34();
     }
     table deparser_tbl {
         key = {
@@ -606,51 +618,51 @@ control MplsLR_micro_deparser(inout msa_packet_struct_t p, in mpls_hdr_t hdr, in
             hdr_vop.mpls0_siv    : exact;
         }
         actions = {
-            mpls0_14_22();
-            move_14_8_40();
-            mpls0_14_22_MO_Emit_8();
-            mpls0_14_22_MO_Emit_mi0();
-            mpls1_22_30();
-            move_14_8_8();
-            move_22_8_32();
-            mpls0_14_22_mpls1_14_22_MO_Emit_8();
-            mpls0_14_22_mpls1_22_30_MO_Emit_mi0();
-            mpls1_14_22();
-            mpls1_14_22_MO_Emit_8();
-            mpls0_14_22_mpls1_22_30_MO_Emit_8();
-            mpls1_14_22_MO_Emit_mi0();
+            mpls0_14_20();
+            move_14_6_40();
+            mpls0_14_20_MO_Emit_6();
+            mpls0_14_20_MO_Emit_mi0();
+            mpls1_20_26();
+            move_14_6_6();
+            move_20_6_34();
+            mpls0_14_20_mpls1_14_20_MO_Emit_6();
+            mpls0_14_20_mpls1_20_26_MO_Emit_mi0();
+            mpls1_14_20();
+            mpls1_14_20_MO_Emit_6();
+            mpls0_14_20_mpls1_20_26_MO_Emit_6();
+            mpls1_14_20_MO_Emit_mi0();
             MO_Emit_mi0();
-            move_22_mi8_40();
-            MO_Emit_mi8();
-            move_30_mi8_32();
-            move_22_mi8_8();
-            mpls1_22_30_MO_Emit_mi8();
+            move_20_mi6_40();
+            MO_Emit_mi6();
+            move_26_mi6_34();
+            move_20_mi6_6();
+            mpls1_20_26_MO_Emit_mi6();
             NoAction();
         }
         const entries = {
-                        (16w112, false, false, false, true, false) : mpls0_14_22_MO_Emit_8();
+                        (16w112, false, false, false, true, false) : mpls0_14_20_MO_Emit_6();
 
-                        (16w112, true, false, false, true, false) : mpls0_14_22_MO_Emit_mi0();
+                        (16w112, true, false, false, true, false) : mpls0_14_20_MO_Emit_mi0();
 
-                        (16w112, false, true, false, true, false) : mpls0_14_22_mpls1_14_22_MO_Emit_8();
+                        (16w112, false, true, false, true, false) : mpls0_14_20_mpls1_14_20_MO_Emit_6();
 
-                        (16w112, true, true, false, true, false) : mpls0_14_22_mpls1_22_30_MO_Emit_mi0();
+                        (16w112, true, true, false, true, false) : mpls0_14_20_mpls1_20_26_MO_Emit_mi0();
 
-                        (16w112, false, false, true, false, false) : mpls1_14_22_MO_Emit_8();
+                        (16w112, false, false, true, false, false) : mpls1_14_20_MO_Emit_6();
 
-                        (16w112, true, false, true, false, false) : mpls0_14_22_mpls1_22_30_MO_Emit_8();
+                        (16w112, true, false, true, false, false) : mpls0_14_20_mpls1_20_26_MO_Emit_6();
 
-                        (16w112, false, true, true, false, false) : mpls1_14_22_MO_Emit_mi0();
+                        (16w112, false, true, true, false, false) : mpls1_14_20_MO_Emit_mi0();
 
-                        (16w112, true, true, true, false, false) : mpls0_14_22_mpls1_22_30_MO_Emit_mi0();
+                        (16w112, true, true, true, false, false) : mpls0_14_20_mpls1_20_26_MO_Emit_mi0();
 
                         (16w112, false, false, false, false, true) : MO_Emit_mi0();
 
-                        (16w112, true, false, false, false, true) : MO_Emit_mi8();
+                        (16w112, true, false, false, false, true) : MO_Emit_mi6();
 
-                        (16w112, false, true, false, false, true) : mpls1_14_22_MO_Emit_mi0();
+                        (16w112, false, true, false, false, true) : mpls1_14_20_MO_Emit_mi0();
 
-                        (16w112, true, true, false, false, true) : mpls1_22_30_MO_Emit_mi8();
+                        (16w112, true, true, false, false, true) : mpls1_20_26_MO_Emit_mi6();
 
         }
 
@@ -669,10 +681,10 @@ control MplsLR(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_
     MplsLR_parser_meta_t MplsLR_parser_meta_t_var;
     MplsLR_hdr_vop_t MplsLR_hdr_vop_t_var;
     apply {
-        MplsLR_hdr_vop_t_var.mpls1_sv = false;
-        MplsLR_hdr_vop_t_var.mpls1_siv = false;
-        MplsLR_hdr_vop_t_var.mpls0_sv = false;
-        MplsLR_hdr_vop_t_var.mpls0_siv = false;
+      MplsLR_hdr_vop_t_var.mpls1_sv = false;
+      MplsLR_hdr_vop_t_var.mpls1_siv = false;
+      MplsLR_hdr_vop_t_var.mpls0_sv = false;
+      MplsLR_hdr_vop_t_var.mpls0_siv = false;
         MplsLR_micro_parser_inst.apply(msa_packet_struct_t_var, mpls_hdr_t_var, inout_param, MplsLR_parser_meta_t_var);
         MplsLR_micro_control_inst.apply(ig_intr_md_for_dprsr, mpls_hdr_t_var, inout_param, MplsLR_parser_meta_t_var, MplsLR_hdr_vop_t_var);
         MplsLR_micro_deparser_inst.apply(msa_packet_struct_t_var, mpls_hdr_t_var, MplsLR_parser_meta_t_var, MplsLR_hdr_vop_t_var);
@@ -711,8 +723,8 @@ control MPRouter_micro_control(inout msa_packet_struct_t msa_packet_struct_t_var
     }
     bit<16> nh_0;
     mplslr_inout_t mplsio_0;
-    @name("MPRouter.micro_control.l3v4_i") L3v4() l3v4_i_0;
-    @name("MPRouter.micro_control.l3v6_i") L3v6() l3v6_i_0;
+    @name("MPRouter.micro_control.ipv4_i") IPv4() ipv4_i_0;
+    @name("MPRouter.micro_control.ipv6_i") IPv6() ipv6_i_0;
     @name("MPRouter.micro_control.mpls_i") MplsLR() mpls_i_0;
     @name("MPRouter.micro_control.forward") action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
         hdr.eth.dmac = dmac;
@@ -732,10 +744,10 @@ control MPRouter_micro_control(inout msa_packet_struct_t msa_packet_struct_t_var
     apply {
         nh_0 = 16w0;
         if (hdr.eth.ethType == 16w0x800) 
-            l3v4_i_0.apply(msa_packet_struct_t_var, nh_0);
+            ipv4_i_0.apply(msa_packet_struct_t_var, nh_0);
         else 
             if (hdr.eth.ethType == 16w0x86dd) 
-                l3v6_i_0.apply(msa_packet_struct_t_var, nh_0);
+                ipv6_i_0.apply(msa_packet_struct_t_var, nh_0);
         mplsio_0.eth_type = hdr.eth.ethType;
         mplsio_0.next_hop = nh_0;
         if (nh_0 == 16w0) 

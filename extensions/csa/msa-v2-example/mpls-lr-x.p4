@@ -10,8 +10,8 @@
 #define MPLS_ZONE_TTL 8w32
 
 header mpls_h {
-  bit<32> label;
-  bit<16> exp;
+  bit<24> label;
+  bit<8> exp;
   bit<8> bos;
   bit<8> ttl; 
 }
@@ -60,7 +60,7 @@ cpackage MplsLR : implements Unicast<mpls_hdr_t, empty_t,
       im.drop(); // Drop packet
     }
 
-    action encap1(){
+    action encap1(bit<24> lbl){
       ioa.eth_type = 0x8847;
       hdr.mpls1.setValid();
       
@@ -69,16 +69,16 @@ cpackage MplsLR : implements Unicast<mpls_hdr_t, empty_t,
       hdr.mpls1.bos = hdr.mpls0.bos;
       hdr.mpls1.exp = hdr.mpls0.exp;
    		
-      hdr.mpls0.label = 32w0x0400;
+      hdr.mpls0.label = lbl;
       hdr.mpls0.ttl = MPLS_ZONE_TTL;
       hdr.mpls1.bos = 8w0;
       ioa.next_hop = 16w10;
     }
 
-    action encap0(){
+    action encap0(bit<24> lbl){
       ioa.eth_type = 0x8847;
       hdr.mpls0.setValid();
-      hdr.mpls0.label = 32w0x4000;
+      hdr.mpls0.label = lbl;
       hdr.mpls0.ttl = MPLS_ZONE_TTL;
       ioa.next_hop = 16w10;
     }
@@ -110,14 +110,6 @@ cpackage MplsLR : implements Unicast<mpls_hdr_t, empty_t,
     		decap;
     		replace;
     	}
-      /*
-    	const entries = {
-    	     (0,_,_,_): drop_action();
-    	     (_,0x0800,_,_): encap();
-    	     (_,0x8477, 20w0x4000, 1) : decap();
-    	     (_,0x8477, 20w0x4001, 1): replace();
-    	}
-      */
     }
     
     apply {

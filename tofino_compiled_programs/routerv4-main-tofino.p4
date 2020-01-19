@@ -17,10 +17,6 @@ header csa_indices_h {
     bit<16> curr_offset;
 }
 
-#if __TARGET_TOFINO__ == 2
-@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[11].data", "normal")
-@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[10].data", "normal")
-#endif
 struct msa_packet_struct_t {
     csa_indices_h      indices;
     msa_byte_h         msa_byte;
@@ -32,12 +28,12 @@ struct ModularRouterv4_parser_meta_t {
     bit<1> packet_reject;
 }
 
-struct L3v4_parser_meta_t {
+struct IPv4_parser_meta_t {
     bool   ipv4_v;
     bit<1> packet_reject;
 }
 
-struct L3v4_hdr_vop_t {
+struct IPv4_hdr_vop_t {
 }
 
 struct ModularRouterv4_hdr_vop_t {
@@ -58,16 +54,33 @@ struct swtrace_inout_t {
 }
 
 struct mplslr_inout_t {
-    bit<16> eth_type;
     bit<16> next_hop;
+    bit<16> eth_type;
 }
 
-struct l3_meta_t {
+struct acl_result_t {
+    bit<1> hard_drop;
+    bit<1> soft_drop;
+}
+
+struct l3_inout_t {
+    acl_result_t acl;
+    bit<16>      next_hop;
+    bit<16>      eth_type;
+}
+
+struct ipv4_acl_in_t {
+    bit<32> sa;
+    bit<32> da;
+}
+
+struct ipv6_acl_in_t {
+    bit<128> sa;
+    bit<128> da;
 }
 
 struct ipv4_h {
-    bit<4>  version;
-    bit<4>  ihl;
+    bit<8>  ihl_version;
     bit<8>  diffserv;
     bit<16> totalLen;
     bit<16> identification;
@@ -80,19 +93,18 @@ struct ipv4_h {
     bit<32> dstAddr;
 }
 
-struct l3v4_hdr_t {
+struct ipv4_hdr_t {
     ipv4_h ipv4;
 }
 
-control L3v4_micro_parser(inout msa_packet_struct_t p, out l3v4_hdr_t hdr, out L3v4_parser_meta_t parser_meta) {
+control IPv4_micro_parser(inout msa_packet_struct_t p, out ipv4_hdr_t hdr, out IPv4_parser_meta_t parser_meta) {
     action micro_parser_init() {
         parser_meta.ipv4_v = false;
         parser_meta.packet_reject = 1w0b0;
     }
     action i_112_start_0() {
         parser_meta.ipv4_v = true;
-        hdr.ipv4.version = p.msa_hdr_stack_s0[7].data[15:12];
-        hdr.ipv4.ihl = p.msa_hdr_stack_s0[7].data[11:8];
+        hdr.ipv4.ihl_version = p.msa_hdr_stack_s0[7].data[15:8];
         hdr.ipv4.diffserv = p.msa_hdr_stack_s0[7].data[7:0];
         hdr.ipv4.totalLen = p.msa_hdr_stack_s0[8].data;
         hdr.ipv4.identification = p.msa_hdr_stack_s0[9].data;
@@ -125,15 +137,15 @@ control L3v4_micro_parser(inout msa_packet_struct_t p, out l3v4_hdr_t hdr, out L
     }
 }
 
-control L3v4_micro_control(inout l3v4_hdr_t hdr, out bit<16> nexthop) {
-    @name("L3v4.micro_control.process") action process(bit<16> nh) {
+control IPv4_micro_control(inout ipv4_hdr_t hdr, out bit<16> nexthop) {
+    @name("IPv4.micro_control.process") action process(bit<16> nh) {
         hdr.ipv4.ttl = hdr.ipv4.ttl + 8w255;
         nexthop = nh;
     }
-    @name("L3v4.micro_control.default_act") action default_act() {
+    @name("IPv4.micro_control.default_act") action default_act() {
         nexthop = 16w0;
     }
-    @name("L3v4.micro_control.ipv4_lpm_tbl") table ipv4_lpm_tbl_0 {
+    @name("IPv4.micro_control.ipv4_lpm_tbl") table ipv4_lpm_tbl_0 {
         key = {
             hdr.ipv4.dstAddr : lpm @name("hdr.ipv4.dstAddr") ;
             hdr.ipv4.diffserv: ternary @name("hdr.ipv4.diffserv") ;
@@ -149,7 +161,7 @@ control L3v4_micro_control(inout l3v4_hdr_t hdr, out bit<16> nexthop) {
     }
 }
 
-control L3v4_micro_deparser(inout msa_packet_struct_t p, in l3v4_hdr_t h, in L3v4_parser_meta_t parser_meta) {
+control IPv4_micro_deparser(inout msa_packet_struct_t p, in ipv4_hdr_t h, in IPv4_parser_meta_t parser_meta) {
     action ipv4_14_34() {
         p.msa_hdr_stack_s0[11].data = h.ipv4.ttl ++ h.ipv4.protocol;
     }
@@ -174,16 +186,16 @@ control L3v4_micro_deparser(inout msa_packet_struct_t p, in l3v4_hdr_t h, in L3v
     }
 }
 
-control L3v4(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
-    L3v4_micro_parser() L3v4_micro_parser_inst;
-    L3v4_micro_control() L3v4_micro_control_inst;
-    L3v4_micro_deparser() L3v4_micro_deparser_inst;
-    l3v4_hdr_t l3v4_hdr_t_var;
-    L3v4_parser_meta_t L3v4_parser_meta_t_var;
+control IPv4(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
+    IPv4_micro_parser() IPv4_micro_parser_inst;
+    IPv4_micro_control() IPv4_micro_control_inst;
+    IPv4_micro_deparser() IPv4_micro_deparser_inst;
+    ipv4_hdr_t ipv4_hdr_t_var;
+    IPv4_parser_meta_t IPv4_parser_meta_t_var;
     apply {
-        L3v4_micro_parser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, L3v4_parser_meta_t_var);
-        L3v4_micro_control_inst.apply(l3v4_hdr_t_var, out_param);
-        L3v4_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v4_hdr_t_var, L3v4_parser_meta_t_var);
+        IPv4_micro_parser_inst.apply(msa_packet_struct_t_var, ipv4_hdr_t_var, IPv4_parser_meta_t_var);
+        IPv4_micro_control_inst.apply(ipv4_hdr_t_var, out_param);
+        IPv4_micro_deparser_inst.apply(msa_packet_struct_t_var, ipv4_hdr_t_var, IPv4_parser_meta_t_var);
     }
 }
 
@@ -221,7 +233,7 @@ struct struct_ModularRouterv4_micro_control_t {
 }
 
 control ModularRouterv4_micro_control_0(inout msa_packet_struct_t msa_packet_struct_t_var, inout ingress_intrinsic_metadata_for_tm_t ig_intr_md_for_tm, inout hdr_t hdr) {
-    @name("ModularRouterv4.micro_control.l3_i") L3v4() l3_i_0;
+    @name("ModularRouterv4.micro_control.ipv4_i") IPv4() ipv4_i_0;
     bit<16> nh_0;
     @name("ModularRouterv4.micro_control.forward") action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
         hdr.eth.dmac = dmac;
@@ -242,7 +254,7 @@ control ModularRouterv4_micro_control_0(inout msa_packet_struct_t msa_packet_str
     }
     apply {
         if (hdr.eth.ethType == 16w0x800) {
-            l3_i_0.apply(msa_packet_struct_t_var, nh_0);
+            ipv4_i_0.apply(msa_packet_struct_t_var, nh_0);
             forward_tbl_0.apply();
         }
     }

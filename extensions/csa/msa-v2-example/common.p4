@@ -19,8 +19,8 @@ struct swtrace_inout_t {
 }
 
 struct mplslr_inout_t {
-  bit<16> eth_type;
   bit<16> next_hop;
+  bit<16> eth_type;
 }
 
 

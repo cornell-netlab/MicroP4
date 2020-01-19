@@ -13,6 +13,7 @@ header ipv6_h {
   bit<4> version;
   bit<8> class;
   bit<20> label;
+  // bit<32> ver_class_lbl;
   bit<16> totalLen;
   bit<8> nexthdr;
   bit<8> hoplimit;

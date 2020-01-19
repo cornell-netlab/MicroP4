@@ -17,10 +17,6 @@ header csa_indices_h {
     bit<16> curr_offset;
 }
 
-#if __TARGET_TOFINO__ == 2
-@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[11].data", "normal")
-@pa_container_type ("ingress", "mpkt.msa_hdr_stack_s0[10].data", "normal")
-#endif
 struct msa_packet_struct_t {
     csa_indices_h      indices;
     msa_byte_h         msa_byte;
@@ -32,12 +28,12 @@ struct ModularRouterv6_parser_meta_t {
     bit<1> packet_reject;
 }
 
-struct L3v6_parser_meta_t {
+struct IPv6_parser_meta_t {
     bool   ipv6_v;
     bit<1> packet_reject;
 }
 
-struct L3v6_hdr_vop_t {
+struct IPv6_hdr_vop_t {
 }
 
 struct ModularRouterv6_hdr_vop_t {
@@ -58,8 +54,29 @@ struct swtrace_inout_t {
 }
 
 struct mplslr_inout_t {
-    bit<16> eth_type;
     bit<16> next_hop;
+    bit<16> eth_type;
+}
+
+struct acl_result_t {
+    bit<1> hard_drop;
+    bit<1> soft_drop;
+}
+
+struct l3_inout_t {
+    acl_result_t acl;
+    bit<16>      next_hop;
+    bit<16>      eth_type;
+}
+
+struct ipv4_acl_in_t {
+    bit<32> sa;
+    bit<32> da;
+}
+
+struct ipv6_acl_in_t {
+    bit<128> sa;
+    bit<128> da;
 }
 
 struct l3_meta_t {
@@ -80,7 +97,7 @@ struct l3v6_hdr_t {
     ipv6_h ipv6;
 }
 
-control L3v6_micro_parser(inout msa_packet_struct_t p, out l3v6_hdr_t hdr, out L3v6_parser_meta_t parser_meta) {
+control IPv6_micro_parser(inout msa_packet_struct_t p, out l3v6_hdr_t hdr, out IPv6_parser_meta_t parser_meta) {
     action micro_parser_init() {
         parser_meta.ipv6_v = false;
         parser_meta.packet_reject = 1w0b0;
@@ -117,15 +134,15 @@ control L3v6_micro_parser(inout msa_packet_struct_t p, out l3v6_hdr_t hdr, out L
     }
 }
 
-control L3v6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
-    @name("L3v6.micro_control.process") action process(bit<16> nh) {
+control IPv6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
+    @name("IPv6.micro_control.process") action process(bit<16> nh) {
         hdr.ipv6.hoplimit = hdr.ipv6.hoplimit + 8w255;
         nexthop = nh;
     }
-    @name("L3v6.micro_control.default_act") action default_act() {
+    @name("IPv6.micro_control.default_act") action default_act() {
         nexthop = 16w0;
     }
-    @name("L3v6.micro_control.ipv6_lpm_tbl") table ipv6_lpm_tbl_0 {
+    @name("IPv6.micro_control.ipv6_lpm_tbl") table ipv6_lpm_tbl_0 {
         key = {
             hdr.ipv6.dstAddr: lpm @name("hdr.ipv6.dstAddr") ;
             hdr.ipv6.class  : ternary @name("hdr.ipv6.class") ;
@@ -142,7 +159,7 @@ control L3v6_micro_control(inout l3v6_hdr_t hdr, out bit<16> nexthop) {
     }
 }
 
-control L3v6_micro_deparser(inout msa_packet_struct_t p, in l3v6_hdr_t h, in L3v6_parser_meta_t parser_meta) {
+control IPv6_micro_deparser(inout msa_packet_struct_t p, in l3v6_hdr_t h, in IPv6_parser_meta_t parser_meta) {
     action ipv6_14_54() {
         p.msa_hdr_stack_s0[10].data = h.ipv6.nexthdr ++ h.ipv6.hoplimit;
     }
@@ -167,16 +184,16 @@ control L3v6_micro_deparser(inout msa_packet_struct_t p, in l3v6_hdr_t h, in L3v
     }
 }
 
-control L3v6(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
-    L3v6_micro_parser() L3v6_micro_parser_inst;
-    L3v6_micro_control() L3v6_micro_control_inst;
-    L3v6_micro_deparser() L3v6_micro_deparser_inst;
+control IPv6(inout msa_packet_struct_t msa_packet_struct_t_var, out bit<16> out_param) {
+    IPv6_micro_parser() IPv6_micro_parser_inst;
+    IPv6_micro_control() IPv6_micro_control_inst;
+    IPv6_micro_deparser() IPv6_micro_deparser_inst;
     l3v6_hdr_t l3v6_hdr_t_var;
-    L3v6_parser_meta_t L3v6_parser_meta_t_var;
+    IPv6_parser_meta_t IPv6_parser_meta_t_var;
     apply {
-        L3v6_micro_parser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, L3v6_parser_meta_t_var);
-        L3v6_micro_control_inst.apply(l3v6_hdr_t_var, out_param);
-        L3v6_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, L3v6_parser_meta_t_var);
+        IPv6_micro_parser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, IPv6_parser_meta_t_var);
+        IPv6_micro_control_inst.apply(l3v6_hdr_t_var, out_param);
+        IPv6_micro_deparser_inst.apply(msa_packet_struct_t_var, l3v6_hdr_t_var, IPv6_parser_meta_t_var);
     }
 }
 
@@ -214,7 +231,7 @@ control ModularRouterv6_micro_control(inout msa_packet_struct_t msa_packet_struc
     @name(".NoAction") action NoAction_0() {
     }
     bit<16> nh_0;
-    @name("ModularRouterv6.micro_control.l3_i") L3v6() l3_i_0;
+    @name("ModularRouterv6.micro_control.ipv6_i") IPv6() ipv6_i_0;
     @name("ModularRouterv6.micro_control.forward") action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
         hdr.eth.dmac = dmac;
         hdr.eth.smac = smac;
@@ -232,7 +249,7 @@ control ModularRouterv6_micro_control(inout msa_packet_struct_t msa_packet_struc
     }
     apply {
         if (hdr.eth.ethType == 16w0x86dd) {
-            l3_i_0.apply(msa_packet_struct_t_var, nh_0);
+            ipv6_i_0.apply(msa_packet_struct_t_var, nh_0);
             forward_tbl_0.apply();
         }
         else 
