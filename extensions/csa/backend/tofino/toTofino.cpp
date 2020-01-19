@@ -209,6 +209,24 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
             return member;
         }
         if (em->method->name.name 
+            == P4::P4CoreLibrary::instance.im.getInPort.name) {
+            if (ingress) {
+                instName = CreateTofinoArchBlock::igIMArgName;
+                memberName = "ingress_port";
+            } else {
+                BUG("Trying translate get_in_port for egress in tofino");
+                BUG("HS: I should store it in metadata in ingress block ");
+                BUG("and pass it in egress, but there are other priorities ");
+                //instName = CreateTofinoArchBlock::egIMArgName;
+                // memberName = "egress_port";
+            }
+            IR::PathExpression* pe = new IR::PathExpression(IR::ID(instName));
+            auto member = new IR::Member(mce->srcInfo, pe, memberName);
+            prune();
+            return member;
+        }
+
+        if (em->method->name.name 
             == P4::P4CoreLibrary::instance.im.getValue.name) {
             IR::Expression* pathExp = nullptr;
             auto exp = mce->arguments->at(0)->expression;

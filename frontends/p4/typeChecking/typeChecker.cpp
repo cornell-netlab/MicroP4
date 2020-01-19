@@ -3106,10 +3106,10 @@ void TypeInference::checkCorelibMethods(const ExternMethod* em) const {
                           mce, corelib.pkt.length.name);
                 return;
             }
-        } else if (em->method->name == corelib.pkt.getInPort.name) {
+        } else if (em->method->name == corelib.im.getInPort.name) {
             if (argCount != 0) {
                 typeError("%1%: Expected exactly 0 argument for %2% method",
-                          mce, corelib.pkt.getInPort.name);
+                          mce, corelib.im.getInPort.name);
                 return;
             }
         }

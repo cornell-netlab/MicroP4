@@ -277,9 +277,11 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
         // Creating actions
         for (auto initOffset : *initialOffsets) {
             auto newActionName = getActionName(stateInfo, initOffset);
+            // std::cout<<"new action name "<<newActionName<<" \n";
 		        auto decl = actionDecls.getDeclaration(newActionName);
-		        if (decl != nullptr)
+		        if (decl != nullptr) {
                 continue;
+            }
             auto statOrDecl = state->components.clone();
 		        ExtractSubstitutor extctSubr(refMap, typeMap, stateInfo, initOffset,
                             pktParamName, NameConstants::csaHeaderInstanceName);
@@ -400,8 +402,10 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 					                      cstring actionName = getActionName(nextStateInfo, 
                                                                    initOffset);
 					                      //LOG3("actionName"<< actionName);
-                                if (nextStateInfo->state->name == IR::ParserState::accept)
+                                if (nextStateInfo->state->name == IR::ParserState::accept) {
+                                    // std::cout<<"next state info accpet "<<actionName<<"\n";
                                     continue;
+                                }
                         
                                 // if actionlist contains action don't add
                                 if (!actionList.getDeclaration(actionName)) {
@@ -456,6 +460,8 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                     for (auto kseNSI : stateInfo->nextParserStateInfo) {
                         exprList.clear();
                         auto nextStateInfo = kseNSI.second;
+                        if (nextStateInfo->state->name == IR::ParserState::accept)
+                            continue;
                         cstring actionName = getActionName(nextStateInfo, 
                                                            initOffset);
                         if (hasSelectExpression(state)) {

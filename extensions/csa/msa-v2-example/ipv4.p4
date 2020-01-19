@@ -7,8 +7,9 @@
 #include"common.p4"
 
 header ipv4_h {
-  bit<4> version;
-  bit<4> ihl;
+  // bit<4> version;
+  // bit<4> ihl;
+  bit<8> ihl_version;
   bit<8> diffserv;
   bit<16> totalLen;
   bit<16> identification;

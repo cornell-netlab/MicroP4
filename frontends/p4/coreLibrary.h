@@ -69,11 +69,9 @@ class Pkt : public Model::Extern_Model {
  public:
     Pkt() :
       Extern_Model("pkt"),
-      length("length"),  copyFrom("copy_from"), 
-      getInPort("get_in_port") {}
+      length("length"),  copyFrom("copy_from") {}
     Model::Elem length;
     Model::Elem copyFrom;
-    Model::Elem getInPort;
 };
 
 
@@ -103,11 +101,13 @@ class im_t : public Model::Extern_Model {
       copyFrom("copy_from"), 
       getValue("get_value"),
       setOutPort("set_out_port"),
-      getOutPort("get_out_port") {}
+      getOutPort("get_out_port"),
+      getInPort("get_in_port") {}
     Model::Elem copyFrom;
     Model::Elem getValue;
     Model::Elem setOutPort;
     Model::Elem getOutPort;
+    Model::Elem getInPort;
 };
 
 

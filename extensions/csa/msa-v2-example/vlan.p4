@@ -13,9 +13,12 @@ struct vlan_meta_t {
 }
 
 header vlan_h {
+  /*
   bit<3> pcp;
   bit<1> dei;
   bit<12> vid;
+  */
+  bit<16> tci;
   bit<16> ethType;
 }
 
@@ -23,14 +26,15 @@ struct vlan_hdr_t {
   vlan_h vlan;
 }
 
-
 cpackage Vlan : implements Unicast<vlan_hdr_t, vlan_meta_t, 
-                                     empty_t, empty_t, bit<16>> {
+                                     vlan_in_t, empty_t, bit<16>> {
+
   parser micro_parser(extractor ex, pkt p, im_t im, out vlan_hdr_t hdr, inout vlan_meta_t meta,
                         in empty_t ia, inout bit<16> ethType) {
     state start {
     transition select(ethType){
         0x8100: parse_vlan;
+        transition accept;
       }
     }
     state parse_vlan{
@@ -39,45 +43,33 @@ cpackage Vlan : implements Unicast<vlan_hdr_t, vlan_meta_t,
     }
   }
   
-control micro_control(pkt p, im_t im, inout vlan_hdr_t hdr, inout vlan_meta_t m,
-                          in empty_t ia, out empty_t oa, inout bit<16> ethType) {
-    
+  control micro_control(pkt p, im_t im, inout vlan_hdr_t hdr, inout vlan_meta_t m,
+                        in empty_t ia, out empty_t oa, inout bit<16> ethType) {
     action drop_action() {
-            im.drop(); // Drop packet
-       }
-       
-    action forward_action( PortId_t port) {
-            im.set_out_port(port); 
-       }
-    action modify_action() {
-           hdr.vlan.pcp = 3;
-       }
-    action untag_vlan() {
-		    m.ethType = hdr.vlan.ethType;
-		    hdr.vlan.setInvalid();
-		    im.set_out_port(0x15); 
+      im.drop();
     }
-    table vlan_tbl{
+       
+    table identify_vlan {
     	key = {
-    		hdr.vlan.dei : exact;
+    		im.in_port() : exact;
+    	}
+      actions = {
+        untagged_port_to_vlan(bit<16> tci);
+      }
+    }
+
+    table validate_tagged_ports_vlan {
+    	key = {
+    		im.in_port() : exact;
     		hdr.vlan.vid : exact;
     	}
-    	actions = {
-    		modify_action;
-    		untag_vlan;
-    		forward_action;
-    		drop_action;
-    	}
-    	const entries = {
-    	     (1, _): drop_action();
-    	     (0, 20): modify_action();
-    	     (0,25): untag_vlan();
-    	     (0,30): forward_action(0x10);
-       	}
+      actions = {
+        tag_port;
+      }
     }
-    
+
+
     apply {
-      vlan_tbl.apply();
     }
   }
   

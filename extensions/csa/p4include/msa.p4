@@ -34,12 +34,12 @@ enum metadata_fields_t {
 extern pkt {
   void copy_from(pkt p);
   bit<32> get_length();
-  bit<9> get_in_port();
 }
 
 
 extern im_t {
   void set_out_port(in PortId_t out_port);
+  PortId_t get_in_port();
   PortId_t get_out_port(); // default 0x00
   bit<32> get_value(metadata_fields_t field_type);
   void copy_from(im_t im);
