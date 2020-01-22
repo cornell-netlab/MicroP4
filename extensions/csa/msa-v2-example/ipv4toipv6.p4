@@ -82,7 +82,7 @@ cpackage IPv4toIPv6 : implements Unicast<v4tov6_hdr_t, empty_t, empty_t, empty_t
 		hdr.ipv6.setInvalid();
 	    hdr.ipv4.setValid();
 	  	hdr.ipv4.version = 4;
-	  	hdr.ipv4.ihl = 20;
+	  	hdr.ipv4.ihl = 5;
   		hdr.ipv4.diffserv = hdr.ipv6.class;
   		hdr.ipv4.totalLen = hdr.ipv6.totalLen +  (bit<16>)(hdr.ipv4.ihl);
   		hdr.ipv4.identification = 0;
