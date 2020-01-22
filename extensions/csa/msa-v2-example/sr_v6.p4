@@ -45,7 +45,7 @@ header seg3_h {
 	bit<128> seg3;
 	bit<128> seg4;
 }
-
+/*
 header seg4ton_h {
 	bit<128> seg1;
 	bit<128> seg2;
@@ -53,6 +53,7 @@ header seg4ton_h {
 	bit<128> seg4;
 	varbit<((MAX_SEG_LEFT-4) * SEG_LEN)> segment_lists; // first element contains the last segment of the SR policy 
 }
+*/
 
 header ipv6_h {
   bit<4> version;
@@ -72,9 +73,8 @@ struct sr6_hdr_t {
   seg1_h seg1;
   seg2_h seg2;
   seg3_h seg3;
-  seg4ton_h seg4ton;
+//  seg4ton_h seg4ton;
   ipv6_h inner_ipv6; 
-  routing_ext_h routing_ext1;
 }
 
 // Segment Routing 
@@ -84,7 +84,7 @@ struct sr6_hdr_t {
 // need to get ipv6 header information here as metadata 
  
 cpackage SR_v6 : implements Unicast<sr6_hdr_t, empty_t, 
-                                     empty_t, empty_t,  sr6_inout_t> {
+                                     empty_t, bit<16>,  sr6_inout_t> {
   parser micro_parser(extractor ex, pkt p, im_t im, out sr6_hdr_t hdr, inout empty_t meta,
                         in empty_t ia, inout sr6_inout_t ioa) {
     state start {
@@ -112,7 +112,7 @@ cpackage SR_v6 : implements Unicast<sr6_hdr_t, empty_t,
     		1: parse_seg1;
     		2: parse_seg2;
     		3: parse_seg3;
-    		_: parse_seg4ton;
+    		//_: parse_seg4ton;
     	}
 	}
 	
@@ -130,15 +130,15 @@ cpackage SR_v6 : implements Unicast<sr6_hdr_t, empty_t,
       	ex.extract(p, hdr.seg3);
 		transition accept;
 	}
-    state parse_seg4ton {
+   /* state parse_seg4ton {
       	ex.extract(p, hdr.seg4ton, (bit<32>)(hdr.routing_ext0.hdr_ext_len *128 - 24));
 		transition accept;
-	}
+	}*/
   
   }
  
 control micro_control(pkt p, im_t im, inout sr6_hdr_t hdr, inout empty_t m,
-                          in empty_t ia,  out empty_t oa, inout sr6_inout_t ioa) {
+                          in empty_t ia,  out bit<16> oa, inout sr6_inout_t ioa) {
                           
 	action ingress_sr(){
 		// SR domain ingress router : generate SR segment packet with segment in the destination i.e. encapsulates a received pkt in outer ipv6 hdr followed by optional srh
@@ -226,7 +226,6 @@ control micro_control(pkt p, im_t im, inout sr6_hdr_t hdr, inout empty_t m,
       em.emit(p, hdr.seg2); 
       em.emit(p, hdr.seg3); 
       em.emit(p, hdr.inner_ipv6);
-      em.emit(p, hdr.routing_ext1);
     }
   }
 }
