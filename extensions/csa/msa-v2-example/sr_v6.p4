@@ -28,7 +28,30 @@ header sr6_h {
 	bit<8> last_entry;  // index of the last element of the segment list zero based
 	bit<8> flags; // 0 flag --> unused 
 	bit<16> tag; // 0 if unused , not used when processsing the sid in 4.3.1
-	varbit<(MAX_SEG_LEFT * SEG_LEN)> segment_lists; // first element contains the last segment of the SR policy 
+}
+
+header seg1_h {
+	bit<128> seg1;
+}
+
+header seg2_h {
+	bit<128> seg1;
+	bit<128> seg2;
+}
+
+header seg3_h {
+	bit<128> seg1;
+	bit<128> seg2;
+	bit<128> seg3;
+	bit<128> seg4;
+}
+
+header seg4ton_h {
+	bit<128> seg1;
+	bit<128> seg2;
+	bit<128> seg3;
+	bit<128> seg4;
+	varbit<((MAX_SEG_LEFT-4) * SEG_LEN)> segment_lists; // first element contains the last segment of the SR policy 
 }
 
 header ipv6_h {
@@ -42,9 +65,14 @@ header ipv6_h {
   bit<128> dstAddr;  
 }
 
+
 struct sr6_hdr_t {
   routing_ext_h routing_ext0;
   sr6_h sr6;
+  seg1_h seg1;
+  seg2_h seg2;
+  seg3_h seg3;
+  seg4ton_h seg4ton;
   ipv6_h inner_ipv6; 
   routing_ext_h routing_ext1;
 }
@@ -79,7 +107,31 @@ cpackage SR_v6 : implements Unicast<sr6_hdr_t, empty_t,
 	}
     
     state parse_seg_routing {
-      	ex.extract(p, hdr.sr6, (bit<32>)(hdr.routing_ext0.hdr_ext_len *128 - 24));
+      	ex.extract(p, hdr.sr6);
+		transition select(hdr.sr6.seg_left){
+    		1: parse_seg1;
+    		2: parse_seg2;
+    		3: parse_seg3;
+    		_: parse_seg4ton;
+    	}
+	}
+	
+	  state parse_seg1 {
+      	ex.extract(p, hdr.seg1);
+		transition accept;
+	}
+	
+	state parse_seg2 {
+      	ex.extract(p, hdr.seg2);
+		transition accept;
+	}
+	
+	state parse_seg3 {
+      	ex.extract(p, hdr.seg3);
+		transition accept;
+	}
+    state parse_seg4ton {
+      	ex.extract(p, hdr.seg4ton, (bit<32>)(hdr.routing_ext0.hdr_ext_len *128 - 24));
 		transition accept;
 	}
   
@@ -99,7 +151,10 @@ control micro_control(pkt p, im_t im, inout sr6_hdr_t hdr, inout empty_t m,
 		hdr.sr6.last_entry = 3;  
 		hdr.sr6.flags = 0;
 		hdr.sr6.tag = 0; 
-		hdr.sr6.segment_lists = (bit<384>)0x02560a0b0c025660a0b0f5670dbbfe03025d0a0b0c125660a0b0f5670dbbfe0302560ade0c025660a0b0f5670dbbfe03;
+		hdr.seg3.setValid();
+		hdr.seg3.seg1 = 0x02560a0b0c025660a0b0f5670dbbfe03;
+		hdr.seg3.seg2 = 0x025d0a0b0c125660a0b0f5670dbbfe03;
+		hdr.seg3.seg3 = 0x02560ade0c025660a0b0f5670dbbfe03;
 		ioa.dstAddr = FIRST_SEG;
 	
 		hdr.inner_ipv6.setValid();
@@ -167,6 +222,9 @@ control micro_control(pkt p, im_t im, inout sr6_hdr_t hdr, inout empty_t m,
     apply { 
       em.emit(p, hdr.routing_ext0);
       em.emit(p, hdr.sr6);
+      em.emit(p, hdr.seg1); 
+      em.emit(p, hdr.seg2); 
+      em.emit(p, hdr.seg3); 
       em.emit(p, hdr.inner_ipv6);
       em.emit(p, hdr.routing_ext1);
     }
