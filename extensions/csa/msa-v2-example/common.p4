@@ -59,6 +59,9 @@ cpackage Vlan(pkt p, im_t im,
                  
 cpackage IPv4(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh, inout empty_t ioa);
+          
+cpackage IPv4toIPv6(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout  bit<16> etherType);                    
                  
 cpackage IPv4ACL(pkt p, im_t im, 
           in ipv4_acl_in_t ia, out empty_t oa, inout acl_result_t ioa);
