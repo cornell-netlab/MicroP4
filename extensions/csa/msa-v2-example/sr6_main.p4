@@ -63,8 +63,7 @@ cpackage SR4_main : implements Unicast<sr_hdr_t, sr_meta_t,
 control micro_control(pkt p, im_t im, inout sr_hdr_t hdr, inout sr_meta_t m,
                           in empty_t ia, out empty_t oa, inout bit<16> ioa) {
                           
-	SR_v6() srv6;
-	L3v6() l3_i;
+	IPv6-EXT() l3_i;
 	bit<16> nh;
 	action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
@@ -75,15 +74,9 @@ control micro_control(pkt p, im_t im, inout sr_hdr_t hdr, inout sr_meta_t m,
       key = { nh : lpm; } 
       actions = { forward; }
     }
- // create main sr table 
- // classical forwarding 
-    // if ipv6 nexthdr is routing  check src routing and set next hop based on that 
-    // else perform l3v6 routing 
-    // perform forwarding 
+    
     apply {
-    	if (hdr.ipv6.nexthdr == 43)
-    		srv6.apply(p, im, ia, oa,hdr.ipv6.nexthdr);
-    	else if (hdr.eth.ethType == 0x86DD)
+    	if (hdr.eth.ethType == 0x86DD)
     		l3_i.apply(p, im, ia, nh, ioa);
       	forward_tbl.apply();
     }

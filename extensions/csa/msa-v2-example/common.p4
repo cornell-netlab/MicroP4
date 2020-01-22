@@ -23,6 +23,13 @@ struct mplslr_inout_t {
   bit<16> eth_type;
 }
 
+struct sr6_inout_t {
+  bit<16> totalLen;
+  bit<8> nexthdr;
+  bit<8> hoplimit;
+  bit<128> srcAddr;
+  bit<128> dstAddr;
+}
 
 struct acl_result_t {
   // hard drop can not be overridden
@@ -79,6 +86,9 @@ cpackage MplsLSR(pkt p, im_t im,
                                   
 cpackage SRv4(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh, inout empty_t ioa);
+          
+cpackage SR_v6(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout sr6_inout_t ioa);          
 
 cpackage IPSRv4(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh,  inout empty_t ioa);
