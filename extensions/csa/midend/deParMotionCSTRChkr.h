@@ -32,7 +32,7 @@ class DeParMotionCSTRChkr : public Inspector {
     bool preorder(const IR::P4ComposablePackage* p4cp) override;
     bool preorder(const IR::P4Program* p4Program) override;
 
-    bool preorder(const IR::MethodCallStatement* mcs) override;
+    // bool preorder(const IR::MethodCallStatement* mcs) override;
 
 };
 

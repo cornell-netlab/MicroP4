@@ -20,7 +20,7 @@ class ConcatDeParMerge final : public Transform {
 
   public:
     explicit ConcatDeParMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-        const IR::P4ComposablePackage cp2) {
+        const IR::P4ComposablePackage* cp2)
       : refMap(refMap), typeMap(typeMap), cp2(cp2) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         setName("ConcatDeParMerge"); 

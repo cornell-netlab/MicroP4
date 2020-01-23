@@ -35,9 +35,6 @@ class DeParMerge final : public Transform {
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
     const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
 
-    const IR::Node* preorder(IR::IfStatement* ifstmt) override;
-    const IR::Node* postorder(IR::IfStatement* ifstmt) override;
-
 };
 
 class DeParMotion final : public PassRepeated {

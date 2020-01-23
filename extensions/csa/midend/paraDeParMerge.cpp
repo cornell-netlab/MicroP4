@@ -7,6 +7,24 @@
 
 namespace CSA {
 
+const IR::Node* ParaParserMerge::preorder(IR::P4Parser* p4parser) {
+    return p4parser;
+}
+const IR::Node* ParaParserMerge::postorder(IR::P4Parser* p4parser) {
+    return p4parser;
+}
+
+const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
+    return state;
+}
+const IR::Node* ParaParserMerge::postorder(IR::ParserState* state) {
+    return state;
+}
+
+
+
+
+
 const IR::Node* ParaDeParMerge::preorder(IR::P4Control* p4control) {
     return p4control;
 }

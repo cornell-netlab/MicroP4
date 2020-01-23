@@ -20,7 +20,7 @@ class SeqDeParMerge final : public Transform {
 
   public:
     explicit SeqDeParMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-      const IR::P4ComposablePackage* cp2) {
+      const IR::P4ComposablePackage* cp2) 
       : refMap(refMap), typeMap(typeMap), cp2(cp2) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(cp2);

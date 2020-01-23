@@ -15,6 +15,16 @@ set (CSA_SWITCH_SRCS
     switch/options.h
     switch/parseInput.h
     switch/parseInput.cpp
+    midend/deParMotionCSTRChkr.h
+    midend/deParMotionCSTRChkr.cpp
+    midend/concatDeParMerge.h
+    midend/concatDeParMerge.cpp
+    midend/seqDeParMerge.h
+    midend/seqDeParMerge.cpp
+    midend/paraDeParMerge.h
+    midend/paraDeParMerge.cpp
+    midend/deParMotion.h
+    midend/deParMotion.cpp
     midend/msaNameConstants.h
     midend/msaNameConstants.cpp
     midend/cloneWithFreshPath.h
