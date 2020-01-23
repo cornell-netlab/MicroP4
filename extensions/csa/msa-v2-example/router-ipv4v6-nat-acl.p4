@@ -15,16 +15,16 @@ header ethernet_h {
   bit<48> smac;
   bit<16> ethType; 
 }
-
+/*
 header vlan_h {
   /*
   bit<3> pcp;
   bit<1> dei;
   bit<12> vid;
-  */
+  
   bit<16> tci;
   bit<16> ethType;
-}
+}*/
 
 struct hdr_t {
   ethernet_h eth;
@@ -139,7 +139,7 @@ cpackage MicroP4Switch : implements Unicast<hdr_t, meta_t,
   control micro_deparser(emitter em, pkt p, in hdr_t hdr) {
     apply { 
       em.emit(p, hdr.eth); 
-      em.emit(p, hdr.vlan); 
+   //   em.emit(p, hdr.vlan); 
     }
   }
 }
