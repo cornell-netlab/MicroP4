@@ -7,6 +7,38 @@
 
 namespace CSA {
 
+bool FindExtractedHeader::preorder(IR::MethodCallExpression* call) {
+    P4::MethodInstance* method_instance = P4::MethodInstance::resolve(call, refMap, typeMap);
+    if (!method_instance->is<P4::ExternMethod>()) {
+        ::error("Expected an extract call but got a different statement %1", call);
+    }
+
+    auto externMethod = method_instance->to<P4::ExternMethod>();
+    if (externMethod->originalExternType->name.name != 
+            P4::P4CoreLibrary::instance.extractor.name 
+        || externMethod->method->name.name != 
+            P4::P4CoreLibrary::instance.extractor.extract.name) {
+        ::error("call is not an extract call");
+    }
+
+    auto arg = call->arguments->at(1);
+    if (!arg->is<IR::PathExpression>()) {
+        ::error("argument %1 is not a path", arg);
+    }
+    extractedHeader = arg->to<IR::PathExpression>()->path;
+    return true;
+}
+}
+bool FindExtractedHeader::preorder(IR::StatOrDecl* statementOrDecl) { 
+    if (!statementOrDecl->is<IR::MethodCallStatement>()) {
+        /* fail: there's a statement that isn't an extract call */
+        ::error("Expected an extract call but got %1", statementOrDecl);
+    }
+    auto statement = statementOrDecl->to<IR::MethodCallStatement>();
+    visit(statement);
+    return true;
+}
+
 const IR::Node* ParaParserMerge::preorder(IR::P4Parser* p4parser) {
     auto start_state1 = p4parser->states.getDeclaration<IR::ParserState>("start");
     auto start_state2 = p2->states.getDeclaration<IR::ParserState>("start");
@@ -18,6 +50,7 @@ const IR::Node* ParaParserMerge::preorder(IR::P4Parser* p4parser) {
     }
     return p4parser;
 }
+
 const IR::Node* ParaParserMerge::postorder(IR::P4Parser* p4parser) {
     return p4parser;
 }
@@ -50,6 +83,20 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
      * For any cases with no match, copy the states and all their descendants
      * into the merged parser.
      */
+
+    if (state->name == IR::ParserState::accept) {
+    }
+    if (state->name == IR::ParserState::reject) {
+    }
+
+    if (state->name == IR::ParserState::start) {
+        if (currP2State->name == IR::ParserState::start) {
+        } else {
+            /* error: trying to match start state to a non-start state */
+        }
+    } else {
+        /* state != start */
+    }
     return state;
 }
 const IR::Node* ParaParserMerge::postorder(IR::ParserState* state) {

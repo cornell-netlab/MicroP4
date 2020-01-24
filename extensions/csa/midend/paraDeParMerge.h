@@ -8,10 +8,29 @@
 
 #include "ir/ir.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
+#include "frontends/p4/coreLibrary.h"
 #include "frontends/p4/typeChecking/typeChecker.h"
 #include "frontends/p4/typeMap.h"
 
 namespace CSA {
+
+class FindExtractedHeader final : public Inspector {
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+
+  public:
+    const IR::Path *extractedHeader;
+    IR::Type_Header *extractedType;
+
+    explicit FindExtractedHeader(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
+      : refMap(refMap), typeMap(typeMap) {
+        CHECK_NULL(refMap); CHECK_NULL(typeMap);
+        setName("FindExtractedHeader"); 
+    }
+
+    void preorder(IR::StatOrDecl* statementOrDecl) override;
+    void preorder(IR::MethodCallExpression* call) override;
+};
 
 class ParaParserMerge final : public Transform {
     P4::ReferenceMap* refMap;
