@@ -259,8 +259,11 @@ control ingress(inout routerv46lsrx_hdr_t parsed_hdr, inout routerv46lsrx_meta_t
     
     table mpls_tbl{
     	key = {
-    		parsed_hdr.mpls0.ttl : ternary;
-    		parsed_hdr.mpls0.label : ternary;
+    		parsed_hdr.mpls0.isValid() : exact;
+    		parsed_hdr.mpls0.ttl : exact;
+    		parsed_hdr.mpls0.label : exact;
+        	meta.next_hop : exact;
+        	parsed_hdr.ethernet.etherType : exact;
     	}
     	actions = {
     		drop_action;
@@ -277,7 +280,7 @@ control ingress(inout routerv46lsrx_hdr_t parsed_hdr, inout routerv46lsrx_meta_t
 		ipv4_lpm_tbl.apply();
 	 else if (parsed_hdr.ethernet.etherType == 0x86DD)
 		ipv6_lpm_tbl.apply();
-	else if (parsed_hdr.ethernet.etherType == 0x8847)	
+	if (meta.next_hop == 16w0)	
 	 	mpls_tbl.apply();
 	 dmac.apply(); 
      smac.apply();

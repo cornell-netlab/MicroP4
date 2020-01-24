@@ -1,6 +1,6 @@
 /*
- * Author: Hardik Soni
- * Email: hks57@cornell.edu
+ * Author: Hardik Soni, Myriana Rifai
+ * Email: hks57@cornell.edu, myriana.rifai@nokia-bell-labs.com
  */
 
 #include"msa.p4"
@@ -28,7 +28,7 @@ header vlan_h {
 
 struct hdr_t {
   ethernet_h eth;
-  vlan_h vlan;
+//  vlan_h vlan;
 }
 
 cpackage MicroP4Switch : implements Unicast<hdr_t, meta_t, 
@@ -91,7 +91,7 @@ cpackage MicroP4Switch : implements Unicast<hdr_t, meta_t,
     }
     table validate_tagged_ports_vlan {
     	key = {
-    		im.in_port() : exact;
+    		im.get_in_port() : exact;
     		hdr.vlan.vid : exact;
     	}
       actions = {
@@ -107,7 +107,7 @@ cpackage MicroP4Switch : implements Unicast<hdr_t, meta_t,
     table switch_tbl {
       key = { 
         hdr.eth.dmac : exact; 
-        im.get_in_port() : ternary @name("ingress_port");
+        im.get_in_port() :ternary @name("ingress_port");
       } 
       actions = { 
         send_to();
