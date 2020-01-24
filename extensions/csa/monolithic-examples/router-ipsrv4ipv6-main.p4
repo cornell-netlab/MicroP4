@@ -125,6 +125,7 @@ parser ParserImpl (packet_in pin, out routerv46_ipsrv4ipv6_hdr_t parsed_hdr,
 
 control egress(inout routerv46_ipsrv4ipv6_hdr_t parsed_hdr, inout routerv46_ipsrv4ipv6_meta_t meta,
                  inout standard_metadata_t standard_metadata) {	
+                 /*
      action drop_action() {
    		 meta.drop_flag = 1;
     }
@@ -145,10 +146,11 @@ control egress(inout routerv46_ipsrv4ipv6_hdr_t parsed_hdr, inout routerv46_ipsr
            
             size = MAC_TABLE_SIZE;
             default_action = NoAction;
-        }	
+        }
+        */
     
 	apply{
-        drop_table.apply();
+        // drop_table.apply();
 	}
 }
     
@@ -171,10 +173,12 @@ control ingress(inout routerv46_ipsrv4ipv6_hdr_t parsed_hdr, inout routerv46_ips
                 drop_action;
                 set_dmac;
             }
+            /*
             const entries = {
                 16w15 : set_dmac(0x000000000002, 9w2);
                 16w32 : set_dmac(0x000000000003, 9w3);
             }
+            */
             default_action = drop_action;
             // size = TABLE_SIZE;
         }
@@ -190,10 +194,6 @@ control ingress(inout routerv46_ipsrv4ipv6_hdr_t parsed_hdr, inout routerv46_ips
                 set_smac;
             }
             default_action = drop_action;
-            const entries = {
-                9w2 : set_smac(0x000000000020);
-                9w3 : set_smac(0x000000000030);
-            }
             // size = MAC_TABLE_SIZE;
         }
  
@@ -282,6 +282,7 @@ control ingress(inout routerv46_ipsrv4ipv6_hdr_t parsed_hdr, inout routerv46_ips
         set_nexthop_addr6;
         set_nexthop;
     	}
+      /*
     	const entries = {
     	   (8w0x03, ROUTER_IP,_, _ , _, _,_): set_nexthop_addr2();
     	   (8w0x03, _,ROUTER_IP, _ , _, _,_): set_nexthop_addr3();
@@ -305,6 +306,7 @@ control ingress(inout routerv46_ipsrv4ipv6_hdr_t parsed_hdr, inout routerv46_ips
     	   (8w0x09,_,_,_,_, ROUTER_IP,_): set_nexthop_addr6();
     	   (8w0x09, _,_, _ , _, _,_): drop_action();
     	}
+      */
     }
     
     action set_out_arg(bit<16> n) {
@@ -323,15 +325,19 @@ control ingress(inout routerv46_ipsrv4ipv6_hdr_t parsed_hdr, inout routerv46_ips
 	if(parsed_hdr.ethernet.etherType == 0x0800){
 		if (parsed_hdr.ipv4.ihl != 4w0x05){
 			sr4_tbl.apply();
-      		set_out_nh_tbl.apply();
+      set_out_nh_tbl.apply(); // this table
 		}
-		ipv4_lpm_tbl.apply();
+    else {
+		  ipv4_lpm_tbl.apply();
+    }
+    
 	}
-	else if (parsed_hdr.ethernet.etherType == 0x86DD)
+	else if (parsed_hdr.ethernet.etherType == 0x86DD) {
 		ipv6_lpm_tbl.apply();
-	 dmac.apply(); 
-     smac.apply();
 	}
+	 dmac.apply(); 
+   smac.apply();
+  }
 }
 
 control DeparserImpl(packet_out packet, in  routerv46_ipsrv4ipv6_hdr_t hdr) {

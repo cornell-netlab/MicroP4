@@ -1,0 +1,3 @@
+router-ipsrv4ipv6-main.p4
+
+bf-p4c -b tofino -a v1model --verbose 3 -g --create-graphs router-ipsrv4ipv6-main.p4
