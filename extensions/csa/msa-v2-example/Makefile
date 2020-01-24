@@ -47,9 +47,6 @@ routingv6: ipv6.json
 routingv46: $(ROUTINGV46_DEPS)
 	$(MSA) $(COMPILE_MAIN) ipv4.json,ipv6.json routerv46-main.p4
 
-routingv46lsrx: $(ROUTINGV46LSRX_DEPS)
-	$(MSA) $(COMPILE_MAIN) ipv4.json,ipv6.json,mpls-lsr-x.json routerv46lsrx-main.p4
-
 routingv46lrx: $(ROUTINGV46LRX_DEPS)
 	$(MSA) $(COMPILE_MAIN) ipv4.json,ipv6.json,mpls-lr-x.json routerv46lrx-main.p4
 
