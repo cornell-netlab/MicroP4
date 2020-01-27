@@ -26,8 +26,14 @@ bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
         ::error("argument %1 is not a path", arg);
     }
     extractedHeader = arg->to<IR::PathExpression>()->path;
+    auto typ = typeMap->getType(arg);
+    if (!typ->is<IR::Type_Header>()) {
+        ::error("type %1 of extract argument %2 is not a header", typ, arg);
+    }
+    extractedType = typ->to<IR::Type_Header>()->clone();
     return true;
 }
+
 bool FindExtractedHeader::preorder(const IR::StatOrDecl* statementOrDecl) { 
     if (!statementOrDecl->is<IR::MethodCallStatement>()) {
         /* fail: there's a statement that isn't an extract call */
