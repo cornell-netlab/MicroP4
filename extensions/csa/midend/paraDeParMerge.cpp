@@ -7,7 +7,7 @@
 
 namespace CSA {
 
-bool FindExtractedHeader::preorder(IR::MethodCallExpression* call) {
+bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
     P4::MethodInstance* method_instance = P4::MethodInstance::resolve(call, refMap, typeMap);
     if (!method_instance->is<P4::ExternMethod>()) {
         ::error("Expected an extract call but got a different statement %1", call);
@@ -28,8 +28,7 @@ bool FindExtractedHeader::preorder(IR::MethodCallExpression* call) {
     extractedHeader = arg->to<IR::PathExpression>()->path;
     return true;
 }
-}
-bool FindExtractedHeader::preorder(IR::StatOrDecl* statementOrDecl) { 
+bool FindExtractedHeader::preorder(const IR::StatOrDecl* statementOrDecl) { 
     if (!statementOrDecl->is<IR::MethodCallStatement>()) {
         /* fail: there's a statement that isn't an extract call */
         ::error("Expected an extract call but got %1", statementOrDecl);

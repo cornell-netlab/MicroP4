@@ -28,8 +28,8 @@ class FindExtractedHeader final : public Inspector {
         setName("FindExtractedHeader"); 
     }
 
-    void preorder(IR::StatOrDecl* statementOrDecl) override;
-    void preorder(IR::MethodCallExpression* call) override;
+    bool preorder(const IR::StatOrDecl* statementOrDecl) override;
+    bool preorder(const IR::MethodCallExpression* call) override;
 };
 
 class ParaParserMerge final : public Transform {

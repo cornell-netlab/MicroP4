@@ -18,12 +18,22 @@ class DeParMerge final : public Transform {
     P4::TypeMap* typeMap;
     const IR::P4ComposablePackage* cp2;
 
+    bool deParMotion;
+    IR::IndexedVector<IR::Type_Declaration> callees;
+
+    bool isDeparser(const IR::P4Control* p4control);
+
+
   public:
+    using Transform::preorder;
+    using Transform::postorder;
+
     explicit DeParMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap) 
       : refMap(refMap), typeMap(typeMap) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         CHECK_NULL(cp2);
         setName("DeParMerge"); 
+        deParMotion = false;
     }
 
     const IR::Node* preorder(IR::P4Control* p4control) override;
@@ -34,6 +44,16 @@ class DeParMerge final : public Transform {
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
     const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
+
+    const IR::Node* preorder(IR::IfStatement* ifstmt) override;
+    const IR::Node* postorder(IR::IfStatement* ifstmt) override;
+
+    const IR::Node* preorder(IR::BlockStatement* bs) override;
+    const IR::Node* postorder(IR::BlockStatement* bs) override;
+
+    const IR::Node* preorder(IR::MethodCallStatement* mcs) override;
+
+
 
 };
 
