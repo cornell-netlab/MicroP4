@@ -75,6 +75,14 @@ void ParaParserMerge::mapStates(cstring s1, cstring s2, cstring merged) {
     stateMap.insert(entry);
 }
 
+std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
+ParaParserMerge::matchCases(IR::Vector<IR::SelectCase> cases1,
+			    IR::Vector<IR::SelectCase> cases2) {
+  ::error("matchCases(%1, %2) unimplemented", cases1, cases2);
+  std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>> ret({});
+  return ret;
+}
+
 const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
     /* State
      * - state                the state in p1 we're looking at
@@ -113,9 +121,9 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
         FindExtractedHeader hd2 = FindExtractedHeader(refMap2, typeMap2);
         state->apply(hd1);
         currP2State->apply(hd2);
+
         mergeHeaders(hd1.extractedHeader, hd1.extractedType,
                      hd2.extractedHeader, hd2.extractedType);
-
         mapStates(state->name, currP2State->name, state->name);
 
         auto sel1 = state->selectExpression;
@@ -144,6 +152,8 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
             visitByNames(next_path1->path->name.name,
                          next_path2->path->name.name);
         } else if (sel1->is<IR::SelectExpression>()) {
+            auto sel1expr = sel1->to<IR::SelectExpression>();
+            auto cases1 = sel1expr->selectCases;
             if (sel2->is<IR::PathExpression>()) {
                 auto next_path2 = sel2->to<IR::PathExpression>();
                 next_path2->validate();
@@ -153,7 +163,24 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
                 }
                 /* keep current transition and all following states */
             } if (sel2->is<IR::SelectExpression>()) {
-                /* match up select cases and visit each pair in turn */
+                auto sel2expr = sel2->to<IR::SelectExpression>();
+                auto cases2 = sel2expr->selectCases;
+		auto casePairs = matchCases(cases1, cases2);
+		for (auto &casePair : casePairs) {
+		    auto c1 = casePair.first;
+		    auto c2 = casePair.second;
+		    /* add to select of output state */
+		    /* recur on states pointed to here */
+		    if (c1 == nullptr) {
+			::error("unimplemented");
+		    } else if (c2 == nullptr) {
+			::error("unimplemented");
+		    } else {
+			cstring name1 = c1->state->path->name.name;
+			cstring name2 = c1->state->path->name.name;
+			visitByNames(name1, name2);
+		    }
+		}
             }
         } else {
             ::error("don't know how to handle this select expression: %1", sel1);

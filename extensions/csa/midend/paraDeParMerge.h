@@ -65,6 +65,9 @@ class ParaParserMerge final : public Transform {
   private:
     void visitByNames(cstring s1, cstring s2);
     void mapStates(cstring s1, cstring s2, cstring merged);
+    std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
+      matchCases(IR::Vector<IR::SelectCase> cases1,
+		 IR::Vector<IR::SelectCase> cases2);
     IR::Path* mergeHeaders(const IR::Path *h1, IR::Type_Header *type1,
                            const IR::Path *h2, IR::Type_Header *type2);
 
