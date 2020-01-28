@@ -26,9 +26,6 @@ cpackage VlanID : implements Unicast<vlanid_hdr_t, empty_t,
   control micro_control(pkt p, im_t im, inout vlanid_hdr_t hdr, inout vlanid_meta_t m,
                         in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo) {
                         
-    action drop_action() {
-      im.drop();
-    } 
     
     action set_invlan(bit<16> tci) {
     	vlanInfo.invlan = tci;
