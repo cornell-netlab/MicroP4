@@ -24,6 +24,11 @@ class DeParMerge final : public Transform {
     bool isDeparser(const IR::P4Control* p4control);
 
 
+    bool hasMultipleParsers(const IR::IndexedVector<IR::Type_Declaration>& cs);
+
+    template<typename T> const T* 
+      getCallee(const IR::IndexedVector<IR::Type_Declaration>& cs);
+
   public:
     using Transform::preorder;
     using Transform::postorder;
@@ -37,10 +42,6 @@ class DeParMerge final : public Transform {
     }
 
     const IR::Node* preorder(IR::P4Control* p4control) override;
-    const IR::Node* postorder(IR::P4Control* p4control) override;
-
-    const IR::Node* preorder(IR::P4Parser* p4parser) override;
-    const IR::Node* postorder(IR::P4Parser* p4parser) override;
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
     const IR::Node* postorder(IR::P4ComposablePackage* cp) override;

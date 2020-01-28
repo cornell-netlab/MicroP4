@@ -9,22 +9,38 @@
 namespace CSA {
 
 const IR::Node* DeParMerge::preorder(IR::P4Control* p4control) {
+
+    deParMotion = false;
+    callees.clear();
+    visit(p4control->body);
+
+    prune();
     return p4control;
-}
-
-const IR::Node* DeParMerge::postorder(IR::P4Control* p4control) {
-    return p4control;
-}
-
-const IR::Node* DeParMerge::preorder(IR::P4Parser* p4parser) {
-    return p4parser;
-}
-
-const IR::Node* DeParMerge::postorder(IR::P4Parser* p4parser) {
-    return p4parser;
 }
 
 const IR::Node* DeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
+
+    deParMotion = false;
+    callees.clear();
+    visit(p4cp->packageLocals);
+
+    if (!deParMotion) {
+        if(!hasMultipleParsers(callees)) {
+            auto calleeP4CP = getCallee<IR::P4ComposablePackage>(callees);
+            if (calleeP4CP != nullptr)  {
+                // concat calleeP4CP
+            } else {
+                auto p4parser = getCallee<IR::P4Parser>(callees);
+                auto p4deparser = getCallee<IR::P4Control>(callees);
+                if (p4parser!=nullptr && p4deparser!=nullptr) {
+                    // concate p4parser, p4deparser with current p4cp
+                }
+            }
+        } else {
+            BUG("Unexpected scenario ");
+        }
+    }
+
     return p4cp;
 }
 
@@ -35,22 +51,29 @@ const IR::Node* DeParMerge::postorder(IR::P4ComposablePackage* p4cp) {
 const IR::Node* DeParMerge::preorder(IR::IfStatement* ifstmt) {
 
     auto currCallees = callees;
-    bool currDeParMotion = deParMotion;
+    bool finalDeParMotion = deParMotion;
     deParMotion = false;
     callees.clear();
     visit(ifstmt->ifTrue);
     bool ifDeParMotion = deParMotion;
     auto ifCallees = callees;
+    if (ifDeParMotion == true)
+        finalDeParMotion = true;
 
     callees.clear();
     visit(ifstmt->ifFalse);
     bool elseDeParMotion = deParMotion;
     auto elseCallees = callees;
+    if (elseDeParMotion == true)
+        finalDeParMotion = true;
 
-    if (!ifDeParMotion && !elseDeParMotion) {
-        if ((elseCallees.size()!=0) || (ifCallees.size()!=0)) {
+    deParMotion = finalDeParMotion;
+    if (!deParMotion) {
+        if (!hasMultipleParsers(ifCallees) && !hasMultipleParsers(elseCallees)) {
             deParMotion = true;
             // parallel Composition
+        } else {
+            BUG("multiple parser-deparser, not expected here ");
         }
     }
 
@@ -63,24 +86,33 @@ const IR::Node* DeParMerge::postorder(IR::IfStatement* ifstmt) {
 
 const IR::Node* DeParMerge::preorder(IR::BlockStatement* bs) {
     auto currCallees = callees;
-    bool currDeParMotion = deParMotion;
+    bool finalDeParMotion = deParMotion;
     callees.clear();
     for (auto s : bs->components) {
+        deParMotion = false;
         visit(s);
+        if (deParMotion == true) //  && !s->is<IR::BlockStatement>()
+            finalDeParMotion = true;
     }
-    if (deParMotion)
+
+    deParMotion = finalDeParMotion;
+    if (deParMotion) {
+        callees = currCallees;
         return bs;
-    if (callees.size() > 1) {
+    }
+    if (!hasMultipleParsers(callees)) {
         deParMotion = true;
         // Sequential composition
+        callees.clear();
     }
     return bs;
 
 }
+
+
 const IR::Node* DeParMerge::postorder(IR::BlockStatement* bs) {
     return bs;
 }
-
 
 const IR::Node* DeParMerge::preorder(IR::MethodCallStatement* mcs) {
     auto mi = P4::MethodInstance::resolve(mcs->methodCall, refMap, typeMap);
@@ -115,6 +147,31 @@ bool DeParMerge::isDeparser(const IR::P4Control* p4control) {
         }
     }
     return false;
+}
+
+bool DeParMerge::hasMultipleParsers(const IR::IndexedVector<IR::Type_Declaration>& cs) {
+    unsigned short count = 0;
+    for (auto td : cs) {
+        if (td->is<IR::P4Parser>() || td->is<IR::P4ComposablePackage>())
+            count++;
+        if (count > 1)
+            return true;
+    }
+    return false;
+}
+
+template<typename T> const T* 
+DeParMerge::getCallee(const IR::IndexedVector<IR::Type_Declaration>& cs)  {
+    unsigned short count = 0;
+    const T* typeDecl = nullptr;
+    for (auto td : cs) {
+        if (td->is<T>()) {
+            typeDecl = td->to<T>();
+            count++;
+        }
+    }
+    BUG_CHECK(count <=1, "maximum one parser is expected in the callee list");
+    return typeDecl;
 }
 
 
