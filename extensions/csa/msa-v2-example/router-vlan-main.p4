@@ -7,6 +7,7 @@
 #include"common.p4"
 
 struct meta_t {
+	bit<16> ethType;
 
 }
 
@@ -26,6 +27,7 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
                         in empty_t ia, inout empty_t ioa) {
     state start {
       ex.extract(p, hdr.eth);
+      m.ethType = hdr.eth.ethType;
       transition accept;
     }
   }
@@ -33,12 +35,12 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout meta_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     Vlan() vlan;
+    vlan_inout_t vlaninfo;
     bit<16> nh;
-    L3v4() l3v4_i;
-    L3v6() l3v6_i;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
+      hdr.eth.ethType = vlaninfo.ethType;
       im.set_out_port(port);
     }
     table forward_tbl {
@@ -46,20 +48,12 @@ cpackage ModularVlan: implements Unicast<hdr_t, meta_t,
       actions = { forward; }
     }
     apply { 
-    nh = 16w10;
-      
-    // vlan should return something more than ethType to decide if routing is
-    // required or not
-    if(hdr.eth.ethType==0x8100)
-      vlan.apply(p, im, ia, oa, ioa);
     
-    // then, this block can go in an if condition.
-    if (hdr.eth.ethType==0x0800)
-      l3v4_i.apply(p, im, ia, nh, ioa);
-    else if (hdr.eth.ethType==0x86DD) 
-      l3v6_i.apply(p, im, ia, nh, ioa);
-
-    forward_tbl.apply(); 
+    	vlaninfo.ethType = hdr.eth.ethType;
+    	vlaninfo.dstAddr = hdr.eth.dmac;
+	    vlan.apply(p, im, ia, oa,vlaninfo);
+	    
+	    forward_tbl.apply(); 
     }
   }
 

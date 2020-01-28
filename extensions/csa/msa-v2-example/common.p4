@@ -23,6 +23,13 @@ struct mplslr_inout_t {
   bit<16> eth_type;
 }
 
+struct vlan_inout_t {
+	bit<48> dstAddr; 
+	bit<16> invlan;
+	bit<16> outvlan;
+	bit<16> ethType;
+}
+
 struct sr6_inout_t {
   bit<16> totalLen;
   bit<8> nexthdr;
@@ -53,9 +60,6 @@ struct ipv6_acl_in_t {
   bit<128> sa;
   bit<128> da;
 }
-
-cpackage Vlan(pkt p, im_t im, 
-          in empty_t ia, out empty_t oa, inout bit<16> etherType);
                  
 cpackage IPv4(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh, inout empty_t ioa);
@@ -78,6 +82,18 @@ cpackage IPv6ACL(pkt p, im_t im,
 cpackage IPv6NatACL(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout acl_result_t ioa);
 
+cpackage Vlan(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout vlan_inout_t ethinfo);
+
+cpackage VlanID(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo);
+          
+cpackage L2Vlan(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo);
+          
+cpackage L3Vlan(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo);
+                    
 cpackage VXlan(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout eth_meta_t ethhdr);
 
