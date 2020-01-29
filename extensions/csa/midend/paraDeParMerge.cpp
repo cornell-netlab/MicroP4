@@ -75,12 +75,40 @@ void ParaParserMerge::mapStates(cstring s1, cstring s2, cstring merged) {
     stateMap.insert(entry);
 }
 
+bool ParaParserMerge::keysetsEqual(const IR::Expression *e1, const IR::Expression *e2) {
+    ::error("keysetsEqual(%1, %2) unimplemented", e1, e2);
+    return false;
+}
+
 std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
 ParaParserMerge::matchCases(IR::Vector<IR::SelectCase> cases1,
-			    IR::Vector<IR::SelectCase> cases2) {
-  ::error("matchCases(%1, %2) unimplemented", cases1, cases2);
-  std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>> ret({});
-  return ret;
+                            IR::Vector<IR::SelectCase> cases2) {
+    ::error("matchCases(%1, %2) unimplemented", cases1, cases2);
+    size_t max_cases = cases1.size() + cases2.size();
+    std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>> ret(max_cases);
+    for (auto case1ref : cases1) {
+        IR::SelectCase *case1 = case1ref->clone();
+        auto *matched = new std::pair<IR::SelectCase*, IR::SelectCase*>(case1, nullptr);
+        for (auto case2ref : cases2) {
+            IR::SelectCase *case2 = case2ref->clone();
+            if (keysetsEqual(case1->keyset, case2->keyset)) {
+                matched->second = case2;
+                break;
+            }
+        }
+        ret.push_back(*matched);
+    }
+    return ret;
+}
+
+const IR::Node* ParaParserMerge::statesMapped(const IR::ParserState *s1, const IR::ParserState *s2) {
+    std::pair<cstring, cstring> val(s1->name, s2->name);
+    for (auto &entry : stateMap) {
+        if (entry.second == val) {
+            return states1.getDeclaration<IR::ParserState>(entry.first);
+        }
+    }
+    return nullptr;
 }
 
 const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
@@ -112,6 +140,11 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
      * into the merged parser.
      */
 
+    auto m = statesMapped(state, currP2State);
+    if (m != nullptr) {
+        return m;
+    }
+
     if (state->name == IR::ParserState::accept) {
         ::error("unimplemented");
     } else if (state->name == IR::ParserState::reject) {
@@ -142,6 +175,7 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
                 /* replace transition with the transition statement of p2
                  * and copy all following states in p2 */
                 ::error("unimplemented");
+                
             }
             if (!sel2->is<IR::PathExpression>()) {
                 ::error("unconditional transition %1 incompatible with %2",
@@ -165,22 +199,30 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
             } if (sel2->is<IR::SelectExpression>()) {
                 auto sel2expr = sel2->to<IR::SelectExpression>();
                 auto cases2 = sel2expr->selectCases;
-		auto casePairs = matchCases(cases1, cases2);
-		for (auto &casePair : casePairs) {
-		    auto c1 = casePair.first;
-		    auto c2 = casePair.second;
-		    /* add to select of output state */
-		    /* recur on states pointed to here */
-		    if (c1 == nullptr) {
-			::error("unimplemented");
-		    } else if (c2 == nullptr) {
-			::error("unimplemented");
-		    } else {
-			cstring name1 = c1->state->path->name.name;
-			cstring name2 = c1->state->path->name.name;
-			visitByNames(name1, name2);
-		    }
-		}
+                auto casePairs = matchCases(cases1, cases2);
+                for (auto &casePair : casePairs) {
+                    auto c1 = casePair.first;
+                    auto c2 = casePair.second;
+                    /* add to select of output state */
+                    /* recur on states pointed to here */
+                    if (c1 == nullptr) {
+                        ::error("unimplemented");
+                    } else if (c2 == nullptr) {
+                        ::error("unimplemented");
+                    } else {
+                        cstring name1 = c1->state->path->name.name;
+                        cstring name2 = c2->state->path->name.name;
+                        if (c1->keyset->is<IR::DefaultExpression>()
+                            && name1 != IR::ParserState::accept) {
+                            ::error("don't know how to merge this");
+                        }
+                        if (c2->keyset->is<IR::DefaultExpression>()
+                            && name2 != IR::ParserState::accept) {
+                            ::error("don't know how to merge this");
+                        }
+                        visitByNames(name1, name2);
+                    }
+                }
             }
         } else {
             ::error("don't know how to handle this select expression: %1", sel1);

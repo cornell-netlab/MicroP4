@@ -63,6 +63,8 @@ class ParaParserMerge final : public Transform {
     const IR::Node* postorder(IR::ParserState* state) override;
 
   private:
+    const IR::Node* statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);
+    bool keysetsEqual(const IR::Expression *e1, const IR::Expression *e2);
     void visitByNames(cstring s1, cstring s2);
     void mapStates(cstring s1, cstring s2, cstring merged);
     std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
