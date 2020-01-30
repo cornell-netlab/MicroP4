@@ -19,14 +19,12 @@ class FindExtractedHeader final : public Inspector {
     P4::TypeMap* typeMap;
 
   public:
-    const IR::Path *extractedHeader;
-    IR::Type_Header *extractedType;
+    const IR::Expression *extractedHeader;
 
     explicit FindExtractedHeader(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
       : refMap(refMap), typeMap(typeMap) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         extractedHeader = nullptr;
-        extractedType = nullptr;
         setName("FindExtractedHeader"); 
     }
 
@@ -98,8 +96,7 @@ class ParaParserMerge final : public Transform {
     std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
       matchCases(IR::Vector<IR::SelectCase> cases1,
 		 IR::Vector<IR::SelectCase> cases2);
-    IR::Path* mergeHeaders(const IR::Path *h1, IR::Type_Header *type1,
-                           const IR::Path *h2, IR::Type_Header *type2);
+    IR::Expression* mergeHeaders(const IR::Expression *h1, const IR::Expression *h2);
     const IR::Node* mergeTransitions(const IR::ParserState* state1,
                                      const IR::ParserState* state2);
     void collectStates1(const IR::Expression* selectExpression);

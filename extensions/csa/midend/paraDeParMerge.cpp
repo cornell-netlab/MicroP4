@@ -44,6 +44,10 @@ bool CollectStates::preorder(const IR::Expression* selectExpression) {
 
 /* FindExtractedHeader */
 bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
+    if (extractedHeader != nullptr) {
+        ::error("Already found extracted header, what is this node: %1", call);
+    }
+
     P4::MethodInstance* method_instance = P4::MethodInstance::resolve(call, refMap, typeMap);
     if (!method_instance->is<P4::ExternMethod>()) {
         ::error("Expected an extract call but got a different statement %1", call);
@@ -57,16 +61,19 @@ bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
         ::error("Call %1 is not an extract call", call);
     }
 
-    auto arg = call->arguments->at(1);
-    if (!arg->is<IR::PathExpression>()) {
-        ::error("argument %1 is not a path", arg);
+    if (call->arguments->size() > 1) {
+        ::error("Extract call %1 has too many arguments", call);
+    } else if (call->arguments->size() < 1) {
+        ::error("Extract call %1 has too few arguments", call);
     }
-    extractedHeader = arg->to<IR::PathExpression>()->path;
-    auto typ = typeMap->getType(arg);
+
+    extractedHeader = call->arguments->at(1)->expression;
+    auto typ = typeMap->getType(extractedHeader);
+
     if (!typ->is<IR::Type_Header>()) {
-        ::error("Type %1 of extract argument %2 is not a header", typ, arg);
+        ::error("Type %1 of extract argument %2 is not a header", typ, extractedHeader);
     }
-    extractedType = typ->to<IR::Type_Header>()->clone();
+
     return true;
 }
 
@@ -186,8 +193,7 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
     FindExtractedHeader hd2(refMap2, typeMap2);
     state->apply(hd1);
     currP2State->apply(hd2);
-    mergeHeaders(hd1.extractedHeader, hd1.extractedType,
-                 hd2.extractedHeader, hd2.extractedType);
+    mergeHeaders(hd1.extractedHeader, hd2.extractedHeader);
     mapStates(state->name, currP2State->name, state->name);
 
     visit(state->selectExpression);
@@ -222,8 +228,7 @@ const IR::Node* ParaParserMerge::preorder(IR::PathExpression* pathExpression) {
         for (auto &state : collector.states) {
             FindExtractedHeader hd(refMap2, typeMap2);
             state->apply(hd);
-            mergeHeaders(nullptr, nullptr,
-                         hd.extractedHeader, hd.extractedType);
+            mergeHeaders(nullptr, hd.extractedHeader);
             mapStates(nullptr, state->name, state->name);
             statesToAdd->push_back(state);
         }
@@ -279,8 +284,7 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
         for (auto &state : collector.states) {
             FindExtractedHeader hd(refMap1, typeMap1);
             state->apply(hd);
-            mergeHeaders(hd.extractedHeader, hd.extractedType,
-                         nullptr, nullptr);
+            mergeHeaders(hd.extractedHeader, nullptr);
             mapStates(state->name, nullptr, state->name);
         }
         return selectExpression;
@@ -303,8 +307,7 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
                 for (auto &state : collector.states) {
                     FindExtractedHeader hd(refMap2, typeMap2);
                     state->apply(hd);
-                    mergeHeaders(nullptr, nullptr,
-                                 hd.extractedHeader, hd.extractedType);
+                    mergeHeaders(nullptr, hd.extractedHeader);
                     mapStates(nullptr, state->name, state->name);
                     statesToAdd->push_back(state);
                 }
@@ -346,8 +349,7 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectCase* case1) {
         for (auto &state : collector.states) {
             FindExtractedHeader hd(refMap1, typeMap1);
             state->apply(hd);
-            mergeHeaders(hd.extractedHeader, hd.extractedType,
-                         nullptr, nullptr);
+            mergeHeaders(hd.extractedHeader, nullptr);
             mapStates(state->name, nullptr, state->name);
         }
     } else {
@@ -361,10 +363,9 @@ const IR::Node* ParaParserMerge::postorder(IR::SelectCase* case1) {
     return case1;
 }
 
-IR::Path* ParaParserMerge::mergeHeaders(const IR::Path *h1,
-        IR::Type_Header *type1, const IR::Path *h2, IR::Type_Header *type2) {
-    ::error("mergeHeaders unimplemented %1 %2 %3 %4",
-            h1, type1, h2, type2);
+IR::Expression* ParaParserMerge::mergeHeaders(const IR::Expression *h1, const IR::Expression *h2) {
+    ::error("mergeHeaders unimplemented %1 %2",
+            h1, h2);
     return nullptr;
 }
 
