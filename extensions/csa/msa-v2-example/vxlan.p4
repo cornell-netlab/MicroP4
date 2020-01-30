@@ -8,16 +8,13 @@
 
 #define TABLE_SIZE 1024
 #define VXLAN_TTL 128
-#define VXLAN_VLAN_ID 20
-#define VXLAN_VNI  24w2020
-#define LOCAL_VTEP_MAC 0x000000000002
-
-struct vxlan_meta_t {
-	bit<16> ethType;
-}
+#define VXLAN_UDP_DPORT 4789
+#define LOCAL_VTEP_IN_MAC 0x000000000002
+#define LOCAL_VTEP_OUT_MAC 0x000000000004
+#define LOCAL_VTEP_IP 0x0a002036
 
 
-header ethernet_h {
+header eth_h {
   bit<48> dmac;
   bit<48> smac;
   bit<16> ethType; 
@@ -60,20 +57,20 @@ header vxlan_h {
 }
 
 struct vxlan_hdr_t {
+  ipv4_h outer_ipv4;
+  udp_h outer_udp;
   vxlan_h vxlan;
-  udp_h udp;
-  ipv4_h ipv4;
+  eth_h inner_eth;
   vlan_h vlan;
-  eth_h eth;
 }
 
 
-cpackage VXlan : implements Unicast<vxlan_hdr_t, vxlan_meta_t, 
-                                     empty_t, empty_t, eth_meta_t> {
-  parser micro_parser(extractor ex, pkt p, im_t im, out vxlan_hdr_t hdr, inout vxlan_meta_t meta,
-                        in empty_t ia, inout eth_meta_t ethhdr) {
+cpackage VXlan : implements Unicast<vxlan_hdr_t, empty_t, 
+                                     empty_t, empty_t, vxlan_inout_t> {
+  parser micro_parser(extractor ex, pkt p, im_t im, out vxlan_hdr_t hdr, inout empty_t meta,
+                        in empty_t ia, inout vxlan_inout_t outer_ethhdr) {
     state start {
-    transition select(ethhdr.ethType){
+    transition select(outer_ethhdr.ethType){
         0x8100: parse_vlan;
       }
     }
@@ -85,15 +82,15 @@ cpackage VXlan : implements Unicast<vxlan_hdr_t, vxlan_meta_t,
     }
     
     state parse_ip{
-    	ex.extract(p, hdr.ipv4);
-    	transition select(hdr.ipv4.protocol){
+    	ex.extract(p, hdr.outer_ipv4);
+    	transition select(hdr.outer_ipv4.protocol){
     		0x11: parse_udp;
     	}
     }
     
     state parse_udp{
-    	ex.extract(p, hdr.udp);
-    	transition select(hdr.udp.dport){
+    	ex.extract(p, hdr.outer_udp);
+    	transition select(hdr.outer_udp.dport){
     		4789: parse_vxlan;
     	}
     }
@@ -104,93 +101,101 @@ cpackage VXlan : implements Unicast<vxlan_hdr_t, vxlan_meta_t,
     }
   }
   
-control micro_control(pkt p, im_t im, inout vxlan_hdr_t hdr, inout vxlan_meta_t m,
-                          in empty_t ia, out empty_t oa, inout eth_meta_t ethhdr) {
-    
-    action drop_action() {
-            im.drop(); // Drop packet
-       }
+control micro_control(pkt p, im_t im, inout vxlan_hdr_t hdr, inout empty_t m,
+                          in empty_t ia, out empty_t oa, inout vxlan_inout_t outer_ethhdr) {
        
-    action forward_action( PortId_t port) {
-            im.set_out_port(port); 
-       }
-    action encap(bit<32> vtep_src_ip, bit<32> vtep_dst_ip, bit<48> vtep_src_mac, bit<48> vtep_dst_mac ) {
-    	   //copy eth information 
-    	   hdr.eth.dmac = ethhdr.dmac;
-    	   hdr.eth.smac = ethhdr.smac;
-    	   hdr.eth.ethType = ethhdr.ethType;
+    action encap( bit<32> vtep_dst_ip, bit<24> vni, bit<16> sport) {
+    	  
+    	   hdr.vlan.setInvalid();
+    	   hdr.inner_eth.setValid();
+    	   hdr.inner_eth.dmac = outer_ethhdr.dmac;
+    	   hdr.inner_eth.smac = outer_ethhdr.smac;
+    	   hdr.inner_eth.ethType = hdr.vlan.ethType;
            hdr.vxlan.setValid();
            hdr.vxlan.flags = 1;
            hdr.vxlan.reserved1 = 0;
-           hdr.vxlan.vni = VNI;
+           hdr.vxlan.vni = vni ;
            hdr.vxlan.reserved2 = 0;
-           hdr.udp.setValid();
-           hdr.udp.sport = 49152;
-           hdr.udp.dport = 4789;
-           hdr.udp.len = inner_pkt_len + 54 ; // TODO get inner_pkt_len
-           hdr.udp.checksum = 0;
-           hdr.ipv4.setValid();
-           hdr.ipv4.version = 4;
-  		   hdr.ipv4.ihl = 5;
-		   hdr.ipv4.diffserv = 3 ; 
-		   hdr.ipv4.totalLen = ; //TODO
-		   hdr.ipv4.identification = ; //TODO 
-		   hdr.ipv4.flags = 1; 
-		   hdr.ipv4.fragOffset = 00; 
-		   hdr.ipv4.ttl = VXLAN_TTL;
-  		   hdr.ipv4.protocol = 0x11;
-  		   hdr.ipv4.hdrChecksum = ; //TODO
-  		   hdr.srcAddr = vtep_src_ip;
-  		   hdr.dstAddr = vtep_dst_ip; 
-  		   hdr.vlan.setValid();
-  		   hdr.vlan.pcp = 3;
-  		   hdr.vlan.dei = 0;
-  		   hdr.vlan.vid = VXLAN_VLAN_ID;
-  		   hdr.vlan.ethType = 0x0800;
-           hdr.eth.setValid();
-           hdr.eth.dmac = vtep_dst_mac; 
-           hdr.eth.smac = vtep_src_mac; 
-           hdr.eth.ethType = 0x8100;
+           hdr.outer_udp.setValid();
+           hdr.outer_udp.sport = sport;
+           hdr.outer_udp.dport = VXLAN_UDP_DPORT;
+           hdr.outer_udp.len =  0 ; // to set correctly
+           hdr.outer_udp.checksum = 0;
+           hdr.outer_ipv4.setValid();
+           hdr.outer_ipv4.version = 4;
+  		   hdr.outer_ipv4.ihl = 5; // to set correctly
+		   hdr.outer_ipv4.diffserv = 3 ; 
+		   hdr.outer_ipv4.totalLen = 54; // to set correctly
+		   hdr.outer_ipv4.identification = 34; // to set correctly
+		   hdr.outer_ipv4.flags = 1; 
+		   hdr.outer_ipv4.fragOffset = 00; 
+		   hdr.outer_ipv4.ttl = VXLAN_TTL;
+  		   hdr.outer_ipv4.protocol = 0x11;
+  		   hdr.outer_ipv4.hdrChecksum = 0; 
+  		   
+  		   hdr.outer_ipv4.srcAddr = LOCAL_VTEP_IP;
+  		   hdr.outer_ipv4.dstAddr = vtep_dst_ip; 
+
+           outer_ethhdr.smac = LOCAL_VTEP_OUT_MAC; 
+           outer_ethhdr.ethType = hdr.vlan.ethType; 
+           
        }
-    action decap() {
-		    m.ethType = hdr.vlan.ethType;
-		    hdr.vxlan.setInvalid();
-		    hdr.udp.setInvalid();
-		    hdr.ipv4.setInvalid();
-		    hdr.eth.setInvalid();
-		    im.set_out_port(0x15); 
-    }
-    table vxlan_tbl{
+   table vxlan_encap_tbl{
     	key = {
-    		hdr.eth.dmac : exact;
+    		outer_ethhdr.dmac : exact;
+    		hdr.vlan.vid: exact; 
     	}
     	actions = {
     		encap;
-    		decap;
-    		forward_action;
-    		drop_action;
     	}
     	const entries = {
-    	//TODO 
-    	     (): drop_action();
-    	     (): forward_action();
-    	     (LOCAL_VTEP_MAC): decap();
-    	     (0x000000000002): encap(0x0a002036, 0x0a000206 0x000000000004, 0x000000000005);
+    	     (0x000000000002, 100): encap(0x0a000206, 1000, 49152);
        	}
     }
     
+    action decap(bit<12> vid) {
+    	outer_ethhdr.ethType = 0x8100;
+		outer_ethhdr.dmac = hdr.inner_eth.dmac;
+    	outer_ethhdr.smac = hdr.inner_eth.smac;
+	    hdr.vxlan.setInvalid();
+	    hdr.outer_udp.setInvalid();
+	    hdr.outer_ipv4.setInvalid();
+	    hdr.inner_eth.setInvalid();
+	    hdr.vlan.setValid();
+	    hdr.vlan.pcp = 3;
+	    hdr.vlan.dei = 0;
+	    hdr.vlan.vid = vid;
+	    hdr.vlan.ethType = hdr.inner_eth.ethType;
+    }
+ 
+    
+     table vxlan_decap_tbl{
+    	key = {
+    		outer_ethhdr.dmac : exact;
+    		hdr.vxlan.vni: exact; 
+    	}
+    	actions = {
+    		decap;
+    	}
+    	const entries = {
+    	     (LOCAL_VTEP_IN_MAC, 864): decap(100);
+       	}
+    }
     apply {
-      vxlan_tbl.apply();
+    	if(hdr.vxlan.isValid())
+      		vxlan_decap_tbl.apply();
+      	else 
+      		vxlan_encap_tbl.apply(); 
     }
   }
   
   control micro_deparser(emitter em, pkt p, in vxlan_hdr_t hdr) {
     apply { 
       em.emit(p, hdr.vxlan);
-      em.emit(p, hdr.udp);
-      em.emit(p, hdr.ipv4);
+      em.emit(p, hdr.outer_udp);
+      em.emit(p, hdr.outer_ipv4);
       em.emit(p, hdr.vlan);
-      em.emit(p, hdr.eth);
+      em.emit(p, hdr.inner_eth);
     }
   }
 }

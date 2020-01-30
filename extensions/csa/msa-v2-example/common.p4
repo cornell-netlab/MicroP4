@@ -7,7 +7,7 @@
 
 struct empty_t { }
 
-struct eth_meta_t {
+struct vxlan_inout_t {
   bit<48> dmac;
   bit<48> smac;
   bit<16> ethType; 
@@ -93,10 +93,7 @@ cpackage L2Vlan(pkt p, im_t im,
           
 cpackage L3Vlan(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo);
-                    
-cpackage VXlan(pkt p, im_t im, 
-          in empty_t ia, out empty_t oa, inout eth_meta_t ethhdr);
-
+          
 cpackage MplsLR(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout mplslr_inout_t ioa);
 
@@ -117,3 +114,9 @@ cpackage IPSRv4(pkt p, im_t im,
 
 cpackage L3(pkt p, im_t im, 
           in empty_t ia, out empty_t oa,  inout l3_inout_t ioa);
+
+cpackage INT(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout empty_t ioa);          
+                    
+cpackage VXlan(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout vxlan_inout_t outer_ethhdr);
