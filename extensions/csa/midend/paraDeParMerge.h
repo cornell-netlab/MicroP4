@@ -85,8 +85,9 @@ class ParaParserMerge final : public Transform {
     const IR::Node* preorder(IR::SelectCase* case1) override;
     const IR::Node* postorder(IR::SelectCase* case1) override;
 
-    const IR::Node* preorder(IR::Expression* selectExpression);
-    const IR::Node* postorder(IR::Expression* selectExpression);
+    const IR::Node* preorder(IR::Expression* expr);
+    const IR::Node* preorder(IR::PathExpression* pathExpression);
+    const IR::Node* preorder(IR::SelectExpression* selectExpression);
 
   private:
     const IR::Node* statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);

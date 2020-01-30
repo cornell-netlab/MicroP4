@@ -7,6 +7,41 @@
 
 namespace CSA {
 
+/* CollectStates */
+bool CollectStates::preorder(const IR::ParserState* state) {
+    states.push_back(state);
+    visit(state->selectExpression);
+    return false;
+}
+
+bool CollectStates::preorder(const IR::Expression* selectExpression) {
+    if (getContext() == nullptr) {
+        return selectExpression;
+    }
+    auto state = getContext()->node;
+    if (!state->is<IR::ParserState>()) {
+        return selectExpression;
+    }
+
+    std::vector<cstring> stateNames;
+    if (selectExpression->is<IR::PathExpression>()) {
+        auto stateName = selectExpression->to<IR::PathExpression>();
+        stateNames.push_back(stateName->path->name.name);
+    } else if (selectExpression->is<IR::SelectExpression>()) {
+        auto selectCases = selectExpression->to<IR::SelectExpression>()->selectCases;
+        for (auto &selectCase : selectCases) {
+            stateNames.push_back(selectCase->state->path->name.name);
+        }
+    } else {
+        ::error("don't know how to collect states in this select expression: %1", selectExpression);
+    }
+    for (auto &stateName : stateNames) {
+        auto state = allStates.getDeclaration<IR::ParserState>(stateName);
+        visit(state);
+    }
+    return false;
+}
+
 /* FindExtractedHeader */
 bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
     P4::MethodInstance* method_instance = P4::MethodInstance::resolve(call, refMap, typeMap);
@@ -155,54 +190,64 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
                  hd2.extractedHeader, hd2.extractedType);
     mapStates(state->name, currP2State->name, state->name);
 
-    currP2Select = currP2State->selectExpression;
     visit(state->selectExpression);
     prune();
     return state;
 }
 
-void ParaParserMerge::collectStates1(const IR::Expression* selectExpression) {
-    if (selectExpression == nullptr) {
-        return;
-    }
-    P4C_UNIMPLEMENTED("collectStates1");
-}
-    
-bool CollectStates::preorder(const IR::ParserState* state) {
-    states.push_back(state);
-    visit(state->selectExpression);
-    return false;
-}
-
-bool CollectStates::preorder(const IR::Expression* selectExpression) {
+const IR::Node* ParaParserMerge::preorder(IR::PathExpression* pathExpression) {
     if (getContext() == nullptr) {
-        return selectExpression;
+        return pathExpression;
     }
-    auto state = getContext()->node;
-    if (!state->is<IR::ParserState>()) {
-        return selectExpression;
+    auto state1 = getContext()->node;
+    auto state2 = currP2State;
+    if (!state1->is<IR::ParserState>()) {
+        return pathExpression;
+    }
+    auto sel1 = pathExpression;
+    auto sel2 = currP2State->selectExpression;
+    if (sel1 == nullptr) {
+        ::error("Parser state %1 has no transition statement", state1);
+    }
+    if (sel2 == nullptr) {
+        ::error("Parser state %1 has no transition statement", state2);
     }
 
-    std::vector<cstring> stateNames;
-    if (selectExpression->is<IR::PathExpression>()) {
-        auto stateName = selectExpression->to<IR::PathExpression>();
-        stateNames.push_back(stateName->path->name.name);
-    } else if (selectExpression->is<IR::SelectExpression>()) {
-        auto selectCases = selectExpression->to<IR::SelectExpression>()->selectCases;
-        for (auto &selectCase : selectCases) {
-            stateNames.push_back(selectCase->state->path->name.name);
+    auto next_path1 = sel1->to<IR::PathExpression>();
+    next_path1->validate();
+    if (next_path1->path->name.name == IR::ParserState::accept) {
+        /* transition 1 is `transition accept;`. */
+        CollectStates collector(states2);
+        state2->selectExpression->apply(collector);
+        for (auto &state : collector.states) {
+            FindExtractedHeader hd(refMap2, typeMap2);
+            state->apply(hd);
+            mergeHeaders(nullptr, nullptr,
+                         hd.extractedHeader, hd.extractedType);
+            mapStates(nullptr, state->name, state->name);
+            statesToAdd->push_back(state);
         }
-    } else {
-        ::error("don't know how to collect states in this select expression: %1", selectExpression);
+        return state2->selectExpression;
     }
-    for (auto &stateName : stateNames) {
-        auto state = allStates.getDeclaration<IR::ParserState>(stateName);
-        visit(state);
+
+    if (next_path1->path->name.name == IR::ParserState::reject) {
+        P4C_UNIMPLEMENTED("handling reject transitions in parser merge");
     }
-    return false;
+
+    /* transition 1 is `transition next_path1`, where next_path1
+       is a real state name defined in parser 1. */
+    if (!sel2->is<IR::PathExpression>()) {
+        ::error("unconditional transition %1 incompatible with %2",
+                sel1, sel2);
+    }
+    auto next_path2 = sel2->to<IR::PathExpression>();
+    next_path2->validate();
+    visitByNames(next_path1->path->name.name,
+                 next_path2->path->name.name);
+    return pathExpression;
 }
 
-const IR::Node* ParaParserMerge::preorder(IR::Expression* selectExpression) {
+const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression) {
     if (getContext() == nullptr) {
         return selectExpression;
     }
@@ -212,7 +257,7 @@ const IR::Node* ParaParserMerge::preorder(IR::Expression* selectExpression) {
         return selectExpression;
     }
     auto sel1 = selectExpression;
-    auto sel2 = currP2Select;
+    auto sel2 = currP2State->selectExpression;
     if (sel1 == nullptr) {
         ::error("Parser state %1 has no transition statement", state1);
     }
@@ -220,88 +265,65 @@ const IR::Node* ParaParserMerge::preorder(IR::Expression* selectExpression) {
         ::error("Parser state %1 has no transition statement", state2);
     }
 
-    if (sel1->is<IR::PathExpression>()) {
-        /* transition 1 is `transition next_path1;`. */
-        auto next_path1 = sel1->to<IR::PathExpression>();
-        next_path1->validate();
-        if (next_path1->path->name.name == IR::ParserState::accept) {
-            /* transition 1 is `transition accept;`. */
-            CollectStates collector(states2);
-            state2->selectExpression->apply(collector);
-            for (auto &state : collector.states) {
-                FindExtractedHeader hd(refMap2, typeMap2);
-                state->apply(hd);
-                mergeHeaders(nullptr, nullptr,
-                             hd.extractedHeader, hd.extractedType);
-                mapStates(nullptr, state->name, state->name);
-                statesToAdd->push_back(state);
-            }
-            return state2->selectExpression;
-        }
-
-        if (next_path1->path->name.name == IR::ParserState::reject) {
-            P4C_UNIMPLEMENTED("handling reject transitions in parser merge");
-        }
-
-        /* transition 1 is `transition next_path1`, where next_path1
-           is a real state name defined in parser 1. */
-        if (!sel2->is<IR::PathExpression>()) {
-            ::error("unconditional transition %1 incompatible with %2",
-                    sel1, sel2);
-        }
+    auto sel1expr = sel1->to<IR::SelectExpression>();
+    auto cases1 = sel1expr->selectCases;
+    if (sel2->is<IR::PathExpression>()) {
         auto next_path2 = sel2->to<IR::PathExpression>();
         next_path2->validate();
-        visitByNames(next_path1->path->name.name,
-                     next_path2->path->name.name);
-
-    } else if (sel1->is<IR::SelectExpression>()) {
-        /* transition 1 is `transition select (sel1expr) { cases1 };`. */
-        auto sel1expr = sel1->to<IR::SelectExpression>();
-        auto cases1 = sel1expr->selectCases;
-        if (sel2->is<IR::PathExpression>()) {
-            auto next_path2 = sel2->to<IR::PathExpression>();
-            next_path2->validate();
-            if (next_path2->path->name.name != IR::ParserState::accept) {
-                ::error("unconditional transition %1 incompatible with %2",
-                        sel2, sel1);
-            }
-            CollectStates collector(states1);
-            sel1->apply(collector);
-            for (auto &state : collector.states) {
-                FindExtractedHeader hd(refMap1, typeMap1);
-                state->apply(hd);
-                mergeHeaders(hd.extractedHeader, hd.extractedType,
-                             nullptr, nullptr);
-                mapStates(state->name, nullptr, state->name);
-            }
-            return selectExpression;
-        } if (sel2->is<IR::SelectExpression>()) {
-            auto sel2expr = sel2->to<IR::SelectExpression>();
-            auto cases2 = sel2expr->selectCases;
-            auto casePairs = matchCases(cases1, cases2);
-            for (auto &casePair : casePairs) {
-                auto c1 = casePair.first;
-                auto c2 = casePair.second;
-                /* add to select of output state */
-                /* recur on states pointed to here */
-                if (c1 == nullptr) {
-                    ::error("unimplemented");
-                } else if (c2 == nullptr) {
-                    ::error("unimplemented");
-                } else {
-                    currP2Case = c2;
-                    visit(c1);
+        if (next_path2->path->name.name != IR::ParserState::accept) {
+            ::error("unconditional transition %1 incompatible with %2",
+                    sel2, sel1);
+        }
+        CollectStates collector(states1);
+        sel1->apply(collector);
+        for (auto &state : collector.states) {
+            FindExtractedHeader hd(refMap1, typeMap1);
+            state->apply(hd);
+            mergeHeaders(hd.extractedHeader, hd.extractedType,
+                         nullptr, nullptr);
+            mapStates(state->name, nullptr, state->name);
+        }
+        return selectExpression;
+    } else if (sel2->is<IR::SelectExpression>()) {
+        auto sel2expr = sel2->to<IR::SelectExpression>();
+        auto cases2 = sel2expr->selectCases;
+        auto casePairs = matchCases(cases1, cases2);
+        for (auto &casePair : casePairs) {
+            auto c1 = casePair.first;
+            auto c2 = casePair.second;
+            /* add to select of output state */
+            /* recur on states pointed to here */
+            if (c1 == nullptr) {
+                if (c2 == nullptr) {
+                    ::error("Bug in matchCases!");
                 }
+                auto st = states2.getDeclaration<IR::ParserState>(c2->state->path->name.name);
+                CollectStates collector(states2);
+                st->apply(collector);
+                for (auto &state : collector.states) {
+                    FindExtractedHeader hd(refMap2, typeMap2);
+                    state->apply(hd);
+                    mergeHeaders(nullptr, nullptr,
+                                 hd.extractedHeader, hd.extractedType);
+                    mapStates(nullptr, state->name, state->name);
+                    statesToAdd->push_back(state);
+                }
+                selectExpression->selectCases.pushBackOrAppend(c2);
+            } else {
+                currP2Case = c2;
+                visit(c1);
             }
         }
+        return selectExpression;
     } else {
-        ::error("don't know how to handle this select expression: %1", sel1);
+        ::error("don't know how to handle this select expression: %1", sel2);
+        return sel2;
     }
-    return selectExpression;
 }
 
-const IR::Node* ParaParserMerge::postorder(IR::Expression* selectExpression) {
-    return selectExpression;
+const IR::Node* ParaParserMerge::preorder(IR::Expression* expr) {
+    ::error("don't know how to handle this select expression: %1", expr);
+    return expr;
 }
 
 const IR::Node* ParaParserMerge::postorder(IR::ParserState* state) {
@@ -316,6 +338,22 @@ const IR::Node* ParaParserMerge::postorder(IR::ParserState* state) {
 }
 
 const IR::Node* ParaParserMerge::preorder(IR::SelectCase* case1) {
+    auto caseStateName = case1->state->path->name.name;
+    auto st = states1.getDeclaration<IR::ParserState>(caseStateName);
+    if (currP2Case == nullptr) {
+        CollectStates collector(states1);
+        st->apply(collector);
+        for (auto &state : collector.states) {
+            FindExtractedHeader hd(refMap1, typeMap1);
+            state->apply(hd);
+            mergeHeaders(hd.extractedHeader, hd.extractedType,
+                         nullptr, nullptr);
+            mapStates(state->name, nullptr, state->name);
+        }
+    } else {
+        auto caseStateName2 = currP2Case->state->path->name.name;
+        visitByNames(caseStateName, caseStateName2);
+    }
     return case1;
 }
 
