@@ -25,11 +25,27 @@ class FindExtractedHeader final : public Inspector {
     explicit FindExtractedHeader(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
       : refMap(refMap), typeMap(typeMap) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
+        extractedHeader = nullptr;
+        extractedType = nullptr;
         setName("FindExtractedHeader"); 
     }
 
     bool preorder(const IR::StatOrDecl* statementOrDecl) override;
     bool preorder(const IR::MethodCallExpression* call) override;
+};
+
+class CollectStates final : public Inspector {
+    const IR::IndexedVector<IR::ParserState> allStates;
+    bool preorder(const IR::ParserState* state) override;
+    bool preorder(const IR::Expression* expr) override;
+
+public:
+    std::vector<const IR::ParserState*> states;
+
+    explicit CollectStates(IR::IndexedVector<IR::ParserState> allStates)
+        : allStates(allStates) {
+        setName("CollectStates"); 
+    }
 };
 
 class ParaParserMerge final : public Transform {
@@ -42,6 +58,9 @@ class ParaParserMerge final : public Transform {
     const IR::P4Parser* p2;
     IR::IndexedVector<IR::ParserState> states2;
     const IR::ParserState* currP2State;
+    const IR::Expression* currP2Select;
+    const IR::SelectCase* currP2Case;
+    IR::Vector<IR::Node>* statesToAdd;
 
     std::map<cstring, std::pair<cstring, cstring>> stateMap;
 
@@ -53,6 +72,7 @@ class ParaParserMerge final : public Transform {
         typeMap2(typeMap2), p2(p2) {
         CHECK_NULL(refMap1); CHECK_NULL(typeMap1);
         CHECK_NULL(refMap2); CHECK_NULL(typeMap2);
+        statesToAdd = new IR::Vector<IR::Node>();
         setName("ParaParserMerge"); 
     }
 
@@ -62,17 +82,27 @@ class ParaParserMerge final : public Transform {
     const IR::Node* preorder(IR::ParserState* state) override;
     const IR::Node* postorder(IR::ParserState* state) override;
 
+    const IR::Node* preorder(IR::SelectCase* case1) override;
+    const IR::Node* postorder(IR::SelectCase* case1) override;
+
+    const IR::Node* preorder(IR::Expression* selectExpression);
+    const IR::Node* postorder(IR::Expression* selectExpression);
+
   private:
     const IR::Node* statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);
     bool keysetsEqual(const IR::Expression *e1, const IR::Expression *e2);
     void visitByNames(cstring s1, cstring s2);
     void mapStates(cstring s1, cstring s2, cstring merged);
+    IR::Node* copyParser2States();
     std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
       matchCases(IR::Vector<IR::SelectCase> cases1,
 		 IR::Vector<IR::SelectCase> cases2);
     IR::Path* mergeHeaders(const IR::Path *h1, IR::Type_Header *type1,
                            const IR::Path *h2, IR::Type_Header *type2);
-
+    const IR::Node* mergeTransitions(const IR::ParserState* state1,
+                                     const IR::ParserState* state2);
+    void collectStates1(const IR::Expression* selectExpression);
+    void collectStates2(const IR::Expression* selectExpression);
 };
 
 class ParaDeParMerge final : public Transform {
