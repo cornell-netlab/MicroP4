@@ -50,12 +50,12 @@ namespace CSA {
         }
         auto decl = ctx->parent->node->to<IR::Declaration>();
         auto enumerator = params->getEnumerator();
-        const IR::Parameter *declPacketName;
-        const IR::Parameter *declIngressMetadataName;
-        const IR::Parameter *declHeaderName;
-        const IR::Parameter *declMetadataName;
-        const IR::Parameter *declInArgName;
-        const IR::Parameter *declInOutArgName;
+        const IR::Parameter *declPacketName = nullptr;
+        const IR::Parameter *declIngressMetadataName = nullptr;
+        const IR::Parameter *declHeaderName = nullptr;
+        const IR::Parameter *declMetadataName = nullptr;
+        const IR::Parameter *declInArgName = nullptr;
+        const IR::Parameter *declInOutArgName = nullptr;
         
         /* XXX i've been comparing cstrings with ==. Does that even work */
         if (decl->name == "micro_parser") {
