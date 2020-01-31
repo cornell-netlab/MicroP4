@@ -18,6 +18,7 @@
 #include "frontends/parsers/parserDriver.h"
 #include "midend/parserUnroll.h"
 #include "midend/midEndLast.h"
+#include "alignParamNames.h"
 #include "mergeDeclarations.h"
 #include "slicePipeControl.h"
 #include "toControl.h"
@@ -80,7 +81,13 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::MergeDeclarations(irs),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        // new P4::MidEndLast(),
+        new P4::MidEndLast(),
+        // new CSA::AlignParamNames(&refMap, &typeMap);
+
+        new P4::MidEndLast(),
+
+        /*
+
         // new CSA::DebugPass(),
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
                            &controlToReconInfoMap, &minExtLen, &maxExtLen),
@@ -133,13 +140,10 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::TypeInference(&refMap, &typeMap, false),
         //////////////////////////////////////////
 
-        /*
+        // new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions, 
+        //                   &minExtLen, &maxExtLen),
+        // new P4::MidEndLast(),
 
-        new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions, 
-                           &minExtLen, &maxExtLen),
-        new P4::MidEndLast(),
-
-        */
         new P4::MidEndLast(),
         new CSA::HdrToStructs(&refMap, &typeMap),
         new P4::ResolveReferences(&refMap, true),
@@ -162,6 +166,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::DeadFieldElimination(&refMap, &typeMap),
         // new CSA::AnnotateFields(&refMap, &typeMap),
         new P4::MidEndLast(),
+        */
 
         // evaluator
     };

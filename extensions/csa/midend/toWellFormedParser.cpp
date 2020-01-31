@@ -243,6 +243,8 @@ const IR::Node* ToWellFormedParser::preorder(IR::Member* mem) {
     auto anstrEqu = findContext<IR::Equ>();
     if (anstrEqu == nullptr || anstrIf == nullptr)
         return mem;
+
+    // TODO: match with parameter
     guardMem = mem;
     /*
     auto type  = typeMap->getType(mem->expr, true);
