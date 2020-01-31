@@ -39,6 +39,9 @@ class ToWellFormedParser final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
 
+    IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
+    IR::P4Program* p4Program;
+
     const IR::Expression* guard;
     std::vector<std::pair<const IR::Member*, const IR::Constant*>> guards;
     const IR::Member* guardMem;
@@ -47,6 +50,7 @@ class ToWellFormedParser final : public Transform {
     std::vector<cstring> newFieldNames;
     std::vector<const IR::Constant*> values;
     IR::Type_Struct* newInParamType;
+    const IR::Parameter* currInParam;
 
 
     std::vector<IR::IndexedVector<IR::Declaration>*> clStack;
@@ -71,6 +75,8 @@ class ToWellFormedParser final : public Transform {
     const IR::Node* preorder(IR::P4Control* p4control) override;
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
+
+    const IR::Node* preorder(IR::Parameter* param) override;
 
     const IR::Node* preorder(IR::IfStatement* ifstmt) override;
 

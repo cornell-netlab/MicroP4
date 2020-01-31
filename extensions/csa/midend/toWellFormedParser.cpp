@@ -32,20 +32,65 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4Program* p4program) {
     auto type = typeMap->getType(mainDeclInst);
     BUG_CHECK(type!=nullptr && type->is<IR::P4ComposablePackage>(), 
         "could not find type of main package");
-    auto p4cpType = type->to<IR::P4ComposablePackage>();
+    auto cp = type->to<IR::P4ComposablePackage>();
     
-    auto node = getNodeFromP4Program(p4program, p4cpType);
-    visit(node);
+    p4Program = p4program;
+    for (auto& o : p4Program->objects) {
+        auto ocp = o->to<IR::P4ComposablePackage>();
+        if (ocp != nullptr && ocp->getName() == cp->getName()) {
+            visit(o);
+            break;
+        }
+    }
     return p4program;
 }
 
-const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* p4cp) {
-    //TODO:
-    //if (newInParamType != nullptr)
-    // update in paramType
-    visit(p4cp->packageLocals);
+const IR::Node* ToWellFormedParser::preorder(IR::Parameter* param) {
+    if (param->direction != IR::Direction::In)
+        return param;
+    if (newInParamType == nullptr && currInParam == nullptr)
+        return param;
+
+    auto t = typeMap->getType(param, true);
+    auto tc = typeMap->getType(currInParam, true);
+    if (t != tc)
+        return param;
+    auto np = new IR::Parameter(param->name, IR::Direction::In,
+        new IR::Type_Name(IR::ID(newInParamType->name)));
+    return np;
+}
+
+const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* cp) {
+   auto packageLocals = cp->packageLocals->clone();
+    for (auto& p : *packageLocals) {
+        if (p->is<IR::P4Parser>()) {
+            visit(p);
+            break;
+        }
+    }
+
+    // Any callee in control blocks will use above offsets( offsetsStack.back())
+    // Visiting controls
+    for (auto& typeDecl : *(packageLocals)) {
+        auto control = typeDecl->to<IR::P4Control>();
+        if (control != nullptr && control->name =="micro_control") {
+            visit(typeDecl);
+        }
+    }
+
+    // Visiting Deparser
+    for (auto& typeDecl : *(packageLocals)) {
+        auto control = typeDecl->to<IR::P4Control>();
+        if (control != nullptr && control->name == "micro_deparser") {
+            visit(typeDecl);
+            break;
+        }
+    }
+
+    cp->packageLocals = packageLocals;
+    updateP4ProgramObjects.push_back(cp);
     prune();
-    return p4cp;
+    return cp;
 }
 
 const IR::Node* ToWellFormedParser::preorder(IR::P4Parser* p4parser) {
@@ -112,16 +157,16 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
     auto& args = *(mce->arguments);
     auto newArgs = args.clone();
     unsigned short paramIndex = 0;
-    const IR::Parameter* param = nullptr;
+    currInParam = nullptr;
     for (auto p : callee->getApplyParameters()->parameters) {
         if (p->direction == IR::Direction::In) {
-            param = p;
+            currInParam = p;
             break;
         }
         paramIndex++;
     }
-    BUG_CHECK(param!=nullptr, "at least one in param missing (refer MSA)");
-    auto currInParamType = typeMap->getType(param, true);
+    BUG_CHECK(currInParam!=nullptr, "at least one in param missing (refer MSA)");
+    auto currInParamType = typeMap->getType(currInParam, true);
     // create new in param type
     cstring newInParamTypeName = callee->name+"_in_param_"+
       cstring::to_cstring(id_suffix++);
@@ -150,8 +195,6 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
         auto lhs = new IR::Member(dvExpr->clone(), IR::ID(n));
         stmts->push_back(new IR::AssignmentStatement(lhs, e.first->clone()));
     }
-    auto p4program = findContext<IR::P4Program>();
-    auto c = getNodeFromP4Program(p4program, callee);
     if (auto sl = currInParamType->to<IR::Type_StructLike>()) {
         for (auto f : sl->fields) {
             nfs.push_back(f->clone());
@@ -174,7 +217,14 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
     newInParamType = new IR::Type_Struct(IR::ID(newInParamTypeName), nfs);
     stmts->push_back(new IR::MethodCallStatement(newMCE));
 
-    visit(c);
+    for (auto& o : p4Program->objects) {
+        auto ocp = o->to<IR::P4ComposablePackage>();
+        if (ocp != nullptr && ocp->getName() == callee->getName()) {
+            visit(o);
+            break;
+        }
+    }
+
 
     return stmts;
 }
