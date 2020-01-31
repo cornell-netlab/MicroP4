@@ -41,11 +41,14 @@ const IR::Node* DeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
         }
     }
 
+    prune();
+
     return p4cp;
 }
 
-const IR::Node* DeParMerge::postorder(IR::P4ComposablePackage* p4cp) {
-    return p4cp;
+const IR::Node* DeParMerge::preorder(IR::P4Parser* p4parser) {
+    // TODO:
+    return p4parser;
 }
 
 const IR::Node* DeParMerge::preorder(IR::IfStatement* ifstmt) {
@@ -77,6 +80,7 @@ const IR::Node* DeParMerge::preorder(IR::IfStatement* ifstmt) {
         }
     }
 
+    prune();
     return ifstmt;
 }
 

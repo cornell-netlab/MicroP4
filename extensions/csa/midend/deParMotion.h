@@ -41,10 +41,11 @@ class DeParMerge final : public Transform {
         deParMotion = false;
     }
 
+    const IR::Node* preorder(IR::P4Parser* p4parser) override;
+
     const IR::Node* preorder(IR::P4Control* p4control) override;
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
-    const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
 
     const IR::Node* preorder(IR::IfStatement* ifstmt) override;
     const IR::Node* postorder(IR::IfStatement* ifstmt) override;

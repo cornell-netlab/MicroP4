@@ -17,6 +17,8 @@ set (CSA_SWITCH_SRCS
     switch/parseInput.cpp
     midend/deParMotionCSTRChkr.h
     midend/deParMotionCSTRChkr.cpp
+    midend/toWellFormedParser.h
+    midend/toWellFormedParser.cpp
     midend/concatDeParMerge.h
     midend/concatDeParMerge.cpp
     midend/seqDeParMerge.h
