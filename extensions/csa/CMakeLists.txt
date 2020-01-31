@@ -25,6 +25,8 @@ set (CSA_SWITCH_SRCS
     midend/seqDeParMerge.cpp
     midend/paraDeParMerge.h
     midend/paraDeParMerge.cpp
+    midend/alignParamNames.h
+    midend/alignParamNames.cpp
     midend/deParMotion.h
     midend/deParMotion.cpp
     midend/msaNameConstants.h
