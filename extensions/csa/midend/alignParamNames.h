@@ -24,6 +24,7 @@ namespace CSA {
         explicit AlignParamNames(P4::ReferenceMap* refMap, P4::TypeMap* typeMap) :
             refMap(refMap), typeMap(typeMap)
         {
+            LOG1("initializing AlignParamNames");
             CHECK_NULL(refMap);
             CHECK_NULL(typeMap);
             packetName = nullptr;
@@ -35,9 +36,9 @@ namespace CSA {
             setName("AlignParamNames");
         }
 
-        const IR::Node* preorder(IR::P4ComposablePackage* cpkg) override;
+        const IR::Node* preorder(IR::P4Program* p4program) override;
 
-        const IR::Node* postorder(IR::P4ComposablePackage* cpkg) override;
+        const IR::Node* preorder(IR::P4ComposablePackage* cpkg) override;
 
         const IR::Node* preorder(IR::P4Parser* parser) override;
 
@@ -52,6 +53,8 @@ namespace CSA {
         const IR::Node* preorder(IR::Parameter* param) override;
 
         const IR::Node* preorder(IR::Path* path) override;
+
+        void end_apply(const IR::Node* node) override;
         
 
     private:
