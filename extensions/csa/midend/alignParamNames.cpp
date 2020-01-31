@@ -12,6 +12,12 @@ namespace CSA {
         return cpkg;
     }
 
+    const IR::Node* AlignParamNames::postorder(IR::P4ComposablePackage* cpkg) {
+        P4::TypeChecking check(refMap, typeMap, true);
+        cpkg->apply(check);
+        return cpkg;
+    }
+
     const IR::Node* AlignParamNames::preorder(IR::P4Parser* parser) {
         renamings.clear();
         visit(parser->type);

@@ -3,9 +3,14 @@
 
 #include "ir/ir.h"
 #include "frontends/p4/coreLibrary.h"
+#include "frontends/common/resolveReferences/referenceMap.h"
+#include "frontends/p4/typeMap.h"
+#include "frontends/p4/typeChecking/typeChecker.h"
 
 namespace CSA {
     class AlignParamNames final : public Transform {
+        P4::ReferenceMap *refMap;
+        P4::TypeMap *typeMap;
         cstring packetName;
         cstring ingressMetadataName;
         cstring headerName;
@@ -16,17 +21,23 @@ namespace CSA {
         
     public:
         
-        explicit AlignParamNames() {
-            setName("AlignParamNames");
+        explicit AlignParamNames(P4::ReferenceMap* refMap, P4::TypeMap* typeMap) :
+            refMap(refMap), typeMap(typeMap)
+        {
+            CHECK_NULL(refMap);
+            CHECK_NULL(typeMap);
             packetName = nullptr;
             ingressMetadataName = nullptr;
             headerName = nullptr;
             metadataName = nullptr;
             inArgName = nullptr;
             inOutArgName = nullptr;
+            setName("AlignParamNames");
         }
 
         const IR::Node* preorder(IR::P4ComposablePackage* cpkg) override;
+
+        const IR::Node* postorder(IR::P4ComposablePackage* cpkg) override;
 
         const IR::Node* preorder(IR::P4Parser* parser) override;
 
