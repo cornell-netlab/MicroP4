@@ -776,33 +776,4 @@ IR::Type_Struct* Converter::createValidityStruct(const IR::Type_Struct* hdrStr,
     return ts;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }// namespace CSA

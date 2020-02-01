@@ -28,7 +28,6 @@ class CheckParserGuard final : public Inspector {
         available = false;
     }
     bool preorder(const IR::ParserState* parserState) override;
-
     bool hasGuard() const {
         return available;
     }
@@ -40,18 +39,24 @@ class ToWellFormedParser final : public Transform {
     P4::TypeMap* typeMap;
 
     IR::Vector<IR::Type_Declaration> updateP4ProgramObjects;
+    std::map<cstring, const IR::Type_Declaration*> insertAtP4ProgramObjects;
     IR::P4Program* p4Program;
 
     const IR::Expression* guard;
-    std::vector<std::pair<const IR::Member*, const IR::Constant*>> guards;
+    std::vector<std::pair<const IR::Member*, const IR::Constant*>> guardStack;
+    std::pair<const IR::Member*, const IR::Constant*> currGuard;
+
     const IR::Member* guardMem;
     const IR::Constant* guardVal;
 
-    std::vector<cstring> newFieldNames;
-    std::vector<const IR::Constant*> values;
+    cstring newFieldName;
+    const IR::Constant* value;
     IR::Type_Struct* newInParamType;
     const IR::Parameter* currInParam;
 
+
+    cstring parserInParamName;
+    cstring newStartName;
 
     std::vector<IR::IndexedVector<IR::Declaration>*> clStack;
 
@@ -72,6 +77,8 @@ class ToWellFormedParser final : public Transform {
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
 
+    const IR::Node* preorder(IR::ParserState* parserState) override;
+
     const IR::Node* preorder(IR::P4Control* p4control) override;
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
@@ -89,6 +96,9 @@ class ToWellFormedParser final : public Transform {
     const IR::Node* preorder(IR::Member* mem) override;
   
     const IR::Node* preorder(IR::Constant* cs) override;
+
+    const IR::Node* preorder(IR::Type_Specialized* ts) override;
+
 };
 
 }   // namespace CSA

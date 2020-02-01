@@ -8,14 +8,16 @@
 
 namespace CSA {
 
-
 bool CheckParserGuard::preorder(const IR::ParserState* parserState) {
     if (parserState->name != IR::ParserState::start)
         return false;
     available = false;
-    if (parserState->selectExpression != nullptr) {
-        if (parserState->selectExpression->is<IR::SelectExpression>())
-            available = true;
+
+    if (parserState->components.size() == 0) {
+        if (parserState->selectExpression != nullptr) {
+            if (parserState->selectExpression->is<IR::SelectExpression>())
+                available = true;
+        }
     }
     return false;
 }
@@ -42,6 +44,25 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4Program* p4program) {
             break;
         }
     }
+    for (auto updateNode : updateP4ProgramObjects) {
+        for (auto& o : p4Program->objects) {
+            auto p4cp = o->to<IR::P4ComposablePackage>();
+            if (p4cp != nullptr && p4cp->getName() == updateNode->getName()) {
+                o = updateNode;
+            }
+        }
+    }
+    
+    for (auto e : insertAtP4ProgramObjects) {
+        auto it = p4Program->objects.begin();
+        for ( ; it != p4Program->objects.end(); it++) {
+            auto td = (*it)->to<IR::Type_Declaration>();
+            if (td != nullptr && td->getName() == e.first)
+                break;
+        }
+        p4Program->objects.insert(it, e.second);
+    }
+    prune();
     return p4program;
 }
 
@@ -51,24 +72,47 @@ const IR::Node* ToWellFormedParser::preorder(IR::Parameter* param) {
     if (newInParamType == nullptr && currInParam == nullptr)
         return param;
 
-    auto t = typeMap->getType(param, true);
+    auto t = typeMap->getType(getOriginal(), true);
     auto tc = typeMap->getType(currInParam, true);
     if (t != tc)
         return param;
     auto np = new IR::Parameter(param->name, IR::Direction::In,
         new IR::Type_Name(IR::ID(newInParamType->name)));
+    auto tp = findContext<IR::Type_Parser>();
+    if (tp != nullptr)
+        parserInParamName = param->name;
     return np;
 }
 
+const IR::Node* ToWellFormedParser::preorder(IR::Type_Specialized* ts) {
+    std::cout<<" ToWellFormedParser Type_Specialized "<<"\n";
+    if (ts->arguments == nullptr || ts->arguments->size() != 5)
+        return ts;
+    auto tcp = getContext()->node->to<IR::P4ComposablePackage>();
+    if (tcp == nullptr)
+        return ts;
+    auto tn = new IR::Type_Name(IR::ID(newInParamType->name));
+    auto tas = new IR::Vector<IR::Type>();
+    for (auto ta : *(ts->arguments))
+        tas->push_back(ta->clone());
+    (*tas)[2] = tn;
+    ts->arguments = tas;
+    prune();
+    return ts;
+}
+
 const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* cp) {
-   auto packageLocals = cp->packageLocals->clone();
-    for (auto& p : *packageLocals) {
-        if (p->is<IR::P4Parser>()) {
-            visit(p);
-            break;
+    std::cout<<"ToWellFormedParser:preorder:P4ComposablePackage: "<<cp->name<<"\n";
+    auto packageLocals = cp->packageLocals->clone();
+    if (newInParamType != nullptr) {
+        visit(cp->interfaceType);
+        for (auto& p : *packageLocals) {
+            if (p->is<IR::P4Parser>()) {
+                visit(p);
+                break;
+            }
         }
     }
-
     // Any callee in control blocks will use above offsets( offsetsStack.back())
     // Visiting controls
     for (auto& typeDecl : *(packageLocals)) {
@@ -77,8 +121,8 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* cp) {
             visit(typeDecl);
         }
     }
-
     // Visiting Deparser
+    /*
     for (auto& typeDecl : *(packageLocals)) {
         auto control = typeDecl->to<IR::P4Control>();
         if (control != nullptr && control->name == "micro_deparser") {
@@ -86,7 +130,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* cp) {
             break;
         }
     }
-
+    */
     cp->packageLocals = packageLocals;
     updateP4ProgramObjects.push_back(cp);
     prune();
@@ -94,33 +138,74 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* cp) {
 }
 
 const IR::Node* ToWellFormedParser::preorder(IR::P4Parser* p4parser) {
-    // Find the last headers extracted before transition to accept state
-    // Or the guard condition. see l3.p4 parser for example
+    if (newInParamType == nullptr) {
+        prune();
+        return p4parser;
+    }
+    newStartName = IR::ParserState::start+cstring::to_cstring(id_suffix++);
+    visit(p4parser->type);
+    visit(p4parser->states);
+
+    std::cout<<"only the inner most if-cond is pushed inside callees parser\n";
+    auto fn = newFieldName;
+    auto lexpr = new IR::Member(
+          new IR::PathExpression(new IR::Path(IR::ID(parserInParamName))), fn);
+    IR::Vector<IR::Expression> components;
+    components.push_back(lexpr);
+    auto le = new IR::ListExpression(components);
+
+    auto state = new IR::PathExpression(new IR::Path(IR::ID(IR::ParserState::start)));
+    auto keyset = value->clone();
+    auto sc = new IR::SelectCase(keyset, state);
+    IR::Vector<IR::SelectCase> selectCases;
+    selectCases.push_back(sc);
+
+    auto se = new IR::SelectExpression(le, selectCases);
+    auto newStart = new IR::ParserState(newStartName, se);
+
+    p4parser->states.insert(p4parser->states.begin(), newStart);
+
+    prune();
     return p4parser;
 }
 
+
+const IR::Node* ToWellFormedParser::preorder(IR::ParserState* parserState) {
+    if (parserState->name == IR::ParserState::start) 
+        parserState->name = IR::ID(newStartName);
+    return parserState;
+}
+
+
 const IR::Node* ToWellFormedParser::preorder(IR::P4Control* p4control) {
-    guards.clear();
+    auto cp = findContext<IR::P4ComposablePackage>();
+    std::cout<<"ToWellFormedParser:preorder:P4Control: ";
+    std::cout<<cp->name<<"-"<<p4control->name<<"\n";
+
+    if (newInParamType != nullptr) {
+        visit(p4control->type);
+    }
+    guardStack.push_back(currGuard);
     clStack.push_back(new IR::IndexedVector<IR::Declaration>());
     visit(p4control->body);
     auto dvs = clStack.back();
     p4control->controlLocals.append(*dvs);
     clStack.pop_back();
+    currGuard = guardStack.back();
+    guardStack.pop_back();
     prune();
     return p4control;
 }
 
 const IR::Node* ToWellFormedParser::preorder(IR::IfStatement* ifstmt) {
     // Ideally, we should be doing data dependence analysis
-    // to identify guards
+    // to identify guard
     guardMem = nullptr;
     guardVal = nullptr;
-    auto currSize = guards.size();
     visit(ifstmt->condition);
     if (guardVal!=nullptr && guardMem!=nullptr)
-        guards.emplace_back(guardMem, guardVal);
+        currGuard = std::make_pair(guardMem, guardVal);
     visit(ifstmt->ifTrue);
-    guards.resize(currSize);
 
     // TODO: need to think about what guards' value should be in 
     // callees of else block
@@ -131,6 +216,9 @@ const IR::Node* ToWellFormedParser::preorder(IR::IfStatement* ifstmt) {
 }
 
 const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
+    if (typeMap->getType(mcs->methodCall->method) == nullptr)
+        return mcs;
+    std::cout<<mcs<<"\n";
     auto mi = P4::MethodInstance::resolve(mcs->methodCall, refMap, typeMap);
     if (!mi->isApply())
         return mcs;
@@ -148,9 +236,22 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
     callee->apply(hasSelect);
     // if callee parser's start state has select statement. We are not pushing 
     // the guard in that case.
-    if (hasSelect.hasGuard())
+    if (hasSelect.hasGuard()) {
+        newInParamType = nullptr;
+        currInParam = nullptr;
+        for (auto& o : p4Program->objects) {
+            auto ocp = o->to<IR::P4ComposablePackage>();
+            if (ocp != nullptr && ocp->getName() == callee->getName()) {
+                visit(o);
+                break;
+            }
+        }
         return mcs;
-    
+    }
+    if (currGuard.first == nullptr)
+        return mcs;
+    std::cout<<mcs<<" triggers parser update in callee \n";
+
     // We need to push the enclosing conditions into parser before parser can be
     // moved out.
     auto mce = mcs->methodCall;
@@ -178,23 +279,22 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
     auto inArgExpr = args[paramIndex]->expression;
     (*newArgs)[paramIndex] = new IR::Argument(dvExpr);
     auto newMCE = new IR::MethodCallExpression(mce->method->clone(), newArgs);
-    newFieldNames.clear();
-    values.clear();
     // assignment stmts, for copying 1) fields from old args to new. 
     // 2) members in enclosing ifcond expression to newly created fields  
     auto stmts = new IR::IndexedVector<IR::StatOrDecl>();
     IR::IndexedVector<IR::StructField> nfs;
     // creating a field for each guard
-    for (auto e : guards) {
+    
+    auto e = currGuard;
         auto t = typeMap->getType(e.first, true);
         cstring n = "if_" + e.first->member;
-        newFieldNames.push_back(n);
+        newFieldName = n;
         auto f = new IR::StructField(n, t);
         nfs.push_back(f);
-        values.push_back(e.second);
+        value = e.second;
         auto lhs = new IR::Member(dvExpr->clone(), IR::ID(n));
         stmts->push_back(new IR::AssignmentStatement(lhs, e.first->clone()));
-    }
+
     if (auto sl = currInParamType->to<IR::Type_StructLike>()) {
         for (auto f : sl->fields) {
             nfs.push_back(f->clone());
@@ -214,7 +314,10 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
         BUG(" have not handled this type ");
     }
 
+    std::cout<<"new in param type name : "<<newInParamTypeName<<"\n";
+    std::cout<<"callee name"<<callee->name<<"\n";
     newInParamType = new IR::Type_Struct(IR::ID(newInParamTypeName), nfs);
+    insertAtP4ProgramObjects.emplace(callee->name, newInParamType);
     stmts->push_back(new IR::MethodCallStatement(newMCE));
 
     for (auto& o : p4Program->objects) {
@@ -224,8 +327,6 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
             break;
         }
     }
-
-
     return stmts;
 }
 
@@ -245,7 +346,8 @@ const IR::Node* ToWellFormedParser::preorder(IR::Member* mem) {
         return mem;
 
     // TODO: match with parameter
-    guardMem = mem;
+    // guardMem = mem;
+    guardMem = getOriginal()->to<IR::Member>();
     /*
     auto type  = typeMap->getType(mem->expr, true);
     if (type->is<IR::Type_Header>()) {
