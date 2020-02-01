@@ -1,3 +1,7 @@
+/*
+ * Author: Ryan Doenges
+ * Email: rhd89@cornell.edu 
+ */
 #ifndef _EXTENSIONS_CSA_MIDEND_ALIGNPARAMNAMES_H_
 #define _EXTENSIONS_CSA_MIDEND_ALIGNPARAMNAMES_H_
 

@@ -1,3 +1,7 @@
+/*
+ * Author: Ryan Doenges
+ * Email: rhd89@cornell.edu 
+ */
 #include "alignParamNames.h"
 
 namespace CSA {
@@ -6,6 +10,7 @@ namespace CSA {
         std::cout << "end_apply" << std::endl;
         refMap->clear();
         typeMap->clear();
+        Transform::end_apply(node);
     }
 
     const IR::Node* AlignParamNames::preorder(IR::P4Program* p4program) {
@@ -28,6 +33,7 @@ namespace CSA {
         inOutArgName = nullptr;
         visit(cpkg->packageLocals);
         LOG5("done visiting " << cpkg);
+        cpkg->type = nullptr;
         prune();
         return cpkg;
     }
@@ -198,7 +204,8 @@ namespace CSA {
             ret = new IR::Parameter(newID, param->direction, param->type);
             LOG4("changed to: " << ret);
         } else {
-            ret = new IR::Parameter(param->name, param->direction, param->type);
+            // ret = new IR::Parameter(param->name, param->direction, param->type);
+            ret = param;
             LOG4("not found: " << param);
         }
 
