@@ -83,12 +83,10 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
-        new CSA::AlignParamNames(&refMap, &typeMap),
+        new CSA::HardcodedMergeTest(&refMap, &typeMap),
         new P4::MidEndLast(),
-        new CSA::CloneWithFreshPath(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new CSA::HardcodedMergeTest(&refMap, &typeMap, "parser_a", "parser_b"),
         
 
 

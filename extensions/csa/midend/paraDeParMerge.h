@@ -28,7 +28,6 @@ class FindExtractedHeader final : public Inspector {
         setName("FindExtractedHeader"); 
     }
 
-    bool preorder(const IR::StatOrDecl* statementOrDecl) override;
     bool preorder(const IR::MethodCallExpression* call) override;
 };
 
@@ -71,6 +70,9 @@ class ParaParserMerge final : public Transform {
         CHECK_NULL(refMap1); CHECK_NULL(typeMap1);
         CHECK_NULL(refMap2); CHECK_NULL(typeMap2);
         statesToAdd = new IR::Vector<IR::Node>();
+        currP2Case = nullptr;
+        currP2State = nullptr;
+        currP2Select = nullptr;
         setName("ParaParserMerge"); 
     }
 
@@ -83,9 +85,10 @@ class ParaParserMerge final : public Transform {
     const IR::Node* preorder(IR::SelectCase* case1) override;
     const IR::Node* postorder(IR::SelectCase* case1) override;
 
-    const IR::Node* preorder(IR::Expression* expr);
-    const IR::Node* preorder(IR::PathExpression* pathExpression);
-    const IR::Node* preorder(IR::SelectExpression* selectExpression);
+    const IR::Node* preorder(IR::PathExpression* pathExpression) override;
+    const IR::Node* preorder(IR::SelectExpression* selectExpression) override;
+
+    void end_apply(const IR::Node* n) override;
 
   private:
     const IR::Node* statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);
@@ -130,18 +133,13 @@ class ParaDeParMerge final : public Transform {
 class HardcodedMergeTest final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    cstring parser1Name;
-    cstring parser2Name;
     const IR::P4Parser* other_parser;
 
 public:
-    explicit HardcodedMergeTest(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-                                cstring parser1Name, cstring parser2Name) :
-    refMap(refMap), typeMap(typeMap), parser1Name(parser1Name), parser2Name(parser2Name) {
+    explicit HardcodedMergeTest(P4::ReferenceMap* refMap, P4::TypeMap* typeMap) :
+    refMap(refMap), typeMap(typeMap) {
         CHECK_NULL(refMap);
         CHECK_NULL(typeMap);
-        CHECK_NULL(parser1Name);
-        CHECK_NULL(parser2Name);
         setName("HardcodedMergeTest");
     }
 
