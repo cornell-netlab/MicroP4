@@ -99,6 +99,12 @@ class ToWellFormedParser final : public Transform {
 
     const IR::Node* preorder(IR::Type_Specialized* ts) override;
 
+    void end_apply(const IR::Node* node) override { 
+        refMap->clear();
+        typeMap->clear();
+        Transform::end_apply(node);
+    }
+
 };
 
 }   // namespace CSA

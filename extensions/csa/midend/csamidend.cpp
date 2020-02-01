@@ -33,6 +33,7 @@
 #include "removeUnusedApplyParams.h"
 #include "cloneWithFreshPath.h"
 #include "deadFieldElimination.h"
+#include "toWellFormedParser.h"
 #include "../backend/tofino/replaceByteHdrStack.h"
 #include "../backend/tofino/toTofino.h"
 #include "../backend/tofino/annotateFields.h"
@@ -82,11 +83,17 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
         new P4::MidEndLast(),
+        new CSA::ToWellFormedParser(&refMap, &typeMap),
+        new P4::MidEndLast(),
+
+        /*
+        new P4::MidEndLast(),
         new CSA::AlignParamNames(&refMap, &typeMap),
         new P4::MidEndLast(),
         new CSA::CloneWithFreshPath(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
+        */
 
         /*
 

@@ -85,7 +85,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::Parameter* param) {
 }
 
 const IR::Node* ToWellFormedParser::preorder(IR::Type_Specialized* ts) {
-    std::cout<<" ToWellFormedParser Type_Specialized "<<"\n";
+    // std::cout<<" ToWellFormedParser Type_Specialized "<<"\n";
     if (ts->arguments == nullptr || ts->arguments->size() != 5)
         return ts;
     auto tcp = getContext()->node->to<IR::P4ComposablePackage>();
@@ -102,7 +102,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::Type_Specialized* ts) {
 }
 
 const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* cp) {
-    std::cout<<"ToWellFormedParser:preorder:P4ComposablePackage: "<<cp->name<<"\n";
+    // std::cout<<"ToWellFormedParser:preorder:P4ComposablePackage: "<<cp->name<<"\n";
     auto packageLocals = cp->packageLocals->clone();
     if (newInParamType != nullptr) {
         visit(cp->interfaceType);
@@ -132,6 +132,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4ComposablePackage* cp) {
     }
     */
     cp->packageLocals = packageLocals;
+    cp->type = nullptr;
     updateP4ProgramObjects.push_back(cp);
     prune();
     return cp;
@@ -146,7 +147,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4Parser* p4parser) {
     visit(p4parser->type);
     visit(p4parser->states);
 
-    std::cout<<"only the inner most if-cond is pushed inside callees parser\n";
+    // std::cout<<"only the inner most if-cond is pushed inside callees parser\n";
     auto fn = newFieldName;
     auto lexpr = new IR::Member(
           new IR::PathExpression(new IR::Path(IR::ID(parserInParamName))), fn);
@@ -154,17 +155,16 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4Parser* p4parser) {
     components.push_back(lexpr);
     auto le = new IR::ListExpression(components);
 
-    auto state = new IR::PathExpression(new IR::Path(IR::ID(IR::ParserState::start)));
+    auto state = new IR::PathExpression(new IR::Path(IR::ID(newStartName)));
     auto keyset = value->clone();
     auto sc = new IR::SelectCase(keyset, state);
     IR::Vector<IR::SelectCase> selectCases;
     selectCases.push_back(sc);
 
     auto se = new IR::SelectExpression(le, selectCases);
-    auto newStart = new IR::ParserState(newStartName, se);
+    auto newStart = new IR::ParserState(IR::ParserState::start, se);
 
     p4parser->states.insert(p4parser->states.begin(), newStart);
-
     prune();
     return p4parser;
 }
@@ -179,8 +179,8 @@ const IR::Node* ToWellFormedParser::preorder(IR::ParserState* parserState) {
 
 const IR::Node* ToWellFormedParser::preorder(IR::P4Control* p4control) {
     auto cp = findContext<IR::P4ComposablePackage>();
-    std::cout<<"ToWellFormedParser:preorder:P4Control: ";
-    std::cout<<cp->name<<"-"<<p4control->name<<"\n";
+    // std::cout<<"ToWellFormedParser:preorder:P4Control: ";
+    // std::cout<<cp->name<<"-"<<p4control->name<<"\n";
 
     if (newInParamType != nullptr) {
         visit(p4control->type);
@@ -218,7 +218,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::IfStatement* ifstmt) {
 const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
     if (typeMap->getType(mcs->methodCall->method) == nullptr)
         return mcs;
-    std::cout<<mcs<<"\n";
+    // std::cout<<mcs<<"\n";
     auto mi = P4::MethodInstance::resolve(mcs->methodCall, refMap, typeMap);
     if (!mi->isApply())
         return mcs;
@@ -250,7 +250,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
     }
     if (currGuard.first == nullptr)
         return mcs;
-    std::cout<<mcs<<" triggers parser update in callee \n";
+    // std::cout<<mcs<<" triggers parser update in callee \n";
 
     // We need to push the enclosing conditions into parser before parser can be
     // moved out.
@@ -314,8 +314,8 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
         BUG(" have not handled this type ");
     }
 
-    std::cout<<"new in param type name : "<<newInParamTypeName<<"\n";
-    std::cout<<"callee name"<<callee->name<<"\n";
+    // std::cout<<"new in param type name : "<<newInParamTypeName<<"\n";
+    // std::cout<<"callee name"<<callee->name<<"\n";
     newInParamType = new IR::Type_Struct(IR::ID(newInParamTypeName), nfs);
     insertAtP4ProgramObjects.emplace(callee->name, newInParamType);
     stmts->push_back(new IR::MethodCallStatement(newMCE));
