@@ -393,5 +393,19 @@ const IR::Node* ParaDeParMerge::postorder(IR::P4ComposablePackage* p4cp) {
     return p4cp;
 }
 
+const IR::Node* HardcodedMergeTest::preorder(IR::P4Parser* parser) {
+    auto n = parser->name.name;
+    if (n == parser1Name || n == parser2Name) {
+        if (other_parser != nullptr) {
+            ParaParserMerge merger(refMap, typeMap, refMap, typeMap, other_parser);
+            parser->apply(merger);
+        } else {
+            other_parser = parser;
+        }
+    }
+
+    return parser;
+}
+
 
 }// namespace CSA

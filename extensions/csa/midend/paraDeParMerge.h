@@ -127,6 +127,27 @@ class ParaDeParMerge final : public Transform {
 
 };
 
+class HardcodedMergeTest final : public Transform {
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+    cstring parser1Name;
+    cstring parser2Name;
+    const IR::P4Parser* other_parser;
+
+public:
+    explicit HardcodedMergeTest(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
+                                cstring parser1Name, cstring parser2Name) :
+    refMap(refMap), typeMap(typeMap), parser1Name(parser1Name), parser2Name(parser2Name) {
+        CHECK_NULL(refMap);
+        CHECK_NULL(typeMap);
+        CHECK_NULL(parser1Name);
+        CHECK_NULL(parser2Name);
+        setName("HardcodedMergeTest");
+    }
+
+    const IR::Node* preorder(IR::P4Parser* parser) override;
+};
+
 }   // namespace CSA
 #endif  /* _EXTENSIONS_CSA_MIDEND_PARADEPARMERGE_H_ */
 
