@@ -70,7 +70,8 @@ bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
 
 /* ParaParserMerge */
 const IR::Node* ParaParserMerge::preorder(IR::P4Parser* p4parser) {
-    LOG2("old parser: " << p4parser);
+    LOG2("old parser 1: " << p4parser);
+    LOG2("old parser 2: " << p2);
 
     states1 = p4parser->states;
     states2 = p2->states;
@@ -326,6 +327,7 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectCase* case1) {
 }
 
 IR::Expression* ParaParserMerge::mergeHeaders(const IR::Expression *h1, const IR::Expression *h2) {
+    LOG4("mergeHeaders: \n  " << h1 << "\n  " << h2);
     if (h1 != nullptr) {
         return h1->clone();
     } else if (h2 != nullptr) {
