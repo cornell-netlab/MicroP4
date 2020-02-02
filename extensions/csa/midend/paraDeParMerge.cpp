@@ -90,6 +90,12 @@ const IR::Node* ParaParserMerge::preorder(IR::P4Parser* p4parser) {
         ::error("Could not find start state for parser 1 (%1%) or parser 2 (%2%)",
                 start_state1, start_state2);
     }
+    for (auto &updatedState : *statesToChange)  {
+        p4parser->states.removeByName(updatedState->name);
+    }
+    p4parser->states.pushBackOrAppend(statesToChange);
+    p4parser->states.pushBackOrAppend(statesToAdd);
+    statesToAdd->clear();
     return p4parser;
 }
 
@@ -103,10 +109,6 @@ void ParaParserMerge::visitByNames(cstring s1, cstring s2) {
     BUG_CHECK(currP2State != nullptr, "state %1% not found", s2);
     visit(state1);
     prune();
-}
-
-const IR::Node* ParaParserMerge::postorder(IR::P4Parser* p4parser) {
-    return p4parser;
 }
 
 void ParaParserMerge::mapStates(cstring s1, cstring s2, cstring merged) {
@@ -333,17 +335,6 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
     }
 }
 
-const IR::Node* ParaParserMerge::postorder(IR::ParserState* state) {
-    if (statesToAdd->size() > 0) {
-        auto ret = statesToAdd->clone();
-        ret->push_back(state);
-        statesToAdd = new IR::Vector<IR::Node>();
-        return ret;
-    } else {
-        return state;
-    }
-}
-
 const IR::Node* ParaParserMerge::preorder(IR::SelectCase* case1) {
     auto caseStateName = case1->state->path->name.name;
     auto st = states1.getDeclaration<IR::ParserState>(caseStateName);
@@ -364,10 +355,6 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectCase* case1) {
         LOG4("caseStateName2: " << caseStateName2);
         visitByNames(caseStateName, caseStateName2);
     }
-    return case1;
-}
-
-const IR::Node* ParaParserMerge::postorder(IR::SelectCase* case1) {
     LOG4("resetting p2case");
     currP2Case = nullptr;
     return case1;
@@ -391,23 +378,11 @@ const IR::Node* ParaDeParMerge::preorder(IR::P4Control* p4control) {
     return p4control;
 }
 
-const IR::Node* ParaDeParMerge::postorder(IR::P4Control* p4control) {
-    return p4control;
-}
-
 const IR::Node* ParaDeParMerge::preorder(IR::P4Parser* p4parser) {
     return p4parser;
 }
 
-const IR::Node* ParaDeParMerge::postorder(IR::P4Parser* p4parser) {
-    return p4parser;
-}
-
 const IR::Node* ParaDeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
-    return p4cp;
-}
-
-const IR::Node* ParaDeParMerge::postorder(IR::P4ComposablePackage* p4cp) {
     return p4cp;
 }
 

@@ -57,7 +57,9 @@ class ParaParserMerge final : public Transform {
     const IR::ParserState* currP2State;
     const IR::Expression* currP2Select;
     const IR::SelectCase* currP2Case;
-    IR::Vector<IR::Node>* statesToAdd;
+
+    IR::Vector<IR::ParserState>* statesToAdd;
+    IR::Vector<IR::ParserState>* statesToChange;
 
     std::map<cstring, std::pair<cstring, cstring>> stateMap;
 
@@ -69,7 +71,8 @@ class ParaParserMerge final : public Transform {
         typeMap2(typeMap2), p2(p2) {
         CHECK_NULL(refMap1); CHECK_NULL(typeMap1);
         CHECK_NULL(refMap2); CHECK_NULL(typeMap2);
-        statesToAdd = new IR::Vector<IR::Node>();
+        statesToAdd = new IR::Vector<IR::ParserState>();
+        statesToChange = new IR::Vector<IR::ParserState>();
         currP2Case = nullptr;
         currP2State = nullptr;
         currP2Select = nullptr;
@@ -77,13 +80,10 @@ class ParaParserMerge final : public Transform {
     }
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
-    const IR::Node* postorder(IR::P4Parser* p4parser) override;
 
     const IR::Node* preorder(IR::ParserState* state) override;
-    const IR::Node* postorder(IR::ParserState* state) override;
 
     const IR::Node* preorder(IR::SelectCase* case1) override;
-    const IR::Node* postorder(IR::SelectCase* case1) override;
 
     const IR::Node* preorder(IR::PathExpression* pathExpression) override;
     const IR::Node* preorder(IR::SelectExpression* selectExpression) override;
@@ -120,13 +120,10 @@ class ParaDeParMerge final : public Transform {
     }
 
     const IR::Node* preorder(IR::P4Control* p4control) override;
-    const IR::Node* postorder(IR::P4Control* p4control) override;
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
-    const IR::Node* postorder(IR::P4Parser* p4parser) override;
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
-    const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
 
 };
 
