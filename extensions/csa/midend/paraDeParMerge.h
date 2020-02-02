@@ -34,7 +34,8 @@ class FindExtractedHeader final : public Inspector {
 class CollectStates final : public Inspector {
     const IR::IndexedVector<IR::ParserState> allStates;
     bool preorder(const IR::ParserState* state) override;
-    bool preorder(const IR::Expression* expr) override;
+    bool preorder(const IR::PathExpression* expr) override;
+    bool preorder(const IR::SelectExpression* expr) override;
 
 public:
     std::vector<const IR::ParserState*> states;
@@ -55,7 +56,6 @@ class ParaParserMerge final : public Transform {
     const IR::P4Parser* p2;
     IR::IndexedVector<IR::ParserState> states2;
     const IR::ParserState* currP2State;
-    const IR::Expression* currP2Select;
     const IR::SelectCase* currP2Case;
 
     IR::Vector<IR::ParserState>* statesToAdd;
@@ -75,11 +75,11 @@ class ParaParserMerge final : public Transform {
         statesToChange = new IR::Vector<IR::ParserState>();
         currP2Case = nullptr;
         currP2State = nullptr;
-        currP2Select = nullptr;
         setName("ParaParserMerge"); 
     }
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
+    const IR::Node* postorder(IR::P4Parser* p4parser) override;
 
     const IR::Node* preorder(IR::ParserState* state) override;
 
@@ -91,7 +91,7 @@ class ParaParserMerge final : public Transform {
     void end_apply(const IR::Node* n) override;
 
   private:
-    const IR::Node* statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);
+    bool statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);
     bool keysetsEqual(const IR::Expression *e1, const IR::Expression *e2);
     void visitByNames(cstring s1, cstring s2);
     void mapStates(cstring s1, cstring s2, cstring merged);

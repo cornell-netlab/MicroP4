@@ -14,26 +14,17 @@ bool CollectStates::preorder(const IR::ParserState* state) {
     return false;
 }
 
-bool CollectStates::preorder(const IR::Expression* selectExpression) {
-    if (getContext() == nullptr) {
-        return selectExpression;
-    }
-    auto state = getContext()->node;
-    if (!state->is<IR::ParserState>()) {
-        return selectExpression;
-    }
+bool CollectStates::preorder(const IR::PathExpression* pathExpression) {
+    auto state = allStates.getDeclaration<IR::ParserState>(pathExpression->path->name.name);
+    visit(state);
+    return false;
+}
 
+bool CollectStates::preorder(const IR::SelectExpression* selectExpression) {
     std::vector<cstring> stateNames;
-    if (selectExpression->is<IR::PathExpression>()) {
-        auto stateName = selectExpression->to<IR::PathExpression>();
-        stateNames.push_back(stateName->path->name.name);
-    } else if (selectExpression->is<IR::SelectExpression>()) {
-        auto selectCases = selectExpression->to<IR::SelectExpression>()->selectCases;
-        for (auto &selectCase : selectCases) {
-            stateNames.push_back(selectCase->state->path->name.name);
-        }
-    } else {
-        ::error("don't know how to collect states in this select expression: %1%", selectExpression);
+    auto selectCases = selectExpression->selectCases;
+    for (auto &selectCase : selectCases) {
+        stateNames.push_back(selectCase->state->path->name.name);
     }
     for (auto &stateName : stateNames) {
         auto state = allStates.getDeclaration<IR::ParserState>(stateName);
@@ -79,23 +70,30 @@ bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
 
 /* ParaParserMerge */
 const IR::Node* ParaParserMerge::preorder(IR::P4Parser* p4parser) {
+    LOG2("old parser: " << p4parser);
+
     states1 = p4parser->states;
     states2 = p2->states;
-    auto start_state1 = p4parser->states.getDeclaration<IR::ParserState>(IR::ParserState::start);
-    auto start_state2 = p2->states.getDeclaration<IR::ParserState>(IR::ParserState::start);
-    if (start_state1 != nullptr && start_state2 != nullptr) {
-        currP2State = start_state2;
-        visit(start_state1);
-    } else {
-        ::error("Could not find start state for parser 1 (%1%) or parser 2 (%2%)",
-                start_state1, start_state2);
-    }
+
+    visitByNames(IR::ParserState::start, IR::ParserState::start);
+
+    auto newStates = p4parser->states.clone();
     for (auto &updatedState : *statesToChange)  {
-        p4parser->states.removeByName(updatedState->name);
+        newStates->removeByName(updatedState->name);
+        newStates->pushBackOrAppend(updatedState);
     }
-    p4parser->states.pushBackOrAppend(statesToChange);
-    p4parser->states.pushBackOrAppend(statesToAdd);
+    statesToChange->clear();
+    newStates->pushBackOrAppend(statesToAdd);
     statesToAdd->clear();
+
+    p4parser->states = *newStates;
+    LOG2("new parser: " << p4parser);
+
+    prune();
+    return p4parser;
+}
+
+const IR::Node* ParaParserMerge::postorder(IR::P4Parser* p4parser) {
     return p4parser;
 }
 
@@ -107,8 +105,8 @@ void ParaParserMerge::visitByNames(cstring s1, cstring s2) {
     BUG_CHECK(s2 != nullptr, "State 2 name is null");
     currP2State = states2.getDeclaration<IR::ParserState>(s2);
     BUG_CHECK(currP2State != nullptr, "state %1% not found", s2);
+
     visit(state1);
-    prune();
 }
 
 void ParaParserMerge::mapStates(cstring s1, cstring s2, cstring merged) {
@@ -125,9 +123,7 @@ bool ParaParserMerge::keysetsEqual(const IR::Expression *e1, const IR::Expressio
 std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
 ParaParserMerge::matchCases(IR::Vector<IR::SelectCase> cases1,
                             IR::Vector<IR::SelectCase> cases2) {
-    ::error("matchCases(%1%, %2%) unimplemented", cases1, cases2);
-    size_t max_cases = cases1.size() + cases2.size();
-    std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>> ret(max_cases);
+    std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>> ret;
     for (auto case1ref : cases1) {
         IR::SelectCase *case1 = case1ref->clone();
         auto *matched = new std::pair<IR::SelectCase*, IR::SelectCase*>(case1, nullptr);
@@ -143,57 +139,29 @@ ParaParserMerge::matchCases(IR::Vector<IR::SelectCase> cases1,
     return ret;
 }
 
-const IR::Node* ParaParserMerge::statesMapped(const IR::ParserState *s1, const IR::ParserState *s2) {
+bool ParaParserMerge::statesMapped(const IR::ParserState *s1, const IR::ParserState *s2) {
     cstring s1n = s1 == nullptr ? nullptr : s1->name;
     cstring s2n = s2 == nullptr ? nullptr : s2->name;
     std::pair<cstring, cstring> val(s1n, s2n);
     for (auto &entry : stateMap) {
         if (entry.second == val) {
-            return states1.getDeclaration<IR::ParserState>(entry.first);
+            return true;
         }
     }
-    return nullptr;
+    return false;
 }
 
 const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
-    /* State
-     * - state                the state in p1 we're looking at
-     * - currP2State          the state in p2 we're looking at
-     * - hdr_map1, hdr_map2   where we've put header types
-     * - stateMap            where states in the merged parser came from
-     */
-
-    /*
-     * States s1, s2 each extract one header h1, h2.
-     *
-     * Check that h1 is equivalent to h2 (same size, or same # of fields and
-     * types of fields, or whatever).
-     *
-     * Look at the transitions taken by s1, s2.
-     *
-     * If they are both doing an unconditional transition to new states t1, t2,
-     * then visit (t1, t2).
-     *
-     * If they are selecting on different things, ??
-     *
-     * If they are selecting on the same thing h.f, match up the cases.
-     *
-     * For each case COND => s1', s2' that matches, visit (s1, s2).
-     *
-     * For any cases with no match, copy the states and all their descendants
-     * into the merged parser.
-     */
-
-    auto m = statesMapped(state, currP2State);
-    if (m != nullptr) {
-        /* We've already merged these states */
-        return m;
+    if (statesMapped(state, currP2State)) {
+        /* We've already merged these states, don't change anything */
+        return state;
     }
 
     FindExtractedHeader hd1(refMap1, typeMap1);
     FindExtractedHeader hd2(refMap2, typeMap2);
     state->apply(hd1);
     currP2State->apply(hd2);
+
     mergeHeaders(hd1.extractedHeader, hd2.extractedHeader);
     mapStates(state->name, currP2State->name, state->name);
 
@@ -202,48 +170,45 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
 }
 
 const IR::Node* ParaParserMerge::preorder(IR::PathExpression* pathExpression) {
-    if (getContext() == nullptr) {
+    if (getContext() == nullptr || !getContext()->node->is<IR::ParserState>()) {
         return pathExpression;
     }
-    auto state1 = getContext()->node;
-    auto state2 = currP2State;
-    if (!state1->is<IR::ParserState>()) {
-        return pathExpression;
-    }
-    ::dump(pathExpression);
+    auto state1 = getContext()->node->to<IR::ParserState>();
     auto sel1 = pathExpression;
     auto sel2 = currP2State->selectExpression;
-    if (sel1 == nullptr) {
-        ::error("Parser state %1% has no transition statement", state1);
-    }
-    if (sel2 == nullptr) {
-        ::error("Parser state %1% has no transition statement", state2);
-    }
 
-    auto next_path1 = sel1->to<IR::PathExpression>();
-    next_path1->validate();
-    if (next_path1->path->name.name == IR::ParserState::accept) {
-        LOG4("next_path1 goes to accept");
+    BUG_CHECK(sel1 != nullptr, "Parser state %1% has no transition statement", state1);
+    BUG_CHECK(sel2 != nullptr, "Parser state %1% has no transition statement", currP2State);
+
+    if (sel1->path->name.name == IR::ParserState::accept) {
+        LOG4("sel1 goes to accept");
         /* transition 1 is `transition accept;`. */
         CollectStates collector(states2);
-        state2->selectExpression->apply(collector);
+        LOG4("collecting states from " << sel2);
+        sel2->apply(collector);
         for (auto &state : collector.states) {
             LOG4("collected state: " << state->name);
             FindExtractedHeader hd(refMap2, typeMap2);
             state->apply(hd);
+            if (state->name == IR::ParserState::accept) {
+                continue;
+            }
             mergeHeaders(nullptr, hd.extractedHeader);
             mapStates(nullptr, state->name, state->name);
-            LOG4("adding state" << state);
+            LOG4("adding state " << state);
             statesToAdd->push_back(state);
         }
-        return state2->selectExpression;
+        auto newState = state1->clone();
+        newState->selectExpression = currP2State->selectExpression;
+        statesToChange->push_back(newState);
+        return pathExpression;
     }
 
-    if (next_path1->path->name.name == IR::ParserState::reject) {
+    if (sel1->path->name.name == IR::ParserState::reject) {
         P4C_UNIMPLEMENTED("handling reject transitions in parser merge");
     }
 
-    /* transition 1 is `transition next_path1`, where next_path1
+    /* transition 1 is `transition sel1`, where sel1
        is a real state name defined in parser 1. */
     if (!sel2->is<IR::PathExpression>()) {
         ::error("unconditional transition %1% incompatible with %2%",
@@ -251,9 +216,9 @@ const IR::Node* ParaParserMerge::preorder(IR::PathExpression* pathExpression) {
     }
     auto next_path2 = sel2->to<IR::PathExpression>();
     next_path2->validate();
-    LOG4("nextpath1 name: " << next_path1->path->name.name);
+    LOG4("nextpath1 name: " << sel1->path->name.name);
     LOG4("nextpath2 name: " << next_path2->path->name.name);
-    visitByNames(next_path1->path->name.name,
+    visitByNames(sel1->path->name.name,
                  next_path2->path->name.name);
     return pathExpression;
 }
@@ -371,7 +336,6 @@ IR::Expression* ParaParserMerge::mergeHeaders(const IR::Expression *h1, const IR
 }
 
 void ParaParserMerge::end_apply(const IR::Node* n) {
-    //::dump(n);
 }
 
 const IR::Node* ParaDeParMerge::preorder(IR::P4Control* p4control) {
@@ -389,7 +353,10 @@ const IR::Node* ParaDeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
 const IR::Node* HardcodedMergeTest::preorder(IR::P4Parser* parser) {
     if (other_parser != nullptr) {
         ParaParserMerge merger(refMap, typeMap, refMap, typeMap, other_parser);
-        parser->apply(merger);
+        prune();
+        auto parser2 = parser->apply(merger);
+        LOG2("newer parser: " << parser2);
+        return parser2;
     } else {
         other_parser = parser;
     }
