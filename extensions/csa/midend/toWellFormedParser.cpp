@@ -49,6 +49,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4Program* p4program) {
             auto p4cp = o->to<IR::P4ComposablePackage>();
             if (p4cp != nullptr && p4cp->getName() == updateNode->getName()) {
                 o = updateNode;
+                break;
             }
         }
     }
@@ -186,6 +187,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::P4Control* p4control) {
         visit(p4control->type);
     }
     guardStack.push_back(currGuard);
+    currGuard = std::make_pair(nullptr, nullptr);
     clStack.push_back(new IR::IndexedVector<IR::Declaration>());
     visit(p4control->body);
     auto dvs = clStack.back();
@@ -205,6 +207,10 @@ const IR::Node* ToWellFormedParser::preorder(IR::IfStatement* ifstmt) {
     visit(ifstmt->condition);
     if (guardVal!=nullptr && guardMem!=nullptr)
         currGuard = std::make_pair(guardMem, guardVal);
+    else {
+        guardVal = nullptr;
+        guardMem = nullptr;
+    }
     visit(ifstmt->ifTrue);
 
     // TODO: need to think about what guards' value should be in 
@@ -236,7 +242,7 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
     callee->apply(hasSelect);
     // if callee parser's start state has select statement. We are not pushing 
     // the guard in that case.
-    if (hasSelect.hasGuard()) {
+    if (hasSelect.hasGuard() || currGuard.first == nullptr) {
         newInParamType = nullptr;
         currInParam = nullptr;
         for (auto& o : p4Program->objects) {
@@ -248,8 +254,9 @@ const IR::Node* ToWellFormedParser::preorder(IR::MethodCallStatement* mcs) {
         }
         return mcs;
     }
-    if (currGuard.first == nullptr)
-        return mcs;
+    // if (currGuard.first == nullptr)
+    //     return mcs;
+
     // std::cout<<mcs<<" triggers parser update in callee \n";
 
     // We need to push the enclosing conditions into parser before parser can be
