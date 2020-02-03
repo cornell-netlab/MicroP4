@@ -40,7 +40,12 @@ bool FindConcatCntxts::preorder(const IR::MethodCallStatement* mcs) {
     if (cp == nullptr)
         return false;
 
-    // put arg
+    // 1 we need to slightly modify CompareStorageExp to match sub Expression.
+    // 2 every arg is mapped to multiple expression. e.g., arg could be
+    // PathExpression of struct instance that maps to all the expression(Member)
+    // accessing fields of the struct instance.
+    // 3. then arg->parameter mapping, we have it by index.
+    // 4. we have to match param1.a.b to arg1.a.b
     return false;
 }
 
