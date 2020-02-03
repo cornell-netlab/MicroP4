@@ -265,6 +265,9 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
         return selectExpression;
     } else if (sel2->is<IR::SelectExpression>()) {
         auto sel2expr = sel2->to<IR::SelectExpression>();
+
+        sel1->select = sel2expr->select;
+
         auto cases2 = sel2expr->selectCases;
         auto casePairs = matchCases(cases1, cases2);
         for (auto &casePair : casePairs) {
@@ -327,13 +330,26 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectCase* case1) {
 }
 
 IR::Expression* ParaParserMerge::mergeHeaders(const IR::Expression *h1, const IR::Expression *h2) {
-    LOG4("mergeHeaders: \n  " << h1 << "\n  " << h2);
-    if (h1 != nullptr) {
-        return h1->clone();
-    } else if (h2 != nullptr) {
-        return h2->clone();
-    } else {
+    if (h1 == nullptr && h2 == nullptr) {
         BUG("mergeHeaders(nullptr, nullptr)");
+    }
+    LOG4("mergeHeaders: \n  " << h1 << "\n  " << h2);
+    if (h1 == nullptr) {
+        return h2->clone();
+    }
+    if (h1 == nullptr) {
+        return h1->clone();
+    }
+
+    auto type1 = typeMap1->getType(h1);
+    auto type2 = typeMap1->getType(h2);
+
+    if (headerMerger->checkEquivalent(type1, type2)) {
+        /* TODO rename */
+        return h1->clone();
+    } else {
+        ::error("cannot merge headers %1% and %2", h1, h2);
+        return nullptr;
     }
 }
 

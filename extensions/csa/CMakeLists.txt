@@ -11,6 +11,8 @@ set(EXTENSION_FRONTEND_SOURCES ${EXTENSION_FRONTEND_SOURCES} ${CSA_IR_SRCS} PARE
 
 # sources for backend executable
 set (CSA_SWITCH_SRCS
+    midend/headerMerge.h
+    midend/headerMerge.cpp
     switch/main.cpp
     switch/options.h
     switch/parseInput.h
@@ -25,8 +27,6 @@ set (CSA_SWITCH_SRCS
     midend/seqDeParMerge.cpp
     midend/paraDeParMerge.h
     midend/paraDeParMerge.cpp
-    midend/headerMerge.h
-    midend/headerMerge.cpp
     midend/alignParamNames.h
     midend/alignParamNames.cpp
     midend/deParMotion.h

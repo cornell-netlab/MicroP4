@@ -6,7 +6,7 @@
 
 namespace CSA {
     class TypeUpdates {
-    }
+    };
     class HeaderMerger {
         P4::TypeMap* oldTypeMap;
         P4::TypeMap* newTypeMap;
@@ -20,7 +20,7 @@ namespace CSA {
         HeaderMerger(P4::TypeMap* typeMap) : oldTypeMap(typeMap) {
             CHECK_NULL(typeMap);
         }
-    }
+    };
 }
 
 #endif /* _EXTENSIONS_CSA_HEADERMERGE_H_ */

@@ -11,6 +11,7 @@
 #include "frontends/p4/coreLibrary.h"
 #include "frontends/p4/typeChecking/typeChecker.h"
 #include "frontends/p4/typeMap.h"
+#include "headerMerge.h"
 
 namespace CSA {
 
@@ -62,6 +63,7 @@ class ParaParserMerge final : public Transform {
     IR::Vector<IR::ParserState>* statesToChange;
 
     std::map<cstring, std::pair<cstring, cstring>> stateMap;
+    HeaderMerger* headerMerger;
 
   public:
     explicit ParaParserMerge(P4::ReferenceMap* refMap1, P4::TypeMap* typeMap1,
@@ -76,6 +78,7 @@ class ParaParserMerge final : public Transform {
         currP2Case = nullptr;
         currP2State = nullptr;
         setName("ParaParserMerge"); 
+        headerMerger = new HeaderMerger(typeMap1);
     }
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
