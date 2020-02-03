@@ -9,6 +9,7 @@ header four_t {
 struct hdr_t {
   four_t four;
   four_t four_again;
+  four_t four_other;
 }
 
 cpackage Dummy4 : implements Unicast<hdr_t, empty_t, empty_t, empty_t, empty_t> {

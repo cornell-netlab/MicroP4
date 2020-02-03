@@ -116,11 +116,6 @@ void ParaParserMerge::mapStates(cstring s1, cstring s2, cstring merged) {
     stateMap.insert(entry);
 }
 
-bool ParaParserMerge::keysetsEqual(const IR::Expression *e1, const IR::Expression *e2) {
-    ::error("keysetsEqual(%1%, %2%) unimplemented", e1, e2);
-    return false;
-}
-
 std::vector<std::pair<IR::SelectCase*, IR::SelectCase*>>
 ParaParserMerge::matchCases(IR::Vector<IR::SelectCase> cases1,
                             IR::Vector<IR::SelectCase> cases2) {
@@ -130,7 +125,7 @@ ParaParserMerge::matchCases(IR::Vector<IR::SelectCase> cases1,
         auto *matched = new std::pair<IR::SelectCase*, IR::SelectCase*>(case1, nullptr);
         for (auto case2ref : cases2) {
             IR::SelectCase *case2 = case2ref->clone();
-            if (keysetsEqual(case1->keyset, case2->keyset)) {
+            if (case1->keyset->equiv(*(case2->keyset))) {
                 matched->second = case2;
                 break;
             }
@@ -163,10 +158,26 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
     state->apply(hd1);
     currP2State->apply(hd2);
 
-    mergeHeaders(hd1.extractedHeader, hd2.extractedHeader);
-    mapStates(state->name, currP2State->name, state->name);
+    auto hdr1 = hd1.extractedHeader;
+    auto hdr2 = hd2.extractedHeader;
 
-    visit(state->selectExpression);
+    if ((state->name == IR::ParserState::reject
+         && currP2State->name != IR::ParserState::reject)
+        || (state->name != IR::ParserState::reject
+            && currP2State->name == IR::ParserState::reject)) {
+        ::error("can't merge reject with non-reject: %1%, %2%", state, currP2State);
+    } else if (state->name == IR::ParserState::accept &&
+               currP2State->name == IR::ParserState::accept) {
+        mapStates(state->name, currP2State->name, state->name);
+        return state;
+    } else if (state->name == IR::ParserState::accept) {
+        BUG("Visited accept with non-accept state %1%", currP2State);
+    } else if (currP2State->name == IR::ParserState::accept) {
+        BUG("Visited accept with non-accept state %1%", state);
+    } else {
+        mapStates(state->name, currP2State->name, state->name);
+        visit(state->selectExpression);
+    }
     return state;
 }
 
@@ -271,8 +282,8 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
         auto cases2 = sel2expr->selectCases;
         auto casePairs = matchCases(cases1, cases2);
         for (auto &casePair : casePairs) {
-            auto c1 = casePair.first;
-            auto c2 = casePair.second;
+            const auto c1 = casePair.first;
+            const auto c2 = casePair.second;
             /* add to select of output state */
             /* recur on states pointed to here */
             if (c1 == nullptr) {
@@ -292,7 +303,7 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
                 }
                 selectExpression->selectCases.pushBackOrAppend(c2);
             } else {
-                LOG4("setting p2case" << c2);
+                LOG4("setting p2case " << c2);
                 currP2Case = c2;
                 visit(c1);
             }
@@ -333,13 +344,13 @@ IR::Expression* ParaParserMerge::mergeHeaders(const IR::Expression *h1, const IR
     if (h1 == nullptr && h2 == nullptr) {
         BUG("mergeHeaders(nullptr, nullptr)");
     }
-    LOG4("mergeHeaders: \n  " << h1 << "\n  " << h2);
     if (h1 == nullptr) {
         return h2->clone();
     }
-    if (h1 == nullptr) {
+    if (h2 == nullptr) {
         return h1->clone();
     }
+    LOG4("mergeHeaders: \n  " << h1 << "\n  " << h2);
 
     auto type1 = typeMap1->getType(h1);
     auto type2 = typeMap1->getType(h2);
