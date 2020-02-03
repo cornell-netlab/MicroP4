@@ -16,13 +16,6 @@ header ethernet_h {
   bit<16> ethType; 
 }
 
-
-header eth_h {
-  bit<48> dmac;
-  bit<48> smac;
-  bit<16> ethType; 
-}
-
 header ipv4_h {
   bit<4> version;
   bit<4> ihl;
@@ -80,7 +73,6 @@ cpackage VXLANINT : implements Unicast<hdr_t, meta_t,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
     IPv4() ipv4_i;
-    IPv6() ipv6_i;
     INT() int_vxlan;
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
@@ -94,9 +86,7 @@ cpackage VXLANINT : implements Unicast<hdr_t, meta_t,
     apply { 
       nh = 16w0;
 	  if (hdr.eth.ethType == 0x0800)
-        ipv4_i.apply(p, im, ia, nh, ioa);
-      else if (hdr.eth.ethType == 0x86DD)
-        ipv6_i.apply(p, im, ia, nh, ioa);     
+        ipv4_i.apply(p, im, ia, nh, ioa);   
       if (hdr.udp.dport == 4789)
      	int_vxlan.apply(p, im, ia, oa,ioa);
       forward_tbl.apply(); 

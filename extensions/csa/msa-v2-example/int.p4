@@ -28,7 +28,6 @@ header vxlan_gpe_h {
 	bit<8> reserved2;
 }
 
-
 header int_shim_h {
 	bit<8> type;
 	bit<8> reserved; 
