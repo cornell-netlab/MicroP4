@@ -47,6 +47,30 @@ public:
     }
 };
 
+class ChangeExtractedHeader final : public Transform {
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+    const IR::Expression* newHeader;
+    bool done;
+
+    const IR::Node* preorder(IR::ParserState* state) override;
+    const IR::Node* preorder(IR::MethodCallExpression* call) override;
+    const IR::Node* preorder(IR::Member* call) override;
+
+public:
+    explicit ChangeExtractedHeader(P4::ReferenceMap *refMap,
+                                   P4::TypeMap* typeMap,
+                                   IR::Expression* newHeader)
+        : refMap(refMap), typeMap(typeMap), newHeader(newHeader) {
+        done = false;
+        CHECK_NULL(newHeader);
+        CHECK_NULL(refMap);
+        CHECK_NULL(typeMap);
+        setName("ChangeExtractedHeader");
+    }
+
+};
+
 class ParaParserMerge final : public Transform {
     P4::ReferenceMap* refMap1;
     P4::TypeMap* typeMap1;
@@ -90,8 +114,6 @@ class ParaParserMerge final : public Transform {
 
     const IR::Node* preorder(IR::PathExpression* pathExpression) override;
     const IR::Node* preorder(IR::SelectExpression* selectExpression) override;
-
-    void end_apply(const IR::Node* n) override;
 
   private:
     bool statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);

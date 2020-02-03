@@ -68,6 +68,48 @@ bool FindExtractedHeader::preorder(const IR::MethodCallExpression* call) {
     return true;
 }
 
+/* ChangeExtractedHeader */
+const IR::Node* ChangeExtractedHeader::preorder(IR::ParserState* state) {
+    visit(state->components);
+    prune();
+    return state;
+}
+
+const IR::Node* ChangeExtractedHeader::preorder(IR::MethodCallExpression* call) {
+    if (done) {
+        prune();
+        return call;
+    }
+    P4::MethodInstance* methodInstance = P4::MethodInstance::resolve(call, refMap, typeMap);
+    if (!methodInstance->is<P4::ExternMethod>()) {
+        return call;
+    }
+    auto externMethod = methodInstance->to<P4::ExternMethod>();
+    if (externMethod->originalExternType->name.name !=
+            P4::P4CoreLibrary::instance.extractor.name
+        || externMethod->method->name.name !=
+            P4::P4CoreLibrary::instance.extractor.extract.name) {
+        return call;
+    }
+    if (call->arguments->size() > 2) {
+        ::error("Extract call %1% has too many arguments", call);
+    } else if (call->arguments->size() < 2) {
+        ::error("Extract call %1% has too few arguments", call);
+    }
+    visit(call->arguments->at(1)->expression);
+    prune();
+    return call;
+}
+
+const IR::Node* ChangeExtractedHeader::preorder(IR::Member* hdr) {
+    if (done) {
+        prune();
+        return hdr;
+    }
+    done = true;
+    return newHeader;
+}
+
 /* ParaParserMerge */
 const IR::Node* ParaParserMerge::preorder(IR::P4Parser* p4parser) {
     LOG2("old parser 1: " << p4parser);
@@ -175,6 +217,9 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
     } else if (currP2State->name == IR::ParserState::accept) {
         BUG("Visited accept with non-accept state %1%", state);
     } else {
+        auto hdrMerged = mergeHeaders(hdr1, hdr2);
+        auto change = ChangeExtractedHeader(refMap1, typeMap1, hdrMerged);
+        state = state->apply(change)->to<IR::ParserState>()->clone();
         mapStates(state->name, currP2State->name, state->name);
         visit(state->selectExpression);
     }
@@ -200,11 +245,11 @@ const IR::Node* ParaParserMerge::preorder(IR::PathExpression* pathExpression) {
         sel2->apply(collector);
         for (auto &state : collector.states) {
             LOG4("collected state: " << state->name);
-            FindExtractedHeader hd(refMap2, typeMap2);
-            state->apply(hd);
             if (state->name == IR::ParserState::accept) {
                 continue;
             }
+            FindExtractedHeader hd(refMap2, typeMap2);
+            state->apply(hd);
             mergeHeaders(nullptr, hd.extractedHeader);
             mapStates(nullptr, state->name, state->name);
             LOG4("adding state " << state);
@@ -268,6 +313,9 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
         CollectStates collector(states1);
         sel1->apply(collector);
         for (auto &state : collector.states) {
+            if (state->name == IR::ParserState::accept) {
+                continue;
+            }
             FindExtractedHeader hd(refMap1, typeMap1);
             state->apply(hd);
             mergeHeaders(hd.extractedHeader, nullptr);
@@ -294,6 +342,9 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectExpression* selectExpression
                 CollectStates collector(states2);
                 st->apply(collector);
                 for (auto &state : collector.states) {
+                    if (state->name == IR::ParserState::accept) {
+                        continue;
+                    }
                     FindExtractedHeader hd(refMap2, typeMap2);
                     state->apply(hd);
                     mergeHeaders(nullptr, hd.extractedHeader);
@@ -322,12 +373,13 @@ const IR::Node* ParaParserMerge::preorder(IR::SelectCase* case1) {
         CollectStates collector(states1);
         st->apply(collector);
         for (auto &state : collector.states) {
-            if (state->name != IR::ParserState::accept) {
-                FindExtractedHeader hd(refMap1, typeMap1);
-                state->apply(hd);
-                mergeHeaders(hd.extractedHeader, nullptr);
-                mapStates(state->name, nullptr, state->name);
+            if (state->name == IR::ParserState::accept) {
+                continue;
             }
+            FindExtractedHeader hd(refMap1, typeMap1);
+            state->apply(hd);
+            mergeHeaders(hd.extractedHeader, nullptr);
+            mapStates(state->name, nullptr, state->name);
         }
     } else {
         auto caseStateName2 = currP2Case->state->path->name.name;
@@ -362,9 +414,6 @@ IR::Expression* ParaParserMerge::mergeHeaders(const IR::Expression *h1, const IR
         ::error("cannot merge headers %1% and %2", h1, h2);
         return nullptr;
     }
-}
-
-void ParaParserMerge::end_apply(const IR::Node* n) {
 }
 
 const IR::Node* ParaDeParMerge::preorder(IR::P4Control* p4control) {
