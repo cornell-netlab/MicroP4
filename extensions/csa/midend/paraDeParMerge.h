@@ -11,6 +11,7 @@
 #include "frontends/p4/coreLibrary.h"
 #include "frontends/p4/typeChecking/typeChecker.h"
 #include "frontends/p4/typeMap.h"
+#include "headerMerge.h"
 
 namespace CSA {
 
@@ -28,14 +29,14 @@ class FindExtractedHeader final : public Inspector {
         setName("FindExtractedHeader"); 
     }
 
-    bool preorder(const IR::StatOrDecl* statementOrDecl) override;
     bool preorder(const IR::MethodCallExpression* call) override;
 };
 
 class CollectStates final : public Inspector {
     const IR::IndexedVector<IR::ParserState> allStates;
     bool preorder(const IR::ParserState* state) override;
-    bool preorder(const IR::Expression* expr) override;
+    bool preorder(const IR::PathExpression* expr) override;
+    bool preorder(const IR::SelectExpression* expr) override;
 
 public:
     std::vector<const IR::ParserState*> states;
@@ -56,11 +57,13 @@ class ParaParserMerge final : public Transform {
     const IR::P4Parser* p2;
     IR::IndexedVector<IR::ParserState> states2;
     const IR::ParserState* currP2State;
-    const IR::Expression* currP2Select;
     const IR::SelectCase* currP2Case;
-    IR::Vector<IR::Node>* statesToAdd;
+
+    IR::Vector<IR::ParserState>* statesToAdd;
+    IR::Vector<IR::ParserState>* statesToChange;
 
     std::map<cstring, std::pair<cstring, cstring>> stateMap;
+    HeaderMerger* headerMerger;
 
   public:
     explicit ParaParserMerge(P4::ReferenceMap* refMap1, P4::TypeMap* typeMap1,
@@ -70,25 +73,28 @@ class ParaParserMerge final : public Transform {
         typeMap2(typeMap2), p2(p2) {
         CHECK_NULL(refMap1); CHECK_NULL(typeMap1);
         CHECK_NULL(refMap2); CHECK_NULL(typeMap2);
-        statesToAdd = new IR::Vector<IR::Node>();
+        statesToAdd = new IR::Vector<IR::ParserState>();
+        statesToChange = new IR::Vector<IR::ParserState>();
+        currP2Case = nullptr;
+        currP2State = nullptr;
         setName("ParaParserMerge"); 
+        headerMerger = new HeaderMerger(typeMap1);
     }
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
     const IR::Node* postorder(IR::P4Parser* p4parser) override;
 
     const IR::Node* preorder(IR::ParserState* state) override;
-    const IR::Node* postorder(IR::ParserState* state) override;
 
     const IR::Node* preorder(IR::SelectCase* case1) override;
-    const IR::Node* postorder(IR::SelectCase* case1) override;
 
-    const IR::Node* preorder(IR::Expression* expr);
-    const IR::Node* preorder(IR::PathExpression* pathExpression);
-    const IR::Node* preorder(IR::SelectExpression* selectExpression);
+    const IR::Node* preorder(IR::PathExpression* pathExpression) override;
+    const IR::Node* preorder(IR::SelectExpression* selectExpression) override;
+
+    void end_apply(const IR::Node* n) override;
 
   private:
-    const IR::Node* statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);
+    bool statesMapped(const IR::ParserState *s1, const IR::ParserState *s2);
     bool keysetsEqual(const IR::Expression *e1, const IR::Expression *e2);
     void visitByNames(cstring s1, cstring s2);
     void mapStates(cstring s1, cstring s2, cstring merged);
@@ -117,14 +123,27 @@ class ParaDeParMerge final : public Transform {
     }
 
     const IR::Node* preorder(IR::P4Control* p4control) override;
-    const IR::Node* postorder(IR::P4Control* p4control) override;
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
-    const IR::Node* postorder(IR::P4Parser* p4parser) override;
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
-    const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
 
+};
+
+class HardcodedMergeTest final : public Transform {
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+    const IR::P4Parser* other_parser;
+
+public:
+    explicit HardcodedMergeTest(P4::ReferenceMap* refMap, P4::TypeMap* typeMap) :
+    refMap(refMap), typeMap(typeMap) {
+        CHECK_NULL(refMap);
+        CHECK_NULL(typeMap);
+        setName("HardcodedMergeTest");
+    }
+
+    const IR::Node* preorder(IR::P4Parser* parser) override;
 };
 
 }   // namespace CSA
