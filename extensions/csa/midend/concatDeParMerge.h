@@ -2,7 +2,6 @@
  * Author: Hardik Soni
  * Email: hks57@cornell.edu
  */
-
 #ifndef _EXTENSIONS_CSA_MIDEND_CONCATDEPARMERGE_H_ 
 #define _EXTENSIONS_CSA_MIDEND_CONCATDEPARMERGE_H_ 
 
@@ -13,15 +12,65 @@
 
 namespace CSA {
 
+typedef std::set<const IR::Member*> ParserHooks; 
+typedef std::pair<ParserHooks, const IR::P4ComposablePackage*> ConcatCntxt;
+
+/*
+ * Finds declaration of l-value expression
+ */
+class FindDeclaration final : public Inspector {
+    P4::ReferenceMap* refMap;
+
+    const IR::IDeclaration** decl;
+  public:
+    explicit FindDeclaration(P4::ReferenceMap* refMap, 
+        const IR::IDeclaration** decl)
+      : refMap(refMap), decl(decl) {
+        setName("FindDeclaration"); 
+    }
+    bool preorder(const IR::Path* path) override;
+    Visitor::profile_t init_apply(const IR::Node* node) {
+        BUG_CHECK((node->is<IR::PathExpression>() || node->is<IR::Member>()), 
+            " %1% must be path expression or member for FindDeclaration", node);
+        return Inspector::init_apply(node);
+    }
+};
+
+class FindConcatCntxts final : public Inspector {
+    P4::ReferenceMap* refMap;
+    P4::TypeMap* typeMap;
+
+    const IR::ParameterList* applyParams;
+
+    // First element : intermediate expression/ variable
+    // second element : PathExpression/Member containing param
+    std::vector<std::pair<const IR::Expression*, const IR::Expression*>> 
+      exprsToParamsMap;
+
+  public:
+    explicit FindConcatCntxts(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
+      : refMap(refMap), typeMap(typeMap) {
+        CHECK_NULL(refMap); CHECK_NULL(typeMap);
+        setName("FindConcatCntxts"); 
+    }
+
+    bool preorder(const IR::P4ComposablePackage* cp) override;
+    bool preorder(const IR::P4Control* p4control) override;
+    void postorder(const IR::P4Control* p4control) override;
+    bool preorder(const IR::MethodCallStatement* mcs) override;
+    bool preorder(const IR::AssignmentStatement* asmt) override;
+};
+
+
 class ConcatDeParMerge final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    const IR::P4ComposablePackage* cp2;
+    const std::vector<ConcatCntxt>* hooksCalleeCntxts;
 
   public:
     explicit ConcatDeParMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-        const IR::P4ComposablePackage* cp2)
-      : refMap(refMap), typeMap(typeMap), cp2(cp2) {
+        const std::vector<ConcatCntxt>* hooksCalleeCntxts)
+      : refMap(refMap), typeMap(typeMap), hooksCalleeCntxts(hooksCalleeCntxts) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         setName("ConcatDeParMerge"); 
     }

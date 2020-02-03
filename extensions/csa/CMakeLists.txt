@@ -17,14 +17,14 @@ set (CSA_SWITCH_SRCS
     switch/options.h
     switch/parseInput.h
     switch/parseInput.cpp
+    midend/compareStorageExp.h
+    midend/compareStorageExp.cpp
     midend/deParMotionCSTRChkr.h
     midend/deParMotionCSTRChkr.cpp
     midend/toWellFormedParser.h
     midend/toWellFormedParser.cpp
     midend/concatDeParMerge.h
     midend/concatDeParMerge.cpp
-    midend/seqDeParMerge.h
-    midend/seqDeParMerge.cpp
     midend/paraDeParMerge.h
     midend/paraDeParMerge.cpp
     midend/alignParamNames.h

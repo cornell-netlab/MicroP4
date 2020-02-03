@@ -205,7 +205,7 @@ bool CommonStorageSubExp::preorder(const IR::Concat* c) {
     return false;
 }
 
-bool CompareStorageExp::preorder(const IR::ArrayIndex* ai) {
+bool CompareStorageExpLocal::preorder(const IR::ArrayIndex* ai) {
     auto ca = curr->to<IR::ArrayIndex>();
     if (ca == nullptr) {
         result = false;
@@ -218,7 +218,7 @@ bool CompareStorageExp::preorder(const IR::ArrayIndex* ai) {
     return false;
 }
 
-bool CompareStorageExp::preorder(const IR::Member* mem) {
+bool CompareStorageExpLocal::preorder(const IR::Member* mem) {
     auto cm = curr->to<IR::Member>();
     if (cm == nullptr) {
         result = false;
@@ -244,7 +244,7 @@ bool CompareStorageExp::preorder(const IR::Member* mem) {
     return false;
 }
 
-bool CompareStorageExp::preorder(const IR::PathExpression* pe) {
+bool CompareStorageExpLocal::preorder(const IR::PathExpression* pe) {
     auto cpe = curr->to<IR::PathExpression>();
     if (cpe == nullptr) {
         result = false;
@@ -257,7 +257,7 @@ bool CompareStorageExp::preorder(const IR::PathExpression* pe) {
     return false;
 }
 
-bool CompareStorageExp::preorder(const IR::Constant* c) {
+bool CompareStorageExpLocal::preorder(const IR::Constant* c) {
     
     auto cc = curr->to<IR::Constant>();
     if (cc == nullptr) {
@@ -390,7 +390,7 @@ bool ApplyDepActCSTR::preorder(const IR::AssignmentStatement* asmt) {
     if (isL.isMSAHeaderStorage() && isR.isMSAHeaderStorage()) {
         // std::cout<<" Second if : \n";
         bool res;
-        CompareStorageExp cse(refMap, typeMap, asmt->left);
+        CompareStorageExpLocal cse(refMap, typeMap, asmt->left);
         for (auto dwo : delWritesOn) {
             // compare dwo with asmt->left
             // // if they match store asmt in currEntCtxt to delete

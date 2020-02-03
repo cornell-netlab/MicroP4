@@ -103,7 +103,7 @@ class CommonStorageSubExp final : public Inspector {
 /*
  * This l-value store comparison is with type-checking, not just string matching.
  */
-class CompareStorageExp final : public Inspector {
+class CompareStorageExpLocal final : public Inspector {
 
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
@@ -112,11 +112,11 @@ class CompareStorageExp final : public Inspector {
     const IR::Expression* curr;
 
   public:
-    explicit CompareStorageExp(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
+    explicit CompareStorageExpLocal(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         const IR::Expression* expr)
       : refMap(refMap), typeMap(typeMap), expr(expr) {
         result = true;
-        setName("CompareStorageExp"); 
+        setName("CompareStorageExpLocal"); 
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) {
