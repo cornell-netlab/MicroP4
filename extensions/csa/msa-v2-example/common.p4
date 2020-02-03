@@ -106,6 +106,9 @@ cpackage SRv4(pkt p, im_t im,
 cpackage SR_v6(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh, inout sr6_inout_t ioa);  
                   
+cpackage SR_v6_Simple(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout empty_t ioa);  
+
 cpackage IPv6EXT(pkt p, im_t im, 
           in empty_t ia, out bit<16> oa, inout empty_t ioa);
 
