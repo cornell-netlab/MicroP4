@@ -1,13 +1,83 @@
 #include "headerMerge.h"
 
 namespace CSA {
-    IR::Member* HeaderMerger::setEquivalent(const IR::Member* expr1, const IR::Member* expr2) {
+    IR::Member* HeaderMerger::addFrom1(const IR::Expression* expr) {
+        if (!expr->is<IR::Member>()) {
+            ::error("Cannot handle non-member expression: %1%", expr);
+        }
+        auto expr1 = expr->to<IR::Member>();
         auto type1 = typeMap->getType(expr1);
+        if (!type1->is<IR::Type_Header>()) {
+            ::error("Cannot handle expression with non-header type: %1%", type1);
+            return nullptr;
+        }
+        auto hdr1 = type1->to<IR::Type_Header>();
+        auto hdrm = hdr1->clone();
+        hdrm->name = IR::ID(hdrm->name.name + "_");
+        std::map<cstring, cstring> fieldMap1;
+
+        for (size_t i = 0; i < hdr1->fields.size(); i++) {
+            auto field1 = hdr1->fields.at(i);
+            fieldMap1.emplace(field1->name.name, field1->name.name);
+        }
+
+        HeaderMapping map1(hdrm, fieldMap1);
+        hdrMap1.emplace(hdr1, map1);
+        subHeaders.push_back(hdrm);
+
+        auto rootField = new IR::StructField(IR::ID(expr1->member.name), hdrm);
+        rootHeader->fields.pushBackOrAppend(rootField);
+        rootFields1.emplace(expr1->member.name, rootField->name);
+        auto pathExpr = new IR::PathExpression(IR::ID(rootHeaderName));
+        return new IR::Member(pathExpr, rootField->name);
+    }
+
+    IR::Member* HeaderMerger::addFrom2(const IR::Expression* expr) {
+        if (!expr->is<IR::Member>()) {
+            ::error("Cannot handle non-member expression: %2%", expr);
+        }
+        auto expr2 = expr->to<IR::Member>();
         auto type2 = typeMap->getType(expr2);
+        if (!type2->is<IR::Type_Header>()) {
+            ::error("Cannot handle expression with non-header type: %2%", expr2);
+            return nullptr;
+        }
+        auto hdr2 = type2->to<IR::Type_Header>();
+        auto hdrm = hdr2->clone();
+        hdrm->name = IR::ID(hdrm->name.name + "_");
+        std::map<cstring, cstring> fieldMap2;
+
+        for (size_t i = 0; i < hdr2->fields.size(); i++) {
+            auto field2 = hdr2->fields.at(i);
+            fieldMap2.emplace(field2->name.name, field2->name.name);
+        }
+
+        HeaderMapping map2(hdrm, fieldMap2);
+        hdrMap2.emplace(hdr2, map2);
+        subHeaders.push_back(hdrm);
+
+        auto rootField = new IR::StructField(IR::ID(expr2->member.name), hdrm);
+        rootHeader->fields.pushBackOrAppend(rootField);
+        rootFields2.emplace(expr2->member.name, rootField->name);
+        auto pathExpr = new IR::PathExpression(IR::ID(rootHeaderName));
+        return new IR::Member(pathExpr, rootField->name);
+    }
+
+    IR::Member* HeaderMerger::setEquivalent(const IR::Expression* expr1, const IR::Expression* expr2) {
+        if (!expr1->is<IR::Member>()
+            || !expr2->is<IR::Member>()) {
+            ::error("Cannot merge non-member expressions: %1% %2%",
+                    expr1, expr2);
+        }
+        auto mem1 = expr1->to<IR::Member>();
+        auto mem2 = expr2->to<IR::Member>();
+
+        auto type1 = typeMap->getType(mem1);
+        auto type2 = typeMap->getType(mem2);
 
         if (!type1->is<IR::Type_Header>()
             || !type2->is<IR::Type_Header>()) {
-            ::error("Cannot merge expressions with non-header type: %1% %2%",
+            ::error("Cannot merge memessions with non-header type: %1% %2%",
                     type1, type2);
             return nullptr;
         }
@@ -39,10 +109,10 @@ namespace CSA {
         hdrMap2.emplace(hdr2, map2);
         subHeaders.push_back(hdrm);
 
-        auto rootField = new IR::StructField(IR::ID(expr1->member.name), hdrm);
+        auto rootField = new IR::StructField(IR::ID(mem1->member.name), hdrm);
         rootHeader->fields.pushBackOrAppend(rootField);
-        rootFields1.emplace(expr1->member.name, rootField->name);
-        rootFields2.emplace(expr2->member.name, rootField->name);
+        rootFields1.emplace(mem1->member.name, rootField->name);
+        rootFields2.emplace(mem2->member.name, rootField->name);
         auto pathExpr = new IR::PathExpression(IR::ID(rootHeaderName));
         return new IR::Member(pathExpr, rootField->name);
 

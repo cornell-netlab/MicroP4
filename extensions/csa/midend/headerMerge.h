@@ -27,7 +27,9 @@ namespace CSA {
         std::map<const IR::Type_StructLike*, HeaderMapping> hdrMap2;
 
       public:
-        IR::Member* setEquivalent(const IR::Member* h1, const IR::Member* h2);
+        IR::Member* addFrom1(const IR::Expression* expr1);
+        IR::Member* addFrom2(const IR::Expression* expr2);
+        IR::Member* setEquivalent(const IR::Expression* h1, const IR::Expression* h2);
         IR::Type_Struct* getRootHeaderType();
         bool checkEquivalent(const IR::Type* type1, const IR::Type* type2);
 
