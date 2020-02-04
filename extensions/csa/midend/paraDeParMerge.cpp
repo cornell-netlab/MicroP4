@@ -211,11 +211,34 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
     } else if (state->name == IR::ParserState::accept &&
                currP2State->name == IR::ParserState::accept) {
         mapStates(state->name, currP2State->name, state->name);
-        return state;
     } else if (state->name == IR::ParserState::accept) {
-        BUG("Visited accept with non-accept state %1%", currP2State);
+        CollectStates collector(states2);
+        LOG4("collecting states from " << currP2State);
+        currP2State->apply(collector);
+        for (auto &state : collector.states) {
+            LOG4("collected state: " << state->name);
+            if (state->name == IR::ParserState::accept) {
+                continue;
+            }
+            FindExtractedHeader hd(refMap2, typeMap2);
+            state->apply(hd);
+            mergeHeaders(nullptr, hd.extractedHeader);
+            mapStates(nullptr, state->name, state->name);
+            LOG4("adding state " << state);
+            statesToAdd->push_back(state);
+        }
     } else if (currP2State->name == IR::ParserState::accept) {
-        BUG("Visited accept with non-accept state %1%", state);
+        CollectStates collector(states1);
+        state->apply(collector);
+        for (auto &state : collector.states) {
+            if (state->name == IR::ParserState::accept) {
+                continue;
+            }
+            FindExtractedHeader hd(refMap1, typeMap1);
+            state->apply(hd);
+            mergeHeaders(hd.extractedHeader, nullptr);
+            mapStates(state->name, nullptr, state->name);
+        }
     } else {
         auto hdrMerged = mergeHeaders(hdr1, hdr2);
         auto change = ChangeExtractedHeader(refMap1, typeMap1, hdrMerged);
@@ -223,6 +246,7 @@ const IR::Node* ParaParserMerge::preorder(IR::ParserState* state) {
         mapStates(state->name, currP2State->name, state->name);
         visit(state->selectExpression);
     }
+    prune();
     return state;
 }
 
