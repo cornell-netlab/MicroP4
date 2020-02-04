@@ -34,6 +34,8 @@ namespace CSA {
         bool checkEquivalent(const IR::Type* type1, const IR::Type* type2);
 
         HeaderMerger(P4::TypeMap* typeMap) : typeMap(typeMap) {
+            rootHeaderName = "hdr";
+            rootHeader = new IR::Type_Struct(IR::ID(rootHeaderName));
             CHECK_NULL(typeMap);
         }
     };

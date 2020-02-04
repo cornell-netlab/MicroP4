@@ -96,7 +96,7 @@ const IR::Node* ChangeExtractedHeader::preorder(IR::MethodCallExpression* call) 
     } else if (call->arguments->size() < 2) {
         ::error("Extract call %1% has too few arguments", call);
     }
-    visit(call->arguments->at(1)->expression);
+    visit(call->arguments);
     prune();
     return call;
 }
