@@ -145,4 +145,65 @@ namespace CSA {
 
         return false;
     }
+
+    const IR::Node* HeaderRenamer::preorder(IR::P4Program* p) {
+        visit(p->objects);
+        for (auto &hdr : merger->subHeaders) {
+            p->objects.pushBackOrAppend(hdr);
+        }
+        p->objects.pushBackOrAppend(merger->rootHeader);
+        prune();
+        return p;
+    }
+
+    const IR::Node* HeaderRenamer::preorder(IR::P4ComposablePackage* p) {
+        if (p->name.name == pkgName1) {
+            inPkg1 = true;
+            inPkg2 = false;
+        } else if (p->name.name == pkgName2) {
+            inPkg1 = false;
+            inPkg2 = true;
+        } else {
+            inPkg1 = false;
+            inPkg2 = false;
+            prune();
+        }
+        return p;
+    }
+
+    const IR::Node* HeaderRenamer::preorder(IR::Member* m) {
+        auto typ = typeMap->getType(m->expr);
+        auto expr = m->expr;
+        auto path = m->expr->to<IR::PathExpression>();
+        visit(m->expr);
+        bool isRoot1 = expr->is<IR::PathExpression>()
+            && path->path->name.name == merger->rootHeaderName1;
+        bool isRoot2 = expr->is<IR::PathExpression>()
+            && path->path->name.name == merger->rootHeaderName2;
+        auto structTyp = typ->to<IR::Type_StructLike>();
+        if (structTyp == nullptr) {
+            return m;
+        }
+        std::map<cstring, cstring> fieldNames;
+        if (inPkg1 && isRoot1) {
+            fieldNames = merger->rootFields1;
+        } else if (inPkg2 && isRoot2) {
+            fieldNames = merger->rootFields2;
+        } else {
+            fieldNames = merger->hdrMap1.at(structTyp).fieldNames;
+        }
+        auto newField = fieldNames.at(m->member.name);
+        prune();
+        m->member = IR::ID(newField);
+        return m;
+    }
+
+    const IR::Node* HeaderRenamer::preorder(IR::Path* p) {
+        if ((inPkg1 && p->name.name == merger->rootHeaderName1)
+            || (inPkg2 && p->name.name == merger->rootHeaderName2)) {
+            return new IR::Path(IR::ID(merger->rootHeaderName));
+        } else {
+            return p;
+        }
+    }
 }

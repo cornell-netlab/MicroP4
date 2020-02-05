@@ -39,6 +39,7 @@ class FindDeclaration final : public Inspector {
 class FindConcatCntxts final : public Inspector {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
+    ConcatCntxt*  concatCntxt;
 
     const IR::ParameterList* callerP4ControlApplyParams;
 
@@ -53,13 +54,14 @@ class FindConcatCntxts final : public Inspector {
                           std::vector<const IR::Expression*>>> argToExprs;
 
     const IR::P4ComposablePackage* p4cp;
-
-
     const IR::Expression* parserSelectExpr;
+
+
   public:
-    explicit FindConcatCntxts(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
-      : refMap(refMap), typeMap(typeMap) {
-        CHECK_NULL(refMap); CHECK_NULL(typeMap);
+    explicit FindConcatCntxts(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
+        ConcatCntxt* concatCntxt)
+      : refMap(refMap), typeMap(typeMap), concatCntxt(concatCntxt) {
+        CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(concatCntxt);
         setName("FindConcatCntxts"); 
     }
 
@@ -97,14 +99,15 @@ class ConcatDeParMerge final : public Transform {
         setName("ConcatDeParMerge"); 
     }
 
+    const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
+    const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
+
     const IR::Node* preorder(IR::P4Control* p4control) override;
     const IR::Node* postorder(IR::P4Control* p4control) override;
 
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
     const IR::Node* postorder(IR::P4Parser* p4parser) override;
 
-    const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
-    const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
 
 };
 

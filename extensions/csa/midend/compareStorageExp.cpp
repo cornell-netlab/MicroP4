@@ -81,4 +81,49 @@ bool CompareStorageExp::preorder(const IR::Constant* c) {
     return false;
 }
 
+bool CompArgParamToStorageExp::preorder(const IR::Member* mem) {
+    auto cm = curr->to<IR::Member>();
+    auto cpe = curr->to<IR::PathExpression>();
+    if (cm == nullptr && cpe == nullptr) {
+        result = false;
+        return false;
+    }
+    if (cpe != nullptr && matchingCE && param->name == cpe->path->name) {
+        curr = arg;
+        cm = curr->to<IR::Member>();
+        matchingCE = false;
+    }
+
+    auto tm = typeMap->getType(mem);
+    auto tc = typeMap->getType(curr);
+    if (mem->member != cm->member) {
+        result = false;
+        return false;
+    }
+    if (tm != tc) { 
+        std::cout<<tm<<"\n did not match with \n";
+        std::cout<<tc<<"\n";
+        result = false;
+        return false;
+    }
+    curr = cm->expr;
+    visit(mem->expr);
+    return false;
+}
+
+bool CompArgParamToStorageExp::preorder(const IR::PathExpression* pe) {
+    auto cpe = curr->to<IR::PathExpression>();
+    if (cpe == nullptr) {
+        result = false;
+        return false;
+    }
+    if (pe->path->name != cpe->path->name) {
+        result = false;
+        return false;
+    }
+    return false;
+}
+
+
+
 }// namespace CSA
