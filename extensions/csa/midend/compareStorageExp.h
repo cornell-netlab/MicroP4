@@ -23,19 +23,20 @@ class CompareStorageExp final : public Inspector {
     bool result;
     const IR::Expression* curr;
 
-    bool partialResult;
-
+    bool compareSub;
+    bool subExpMatchStart;
   public:
     explicit CompareStorageExp(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
         const IR::Expression* expr, bool compareSub = false)
-      : refMap(refMap), typeMap(typeMap), expr(expr) {
+      : refMap(refMap), typeMap(typeMap), expr(expr), compareSub(compareSub) {
         result = true;
-        partialResult = false;
+        subExpMatchStart = false;
         setName("CompareStorageExp"); 
     }
 
     Visitor::profile_t init_apply(const IR::Node* node) {
         result = true;
+        subExpMatchStart = false;
         curr = expr;
         BUG_CHECK(node->is<IR::Expression>(), "expected an expression");
         return Inspector::init_apply(node);

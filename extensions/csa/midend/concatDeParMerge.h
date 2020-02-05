@@ -40,13 +40,22 @@ class FindConcatCntxts final : public Inspector {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
 
-    const IR::ParameterList* applyParams;
+    const IR::ParameterList* callerP4ControlApplyParams;
 
-    // First element : intermediate expression/ variable
+    // First element : intermediate expression/variable
     // second element : PathExpression/Member containing param
     std::vector<std::pair<const IR::Expression*, const IR::Expression*>> 
-      exprsToParamsMap;
+        exprsToParamsMap;
 
+    // expression in arg to intermediate expression/variable
+    // vector allows to use parameter's index for arg mapping.
+    std::vector<std::pair<const IR::Expression*, 
+                          std::vector<const IR::Expression*>>> argToExprs;
+
+    const IR::P4ComposablePackage* p4cp;
+
+
+    const IR::Expression* parserSelectExpr;
   public:
     explicit FindConcatCntxts(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
       : refMap(refMap), typeMap(typeMap) {
@@ -57,8 +66,21 @@ class FindConcatCntxts final : public Inspector {
     bool preorder(const IR::P4ComposablePackage* cp) override;
     bool preorder(const IR::P4Control* p4control) override;
     void postorder(const IR::P4Control* p4control) override;
+    bool preorder(const IR::P4Parser* p4Parser) override;
+
+    bool preorder(const IR::ParserState* ps) override;
+    bool preorder(const IR::SelectExpression* se) override;
+
     bool preorder(const IR::MethodCallStatement* mcs) override;
     bool preorder(const IR::AssignmentStatement* asmt) override;
+
+    Visitor::profile_t init_apply(const IR::Node* node) {
+        BUG_CHECK(node->is<IR::P4ComposablePackage>(), 
+            " %1% must be P4ComposablePackage", node);
+        p4cp = node->to<IR::P4ComposablePackage>();
+        return Inspector::init_apply(node);
+    }
+
 };
 
 

@@ -10,9 +10,15 @@ namespace CSA {
 bool CompareStorageExp::preorder(const IR::ArrayIndex* ai) {
     auto ca = curr->to<IR::ArrayIndex>();
     if (ca == nullptr) {
+        if (compareSub && !subExpMatchStart) {
+            visit(ai->left);
+            return false;
+        }
         result = false;
         return false;
     }
+    if (compareSub && !subExpMatchStart)
+        subExpMatchStart = true;
     curr = ca->left;
     visit(ai->left);
     curr = ca->right;
@@ -26,20 +32,26 @@ bool CompareStorageExp::preorder(const IR::Member* mem) {
         result = false;
         return false;
     }
-    curr = cm->expr;
-    visit(mem->expr);
     auto tm = typeMap->getType(mem);
     auto tc = typeMap->getType(curr);
+    if (mem->member != cm->member) {
+        if (compareSub && !subExpMatchStart) {
+            visit(mem->expr);
+            return false;
+        }
+        result = false;
+        return false;
+    }
     if (tm != tc) { 
         std::cout<<tm<<"\n did not match with \n";
         std::cout<<tc<<"\n";
         result = false;
         return false;
     }
-    if (mem->member != cm->member) {
-        result = false;
-        return false;
-    }
+    if (compareSub && !subExpMatchStart)
+        subExpMatchStart = true;
+    curr = cm->expr;
+    visit(mem->expr);
     return false;
 }
 

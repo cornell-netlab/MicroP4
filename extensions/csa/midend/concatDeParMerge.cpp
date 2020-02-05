@@ -14,16 +14,68 @@ bool FindDeclaration::preorder(const IR::Path* path) {
 }
 
 bool FindConcatCntxts::preorder(const IR::P4ComposablePackage* cp) {
+    return true;
+}
+
+bool FindConcatCntxts::preorder(const IR::P4Parser* p4Parser) {
+
+    auto cp = findContext<IR::P4ComposablePackage>();
+    if (cp == p4cp)
+        return false;
+    return true;
+}
+
+bool FindConcatCntxts::preorder(const IR::ParserState* ps) {
+    if (ps->name == IR::ParserState::start)
+        visit(ps->selectExpression);
+    return false;
+}
+
+bool FindConcatCntxts::preorder(const IR::SelectExpression* se) { 
+    // overly simplified assumption
+
+    parserSelectExpr = se->select->components[0];
+
+    const IR::IDeclaration* decl = nullptr;
+    FindDeclaration fd(refMap, &decl);
+    parserSelectExpr->apply(fd);
+
+    auto param = decl->to<IR::Parameter>();
+    BUG_CHECK(param != nullptr, "expected parameter here");
+
+    auto p4Parser = findContext<IR::P4Parser>();
+    auto pap = p4Parser->getApplyParameters();
+    unsigned short in = 0;
+    for (; in<pap->size(); in++) {
+        if (pap->parameters[in] == param)
+            break;
+    }
+    // from micro_parser signature
+    BUG_CHECK(in==5 || in==6, " did not expect this scenario");
+    size_t pkgAplIndex = in==5 ? 2 : 4;
+
+
+    auto ae = argToExprs[pkgAplIndex].first;
+
+    // have to find mapping here
+    // param.x.y -> arg ->arg.x.y or
+    // param.x.y -> arg.x-> arg.x.y
+    //
+    // path to param should be substituted by ae
     return false;
 }
 
 bool FindConcatCntxts::preorder(const IR::P4Control* p4control) {
-    applyParams = p4control->getApplyParameters();
+    auto cp = findContext<IR::P4ComposablePackage>();
+    if (cp != p4cp)
+        return false;
+
+    callerP4ControlApplyParams = p4control->getApplyParameters();
     return true;
 }
 
 void FindConcatCntxts::postorder(const IR::P4Control* p4control) {
-    applyParams = nullptr;
+    callerP4ControlApplyParams = nullptr;
     return;
 }
 
@@ -40,12 +92,20 @@ bool FindConcatCntxts::preorder(const IR::MethodCallStatement* mcs) {
     if (cp == nullptr)
         return false;
 
-    // 1 we need to slightly modify CompareStorageExp to match sub Expression.
-    // 2 every arg is mapped to multiple expression. e.g., arg could be
-    // PathExpression of struct instance that maps to all the expression(Member)
-    // accessing fields of the struct instance.
-    // 3. then arg->parameter mapping, we have it by index.
-    // 4. we have to match param1.a.b to arg1.a.b
+    for (auto a : *(mcs->methodCall->arguments)) {
+        auto ae = a->expression;
+        std::vector<const IR::Expression*> mappedExpr;
+        CompareStorageExp cse(refMap, typeMap, ae, true);
+        for (auto e : exprsToParamsMap) {
+            e.first->apply(cse);
+            if (cse.isMatch()) {
+                mappedExpr.push_back(e.first);
+            }
+        }
+        argToExprs.emplace_back(ae, mappedExpr);
+    }
+
+    visit(cp);
     return false;
 }
 
