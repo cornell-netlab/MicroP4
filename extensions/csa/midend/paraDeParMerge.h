@@ -47,37 +47,15 @@ public:
     }
 };
 
-class ChangeExtractedHeader final : public Transform {
+class ParaParserMerge final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    const IR::Expression* newHeader;
-    bool done;
-
-    const IR::Node* preorder(IR::ParserState* state) override;
-    const IR::Node* preorder(IR::MethodCallExpression* call) override;
-    const IR::Node* preorder(IR::Member* call) override;
-
-public:
-    explicit ChangeExtractedHeader(P4::ReferenceMap *refMap,
-                                   P4::TypeMap* typeMap,
-                                   IR::Expression* newHeader)
-        : refMap(refMap), typeMap(typeMap), newHeader(newHeader) {
-        done = false;
-        CHECK_NULL(newHeader);
-        CHECK_NULL(refMap);
-        CHECK_NULL(typeMap);
-        setName("ChangeExtractedHeader");
-    }
-
-};
-
-class ParaParserMerge final : public Transform {
-    P4::ReferenceMap* refMap1;
-    P4::TypeMap* typeMap1;
     IR::IndexedVector<IR::ParserState> states1;
 
-    P4::ReferenceMap* refMap2;
-    P4::TypeMap* typeMap2;
+    cstring pkgName1;
+    cstring pkgName2;
+    const IR::P4ComposablePackage* pkg1;
+    const IR::P4ComposablePackage* pkg2;
     const IR::P4Parser* p2;
     IR::IndexedVector<IR::ParserState> states2;
     const IR::ParserState* currP2State;
@@ -90,28 +68,24 @@ class ParaParserMerge final : public Transform {
     HeaderMerger* headerMerger;
 
   public:
-    explicit ParaParserMerge(P4::ReferenceMap* refMap1, P4::TypeMap* typeMap1,
-            P4::ReferenceMap* refMap2, P4::TypeMap* typeMap2,
-            const IR::P4Parser* p2)
-      : refMap1(refMap1), typeMap1(typeMap1), refMap2(refMap2),
-        typeMap2(typeMap2), p2(p2) {
-        CHECK_NULL(refMap1); CHECK_NULL(typeMap1);
-        CHECK_NULL(refMap2); CHECK_NULL(typeMap2);
+    explicit ParaParserMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
+                             cstring pkgName1, cstring pkgName2)
+        : refMap(refMap), typeMap(typeMap), pkgName1(pkgName1), pkgName2(pkgName2) {
+        CHECK_NULL(refMap); CHECK_NULL(typeMap);
         statesToAdd = new IR::Vector<IR::ParserState>();
         statesToChange = new IR::Vector<IR::ParserState>();
+        pkg2 = nullptr;
+        p2 = nullptr;
         currP2Case = nullptr;
         currP2State = nullptr;
         setName("ParaParserMerge"); 
-        headerMerger = new HeaderMerger(typeMap1);
+        headerMerger = new HeaderMerger(typeMap);
     }
 
+    const IR::Node* preorder(IR::P4Program* program) override;
     const IR::Node* preorder(IR::P4Parser* p4parser) override;
-    const IR::Node* postorder(IR::P4Parser* p4parser) override;
-
     const IR::Node* preorder(IR::ParserState* state) override;
-
     const IR::Node* preorder(IR::SelectCase* case1) override;
-
     const IR::Node* preorder(IR::PathExpression* pathExpression) override;
     const IR::Node* preorder(IR::SelectExpression* selectExpression) override;
 
@@ -129,43 +103,6 @@ class ParaParserMerge final : public Transform {
                                      const IR::ParserState* state2);
     void collectStates1(const IR::Expression* selectExpression);
     void collectStates2(const IR::Expression* selectExpression);
-};
-
-class ParaDeParMerge final : public Transform {
-    P4::ReferenceMap* refMap;
-    P4::TypeMap* typeMap;
-    const IR::P4ComposablePackage* cp2;
-
-  public:
-    explicit ParaDeParMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-        const IR::P4ComposablePackage* cp2) 
-      : refMap(refMap), typeMap(typeMap), cp2(cp2) {
-        CHECK_NULL(refMap); CHECK_NULL(typeMap);
-        setName("ParaDeParMerge"); 
-    }
-
-    const IR::Node* preorder(IR::P4Control* p4control) override;
-
-    const IR::Node* preorder(IR::P4Parser* p4parser) override;
-
-    const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
-
-};
-
-class HardcodedMergeTest final : public Transform {
-    P4::ReferenceMap* refMap;
-    P4::TypeMap* typeMap;
-    const IR::P4Parser* other_parser;
-
-public:
-    explicit HardcodedMergeTest(P4::ReferenceMap* refMap, P4::TypeMap* typeMap) :
-    refMap(refMap), typeMap(typeMap) {
-        CHECK_NULL(refMap);
-        CHECK_NULL(typeMap);
-        setName("HardcodedMergeTest");
-    }
-
-    const IR::Node* preorder(IR::P4Parser* parser) override;
 };
 
 }   // namespace CSA

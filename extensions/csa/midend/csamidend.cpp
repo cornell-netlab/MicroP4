@@ -87,30 +87,31 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
 
         new P4::MidEndLast(),
 
-        /*
         new CSA::AlignParamNames(&refMap, &typeMap),
         new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
 
+        /*
         new P4::MidEndLast(),
         new CSA::ToWellFormedParser(&refMap, &typeMap),
         new CSA::CloneWithFreshPath(),
         new P4::MidEndLast(),
+        */
         
         // Ryan's testing
-        new CSA::HardcodedMergeTest(&refMap, &typeMap),
+        new CSA::ParaParserMerge(&refMap, &typeMap, "Dummy4", "Dummy4Duplicate"),
 
+        new P4::MidEndLast(),
         new CSA::CloneWithFreshPath,
 
         new P4::MidEndLast(),
 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
-        */
+        new P4::MidEndLast()
 
-
+        /*
         // new CSA::DebugPass(),
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
                            &controlToReconInfoMap, &minExtLen, &maxExtLen),
@@ -191,6 +192,7 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::MidEndLast(),
 
         // evaluator
+        */
     };
 
     csaMidEnd.setName("CSAMidEndPasses");
