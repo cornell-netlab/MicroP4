@@ -52,6 +52,11 @@ class CompareStorageExp final : public Inspector {
     }
 };
 
+
+class MapArgParamCompareStorageExp final : public Inspector {
+};
+
+
 }  // namespace CSA
 
 #endif /* _EXTENSIONS_CSA_LINKER_COMPARESTORAGEEXP_H_  */
