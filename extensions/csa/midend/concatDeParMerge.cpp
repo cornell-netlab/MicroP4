@@ -54,14 +54,22 @@ bool FindConcatCntxts::preorder(const IR::SelectExpression* se) {
     BUG_CHECK(in==5 || in==6, " did not expect this scenario");
     size_t pkgAplIndex = in==5 ? 2 : 4;
 
-
     auto ae = argToExprs[pkgAplIndex].first;
-
-    // have to find mapping here
-    // param.x.y -> arg ->arg.x.y or
-    // param.x.y -> arg.x-> arg.x.y
-    //
-    // path to param should be substituted by ae
+    CompArgParamToStorageExp capm(refMap, typeMap, param, parserSelectExpr, ae);
+    const auto& exprsInCaller = argToExprs[pkgAplIndex].second;
+    const IR::Expression* callerExprInArg = nullptr;
+    size_t s = 0;
+    for (auto e : exprsInCaller) {
+        e->apply(capm);
+        if (capm.isMatch()) {
+            callerExprInArg = e;
+            break;
+        }
+    }
+    for (auto pair : exprsToParamsMap) {
+        if (pair.first == callerExprInArg)
+            concatCntxt->first.insert(pair.second->to<IR::Member>());
+    }
     return false;
 }
 
@@ -135,6 +143,14 @@ bool FindConcatCntxts::preorder(const IR::AssignmentStatement* asmt) {
     return false;
 }
 
+const IR::Node* ConcatDeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
+    return p4cp;
+}
+
+const IR::Node* ConcatDeParMerge::postorder(IR::P4ComposablePackage* p4cp) {
+    return p4cp;
+}
+
 const IR::Node* ConcatDeParMerge::preorder(IR::P4Control* p4control) {
     return p4control;
 }
@@ -151,13 +167,6 @@ const IR::Node* ConcatDeParMerge::postorder(IR::P4Parser* p4parser) {
     return p4parser;
 }
 
-const IR::Node* ConcatDeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
-    return p4cp;
-}
-
-const IR::Node* ConcatDeParMerge::postorder(IR::P4ComposablePackage* p4cp) {
-    return p4cp;
-}
 
 
 }// namespace CSA
