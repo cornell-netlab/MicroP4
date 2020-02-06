@@ -12,7 +12,7 @@
 
 namespace CSA {
 
-typedef std::set<const IR::Member*> ParserHooks; 
+typedef std::vector<const IR::Member*> ParserHooks; 
 typedef std::pair<ParserHooks, const IR::P4ComposablePackage*> ConcatCntxt;
 
 /*
@@ -39,7 +39,7 @@ class FindDeclaration final : public Inspector {
 class FindConcatCntxts final : public Inspector {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    ConcatCntxt*  concatCntxt;
+    std::vector<ConcatCntxt*>*  concatCntxts;
 
     const IR::ParameterList* callerP4ControlApplyParams;
 
@@ -59,9 +59,9 @@ class FindConcatCntxts final : public Inspector {
 
   public:
     explicit FindConcatCntxts(P4::ReferenceMap* refMap, P4::TypeMap* typeMap, 
-        ConcatCntxt* concatCntxt)
-      : refMap(refMap), typeMap(typeMap), concatCntxt(concatCntxt) {
-        CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(concatCntxt);
+        std::vector<ConcatCntxt*>* concatCntxts)
+      : refMap(refMap), typeMap(typeMap), concatCntxts(concatCntxts) {
+        CHECK_NULL(refMap); CHECK_NULL(typeMap); CHECK_NULL(concatCntxts);
         setName("FindConcatCntxts"); 
     }
 
@@ -89,18 +89,20 @@ class FindConcatCntxts final : public Inspector {
 class ConcatDeParMerge final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
-    const std::vector<ConcatCntxt>* hooksCalleeCntxts;
+
+    // ones which cant be concatenated in this pass, as are already involved as
+    // callers or callees in concatenation
+    IR::IndexedVector<IR::Type_Declaration> lockedP4CP;
+
 
   public:
-    explicit ConcatDeParMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap,
-        const std::vector<ConcatCntxt>* hooksCalleeCntxts)
-      : refMap(refMap), typeMap(typeMap), hooksCalleeCntxts(hooksCalleeCntxts) {
+    explicit ConcatDeParMerge(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
+      : refMap(refMap), typeMap(typeMap) {
         CHECK_NULL(refMap); CHECK_NULL(typeMap);
         setName("ConcatDeParMerge"); 
     }
 
     const IR::Node* preorder(IR::P4ComposablePackage* cp) override;
-    const IR::Node* postorder(IR::P4ComposablePackage* cp) override;
 
     const IR::Node* preorder(IR::P4Control* p4control) override;
     const IR::Node* postorder(IR::P4Control* p4control) override;

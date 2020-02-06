@@ -76,6 +76,10 @@ class CompArgParamToStorageExp final : public Inspector {
         const IR::Expression* arg) 
       : refMap(refMap), typeMap(typeMap), param(param), calleeExpr(calleeExpr),
         arg(arg) {
+        result = true;
+        matchingCE = true;
+        curr = calleeExpr;
+        setName("CompareStorageExp"); 
     }
 
     bool preorder(const IR::Member* member) override;

@@ -66,10 +66,13 @@ bool FindConcatCntxts::preorder(const IR::SelectExpression* se) {
             break;
         }
     }
+    auto concatCntxt = new ConcatCntxt();
+    concatCntxt->second = findContext<IR::P4ComposablePackage>();
     for (auto pair : exprsToParamsMap) {
         if (pair.first == callerExprInArg)
-            concatCntxt->first.insert(pair.second->to<IR::Member>());
+            concatCntxt->first.push_back(pair.second->to<IR::Member>());
     }
+    concatCntxts->push_back(concatCntxt);
     return false;
 }
 
@@ -112,7 +115,6 @@ bool FindConcatCntxts::preorder(const IR::MethodCallStatement* mcs) {
         }
         argToExprs.emplace_back(ae, mappedExpr);
     }
-
     visit(cp);
     return false;
 }
@@ -127,7 +129,6 @@ bool FindConcatCntxts::preorder(const IR::AssignmentStatement* asmt) {
     FindDeclaration fd(refMap, &decl);
     asmt->right->apply(fd);
     if (decl->is<IR::Parameter>()) {
-        auto param = decl->is<IR::Parameter>();
         exprsToParamsMap.emplace_back(std::make_pair(asmt->left, asmt->right));
     } else if (asmt->left->is<IR::Member>() || 
                asmt->left->is<IR::PathExpression>()) {
@@ -144,10 +145,37 @@ bool FindConcatCntxts::preorder(const IR::AssignmentStatement* asmt) {
 }
 
 const IR::Node* ConcatDeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
-    return p4cp;
-}
+    std::vector<ConcatCntxt*> concatCntxts;
+    FindConcatCntxts fc(refMap, typeMap, &concatCntxts);
+    p4cp->apply(fc);
 
-const IR::Node* ConcatDeParMerge::postorder(IR::P4ComposablePackage* p4cp) {
+    if (concatCntxts.size() == 0)
+        return p4cp;
+
+    std::map<const IR::Member*, std::vector<const IR::P4ComposablePackage*>>
+        hooksMergeList;
+    for (auto cc : concatCntxts) {
+        BUG_CHECK(cc->first.size() == 1, "for now, no fancy things");
+        auto decl = lockedP4CP.getDeclaration(cc->second->getName());
+        if (decl != nullptr) {
+            lockedP4CP.push_back(p4cp);
+            return p4cp;
+        }
+        CompareStorageExp cse(refMap, typeMap, cc->first[0]);
+        bool hasMatch = false;
+        for (auto& e : hooksMergeList) {
+            e.first->apply(cse);
+            if (cse.isMatch()) {
+                e.second.push_back(cc->second);
+                hasMatch = true;
+            }
+        }
+        if (!hasMatch)
+            hooksMergeList[cc->first[0]].push_back(cc->second);
+    }
+
+    // hook merge list
+
     return p4cp;
 }
 
