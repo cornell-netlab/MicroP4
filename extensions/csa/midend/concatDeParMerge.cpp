@@ -22,6 +22,8 @@ bool FindConcatCntxts::preorder(const IR::P4Parser* p4Parser) {
     auto cp = findContext<IR::P4ComposablePackage>();
     if (cp == p4cp)
         return false;
+
+    std::cout<<"visiting parser of "<<cp->name<<"\n";
     return true;
 }
 
@@ -121,10 +123,12 @@ bool FindConcatCntxts::preorder(const IR::MethodCallStatement* mcs) {
 
 bool FindConcatCntxts::preorder(const IR::AssignmentStatement* asmt) {
     auto p4c = findContext<IR::P4Control>();
-    if (!(asmt->right->is<IR::Member>() || 
-          asmt->right->is<IR::PathExpression>() || p4c != nullptr))
+    if (p4c == nullptr)
+        return false;
+    if (!(asmt->right->is<IR::Member>() || asmt->right->is<IR::PathExpression>()))
       return false;
-    
+    std::cout<<"FindConcatCntxts::preorder - "<<asmt<<"\n";
+
     const IR::IDeclaration* decl = nullptr;
     FindDeclaration fd(refMap, &decl);
     asmt->right->apply(fd);
@@ -145,9 +149,12 @@ bool FindConcatCntxts::preorder(const IR::AssignmentStatement* asmt) {
 }
 
 const IR::Node* ConcatDeParMerge::preorder(IR::P4ComposablePackage* p4cp) {
+    std::cout<<"ConcatDeParMerge::preorder : "<<p4cp->name<<"\n";
     std::vector<ConcatCntxt*> concatCntxts;
     FindConcatCntxts fc(refMap, typeMap, &concatCntxts);
     p4cp->apply(fc);
+    
+    std::cout<<"concatCntxts.size() : "<<concatCntxts.size()<<"\n";
 
     if (concatCntxts.size() == 0)
         return p4cp;

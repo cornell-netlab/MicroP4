@@ -35,6 +35,7 @@
 #include "deadFieldElimination.h"
 #include "toWellFormedParser.h"
 #include "paraDeParMerge.h"
+#include "concatDeParMerge.h"
 #include "../backend/tofino/replaceByteHdrStack.h"
 #include "../backend/tofino/toTofino.h"
 #include "../backend/tofino/annotateFields.h"
@@ -80,11 +81,9 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
 
     PassManager csaMidEnd = {
         new P4::MidEndLast(),
-
         new CSA::MergeDeclarations(irs),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-
         new P4::MidEndLast(),
 
         /*
@@ -97,19 +96,27 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new CSA::ToWellFormedParser(&refMap, &typeMap),
         new CSA::CloneWithFreshPath(),
         new P4::MidEndLast(),
+        new P4::ResolveReferences(&refMap, true),
+        new P4::TypeInference(&refMap, &typeMap, false),
+        new P4::MidEndLast(),
         
-        // Ryan's testing
-        new CSA::HardcodedMergeTest(&refMap, &typeMap),
+        new CSA::ConcatDeParMerge(&refMap, &typeMap),
+        new P4::MidEndLast(),
+        */
 
+        /*
+        // Ryan's testing
+        new CSA::ParaParserMerge(&refMap, &typeMap, "Dummy4", "Dummy4Duplicate"),
+
+        new P4::MidEndLast(),
         new CSA::CloneWithFreshPath,
 
         new P4::MidEndLast(),
 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        new P4::MidEndLast()
         */
-
 
         // new CSA::DebugPass(),
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
