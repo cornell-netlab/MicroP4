@@ -64,6 +64,9 @@ struct ipv6_acl_in_t {
 cpackage IPv4(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh, inout empty_t ioa);
           
+cpackage ECN(pkt p, im_t im, 
+          in empty_t ia, out empty_t oa, inout empty_t ioa);
+          
 cpackage IPv4toIPv6(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout  bit<16> etherType);                    
                  
@@ -120,6 +123,6 @@ cpackage L3(pkt p, im_t im,
 
 cpackage INT(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout empty_t ioa);          
-                    
+
 cpackage VXlan(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout vxlan_inout_t outer_ethhdr);
