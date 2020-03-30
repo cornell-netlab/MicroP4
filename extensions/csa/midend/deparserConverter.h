@@ -87,6 +87,7 @@ class DeparserConverter final : public Transform {
             unsigned& currentEmitOffset, const IR::P4Action* ancestorAction);
     IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
                            unsigned& currentEmitOffset);
+    IR::P4Action* createP4Action(unsigned currentEmitOffset);
 
     IR::P4Action* createP4Action(const cstring hdrInstName, 
                                 unsigned currentEmitOffset);
