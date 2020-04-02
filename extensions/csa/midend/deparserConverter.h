@@ -114,7 +114,7 @@ class DeparserConverter final : public Transform {
 
     bool isDeparser(const IR::P4Control* p4control);
 
-    void initTableWithOffsetEntries(const IR::MethodCallStatement* mcs);
+    IR::P4Table* initTableWithOffsetEntries(const IR::MethodCallStatement* mcs);
 
     std::vector<cstring> keyExpToNameStrVec(
         std::vector<std::pair<const IR::Expression*, bool>>& ke);
