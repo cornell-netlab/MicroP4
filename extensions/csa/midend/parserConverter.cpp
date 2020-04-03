@@ -580,10 +580,12 @@ const IR::Node* ExtractSubstitutor::preorder(IR::MethodCallStatement* mcs) {
     
     auto asmtSmts = createPerFieldAssignmentStmts(arg1->expression, 
                                                   start+initOffset);
+    /*
     auto newMember = new IR::Member(arg1->expression->clone(), 
                                     IR::Type_Header::setValid);
     auto mce = new IR::MethodCallExpression(newMember);
     auto setValidMCS =  new IR::MethodCallStatement(mce);
+    */
 
     cstring hdrName = "";
     if (auto hdrMem = arg1->expression->to<IR::Member>())
@@ -617,6 +619,11 @@ ExtractSubstitutor::createPerFieldAssignmentStmts(const IR::Expression* hdrVar,
 
     auto exp = new IR::Member(new IR::PathExpression(pktParamName), 
                                  IR::ID(fieldName));
+
+    auto indicesExp = new IR::Member(new IR::PathExpression(pktParamName), 
+                              NameConstants::indicesHeaderInstanceName);
+    auto offsetExp = new IR::Member(indicesExp, 
+                            NameConstants::csaPktStuCurrOffsetFName);
     // auto member = new IR::Member(exp, IR::ID("data"));
 
     // unsigned start = (startOffset==0)? 0 : startOffset-1;
@@ -697,6 +704,9 @@ ExtractSubstitutor::createPerFieldAssignmentStmts(const IR::Expression* hdrVar,
         auto as = new IR::AssignmentStatement(lm, rh);
         retVec.push_back(as);
     }
+    auto offsetValue = new IR::Constant(start, 10);
+    auto offsetAs = new IR::AssignmentStatement(offsetExp, offsetValue);
+    retVec.push_back(offsetAs);
     return retVec;
 }
 

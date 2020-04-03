@@ -81,7 +81,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
 
     auto lhPE = new IR::PathExpression(csaPacketStructInstanceName);
     auto lhIndices = new IR::Member(lhPE, NameConstants::indicesHeaderInstanceName);
-    auto lhs = new IR::Member(lhIndices, AddCSAByteHeader::csaPktStuLenFName);
+    auto lhs = new IR::Member(lhIndices, NameConstants::csaPktStuLenFName);
     auto rhs = new IR::Constant(1);
     auto initAs = new IR::AssignmentStatement(lhs, rhs);
 

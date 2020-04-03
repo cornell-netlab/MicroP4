@@ -9,8 +9,8 @@
 
 namespace CSA {
 
-const cstring AddCSAByteHeader::csaPktStuLenFName = "pkt_len";
-const cstring AddCSAByteHeader::csaPktStuCurrOffsetFName = "curr_offset";
+// const cstring AddCSAByteHeader::csaPktStuLenFName = "pkt_len";
+// const cstring AddCSAByteHeader::csaPktStuCurrOffsetFName = "curr_offset";
 
 // used by CSAPacketSubstituter
 const cstring ToControl::csaPakcetInGetPacketStruct = "get_packet_struct";

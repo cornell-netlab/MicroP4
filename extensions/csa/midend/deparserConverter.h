@@ -87,6 +87,7 @@ class DeparserConverter final : public Transform {
             unsigned& currentEmitOffset, const IR::P4Action* ancestorAction);
     IR::P4Action* createP4Action(const IR::MethodCallStatement* mcs,
                            unsigned& currentEmitOffset);
+    IR::P4Action* createP4Action(unsigned currentEmitOffset);
 
     IR::P4Action* createP4Action(const cstring hdrInstName, 
                                 unsigned currentEmitOffset);
@@ -113,7 +114,7 @@ class DeparserConverter final : public Transform {
 
     bool isDeparser(const IR::P4Control* p4control);
 
-    void initTableWithOffsetEntries(const IR::MethodCallStatement* mcs);
+    IR::P4Table* initTableWithOffsetEntries(const IR::MethodCallStatement* mcs);
 
     std::vector<cstring> keyExpToNameStrVec(
         std::vector<std::pair<const IR::Expression*, bool>>& ke);

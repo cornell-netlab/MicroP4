@@ -159,6 +159,8 @@ class CreateTofinoArchBlock final : public Transform {
     static const cstring igIMTypeName;
     static const cstring igIMArgName;
 
+    static const cstring igIMResubmitFlag;
+
     static const cstring igIMFrmParTypeName;
     static const cstring igIMFrmParInstName;
 
@@ -179,6 +181,9 @@ class CreateTofinoArchBlock final : public Transform {
 
     static const cstring egIMForOPTypeName;
     static const cstring egIMForOPInstName;
+
+    static const cstring parseResubmitStateName;
+    static const cstring parsePortMetaStateName;
 
     static IR::IndexedVector<IR::Parameter>* createIngressIMParams();
     static IR::Vector<IR::Argument>* createIngressIMArgs();

@@ -27,6 +27,8 @@ const cstring CreateTofinoArchBlock::egressControlName = "msa_tofino_eg_control"
 const cstring CreateTofinoArchBlock::igIMTypeName = "ingress_intrinsic_metadata_t";
 const cstring CreateTofinoArchBlock::igIMArgName = "ig_intr_md";
 
+const cstring CreateTofinoArchBlock::igIMResubmitFlag = "resubmit_flag";
+
 const cstring CreateTofinoArchBlock::igIMFrmParTypeName = "ingress_intrinsic_metadata_from_parser_t";
 const cstring CreateTofinoArchBlock::igIMFrmParInstName = "ig_intr_md_from_prsr";
 
@@ -48,6 +50,9 @@ const cstring CreateTofinoArchBlock::egIMForDePInstName = "eg_intr_md_for_dprsr"
 const cstring CreateTofinoArchBlock::egIMForOPTypeName = "egress_intrinsic_metadata_for_output_port_t";
 const cstring CreateTofinoArchBlock::egIMForOPInstName = "eg_intr_md_for_oport";
 
+
+const cstring CreateTofinoArchBlock::parseResubmitStateName = "parse_resubmit";
+const cstring CreateTofinoArchBlock::parsePortMetaStateName = "parse_port_metadata";
 
 
 
@@ -340,11 +345,64 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
         auto setCounterMCS =  new IR::MethodCallStatement(mce);
         components.push_back(setCounterMCS);
     }
-    auto startPE = new IR::PathExpression(statesName[0]);
-    auto startState = new IR::ParserState(IR::ParserState::start, components, startPE);
-    states.push_back(startState);
-     
+
+    {
+        IR::IndexedVector<IR::StatOrDecl> comp;
+        auto extctIgIM = new IR::Member(new IR::PathExpression(packetInArgName),
+            IR::ID(P4::P4CoreLibrary::instance.packetIn.extract.name));
+        auto igIMPeArg = new IR::Argument(
+            new IR::PathExpression(IR::ID(CreateTofinoArchBlock::igIMArgName)));
+        auto igIMPeArgs = new IR::Vector<IR::Argument>();
+        igIMPeArgs->push_back(igIMPeArg);
+        auto extctIgImMCS = new IR::MethodCallStatement(
+            new IR::MethodCallExpression(extctIgIM, igIMPeArgs));
+        comp.push_back(extctIgImMCS);
+
+        IR::Vector<IR::Expression> ev;
+        auto igIMPe = new IR::PathExpression(CreateTofinoArchBlock::igIMArgName);
+        auto rsf = new IR::Member(igIMPe, CreateTofinoArchBlock::igIMResubmitFlag);
+        ev.push_back(rsf);
+        auto ls = new IR::ListExpression(ev);
+        auto selectCases = new IR::Vector<IR::SelectCase>();
+        auto scr = new IR::SelectCase(new IR::Constant(1), 
+            new IR::PathExpression(CreateTofinoArchBlock::parseResubmitStateName));
+        auto scppm = new IR::SelectCase(new IR::Constant(0),
+            new IR::PathExpression(CreateTofinoArchBlock::parsePortMetaStateName));
+        selectCases->push_back(scr);
+        selectCases->push_back(scppm);
+        auto se = new IR::SelectExpression(ls, *selectCases);
+
+        auto startState = new IR::ParserState(IR::ParserState::start, comp, se);
+        states.push_back(startState);
+    }
+
+    {
+        IR::IndexedVector<IR::StatOrDecl> comp;
+        auto advance = new IR::Member(new IR::PathExpression(packetInArgName),
+            IR::ID(P4::P4CoreLibrary::instance.packetIn.advance.name));
+        auto aArg = new IR::Argument(new IR::PathExpression("PORT_METADATA_SIZE"));
+        auto aArgs = new IR::Vector<IR::Argument>();
+        aArgs->push_back(aArg);
+        auto advanceMCS = new IR::MethodCallStatement(
+                                  new IR::MethodCallExpression(advance, aArgs));
+        comp.push_back(advanceMCS);
+
+        auto startPE = new IR::PathExpression(statesName[0]);
+        auto ppmState = new IR::ParserState(
+            CreateTofinoArchBlock::parsePortMetaStateName, comp, startPE);
+        states.push_back(ppmState);
+    }
+
+    {
+        IR::IndexedVector<IR::StatOrDecl> comp;
+        auto startPE = new IR::PathExpression(statesName[0]);
+        auto ppmState = new IR::ParserState(
+            CreateTofinoArchBlock::parseResubmitStateName, comp, startPE);
+        states.push_back(ppmState);
+    }
+
     
+    // auto startPE = new IR::PathExpression(statesName[0]);
     cstring currStateName = "";
     cstring nextStateName = "";
     for (unsigned i = 0; i<nc; i++) {
@@ -370,8 +428,9 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
         exArgs->push_back(exArg);
         auto extract = new IR::Member(new IR::PathExpression(packetInArgName),
             IR::ID(P4::P4CoreLibrary::instance.packetIn.extract.name));
-        auto emptyTypeVec = new IR::Vector<IR::Type>(); 
-        mce = new IR::MethodCallExpression(extract, emptyTypeVec, exArgs);
+        // auto emptyTypeVec = new IR::Vector<IR::Type>(); 
+        // mce = new IR::MethodCallExpression(extract, emptyTypeVec, exArgs);
+        mce = new IR::MethodCallExpression(extract, exArgs);
         auto mcs = new IR::MethodCallStatement(mce);
         components.push_back(mcs);
 
@@ -798,6 +857,17 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressParser() {
         auto setCounterMCS =  new IR::MethodCallStatement(mce);
         components.push_back(setCounterMCS);
     }
+
+    auto extctEgIM = new IR::Member(new IR::PathExpression(packetInArgName),
+        IR::ID(P4::P4CoreLibrary::instance.packetIn.extract.name));
+    auto egIMPeArg = new IR::Argument(
+        new IR::PathExpression(IR::ID(CreateTofinoArchBlock::egIMArgName)));
+    auto egIMPeArgs = new IR::Vector<IR::Argument>();
+    egIMPeArgs->push_back(egIMPeArg);
+    auto extctEgImMCS = new IR::MethodCallStatement(
+        new IR::MethodCallExpression(extctEgIM, egIMPeArgs));
+    components.push_back(extctEgImMCS);
+
     auto startPE = new IR::PathExpression(statesName[0]);
     auto startState = new IR::ParserState(IR::ParserState::start, components, startPE);
     states.push_back(startState);
