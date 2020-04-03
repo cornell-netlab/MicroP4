@@ -183,7 +183,7 @@ const IR::Node* CPackageToControl::preorder(IR::P4Control* p4control) {
     if (cp != nullptr) {
         if (isArchBlock(p4control->getName())) {
             //std::cout<<"creating MCS for "<<p4control->getName()<<"\n";
-            createMCS(p4control->type);
+            createMCS(p4control->type); //TODO identify packet copy for replication and create dependence graph
             p4control->srcInfo = cpSourceInfo;
         }
     }
@@ -232,6 +232,7 @@ const IR::Node* CPackageToControl::preorder(IR::P4ComposablePackage* cp) {
     resetMCSRelatedObjects();
 
     // Identify default instances and store them in ctrlInstanceName
+    //TODO fnd new instances when packet replication used
     for (auto tdl : *(cp->type->typeLocalDeclarations)) {
         auto name = tdl->getName();
         for (auto dl : cp->packageLocalDeclarations) {

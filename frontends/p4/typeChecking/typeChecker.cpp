@@ -3152,6 +3152,95 @@ void TypeInference::checkCorelibMethods(const ExternMethod* em) const {
                 return;
             }
         }
+    } else if (et->name == corelib.mcengine.name) {
+    	if (em->method->name == corelib.mcengine.apply.name) {
+    		if(argCount == 2) {
+    			auto arg0 = mce->arguments->at(0); // im_t
+				auto arg0Type = typeMap->getType(arg0, true);
+				if (!arg0Type->is<IR::Type_Extern>()) {
+					auto argTE =  arg0Type->to<IR::Type_Extern>();
+					if (argTE != nullptr && argTE->name != corelib.im.name) {
+						typeError("%1%: argument must be IMs extern type", arg0);
+						return;
+					}
+				 }
+
+				auto arg1 = mce->arguments->at(1);
+				auto arg1Type = typeMap->getType(arg1, true);
+				 if (!arg1Type->is<IR::Type_Bits>()) {
+					 auto tb = arg1Type->to<IR::Type_Bits>();
+					 if (tb->width_bits() != 16) {
+						 typeError("%1%: argument should contain a 16-bit field", arg1);
+						 return;
+					 }
+				 }
+    			    				 }
+    		}  else if(argCount == 3){
+				auto arg0 = mce->arguments->at(0); // pkt
+				auto arg0Type = typeMap->getType(arg0, true);
+				if (!arg0Type->is<IR::Type_Extern>()) {
+					auto argTE =  arg0Type->to<IR::Type_Extern>();
+					if (argTE != nullptr && argTE->name != corelib.pkt.name) {
+						typeError("%1%: argument must be PKT extern type", arg0);
+						return;
+					}
+				 }
+    			auto arg1 = mce->arguments->at(1); // im_t
+				auto arg1Type = typeMap->getType(arg1, true);
+				if (!arg0Type->is<IR::Type_Extern>()) {
+					auto argTE =  arg1Type->to<IR::Type_Extern>();
+					if (argTE != nullptr && argTE->name != corelib.im.name) {
+						typeError("%1%: argument must be IM extern type", arg1);
+						return;
+					}
+				 }
+				auto arg2 = mce->arguments->at(2); // type O
+				auto arg2Type = typeMap->getType(arg2, true);
+				 if (!arg0Type->is<IR::Type_Bits>()) {
+					 auto tb = arg0Type->to<IR::Type_Bits>();
+					 if (tb->width_bits() != 16) {
+						 typeError("%1%: argument should contain a 16-bit field", arg);
+						 return;
+					 }
+				 }
+
+    		} else {
+                typeError("%1%: Expected 2 or 3 arguments for '%2%' method",
+                          mce, corelib.mcengine.apply.name);
+                return;
+            }
+    	} else if (em->method->name == corelib.mcengine.set_multicast_group.name) {
+    		if(argCount == 1) {
+    			auto arg = mce->arguments->at(1);
+    			auto argType = typeMap->getType(arg, true);
+    			 if (!argType->is<IR::Type_Bits>()) {
+    				 auto tb = argType->to<IR::Type_Bits>();
+    				 if (tb->width_bits() != 16) {
+    					 typeError("%1%: argument should contain a 16-bit field", arg);
+    					 return;
+    				 }
+    			 } else {
+    				 typeError("%1%: argument should contain a bit field", arg);
+    				 return;
+    			 }
+
+    		}  else {
+                typeError("%1%: Expected 1 argument for '%2%' method",
+                          mce, corelib.mcengine.set_multicast_group.name);
+                return;
+            }
+
+    	} else if (em->method->name == corelib.mcengine.set_buf.name) {
+    		if(argCount == 1) {
+    			auto arg = mce->arguments->at(0);
+				auto argType = typeMap->getType(arg, true);
+				//TODO argtype out_buf<O>
+			}  else {
+				typeError("%1%: Expected 1 argument for '%2%' method",
+						  mce, corelib.mcengine.set_buf.name);
+				return;
+			}
+    	}
     }
 }
 

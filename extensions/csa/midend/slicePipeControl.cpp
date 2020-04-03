@@ -707,21 +707,14 @@ void SlicePipeControl::processExternMethodCall(const P4::ExternMethod* em) {
         }
 
     }
-
-    /*
-    if (em->originalExternType->name.name == "csa_packet_in") {
-        if (em->method->name.name == "get_packet_struct") {
-            isConvertedCPackage = true;
-        }
-    }
-    if (em->originalExternType->name.name == "csa_packet_out") {
-        if (em->method->name.name == "set_packet_struct") {
-            isConvertedCPackage = true;
-        }
-    }
-    */  
-
-
+    // when setting multicast group to be used or when applying the multicast_engine
+       if (em->originalExternType->name.name == "multicast_engine"){
+       	if (partitionState == ControlConstraintStates::ES_RW_IM_R){
+       		 if ( em->method->name.name == "apply") {
+       			 slice = true;
+       		 }
+       	}
+       }
 
 }
 

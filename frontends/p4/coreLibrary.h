@@ -110,6 +110,16 @@ class im_t : public Model::Extern_Model {
     Model::Elem getInPort;
 };
 
+class MCEngine : public Model::Extern_Model {
+public:
+	MCEngine() : Extern_Model("mcengine"),
+	apply("apply"),
+	set_multicast_group("set_multicast_group"),
+	set_buf("set_buf"){}
+	Model::Elem apply;
+	Model::Elem set_multicast_group;
+	Model::Elem set_buf;
+};
 
 /******************************************************************************/
 
@@ -171,6 +181,7 @@ class P4CoreLibrary : public ::Model::Model {
     im_t        im;
     Extractor   extractor;
     Emitter     emitter;
+    MCEngine	mcengine;
 
     P4Exception_Model noError;
     P4Exception_Model packetTooShort;
