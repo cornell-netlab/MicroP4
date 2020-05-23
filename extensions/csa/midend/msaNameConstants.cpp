@@ -5,12 +5,12 @@
 
 #include "msaNameConstants.h"
 
-
 namespace CSA {
 
 const cstring NameConstants::csaHeaderInstanceName = "msa_hdr_stack";
 const cstring NameConstants::csaStackInstanceName = "csa_stack";
 const cstring NameConstants::csaPacketStructTypeName ="msa_packet_struct_t";
+// this might be redundant
 const cstring NameConstants::csaPacketStructName ="mp";
 
 const cstring NameConstants::headerTypeName = "msa_byte_h";
@@ -24,7 +24,6 @@ const cstring NameConstants::bitStreamFieldName = "data";
               
 const cstring NameConstants::csaPktStuLenFName = "pkt_len";
 const cstring NameConstants::csaPktStuCurrOffsetFName = "curr_offset";
-
 
 const cstring NameConstants::headerValidityOpStrTypeName = "hdr_vop_t";
 const cstring NameConstants::headerValidityOpStrParamName = "hdr_vop";

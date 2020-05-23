@@ -10,12 +10,7 @@
 
 namespace CSA {
 
-// struct csa_packet_struct_t {
-//    csa_packet_h csa_packet;
-// }
-//
-// control ingress (csa_packet_struct_t pkt, csa_user_metadata_t metadataArgName,
-// standard_metadata_t csa_sm))
+/*
 const cstring CreateV1ModelArchBlock::csaPacketStructInstanceName = "pkt_i";
 const cstring CreateV1ModelArchBlock::metadataArgName = "csa_um";
 const cstring CreateV1ModelArchBlock::stdMetadataArgName = "csa_sm";
@@ -27,33 +22,34 @@ const cstring CreateV1ModelArchBlock::ingressControlName = "csa_ingress";
 const cstring CreateV1ModelArchBlock::egressControlName = "csa_egress";
 const cstring CreateV1ModelArchBlock::verifyChecksumName = "csa_verify_checksum";
 const cstring CreateV1ModelArchBlock::computeChecksumName = "csa_compute_checksum";
+*/
 
 const IR::Node* CreateV1ModelArchBlock::createMainPackageInstance() {
 
     auto args = new IR::Vector<IR::Argument>();
     auto eva = new IR::Vector<IR::Argument>();
 
-    auto tnp = new IR::Type_Name(parserName);
+    auto tnp = new IR::Type_Name(V1ModelConstants::parserName);
     auto ptnp = new IR::Argument(new IR::ConstructorCallExpression(tnp, eva));
     args->push_back(ptnp);
 
-    auto tnvc = new IR::Type_Name(verifyChecksumName);
+    auto tnvc = new IR::Type_Name(V1ModelConstants::verifyChecksumName);
     auto ptnvc = new IR::Argument(new IR::ConstructorCallExpression(tnvc, eva->clone()));
     args->push_back(ptnvc);
 
-    auto tnic = new IR::Type_Name(ingressControlName);
+    auto tnic = new IR::Type_Name(V1ModelConstants::ingressControlName);
     auto ptnic = new IR::Argument(new IR::ConstructorCallExpression(tnic, eva->clone()));
     args->push_back(ptnic);
 
-    auto tnec = new IR::Type_Name(egressControlName);
+    auto tnec = new IR::Type_Name(V1ModelConstants::egressControlName);
     auto ptnec = new IR::Argument(new IR::ConstructorCallExpression(tnec, eva->clone()));
     args->push_back(ptnec);
 
-    auto tncc = new IR::Type_Name(computeChecksumName);
+    auto tncc = new IR::Type_Name(V1ModelConstants::computeChecksumName);
     auto ptncc = new IR::Argument(new IR::ConstructorCallExpression(tncc, eva->clone()));
     args->push_back(ptncc);
 
-    auto tndp = new IR::Type_Name(deparserName);
+    auto tndp = new IR::Type_Name(V1ModelConstants::deparserName);
     auto ptndp = new IR::Argument(new IR::ConstructorCallExpression(tndp, eva->clone()));
     args->push_back(ptndp);
 
@@ -69,17 +65,17 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
 
     auto pl = getHeaderMetaStdMetaPL();
     pl->parameters.erase(pl->parameters.begin());
-    auto ph = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
+    auto ph = new IR::Parameter(IR::ID(V1ModelConstants::csaPacketStructInstanceName),
         IR::Direction::Out, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
     auto pin = new IR::Parameter(IR::ID(packetInArgName), 
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetIn.name));
     pl->parameters.insert(pl->parameters.begin(), ph);
     pl->parameters.insert(pl->parameters.begin(), pin);
 
-    auto tp = new IR::Type_Parser(parserName, pl);
+    auto tp = new IR::Type_Parser(V1ModelConstants::parserName, pl);
 
 
-    auto lhPE = new IR::PathExpression(csaPacketStructInstanceName);
+    auto lhPE = new IR::PathExpression(V1ModelConstants::csaPacketStructInstanceName);
     auto lhIndices = new IR::Member(lhPE, NameConstants::indicesHeaderInstanceName);
     auto lhs = new IR::Member(lhIndices, NameConstants::csaPktStuLenFName);
     auto rhs = new IR::Constant(1);
@@ -89,13 +85,13 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
     IR::IndexedVector<IR::ParserState> states;
     { // creating start state
 
-        auto svPE = new IR::PathExpression(csaPacketStructInstanceName);
+        auto svPE = new IR::PathExpression(V1ModelConstants::csaPacketStructInstanceName);
         auto svM = new IR::Member(svPE, NameConstants::indicesHeaderInstanceName);
         auto sv = new IR::Member(svM, IR::Type_Header::setValid);
         auto mce = new IR::MethodCallExpression(sv);
         auto setValidMCS =  new IR::MethodCallStatement(mce);
 
-        auto cel = new IR::Member(new IR::PathExpression(stdMetadataArgName),
+        auto cel = new IR::Member(new IR::PathExpression(V1ModelConstants::stdMetadataArgName),
                                   IR::ID("packet_length"));
         auto cer = new IR::Constant(100);
         auto verifyArg0 = new IR::Argument(new IR::Geq(cel, cer));
@@ -121,7 +117,8 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
         IR::IndexedVector<IR::StatOrDecl> components;
 
         auto em = new IR::Member(new IR::PathExpression(
-              csaPacketStructInstanceName), NameConstants::csaHeaderInstanceName);
+            V1ModelConstants::csaPacketStructInstanceName), 
+            NameConstants::csaHeaderInstanceName);
         auto exArg = new IR::Argument(new IR::Member(em, "next"));
         auto exArgs = new IR::Vector<IR::Argument>();
         exArgs->push_back(exArg);
@@ -132,24 +129,25 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
         auto mcs = new IR::MethodCallStatement(mce);
         components.push_back(mcs);
         
-        auto pe = new IR::PathExpression(csaPacketStructInstanceName);
+        auto pe = new IR::PathExpression(
+            V1ModelConstants::csaPacketStructInstanceName);
         auto rhIndices = new IR::Member(pe, NameConstants::indicesHeaderInstanceName);
         auto pkt = new IR::Member(rhIndices, NameConstants::csaPktStuLenFName);
         auto rinc = new IR::Add(pkt, new IR::Constant(1));
-        pe = new IR::PathExpression(csaPacketStructInstanceName);
+        pe = new IR::PathExpression(V1ModelConstants::csaPacketStructInstanceName);
         auto lhIndices = new IR::Member(pe,  NameConstants::indicesHeaderInstanceName);
         auto lh = new IR::Member(lhIndices, NameConstants::csaPktStuLenFName);
         auto inc = new IR::AssignmentStatement(lh, rinc);
         components.push_back(inc);
 
-        pe = new IR::PathExpression(csaPacketStructInstanceName);
+        pe = new IR::PathExpression(V1ModelConstants::csaPacketStructInstanceName);
         auto pktIndices = new IR::Member(pe, NameConstants::indicesHeaderInstanceName);
         pkt = new IR::Member(pktIndices, NameConstants::csaPktStuLenFName);
-        auto rpe = new IR::PathExpression(stdMetadataArgName);
+        auto rpe = new IR::PathExpression(V1ModelConstants::stdMetadataArgName);
         auto castType = IR::Type::Bits::get(16, false);
         auto rpkt = new IR::Cast(castType, new IR::Member(rpe, "packet_length"));
         auto c1 = new IR::Leq(pkt, rpkt);
-        pe = new IR::PathExpression(csaPacketStructInstanceName);
+        pe = new IR::PathExpression(V1ModelConstants::csaPacketStructInstanceName);
         pktIndices = new IR::Member(pe, NameConstants::indicesHeaderInstanceName);
         pkt = new IR::Member(pktIndices, NameConstants::csaPktStuLenFName);
         auto re = new IR::Constant(*maxExtLen);
@@ -176,7 +174,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
 
     states.push_back(new IR::ParserState(IR::ParserState::accept, nullptr));
 
-    return new IR::P4Parser(parserName, tp, states);
+    return new IR::P4Parser(V1ModelConstants::parserName, tp, states);
 }
 
 
@@ -187,12 +185,12 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelDeparser() {
     auto pl = new IR::ParameterList();
     auto po = new IR::Parameter(IR::ID(packetOutArgName), 
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetOut.name));
-    auto ph = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
+    auto ph = new IR::Parameter(IR::ID(V1ModelConstants::csaPacketStructInstanceName), 
         IR::Direction::In, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
     pl->push_back(po);
     pl->push_back(ph);
 
-    auto argExp = new IR::Member(new IR::PathExpression(csaPacketStructInstanceName),
+    auto argExp = new IR::Member(new IR::PathExpression(V1ModelConstants::csaPacketStructInstanceName),
                                  IR::ID(NameConstants::csaHeaderInstanceName));
     auto args = new IR::Vector<IR::Argument>();
     auto arg = new IR::Argument(argExp);
@@ -206,7 +204,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelDeparser() {
     auto bs = new IR::BlockStatement();
     bs->push_back(mcs);
 
-    return createP4Control(deparserName, pl, bs);
+    return createP4Control(V1ModelConstants::deparserName, pl, bs);
 }
 
 
@@ -245,13 +243,13 @@ const IR::Node* CreateV1ModelArchBlock::createIngressControl(
             const IR::Type* fieldType = nullptr;
             if (ts != nullptr) {
                 if (ts->getName() == NameConstants::csaPacketStructTypeName) {
-                    auto pe = new IR::PathExpression(csaPacketStructInstanceName);
+                    auto pe = new IR::PathExpression(V1ModelConstants::csaPacketStructInstanceName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
                 }
                 if (ts->getName() == P4V1::V1Model::instance.standardMetadataType.name) {
-                    auto pe = new IR::PathExpression(stdMetadataArgName);
+                    auto pe = new IR::PathExpression(V1ModelConstants::stdMetadataArgName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
@@ -265,7 +263,7 @@ const IR::Node* CreateV1ModelArchBlock::createIngressControl(
                 auto f = new IR::StructField(p->getName(), fieldType);
                 typeStruct->fields.push_back(f);
             }
-            auto pe = new IR::PathExpression(metadataArgName);
+            auto pe = new IR::PathExpression(V1ModelConstants::metadataArgName);
             auto mem = new IR::Member(pe, p->getName());
             auto arg = new IR::Argument(mem);
             controlArgs->push_back(arg);
@@ -281,7 +279,7 @@ const IR::Node* CreateV1ModelArchBlock::createIngressControl(
         auto mcs =new IR::MethodCallStatement(mce);
         bs->push_back(mcs);
     }
-    auto ic = createV1ModelPipelineControl(ingressControlName, bs);
+    auto ic = createV1ModelPipelineControl(V1ModelConstants::ingressControlName, bs);
     ic->controlLocals = cls;
     return ic;
 }
@@ -301,13 +299,14 @@ const IR::Node* CreateV1ModelArchBlock::createEgressControl(
             const IR::Type* fieldType = nullptr;
             if (ts != nullptr) {
                 if (ts->getName() == NameConstants::csaPacketStructTypeName) {
-                    auto pe = new IR::PathExpression(csaPacketStructInstanceName);
+                    auto pe = new IR::PathExpression(
+                        V1ModelConstants::csaPacketStructInstanceName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
                 }
                 if (ts->getName() == P4V1::V1Model::instance.standardMetadataType.name) {
-                    auto pe = new IR::PathExpression(stdMetadataArgName);
+                    auto pe = new IR::PathExpression(V1ModelConstants::stdMetadataArgName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
@@ -321,7 +320,7 @@ const IR::Node* CreateV1ModelArchBlock::createEgressControl(
                 auto f = new IR::StructField(p->getName(), fieldType);
                 typeStruct->fields.push_back(f);
             }
-            auto pe = new IR::PathExpression(metadataArgName);
+            auto pe = new IR::PathExpression(V1ModelConstants::metadataArgName);
             auto mem = new IR::Member(pe, p->getName());
             auto arg = new IR::Argument(mem);
             controlArgs->push_back(arg);
@@ -337,7 +336,7 @@ const IR::Node* CreateV1ModelArchBlock::createEgressControl(
         auto mcs =new IR::MethodCallStatement(mce);
         bs->push_back(mcs);
     }
-    auto ic = createV1ModelPipelineControl(egressControlName, bs);
+    auto ic = createV1ModelPipelineControl(V1ModelConstants::egressControlName, bs);
     ic->controlLocals = cls;
     return ic;
 }
@@ -345,10 +344,11 @@ const IR::Node* CreateV1ModelArchBlock::createEgressControl(
 
 IR::ParameterList* CreateV1ModelArchBlock::getHeaderMetaPL() {
     auto pl = new IR::ParameterList();
-    auto phdr = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
+    auto phdr = new IR::Parameter(IR::ID(
+        V1ModelConstants::csaPacketStructInstanceName), 
         IR::Direction::InOut, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
-    auto pum = new IR::Parameter(IR::ID(metadataArgName), 
-        IR::Direction::InOut, new IR::Type_Name(userMetadataStructTypeName));
+    auto pum = new IR::Parameter(IR::ID(V1ModelConstants::metadataArgName), 
+        IR::Direction::InOut, new IR::Type_Name(V1ModelConstants::userMetadataStructTypeName));
     pl->push_back(phdr);
     pl->push_back(pum);
     return pl;
@@ -357,7 +357,7 @@ IR::ParameterList* CreateV1ModelArchBlock::getHeaderMetaPL() {
 
 IR::ParameterList* CreateV1ModelArchBlock::getHeaderMetaStdMetaPL() {
     auto pl = getHeaderMetaPL();
-    auto psm = new IR::Parameter(IR::ID(stdMetadataArgName), 
+    auto psm = new IR::Parameter(IR::ID(V1ModelConstants::stdMetadataArgName), 
         IR::Direction::InOut, 
         new IR::Type_Name(P4V1::V1Model::instance.standardMetadataType.name));
     pl->push_back(psm);
@@ -420,7 +420,7 @@ CreateV1ModelArchBlock::getControls(const IR::P4Program* prog, bool ingress) {
 
 IR::Type_Struct* CreateV1ModelArchBlock::createUserMetadataStructType() {
     auto fiv = new IR::IndexedVector<IR::StructField>();
-    auto ts = new IR::Type_Struct(userMetadataStructTypeName, *fiv);
+    auto ts = new IR::Type_Struct(V1ModelConstants::userMetadataStructTypeName, *fiv);
     return ts;
 }
 
@@ -443,8 +443,8 @@ const IR::Node* CreateV1ModelArchBlock::preorder(IR::P4Program* p4program) {
     auto ec = createEgressControl(egressControls, userMetaStruct);
     p4program->objects.push_back(ec);
 
-    p4program->objects.push_back(createV1ModelChecksumControl(verifyChecksumName));
-    p4program->objects.push_back(createV1ModelChecksumControl(computeChecksumName));
+    p4program->objects.push_back(createV1ModelChecksumControl(V1ModelConstants::verifyChecksumName));
+    p4program->objects.push_back(createV1ModelChecksumControl(V1ModelConstants::computeChecksumName));
     p4program->objects.push_back(createMainPackageInstance());
     return p4program;
 

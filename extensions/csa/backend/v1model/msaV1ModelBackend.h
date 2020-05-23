@@ -3,8 +3,8 @@
  * Email: hks57@cornell.edu
  */
 
-#ifndef EXTENSIONS_CSA_SWITCH_CSAMIDEND_H_
-#define EXTENSIONS_CSA_SWITCH_CSAMIDEND_H_
+#ifndef _EXTENSIONS_CSA_SWITCH_CSAV1MODELBACKEND_H_
+#define _EXTENSIONS_CSA_SWITCH_CSAV1MODELBACKEND_H_
 
 #include "ir/ir.h"
 #include "frontends/common/options.h"
@@ -14,25 +14,12 @@
 
 namespace CSA {
 
-class DebugPass final : public Inspector {
-    unsigned c = 0;
-  public:
-    static unsigned i;
-    explicit DebugPass() { c= i++;}
-
-    bool preorder(const IR::Declaration_Instance* di) {
-        std::cout<<"DebugPass: "<<c<<" "<<di<<"\n";
-        return true;
-    }
-};
-
-class CSAMidEnd {
-  private:
+class CSAV1ModelBackend {
     std::vector<DebugHook> hooks;
 
     CSAOptions csaOptions;
-    // const IR::P4Program* getV1ModelIR();
-    // const IR::P4Program* getTofinoIR();
+    const IR::P4Program* getV1ModelIR();
+    const IR::P4Program* getTofinoIR();
     const IR::P4Program* getCoreIR();
 
  public:
@@ -40,7 +27,7 @@ class CSAMidEnd {
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit CSAMidEnd(CSAOptions& options) {
+    explicit CSAV1ModelBackend(CSAOptions& options) {
         csaOptions = options;
         isv1 = options.isv1();
         hooks.push_back(options.getDebugHook());
@@ -49,9 +36,8 @@ class CSAMidEnd {
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }
     const IR::P4Program* run(const IR::P4Program* program, 
                              std::vector<const IR::P4Program*> precompiledIRs);
-
 };
 
 }  // namespace CSA
 
-#endif /* EXTENSIONS_CSA_SWITCH_CSAMIDEND_H_ */
+#endif /* _EXTENSIONS_CSA_SWITCH_CSAV1MODELBACKEND_H_ */

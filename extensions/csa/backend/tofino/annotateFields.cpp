@@ -21,7 +21,7 @@ bool LearnConcatenatedFields::preorder(const IR::AssignmentStatement* asmt) {
         // std::cout<<"ArrayIndex : "<<is.getArrayIndex()<<"\n";
         auto c = is.getArrayIndex();
         auto fn = is.getName(1);
-        cstring str = CreateTofinoArchBlock::csaPacketStructInstanceName +
+        cstring str = TofinoConstants::csaPacketStructInstanceName +
           "."+fn+"["+cstring::to_cstring(c)+"]."+NameConstants::bitStreamFieldName;
         fieldFQDN->emplace(str);
         // std::cout<<" --- "<<str<<" --- \n";

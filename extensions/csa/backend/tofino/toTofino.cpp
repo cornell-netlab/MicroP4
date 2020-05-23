@@ -6,11 +6,13 @@
 #include "frontends/p4/coreLibrary.h"
 #include "frontends/p4/methodInstance.h"
 #include "toTofino.h"
+#include "tofinoConstants.h"
 #include "replaceByteHdrStack.h"
 
 
 namespace CSA {
 
+/*
 const cstring CreateTofinoArchBlock::csaPacketStructInstanceName = "mpkt";
 const cstring CreateTofinoArchBlock::metadataArgName = "msa_um";
 const cstring CreateTofinoArchBlock::stdMetadataArgName = "msa_sm";
@@ -53,15 +55,9 @@ const cstring CreateTofinoArchBlock::egIMForOPInstName = "eg_intr_md_for_oport";
 
 const cstring CreateTofinoArchBlock::parseResubmitStateName = "parse_resubmit";
 const cstring CreateTofinoArchBlock::parsePortMetaStateName = "parse_port_metadata";
+*/
 
 
-
-const std::unordered_set<cstring> TofinoConstants::archP4ControlNames = {
-    CreateTofinoArchBlock::ingressDeparserName,
-    CreateTofinoArchBlock::egressDeparserName,
-    CreateTofinoArchBlock::ingressControlName,
-    CreateTofinoArchBlock::egressControlName
-};
 
 bool GetCalleeP4Controls::preorder(const IR::P4Control* control) {
     visit(control->body);
@@ -125,9 +121,9 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::Argument* arg) {
         if (te->getName() == P4::P4CoreLibrary::instance.im.name) {
             IR::Vector<IR::Argument>* args = nullptr;
             if (ingress) 
-                args =  CreateTofinoArchBlock::createIngressIMArgs();
+                args = TofinoConstants::createIngressIMArgs();
             else
-                args =  CreateTofinoArchBlock::createEgressIMArgs();
+                args = TofinoConstants::createEgressIMArgs();
                 
             prune();
             return args;
@@ -142,9 +138,9 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::Parameter* param) {
         if (te->getName() == P4::P4CoreLibrary::instance.im.name) {
             IR::IndexedVector<IR::Parameter>* imParams = nullptr;
             if (ingress) 
-                imParams = CreateTofinoArchBlock::createIngressIMParams();
+                imParams = TofinoConstants::createIngressIMParams();
             else
-                imParams = CreateTofinoArchBlock::createEgressIMParams();
+                imParams = TofinoConstants::createEgressIMParams();
             prune();
             return imParams;
         }
@@ -166,7 +162,7 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallStatement* mcs) {
             BUG_CHECK(ingress, "Trying translate set_out_port for egress");
             auto exp = mcs->methodCall->arguments->at(0)->expression;
             pathExp = new IR::PathExpression(
-                            IR::ID(CreateTofinoArchBlock::igIMForTMInstName));
+                            IR::ID(TofinoConstants::igIMForTMInstName));
             auto lexp = new IR::Member(pathExp, "ucast_egress_port");
             prune();
             return new IR::AssignmentStatement(mcs->srcInfo, lexp, exp);
@@ -174,9 +170,9 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallStatement* mcs) {
         if (em->method->name.name == "drop") {
             cstring instName = "";
             if (ingress)
-                instName = CreateTofinoArchBlock::igIMForDePInstName;
+                instName = TofinoConstants::igIMForDePInstName;
             else
-                instName = CreateTofinoArchBlock::egIMForDePInstName;
+                instName = TofinoConstants::egIMForDePInstName;
 
             pathExp = new IR::PathExpression(IR::ID(instName));
             auto lexp = new IR::Member(pathExp, "drop_ctl");
@@ -202,10 +198,10 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
         if (em->method->name.name 
             == P4::P4CoreLibrary::instance.im.getOutPort.name) {
             if (ingress) {
-                instName = CreateTofinoArchBlock::igIMForTMInstName;
+                instName = TofinoConstants::igIMForTMInstName;
                 memberName = "ucast_egress_port";
             } else {
-                instName = CreateTofinoArchBlock::egIMArgName;
+                instName = TofinoConstants::egIMArgName;
                 memberName = "egress_port";
             }
             IR::PathExpression* pe = new IR::PathExpression(IR::ID(instName));
@@ -216,13 +212,13 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
         if (em->method->name.name 
             == P4::P4CoreLibrary::instance.im.getInPort.name) {
             if (ingress) {
-                instName = CreateTofinoArchBlock::igIMArgName;
+                instName = TofinoConstants::igIMArgName;
                 memberName = "ingress_port";
             } else {
                 BUG("Trying translate get_in_port for egress in tofino");
                 BUG("HS: I should store it in metadata in ingress block ");
                 BUG("and pass it in egress, but there are other priorities ");
-                //instName = CreateTofinoArchBlock::egIMArgName;
+                //instName = TofinoConstants::egIMArgName;
                 // memberName = "egress_port";
             }
             IR::PathExpression* pe = new IR::PathExpression(IR::ID(instName));
@@ -238,7 +234,7 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
             auto mem = exp->to<IR::Member>();
             BUG_CHECK(mem != nullptr, "unable to identify arg %1%", exp);
             if (mem->member == "QUEUE_DEPTH_AT_DEQUEUE") {
-                instName = CreateTofinoArchBlock::egIMArgName;
+                instName = TofinoConstants::egIMArgName;
                 pathExp = new IR::PathExpression(IR::ID(instName));
                 auto m = new IR::Member(mce->srcInfo, pathExp, "deq_qdepth");
                 auto tc = IR::Type_Bits::get(32, false);
@@ -255,10 +251,12 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
 IR::ParameterList* CreateTofinoArchBlock::getHeaderMetaPL(IR::Direction dirMSAPkt,
                                                           IR::Direction dirUserMeta) {
     auto pl = new IR::ParameterList();
-    auto phdr = new IR::Parameter(IR::ID(csaPacketStructInstanceName), 
+    auto phdr = new IR::Parameter(IR::ID(
+          TofinoConstants::csaPacketStructInstanceName), 
         dirMSAPkt, new IR::Type_Name(NameConstants::csaPacketStructTypeName));
-    auto pum = new IR::Parameter(IR::ID(metadataArgName), 
-        dirUserMeta, new IR::Type_Name(userMetadataStructTypeName));
+    auto pum = new IR::Parameter(IR::ID(TofinoConstants::metadataArgName), 
+        dirUserMeta, 
+        new IR::Type_Name(TofinoConstants::userMetadataStructTypeName));
     pl->push_back(phdr);
     pl->push_back(pum);
     return pl;
@@ -266,7 +264,7 @@ IR::ParameterList* CreateTofinoArchBlock::getHeaderMetaPL(IR::Direction dirMSAPk
 
 IR::Type_Struct* CreateTofinoArchBlock::createUserMetadataStructType() {
     auto fiv = new IR::IndexedVector<IR::StructField>();
-    auto ts = new IR::Type_Struct(userMetadataStructTypeName, *fiv);
+    auto ts = new IR::Type_Struct(TofinoConstants::userMetadataStructTypeName, *fiv);
     return ts;
 }
 
@@ -293,12 +291,13 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetIn.name));
     pl->parameters.insert(pl->parameters.begin(), pin);
 
-    auto pigIM = new IR::Parameter(IR::ID(igIMArgName), 
-        IR::Direction::Out, new IR::Type_Name(igIMTypeName));
+    auto pigIM = new IR::Parameter(IR::ID(TofinoConstants::igIMArgName), 
+        IR::Direction::Out, new IR::Type_Name(TofinoConstants::igIMTypeName));
     pl->parameters.push_back(pigIM);
-    auto tp = new IR::Type_Parser(ingressParserName, pl);
+    auto tp = new IR::Type_Parser(TofinoConstants::ingressParserName, pl);
 
-    auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
+    auto csaPktInstPE = new IR::PathExpression(
+        TofinoConstants::csaPacketStructInstanceName);
     
     IR::IndexedVector<IR::Declaration> parserLocals;
     IR::IndexedVector<IR::ParserState> states;
@@ -351,7 +350,7 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
         auto extctIgIM = new IR::Member(new IR::PathExpression(packetInArgName),
             IR::ID(P4::P4CoreLibrary::instance.packetIn.extract.name));
         auto igIMPeArg = new IR::Argument(
-            new IR::PathExpression(IR::ID(CreateTofinoArchBlock::igIMArgName)));
+            new IR::PathExpression(IR::ID(TofinoConstants::igIMArgName)));
         auto igIMPeArgs = new IR::Vector<IR::Argument>();
         igIMPeArgs->push_back(igIMPeArg);
         auto extctIgImMCS = new IR::MethodCallStatement(
@@ -359,15 +358,15 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
         comp.push_back(extctIgImMCS);
 
         IR::Vector<IR::Expression> ev;
-        auto igIMPe = new IR::PathExpression(CreateTofinoArchBlock::igIMArgName);
-        auto rsf = new IR::Member(igIMPe, CreateTofinoArchBlock::igIMResubmitFlag);
+        auto igIMPe = new IR::PathExpression(TofinoConstants::igIMArgName);
+        auto rsf = new IR::Member(igIMPe, TofinoConstants::igIMResubmitFlag);
         ev.push_back(rsf);
         auto ls = new IR::ListExpression(ev);
         auto selectCases = new IR::Vector<IR::SelectCase>();
         auto scr = new IR::SelectCase(new IR::Constant(1), 
-            new IR::PathExpression(CreateTofinoArchBlock::parseResubmitStateName));
+            new IR::PathExpression(TofinoConstants::parseResubmitStateName));
         auto scppm = new IR::SelectCase(new IR::Constant(0),
-            new IR::PathExpression(CreateTofinoArchBlock::parsePortMetaStateName));
+            new IR::PathExpression(TofinoConstants::parsePortMetaStateName));
         selectCases->push_back(scr);
         selectCases->push_back(scppm);
         auto se = new IR::SelectExpression(ls, *selectCases);
@@ -389,7 +388,7 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
 
         auto startPE = new IR::PathExpression(statesName[0]);
         auto ppmState = new IR::ParserState(
-            CreateTofinoArchBlock::parsePortMetaStateName, comp, startPE);
+            TofinoConstants::parsePortMetaStateName, comp, startPE);
         states.push_back(ppmState);
     }
 
@@ -397,7 +396,7 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
         IR::IndexedVector<IR::StatOrDecl> comp;
         auto startPE = new IR::PathExpression(statesName[0]);
         auto ppmState = new IR::ParserState(
-            CreateTofinoArchBlock::parseResubmitStateName, comp, startPE);
+            TofinoConstants::parseResubmitStateName, comp, startPE);
         states.push_back(ppmState);
     }
 
@@ -470,7 +469,7 @@ const IR::P4Parser* CreateTofinoArchBlock::createTofinoIngressParser() {
 
     states.push_back(new IR::ParserState(IR::ParserState::accept, nullptr));
 
-    return new IR::P4Parser(ingressParserName, tp, parserLocals, states);
+    return new IR::P4Parser(TofinoConstants::ingressParserName, tp, parserLocals, states);
 }
 
 
@@ -480,8 +479,8 @@ const IR::P4Control* CreateTofinoArchBlock::createTofinoIngressDeparser() {
     auto po = new IR::Parameter(IR::ID(packetOutArgName), 
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetOut.name));
 
-    auto pIgIMForDeP = new IR::Parameter(IR::ID(igIMForDePInstName), 
-        IR::Direction::In, new IR::Type_Name(igIMForDePTypeName));
+    auto pIgIMForDeP = new IR::Parameter(IR::ID(TofinoConstants::igIMForDePInstName), 
+        IR::Direction::In, new IR::Type_Name(TofinoConstants::igIMForDePTypeName));
     pl->parameters.insert(pl->parameters.begin(),  po);
     pl->push_back(pIgIMForDeP);
 
@@ -494,7 +493,7 @@ const IR::P4Control* CreateTofinoArchBlock::createTofinoIngressDeparser() {
     
     hdrInsts.push_back(NameConstants::msaOneByteHdrInstName);
 
-    auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
+    auto csaPktInstPE = new IR::PathExpression(TofinoConstants::csaPacketStructInstanceName);
     auto bs = new IR::BlockStatement();
     for (auto hdrIns : hdrInsts) {
         auto argExp = new IR::Member(csaPktInstPE->clone(), IR::ID(hdrIns));
@@ -509,7 +508,7 @@ const IR::P4Control* CreateTofinoArchBlock::createTofinoIngressDeparser() {
         bs->push_back(mcs);
     }
 
-    return createP4Control(ingressDeparserName, pl, bs);
+    return createP4Control(TofinoConstants::ingressDeparserName, pl, bs);
 }
 
 
@@ -570,46 +569,16 @@ std::vector<const IR::P4Control*> ToTofino::getControls(const IR::P4Program* pro
 }
 
 
-IR::IndexedVector<IR::Parameter>* CreateTofinoArchBlock::createIngressIMParams() {
-  
-    auto parameters = new IR::IndexedVector<IR::Parameter>();
-    auto p = new IR::Parameter(IR::ID(igIMArgName), IR::Direction::In, 
-                                  new IR::Type_Name(igIMTypeName));
-    parameters->push_back(p);
-    p = new IR::Parameter(IR::ID(igIMFrmParInstName), IR::Direction::In, 
-                                  new IR::Type_Name(igIMFrmParTypeName));
-    parameters->push_back(p);
-    p = new IR::Parameter(IR::ID(igIMForDePInstName), IR::Direction::InOut, 
-                                  new IR::Type_Name(igIMForDePTypeName));
-    parameters->push_back(p);
-    p = new IR::Parameter(IR::ID(igIMForTMInstName), IR::Direction::InOut, 
-                                  new IR::Type_Name(igIMForTMTypeName));
-    parameters->push_back(p);
-    return parameters;
-}
 
-IR::Vector<IR::Argument>* CreateTofinoArchBlock::createIngressIMArgs() {
-    std::vector<cstring> argNames;
-    auto args =  new IR::Vector<IR::Argument>();
-    argNames.push_back(igIMArgName);
-    argNames.push_back(igIMFrmParInstName);
-    argNames.push_back(igIMForDePInstName);
-    argNames.push_back(igIMForTMInstName);
-    for (auto an : argNames) {
-      auto arg = new IR::Argument(new IR::PathExpression(an));
-      args->push_back(arg);
-    }
-    return args;
-}
 
 
 const IR::Type_Control* CreateTofinoArchBlock::createIngressTypeControl() {
     
     auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::InOut);
-    auto imParams = createIngressIMParams();
+    auto imParams = TofinoConstants::createIngressIMParams();
     for (auto p : *(imParams))
         pl->parameters.push_back(p);
-    return new IR::Type_Control(IR::ID(ingressControlName), pl);
+    return new IR::Type_Control(IR::ID(TofinoConstants::ingressControlName), pl);
 }
 
 const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
@@ -631,12 +600,12 @@ const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
             if (ts != nullptr) {
                 auto tsn = ts->name;
                 if (tsn == NameConstants::csaPacketStructTypeName) {
-                    auto pe = new IR::PathExpression(csaPacketStructInstanceName);
+                    auto pe = new IR::PathExpression(TofinoConstants::csaPacketStructInstanceName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
-                } else if (tsn == igIMFrmParTypeName 
-                    || tsn == igIMForDePTypeName || tsn == igIMForTMTypeName) {
+                } else if (tsn == TofinoConstants::igIMFrmParTypeName 
+                    || tsn == TofinoConstants::igIMForDePTypeName || tsn == TofinoConstants::igIMForTMTypeName) {
                     auto pe = new IR::PathExpression(new IR::Path(p->name));
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
@@ -644,8 +613,8 @@ const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
                 }
                 fieldType = new IR::Type_Name(ts->getName());
             } else if (auto th = type->to<IR::Type_Header>()) {
-                if (th->name == igIMTypeName) {
-                    auto pe = new IR::PathExpression(igIMArgName);
+                if (th->name == TofinoConstants::igIMTypeName) {
+                    auto pe = new IR::PathExpression(TofinoConstants::igIMArgName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
@@ -662,7 +631,7 @@ const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
                 auto f = new IR::StructField(p->getName(), fieldType);
                 typeStruct->fields.push_back(f);
             }
-            auto pe = new IR::PathExpression(metadataArgName);
+            auto pe = new IR::PathExpression(TofinoConstants::metadataArgName);
             auto mem = new IR::Member(pe, p->getName());
             auto arg = new IR::Argument(mem);
             controlArgs->push_back(arg);
@@ -680,50 +649,20 @@ const IR::Node* CreateTofinoArchBlock::createIngressP4Control(
 
     }
 
-    auto ic = new IR::P4Control(IR::ID(ingressControlName), tc, cls, bs);
+    auto ic = new IR::P4Control(IR::ID(TofinoConstants::ingressControlName), tc, cls, bs);
     return ic;
 }
 
-IR::IndexedVector<IR::Parameter>* CreateTofinoArchBlock::createEgressIMParams() {
-  
-    auto parameters = new IR::IndexedVector<IR::Parameter>();
-    auto p = new IR::Parameter(IR::ID(egIMArgName), IR::Direction::In, 
-                                  new IR::Type_Name(egIMTypeName));
-    parameters->push_back(p);
-    p = new IR::Parameter(IR::ID(egIMFrmParInstName), IR::Direction::In, 
-                                  new IR::Type_Name(egIMFrmParTypeName));
-    parameters->push_back(p);
-    p = new IR::Parameter(IR::ID(egIMForDePInstName), IR::Direction::InOut, 
-                                  new IR::Type_Name(egIMForDePTypeName));
-    parameters->push_back(p);
-    p = new IR::Parameter(IR::ID(egIMForOPInstName), IR::Direction::InOut, 
-                                  new IR::Type_Name(egIMForOPTypeName));
-    parameters->push_back(p);
-    return parameters;
-}
 
-IR::Vector<IR::Argument>* CreateTofinoArchBlock::createEgressIMArgs() {
-    std::vector<cstring> argNames;
-    auto args =  new IR::Vector<IR::Argument>();
-    argNames.push_back(egIMArgName);
-    argNames.push_back(egIMFrmParInstName);
-    argNames.push_back(egIMForDePInstName);
-    argNames.push_back(egIMForOPInstName);
-    for (auto an : argNames) {
-      auto arg = new IR::Argument(new IR::PathExpression(an));
-      args->push_back(arg);
-    }
-    return args;
-}
 
 
 const IR::Type_Control* CreateTofinoArchBlock::createEgressTypeControl() {
     
     auto pl = getHeaderMetaPL(IR::Direction::InOut, IR::Direction::InOut);
-    auto imParams = createEgressIMParams();
+    auto imParams = TofinoConstants::createEgressIMParams();
     for (auto p : *(imParams)) 
         pl->parameters.push_back(p);
-    return new IR::Type_Control(IR::ID(egressControlName), pl);
+    return new IR::Type_Control(IR::ID(TofinoConstants::egressControlName), pl);
 }
 
 const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
@@ -743,12 +682,12 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
             if (ts != nullptr) {
                 auto tsn = ts->name;
                 if (tsn == NameConstants::csaPacketStructTypeName) {
-                    auto pe = new IR::PathExpression(csaPacketStructInstanceName);
+                    auto pe = new IR::PathExpression(TofinoConstants::csaPacketStructInstanceName);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
                     continue;
-                } else if (tsn == egIMTypeName || tsn == egIMFrmParTypeName 
-                    || tsn == egIMForDePTypeName || tsn == egIMForOPTypeName) {
+                } else if (tsn == TofinoConstants::egIMTypeName || tsn == TofinoConstants::egIMFrmParTypeName 
+                    || tsn == TofinoConstants::egIMForDePTypeName || tsn == TofinoConstants::egIMForOPTypeName) {
                     auto pe = new IR::PathExpression(p->name);
                     auto arg = new IR::Argument(pe);
                     controlArgs->push_back(arg);
@@ -756,7 +695,7 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
                 }
                 fieldType = new IR::Type_Name(ts->getName());
             } else if (auto th = type->to<IR::Type_Header>()) {
-                if (th->name == egIMTypeName) {
+                if (th->name == TofinoConstants::egIMTypeName) {
                     auto pe = new IR::PathExpression(Util::SourceInfo(), 
                         new IR::Path(p->name));
                     auto arg = new IR::Argument(pe);
@@ -771,7 +710,7 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
                 auto f = new IR::StructField(p->getName(), fieldType);
                 typeStruct->fields.push_back(f);
             }
-            auto pe = new IR::PathExpression(metadataArgName);
+            auto pe = new IR::PathExpression(TofinoConstants::metadataArgName);
             auto mem = new IR::Member(pe, p->getName());
             auto arg = new IR::Argument(mem);
             controlArgs->push_back(arg);
@@ -786,7 +725,7 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
         bs->push_back(mcs);
 
     }
-    auto ec = new IR::P4Control(IR::ID(egressControlName), tc, cls, bs);
+    auto ec = new IR::P4Control(IR::ID(TofinoConstants::egressControlName), tc, cls, bs);
     return ec;
 }
 
@@ -807,12 +746,12 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressParser() {
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetIn.name));
     pl->parameters.insert(pl->parameters.begin(), pin);
 
-    auto pigIM = new IR::Parameter(IR::ID(egIMArgName), 
-        IR::Direction::Out, new IR::Type_Name(egIMTypeName));
+    auto pigIM = new IR::Parameter(IR::ID(TofinoConstants::egIMArgName), 
+        IR::Direction::Out, new IR::Type_Name(TofinoConstants::egIMTypeName));
     pl->parameters.push_back(pigIM);
-    auto tp = new IR::Type_Parser(egressParserName, pl);
+    auto tp = new IR::Type_Parser(TofinoConstants::egressParserName, pl);
 
-    auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
+    auto csaPktInstPE = new IR::PathExpression(TofinoConstants::csaPacketStructInstanceName);
     
     IR::IndexedVector<IR::Declaration> parserLocals;
     IR::IndexedVector<IR::ParserState> states;
@@ -861,7 +800,7 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressParser() {
     auto extctEgIM = new IR::Member(new IR::PathExpression(packetInArgName),
         IR::ID(P4::P4CoreLibrary::instance.packetIn.extract.name));
     auto egIMPeArg = new IR::Argument(
-        new IR::PathExpression(IR::ID(CreateTofinoArchBlock::egIMArgName)));
+        new IR::PathExpression(IR::ID(TofinoConstants::egIMArgName)));
     auto egIMPeArgs = new IR::Vector<IR::Argument>();
     egIMPeArgs->push_back(egIMPeArg);
     auto extctEgImMCS = new IR::MethodCallStatement(
@@ -939,7 +878,7 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressParser() {
 
     states.push_back(new IR::ParserState(IR::ParserState::accept, nullptr));
 
-    return new IR::P4Parser(egressParserName, tp, parserLocals, states);
+    return new IR::P4Parser(TofinoConstants::egressParserName, tp, parserLocals, states);
 }
 
 const IR::Node* CreateTofinoArchBlock::createTofinoEgressDeparser() {
@@ -948,8 +887,8 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressDeparser() {
     auto po = new IR::Parameter(IR::ID(packetOutArgName), 
         IR::Direction::None, new IR::Type_Name(P4::P4CoreLibrary::instance.packetOut.name));
 
-    auto pIgIMForDeP = new IR::Parameter(IR::ID(egIMForDePInstName), 
-        IR::Direction::In, new IR::Type_Name(egIMForDePTypeName));
+    auto pIgIMForDeP = new IR::Parameter(IR::ID(TofinoConstants::egIMForDePInstName), 
+        IR::Direction::In, new IR::Type_Name(TofinoConstants::egIMForDePTypeName));
     pl->parameters.insert(pl->parameters.begin(),  po);
     pl->push_back(pIgIMForDeP);
 
@@ -961,7 +900,7 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressDeparser() {
         hdrInsts.push_back(ReplaceMSAByteHdrStack::getHdrStackInstName(i));
     
     hdrInsts.push_back(NameConstants::msaOneByteHdrInstName);
-    auto csaPktInstPE = new IR::PathExpression(csaPacketStructInstanceName);
+    auto csaPktInstPE = new IR::PathExpression(TofinoConstants::csaPacketStructInstanceName);
     auto bs = new IR::BlockStatement();
     for (auto hdrIns : hdrInsts) {
         auto argExp = new IR::Member(csaPktInstPE->clone(), IR::ID(hdrIns));
@@ -975,34 +914,34 @@ const IR::Node* CreateTofinoArchBlock::createTofinoEgressDeparser() {
         auto mcs = new IR::MethodCallStatement(mce);
         bs->push_back(mcs);
     }
-    return createP4Control(egressDeparserName, pl, bs);
+    return createP4Control(TofinoConstants::egressDeparserName, pl, bs);
 }
 
 IR::Vector<IR::Node> CreateTofinoArchBlock::createMainPackageInstance() {
     auto args = new IR::Vector<IR::Argument>();
     auto eva = new IR::Vector<IR::Argument>();
 
-    auto tnip = new IR::Type_Name(ingressParserName);
+    auto tnip = new IR::Type_Name(TofinoConstants::ingressParserName);
     auto ptnip = new IR::Argument(new IR::ConstructorCallExpression(tnip, eva));
     args->push_back(ptnip);
 
-    auto tnic = new IR::Type_Name(ingressControlName);
+    auto tnic = new IR::Type_Name(TofinoConstants::ingressControlName);
     auto ptnic = new IR::Argument(new IR::ConstructorCallExpression(tnic, eva->clone()));
     args->push_back(ptnic);
 
-    auto tndip = new IR::Type_Name(ingressDeparserName);
+    auto tndip = new IR::Type_Name(TofinoConstants::ingressDeparserName);
     auto ptndip = new IR::Argument(new IR::ConstructorCallExpression(tndip, eva->clone()));
     args->push_back(ptndip);
 
-    auto tnep = new IR::Type_Name(egressParserName);
+    auto tnep = new IR::Type_Name(TofinoConstants::egressParserName);
     auto ptnep = new IR::Argument(new IR::ConstructorCallExpression(tnep, eva->clone()));
     args->push_back(ptnep);
 
-    auto tnec = new IR::Type_Name(egressControlName);
+    auto tnec = new IR::Type_Name(TofinoConstants::egressControlName);
     auto ptnec = new IR::Argument(new IR::ConstructorCallExpression(tnec, eva->clone()));
     args->push_back(ptnec);
   
-    auto tndep = new IR::Type_Name(egressDeparserName);
+    auto tndep = new IR::Type_Name(TofinoConstants::egressDeparserName);
     auto ptndep = new IR::Argument(new IR::ConstructorCallExpression(tndep, eva->clone()));
     args->push_back(ptndep);
 

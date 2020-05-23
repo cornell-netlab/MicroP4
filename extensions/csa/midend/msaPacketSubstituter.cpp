@@ -29,11 +29,12 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Parameter* param) {
         auto te = tt->to<IR::Type_Extern>();
         if (te->getName() ==  P4::P4CoreLibrary::instance.pkt.name) {
             pathToReplace = param->getName();
-            cstring pktStr = NameConstants::csaPacketStructTypeName;
+            cstring pktStrTypeName = NameConstants::csaPacketStructTypeName;
+            cstring pktStrName = NameConstants::csaPacketStructName;
             // std::cout<<"MSAPacketSubstituter param: "<<param->name <<"\n"; 
             prune();
-            return new IR::Parameter(IR::ID(pktStr+"_var"),
-                IR::Direction::InOut, new IR::Type_Name(IR::ID(pktStr)));
+            return new IR::Parameter(IR::ID(pktStrName),
+                IR::Direction::InOut, new IR::Type_Name(IR::ID(pktStrTypeName)));
         }
     }
     return param;

@@ -21,7 +21,8 @@ class MSAPacketSubstituter final : public Transform {
     P4::ReferenceMap* refMap;
     P4::TypeMap* typeMap;
     cstring pathToReplace;
-    cstring replacementPath = NameConstants::csaPacketStructTypeName+"_var";
+    // cstring replacementPath = NameConstants::csaPacketStructTypeName+"_var";
+    cstring replacementPath = NameConstants::csaPacketStructName;
   public:
     explicit MSAPacketSubstituter(P4::ReferenceMap* refMap, P4::TypeMap* typeMap)
         : refMap(refMap), typeMap(typeMap) {

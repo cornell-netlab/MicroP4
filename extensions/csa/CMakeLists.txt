@@ -2,84 +2,132 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/switch/version.h.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/switch/version.h" @ONLY)
 
 
-set (CSA_IR_SRCS
+set (MSA_IR_SRCS
      ${CMAKE_CURRENT_SOURCE_DIR}/ir/dbprint-csa-ext.cpp
      ${CMAKE_CURRENT_SOURCE_DIR}/ir/ir-csa-ext.cpp
     )
-set(EXTENSION_FRONTEND_SOURCES ${EXTENSION_FRONTEND_SOURCES} ${CSA_IR_SRCS} PARENT_SCOPE)
+set(EXTENSION_FRONTEND_SOURCES ${EXTENSION_FRONTEND_SOURCES} ${MSA_IR_SRCS} PARENT_SCOPE)
+
+set (MSA_SOURCE_DIR  ${P4C_SOURCE_DIR}/extensions/csa)
+set (MSA_MIDEND_SOURCE_DIR  ${P4C_SOURCE_DIR}/extensions/csa/midend)
+set (MSA_BACKEND_SOURCE_DIR  ${P4C_SOURCE_DIR}/extensions/csa/backend)
+
+
+include_directories (
+    ${MSA_SOURCE_DIR}
+    ${MSA_MIDEND_SOURCE_DIR}
+    ${MSA_BACKEND_SOURCE_DIR}
+    )
+
+set (MSA_MIDEND_HDRS
+    midend/headerMerge.h
+    midend/compareStorageExp.h
+    midend/deParMotionCSTRChkr.h
+    midend/toWellFormedParser.h
+    midend/concatDeParMerge.h
+    midend/paraDeParMerge.h
+    midend/alignParamNames.h
+    midend/deParMotion.h
+    midend/msaNameConstants.h
+    midend/cloneWithFreshPath.h
+    midend/staticAnalyzer.h
+    midend/scanForHdrVOps.h
+    midend/removeMSAConstructs.h
+    midend/removeUnusedApplyParams.h
+    midend/hdrToStructs.h
+    midend/csamidend.h
+    midend/msaPacketSubstituter.h
+    midend/controlStateReconInfo.h
+    midend/parserConverter.h
+    midend/deparserConverter.h
+    midend/deparserInverter.h
+    midend/mergeDeclarations.h
+    midend/slicePipeControl.h
+    midend/identifyStorage.h
+    midend/deadFieldElimination.h
+    midend/toControl.h
+    )
+
+set (MSA_MIDEND_SRCS
+    midend/headerMerge.cpp
+    midend/compareStorageExp.cpp
+    midend/deParMotionCSTRChkr.cpp
+    midend/toWellFormedParser.cpp
+    midend/concatDeParMerge.cpp
+    midend/paraDeParMerge.cpp
+    midend/alignParamNames.cpp
+    midend/deParMotion.cpp
+    midend/msaNameConstants.cpp
+    midend/cloneWithFreshPath.cpp
+    midend/staticAnalyzer.cpp
+    midend/scanForHdrVOps.cpp
+    midend/removeMSAConstructs.cpp
+    midend/removeUnusedApplyParams.cpp
+    midend/hdrToStructs.cpp
+    midend/csamidend.cpp
+    midend/msaPacketSubstituter.cpp
+    midend/controlStateReconInfo.cpp
+    midend/parserConverter.cpp
+    midend/deparserConverter.cpp
+    midend/deparserInverter.cpp
+    midend/mergeDeclarations.cpp
+    midend/slicePipeControl.cpp
+    midend/identifyStorage.cpp
+    midend/deadFieldElimination.cpp
+    midend/toControl.cpp
+    )
+
+add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MSA_MIDEND_SRCS};${MSA_MIDEND_HDRS}")
+build_unified(MSA_MIDEND_SRCS)
+add_library(msamidend ${MSA_MIDEND_SRCS})
+add_dependencies(msamidend genIR frontend)
+
+set (MSA_V1MODEL_BACKEND_HDRS
+    backend/v1model/v1modelConstants.h
+    backend/v1model/toV1Model.h
+    backend/v1model/msaV1ModelBackend.h
+    )
+
+set (MSA_V1MODEL_BACKEND_SRCS
+    backend/v1model/v1modelConstants.cpp
+    backend/v1model/toV1Model.cpp
+    backend/v1model/msaV1ModelBackend.cpp
+    )
+
+add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MSA_V1MODEL_BACKEND_SRCS};${MSA_V1MODEL_BACKEND_HDRS}")
+build_unified(MSA_V1MODEL_BACKEND_SRCS)
+add_library(msav1modelbackend ${MSA_V1MODEL_BACKEND_SRCS})
+add_dependencies(msav1modelbackend genIR frontend msamidend)
+
+
+set (MSA_TOFINO_BACKEND_HDRS
+    backend/tofino/replaceByteHdrStack.h
+    backend/tofino/toTofino.h
+    backend/tofino/annotateFields.h
+    )
+
+set (MSA_TOFINO_BACKEND_SRCS
+    backend/tofino/replaceByteHdrStack.cpp
+    backend/tofino/toTofino.cpp
+    backend/tofino/annotateFields.cpp
+    )
+
+add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MSA_TOFINO_BACKEND_SRCS};${MSA_TOFINO_BACKEND_HDRS}")
+build_unified(MSA_TOFINO_BACKEND_SRCS)
+add_library(msatofinobackend ${MSA_TOFINO_BACKEND_SRCS})
+add_dependencies(msatofinobackend genIR frontend msamidend)
 
 
 # sources for backend executable
-set (CSA_SWITCH_SRCS
-    midend/headerMerge.h
-    midend/headerMerge.cpp
+set (MSA_COMPILER_SRCS
     switch/main.cpp
     switch/options.h
     switch/parseInput.h
     switch/parseInput.cpp
-    midend/compareStorageExp.h
-    midend/compareStorageExp.cpp
-    midend/deParMotionCSTRChkr.h
-    midend/deParMotionCSTRChkr.cpp
-    midend/toWellFormedParser.h
-    midend/toWellFormedParser.cpp
-    midend/concatDeParMerge.h
-    midend/concatDeParMerge.cpp
-    midend/paraDeParMerge.h
-    midend/paraDeParMerge.cpp
-    midend/alignParamNames.h
-    midend/alignParamNames.cpp
-    midend/deParMotion.h
-    midend/deParMotion.cpp
-    midend/msaNameConstants.h
-    midend/msaNameConstants.cpp
-    midend/cloneWithFreshPath.h
-    midend/cloneWithFreshPath.cpp
-    midend/staticAnalyzer.h
-    midend/staticAnalyzer.cpp
-    midend/scanForHdrVOps.h
-    midend/scanForHdrVOps.cpp
-    midend/removeMSAConstructs.h
-    midend/removeMSAConstructs.cpp
-    midend/removeUnusedApplyParams.h
-    midend/removeUnusedApplyParams.cpp
-    midend/hdrToStructs.h
-    midend/hdrToStructs.cpp
-    midend/csamidend.h
-    midend/csamidend.cpp
-    midend/msaPacketSubstituter.h
-    midend/msaPacketSubstituter.cpp
-    midend/controlStateReconInfo.h
-    midend/controlStateReconInfo.cpp
-    midend/parserConverter.h
-    midend/parserConverter.cpp
-    midend/deparserConverter.h
-    midend/deparserConverter.cpp
-    midend/deparserInverter.h
-    midend/deparserInverter.cpp
-    midend/mergeDeclarations.h
-    midend/mergeDeclarations.cpp
-    midend/slicePipeControl.h
-    midend/slicePipeControl.cpp
-    midend/identifyStorage.h
-    midend/identifyStorage.cpp
-    midend/deadFieldElimination.h
-    midend/deadFieldElimination.cpp
-    midend/toControl.h
-    midend/toControl.cpp
-    midend/toV1Model.h
-    midend/toV1Model.cpp
-    backend/tofino/replaceByteHdrStack.h
-    backend/tofino/replaceByteHdrStack.cpp
-    backend/tofino/toTofino.h
-    backend/tofino/toTofino.cpp
-    backend/tofino/annotateFields.h
-    backend/tofino/annotateFields.cpp
     )
-add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${CSA_SWITCH_SRCS}")
+add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MSA_COMPILER_SRCS}")
 
-
-set (P4C_CSA_EXT_HEADERS 
+set (P4C_MSA_EXT_HEADERS 
      ${CMAKE_CURRENT_SOURCE_DIR}/p4include/msa.p4
      ${CMAKE_CURRENT_SOURCE_DIR}/p4include/tna.p4
      ${CMAKE_CURRENT_SOURCE_DIR}/p4include/tofino.p4
@@ -87,19 +135,23 @@ set (P4C_CSA_EXT_HEADERS
     )
 set (IR_DEF_FILES ${IR_DEF_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/ir/csa.def PARENT_SCOPE)
 
-build_unified(CSA_SWITCH_SRCS)
-add_executable(p4c-msa ${CSA_SWITCH_SRCS})
-target_link_libraries (p4c-msa ${P4C_LIBRARIES} ${P4C_LIB_DEPS})
+build_unified(MSA_COMPILER_SRCS)
+add_executable(p4c-msa ${MSA_COMPILER_SRCS})
+target_link_libraries (p4c-msa msav1modelbackend msatofinobackend msamidend ${P4C_LIBRARIES} ${P4C_LIB_DEPS})
+
+
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 install(TARGETS p4c-msa RUNTIME DESTINATION ${P4C_RUNTIME_OUTPUT_DIRECTORY})
 install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/p4include DESTINATION ${P4C_ARTIFACTS_OUTPUT_DIRECTORY})
 
 
-add_custom_target(linkp4ccsa
+add_custom_target(linkp4cmsa
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/p4c-msa ${P4C_BINARY_DIR}/p4c-msa
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${P4C_BINARY_DIR}/p4include &&
-            ${CMAKE_COMMAND} -E copy ${P4C_CSA_EXT_HEADERS} ${P4C_BINARY_DIR}/p4include
+    #    COMMAND ${CMAKE_COMMAND} -E make_directory ${P4C_BINARY_DIR}/p4include &&
+    #            ${CMAKE_COMMAND} -E copy ${P4C_MSA_EXT_HEADERS} ${P4C_BINARY_DIR}/p4include
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${P4C_BINARY_DIR}/p4include ${CMAKE_CURRENT_BINARY_DIR}/p4include
     )
 
-add_dependencies(p4c_driver linkp4ccsa)
+add_dependencies(p4c_driver linkp4cmsa)

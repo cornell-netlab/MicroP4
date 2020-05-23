@@ -75,12 +75,11 @@ class CreateV1ModelArchBlock final : public Transform {
         return Transform::init_apply(node);
     }
 
+/*
+    static const cstring csaPacketStructInstanceName; 
     static const cstring metadataArgName;
     static const cstring stdMetadataArgName;
     static const cstring userMetadataStructTypeName;
-
-    static const cstring csaPacketStructTypeName; // struct with csa_packet_h
-    static const cstring csaPacketStructInstanceName; 
 
     static const cstring parserName;
     static const cstring deparserName;
@@ -88,6 +87,7 @@ class CreateV1ModelArchBlock final : public Transform {
     static const cstring egressControlName;
     static const cstring verifyChecksumName;
     static const cstring computeChecksumName;
+*/
 
 };
 

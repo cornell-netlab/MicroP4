@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <unordered_set>
-#include "csamidend.h"
+#include "msaV1ModelBackend.h"
 #include "frontends/common/parseInput.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/evaluator/evaluator.h"
@@ -23,7 +23,6 @@
 #include "slicePipeControl.h"
 #include "toControl.h"
 #include "controlStateReconInfo.h"
-#include "csaExternSubstituter.h"
 #include "parserConverter.h"
 #include "msaPacketSubstituter.h"
 #include "removeMSAConstructs.h"
@@ -32,108 +31,44 @@
 #include "removeUnusedApplyParams.h"
 #include "cloneWithFreshPath.h"
 #include "deadFieldElimination.h"
-#include "toWellFormedParser.h"
-#include "paraDeParMerge.h"
-#include "concatDeParMerge.h"
-/*
-#include "../backend/tofino/replaceByteHdrStack.h"
-#include "../backend/tofino/toTofino.h"
-#include "../backend/tofino/annotateFields.h"
-#include "../backend/tofino/tofinoConstants.h"
-#include "backend/v1model/toV1Model.h"
-*/
+
 
 namespace CSA {
 
-unsigned DebugPass::i = 0;
-const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program, 
+const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program, 
                                     std::vector<const IR::P4Program*> precompiledIRs) {
 
     cstring mainP4ControlTypeName;
     if (program == nullptr)
         return nullptr;
 
-    /*
-    auto v1modelP4Program = getV1ModelIR();
     auto tnaP4Program = getTofinoIR();
-    */
 
     auto coreP4Program = getCoreIR();
 
-    std::vector<const IR::P4Program*> irs = precompiledIRs;
-    irs.insert(irs.begin(), coreP4Program);
 
     std::vector<const IR::P4Program*> targetIR;
-    // targetIR.push_back(v1modelP4Program);
-    // targetIR.push_back(tnaP4Program);
+    targetIR.push_back(tnaP4Program);
 
     std::vector<cstring> partitions;
 
     unsigned minExtLen = 0;
     unsigned maxExtLen = 0;
     unsigned byteStackSize = 0;
-  
-    P4ControlStateReconInfoMap controlToReconInfoMap ;
-    P4ControlPartitionInfoMap partitionsMap;
-    // auto evaluator = new P4::EvaluatorPass(&refMap, &typeMap);
-    
-    // For tofino backend pass
-    // I will split this pass later
+
     unsigned stackSize = 32;
     unsigned newFieldBitWidth = 16;
     unsigned numFullStacks;
     unsigned residualStackSize;
 
-    PassManager csaMidEnd = {
-        new P4::MidEndLast(),
-        new CSA::MergeDeclarations(irs),
-        new P4::ResolveReferences(&refMap, true),
-        new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+    P4ControlStateReconInfoMap controlToReconInfoMap ;
+    P4ControlPartitionInfoMap partitionsMap;
+    
+    PassManager msaTofinoBackend = {
 
-        /*
-        new CSA::AlignParamNames(&refMap, &typeMap),
         new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-
-        new P4::MidEndLast(),
-        new CSA::ToWellFormedParser(&refMap, &typeMap),
-        new CSA::CloneWithFreshPath(),
-        new P4::MidEndLast(),
-        new P4::ResolveReferences(&refMap, true),
-        new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
-        
-        new CSA::ConcatDeParMerge(&refMap, &typeMap),
-        new P4::MidEndLast(),
-        */
-
-        /*
-        // Ryan's testing
-        new CSA::ParaParserMerge(&refMap, &typeMap, "Dummy4", "Dummy4Duplicate"),
-
-        new P4::MidEndLast(),
-        new CSA::CloneWithFreshPath,
-
-        new P4::MidEndLast(),
-
-        new P4::ResolveReferences(&refMap, true),
-        new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast()
-        */
-        // new CSA::DebugPass(),
-
-        new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
-                           &controlToReconInfoMap, &minExtLen, &maxExtLen),
-        new P4::MidEndLast(),
-
-        new P4::ResolveReferences(&refMap, true),
-        new P4::TypeInference(&refMap, &typeMap, false),
-        // new P4::MidEndLast(),
-
-
-        /*
         // CreateAllPartitions is PassRepeated with ResolveReferences & TypeInference.
         // It will terminate when p4program does not change.
         // Subsequent TypeInference fails due to stale const IR::Path* in
@@ -176,10 +111,6 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::TypeInference(&refMap, &typeMap, false),
         //////////////////////////////////////////
 
-        // new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions, 
-        //                   &minExtLen, &maxExtLen),
-        // new P4::MidEndLast(),
-
         new P4::MidEndLast(),
         new CSA::HdrToStructs(&refMap, &typeMap),
         new P4::ResolveReferences(&refMap, true),
@@ -201,22 +132,20 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::MidEndLast(),
         new CSA::DeadFieldElimination(&refMap, &typeMap),
         // new CSA::AnnotateFields(&refMap, &typeMap),
-        */
         new P4::MidEndLast(),
-
-        // evaluator
     };
 
-    csaMidEnd.setName("CSAMidendPasses");
-    csaMidEnd.addDebugHooks(hooks);
-    program = program->apply(csaMidEnd);
+    msaTofinoBackend.setName("MSATofinoBackendPasses");
+    msaTofinoBackend.addDebugHooks(hooks);
+    program = program->apply(msaTofinoBackend);
     if (::errorCount() > 0)
         return nullptr;
 
     return program;
 }
 
-const IR::P4Program* CSAMidEnd::getCoreIR() {
+
+const IR::P4Program* MSATofinoBackend::getCoreIR() {
     FILE* in = nullptr;
 
     cstring file = "core.p4";
@@ -250,43 +179,8 @@ const IR::P4Program* CSAMidEnd::getCoreIR() {
     return p4program;
 }
 
-/*
-const IR::P4Program* CSAMidEnd::getV1ModelIR() {
-    FILE* in = nullptr;
 
-    cstring file = "v1model.p4";
-#ifdef __clang__
-    std::string cmd("cc -E -x c -Wno-comment");
-#else
-    std::string cmd("cpp");
-#endif
-
-    char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
-    cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
-           csaOptions.preprocessor_options
-        + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
-        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
-
-    // std::cout<<"p4includePath "<<p4includePath<<"\n";
-    file = p4includePath+cstring("/")+file;
-    in = popen(cmd.c_str(), "r");
-    if (in == nullptr) {
-        ::error("Error invoking preprocessor");
-        perror("");
-        return nullptr;
-    }
-
-    auto p4program = P4::P4ParserDriver::parse(in, file);
-    // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
-    if (::errorCount() > 0) { 
-        ::error("%1% errors encountered, aborting compilation", ::errorCount());
-        return nullptr;
-    }
-    return p4program;
-}
-
-
-const IR::P4Program* CSAMidEnd::getTofinoIR() {
+const IR::P4Program* MSATofinoBackend::getTofinoIR() {
     FILE* in = nullptr;
 
     cstring file = "tna.p4";
@@ -319,7 +213,6 @@ const IR::P4Program* CSAMidEnd::getTofinoIR() {
     }
     return p4program;
 }
-*/
 
 
 } 
