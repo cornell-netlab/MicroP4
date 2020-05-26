@@ -22,7 +22,6 @@
 #include "mergeDeclarations.h"
 #include "slicePipeControl.h"
 #include "toControl.h"
-#include "controlStateReconInfo.h"
 #include "csaExternSubstituter.h"
 #include "parserConverter.h"
 #include "msaPacketSubstituter.h"
@@ -35,13 +34,6 @@
 #include "toWellFormedParser.h"
 #include "paraDeParMerge.h"
 #include "concatDeParMerge.h"
-/*
-#include "../backend/tofino/replaceByteHdrStack.h"
-#include "../backend/tofino/toTofino.h"
-#include "../backend/tofino/annotateFields.h"
-#include "../backend/tofino/tofinoConstants.h"
-#include "backend/v1model/toV1Model.h"
-*/
 
 namespace CSA {
 
@@ -53,36 +45,29 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
     if (program == nullptr)
         return nullptr;
 
-    /*
-    auto v1modelP4Program = getV1ModelIR();
-    auto tnaP4Program = getTofinoIR();
-    */
-
     auto coreP4Program = getCoreIR();
 
     std::vector<const IR::P4Program*> irs = precompiledIRs;
     irs.insert(irs.begin(), coreP4Program);
 
     std::vector<const IR::P4Program*> targetIR;
-    // targetIR.push_back(v1modelP4Program);
-    // targetIR.push_back(tnaP4Program);
 
-    std::vector<cstring> partitions;
-
+    /*
     unsigned minExtLen = 0;
     unsigned maxExtLen = 0;
-    unsigned byteStackSize = 0;
   
     P4ControlStateReconInfoMap controlToReconInfoMap ;
-    P4ControlPartitionInfoMap partitionsMap;
+    */
+    // std::vector<cstring> partitions;
+    // P4ControlPartitionInfoMap partitionsMap;
     // auto evaluator = new P4::EvaluatorPass(&refMap, &typeMap);
     
-    // For tofino backend pass
-    // I will split this pass later
+    /*
     unsigned stackSize = 32;
     unsigned newFieldBitWidth = 16;
     unsigned numFullStacks;
     unsigned residualStackSize;
+    */
 
     PassManager csaMidEnd = {
         new P4::MidEndLast(),
@@ -125,7 +110,9 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         // new CSA::DebugPass(),
 
         new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
-                           &controlToReconInfoMap, &minExtLen, &maxExtLen),
+                           &(midendContext->controlToReconInfoMap), 
+                           &(midendContext->minExtLen), 
+                           &(midendContext->maxExtLen)),
         new P4::MidEndLast(),
 
         new P4::ResolveReferences(&refMap, true),

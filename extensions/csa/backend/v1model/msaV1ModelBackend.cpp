@@ -48,11 +48,12 @@ const IR::P4Program* MSAV1ModelBackend::run(const IR::P4Program* program) {
 
     std::vector<cstring> partitions;
 
+    /*
     unsigned minExtLen = 0;
     unsigned maxExtLen = 0;
-    unsigned byteStackSize = 0;
   
     P4ControlStateReconInfoMap controlToReconInfoMap ;
+    */
     P4ControlPartitionInfoMap partitionsMap;
     
     PassManager msaV1ModelBackend = {
@@ -66,7 +67,8 @@ const IR::P4Program* MSAV1ModelBackend::run(const IR::P4Program* program) {
         // Therefore MergeDeclarations(a Transform Pass) without refMap and
         // typeMap is executed after it.
         new CSA::CreateAllPartitions(&refMap, &typeMap, &mainP4ControlTypeName,
-                                     &partitionsMap, &controlToReconInfoMap, 
+                                     &partitionsMap, 
+                                     &(midendContext->controlToReconInfoMap), 
                                      &partitions),
         // new P4::MidEndLast(),
 
@@ -81,7 +83,8 @@ const IR::P4Program* MSAV1ModelBackend::run(const IR::P4Program* program) {
         // new P4::MidEndLast(),
 
         new CSA::ToV1Model(&refMap, &typeMap, &partitionsMap, &partitions, 
-                           &minExtLen, &maxExtLen),
+                           &(midendContext->minExtLen), 
+                           &(midendContext->maxExtLen)),
 
         new P4::MidEndLast(),
         new CSA::HdrToStructs(&refMap, &typeMap),

@@ -103,16 +103,16 @@ add_dependencies(msav1modelbackend genIR frontend msamidend)
 set (MSA_TOFINO_BACKEND_HDRS
     backend/tofino/tofinoConstants.h
     backend/tofino/replaceByteHdrStack.h
-    backend/tofino/toTofino.h
     backend/tofino/annotateFields.h
+    backend/tofino/toTofino.h
     backend/tofino/msaTofinoBackend.h
     )
 
 set (MSA_TOFINO_BACKEND_SRCS
     backend/tofino/tofinoConstants.cpp
     backend/tofino/replaceByteHdrStack.cpp
-    backend/tofino/toTofino.cpp
     backend/tofino/annotateFields.cpp
+    backend/tofino/toTofino.cpp
     backend/tofino/msaTofinoBackend.cpp
     )
 

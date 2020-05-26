@@ -11,6 +11,7 @@
 #include "../switch/options.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
+#include "controlStateReconInfo.h"
 
 namespace CSA {
 
@@ -21,16 +22,22 @@ class MSAV1ModelBackend {
     CSAOptions csaOptions;
 
     const IR::P4Program* v1modelP4Program;
+
+    MidendContext* midendContext;
+
  public:
     P4::ReferenceMap       refMap;
     P4::TypeMap            typeMap;
     bool isv1;
 
     explicit MSAV1ModelBackend(CSAOptions& options, 
-                               const IR::P4Program* v1modelP4Program) {
+                               const IR::P4Program* v1modelP4Program,
+                               MidendContext* midendContext) {
         CHECK_NULL(v1modelP4Program);
+        CHECK_NULL(midendContext);
         csaOptions = options;
         v1modelP4Program = v1modelP4Program;
+        midendContext = midendContext;
         isv1 = options.isv1();
         hooks.push_back(options.getDebugHook());
         refMap.setIsV1(isv1);

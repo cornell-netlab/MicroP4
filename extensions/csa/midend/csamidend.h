@@ -11,6 +11,7 @@
 #include "../switch/options.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
+#include "controlStateReconInfo.h"
 
 namespace CSA {
 
@@ -31,6 +32,7 @@ class CSAMidEnd {
     std::vector<DebugHook> hooks;
 
     CSAOptions csaOptions;
+    MidendContext*  midendContext;
     // const IR::P4Program* getV1ModelIR();
     // const IR::P4Program* getTofinoIR();
     const IR::P4Program* getCoreIR();
@@ -40,10 +42,12 @@ class CSAMidEnd {
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit CSAMidEnd(CSAOptions& options) {
-        csaOptions = options;
-        isv1 = options.isv1();
-        hooks.push_back(options.getDebugHook());
+    explicit CSAMidEnd(CSAOptions& csaOptions, MidendContext*  midendContext) {
+        CHECK_NULL(midendContext);
+        csaOptions = csaOptions;
+        midendContext = midendContext;
+        isv1 = csaOptions.isv1();
+        hooks.push_back(csaOptions.getDebugHook());
         refMap.setIsV1(isv1);
     }
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }

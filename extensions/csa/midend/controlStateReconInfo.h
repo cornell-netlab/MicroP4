@@ -101,6 +101,19 @@ class ControlStateReconInfo {
 // parsed, in case the control is paritioned.
 typedef std::map<cstring, ControlStateReconInfo*> P4ControlStateReconInfoMap;
 
+
+// Bookkeeping between midend and backends
+class MidendContext {
+
+  public:
+
+    unsigned minExtLen = 0;
+    unsigned maxExtLen = 0;
+    P4ControlStateReconInfoMap controlToReconInfoMap ;
+
+    explicit MidendContext() {}
+};
+
 }   // namespace CSA
 #endif  /* _EXTENSIONS_CSA_MIDEND_CONTROLSTATERECONINFO_H_  */
 

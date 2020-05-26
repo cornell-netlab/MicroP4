@@ -46,16 +46,11 @@ const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program) {
 
     std::vector<cstring> partitions;
 
-    unsigned minExtLen = 0;
-    unsigned maxExtLen = 0;
-    unsigned byteStackSize = 0;
-
     unsigned stackSize = 32;
     unsigned newFieldBitWidth = 16;
     unsigned numFullStacks;
     unsigned residualStackSize;
 
-    P4ControlStateReconInfoMap controlToReconInfoMap;
     P4ControlPartitionInfoMap partitionsMap;
     
     PassManager msaTofinoBackend = {
@@ -70,7 +65,8 @@ const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program) {
         // Therefore MergeDeclarations(a Transform Pass) without refMap and
         // typeMap is executed after it.
         new CSA::CreateAllPartitions(&refMap, &typeMap, &mainP4ControlTypeName,
-                                     &partitionsMap, &controlToReconInfoMap, 
+                                     &partitionsMap, 
+                                     &(midendContext->controlToReconInfoMap), 
                                      &partitions),
         // new P4::MidEndLast(),
 
@@ -98,7 +94,7 @@ const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program) {
         // new P4::MidEndLast(),
 
         new CSA::ToTofino(&refMap, &typeMap, &partitionsMap, &partitions, 
-            &minExtLen, &maxExtLen, newFieldBitWidth, stackSize, &numFullStacks, 
+            &(midendContext->minExtLen), &(midendContext->maxExtLen), newFieldBitWidth, stackSize, &numFullStacks, 
             &residualStackSize),
         // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),

@@ -20,6 +20,7 @@ class MSATofinoBackend {
 
     CSAOptions csaOptions;
     const IR::P4Program* tnaP4Program;
+    MidendContext* midendContext;
 
  public:
     P4::ReferenceMap       refMap;
@@ -27,8 +28,10 @@ class MSATofinoBackend {
     bool isv1;
 
     explicit MSATofinoBackend(CSAOptions& options, 
-                              const IR::P4Program* tnaP4Prog) {
+                              const IR::P4Program* tnaP4Prog,
+                              MidendContext* midendContext) {
         CHECK_NULL(tnaP4Prog);
+        CHECK_NULL(midendContext);
         csaOptions = options;
         tnaP4Program = tnaP4Prog;
         isv1 = options.isv1();

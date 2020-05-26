@@ -123,7 +123,8 @@ int main(int argc, char *const argv[]) {
 
     if (hasMain(program)) {
         std::cout<<"Running MicroP4 Midend \n";
-        CSA::CSAMidEnd csaMidend(options);
+        CSA::MidendContext midendContext;
+        CSA::CSAMidEnd csaMidend(options, &midendContext);
         program = csaMidend.run(program, precompiledP4Programs);
         if (::errorCount() > 0) {
             std::cout<<"error in running MicroP4 Midend\n";
@@ -142,11 +143,11 @@ int main(int argc, char *const argv[]) {
 
         std::cout<<"Running MicroP4 Backend \n";
         if (options.targetArch == "v1model") {
-            CSA::MSAV1ModelBackend msaV1ModelBackend(options, targetArchIR);
+            CSA::MSAV1ModelBackend msaV1ModelBackend(options, targetArchIR, &midendContext);
             program = msaV1ModelBackend.run(program);
         }
         else if (options.targetArch == "tna") {
-            CSA::MSATofinoBackend msaTofinoBackend(options, targetArchIR);
+            CSA::MSATofinoBackend msaTofinoBackend(options, targetArchIR, &midendContext);
             program = msaTofinoBackend.run(program);
         } else {
             std::cout<<"unknown target architecture \n";
