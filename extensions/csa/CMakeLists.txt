@@ -101,15 +101,19 @@ add_dependencies(msav1modelbackend genIR frontend msamidend)
 
 
 set (MSA_TOFINO_BACKEND_HDRS
+    backend/tofino/tofinoConstants.h
     backend/tofino/replaceByteHdrStack.h
     backend/tofino/toTofino.h
     backend/tofino/annotateFields.h
+    backend/tofino/msaTofinoBackend.h
     )
 
 set (MSA_TOFINO_BACKEND_SRCS
+    backend/tofino/tofinoConstants.cpp
     backend/tofino/replaceByteHdrStack.cpp
     backend/tofino/toTofino.cpp
     backend/tofino/annotateFields.cpp
+    backend/tofino/msaTofinoBackend.cpp
     )
 
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MSA_TOFINO_BACKEND_SRCS};${MSA_TOFINO_BACKEND_HDRS}")
@@ -137,7 +141,7 @@ set (IR_DEF_FILES ${IR_DEF_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/ir/csa.def PARENT_
 
 build_unified(MSA_COMPILER_SRCS)
 add_executable(p4c-msa ${MSA_COMPILER_SRCS})
-target_link_libraries (p4c-msa msav1modelbackend msatofinobackend msamidend ${P4C_LIBRARIES} ${P4C_LIB_DEPS})
+target_link_libraries (p4c-msa msatofinobackend msav1modelbackend msamidend ${P4C_LIBRARIES} ${P4C_LIB_DEPS})
 
 
 include_directories(${Boost_INCLUDE_DIRS})

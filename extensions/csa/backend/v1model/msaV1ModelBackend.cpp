@@ -24,7 +24,7 @@
 #include "toControl.h"
 #include "toV1Model.h"
 #include "controlStateReconInfo.h"
-#include "csaExternSubstituter.h"
+// #include "csaExternSubstituter.h"
 #include "parserConverter.h"
 #include "msaPacketSubstituter.h"
 #include "removeMSAConstructs.h"
@@ -37,17 +37,11 @@
 
 namespace CSA {
 
-const IR::P4Program* CSAV1ModelBackend::run(const IR::P4Program* program, 
-                                    std::vector<const IR::P4Program*> precompiledIRs) {
+const IR::P4Program* MSAV1ModelBackend::run(const IR::P4Program* program) {
 
     cstring mainP4ControlTypeName;
     if (program == nullptr)
         return nullptr;
-
-    auto v1modelP4Program = getV1ModelIR();
-    auto tnaP4Program = getTofinoIR();
-
-    auto coreP4Program = getCoreIR();
 
     std::vector<const IR::P4Program*> targetIR;
     targetIR.push_back(v1modelP4Program);
@@ -114,82 +108,13 @@ const IR::P4Program* CSAV1ModelBackend::run(const IR::P4Program* program,
         // evaluator
     };
 
-    msaV1ModelBackend.setName("CSAV1ModelBackendPasses");
+    msaV1ModelBackend.setName("MSAV1ModelBackendPasses");
     msaV1ModelBackend.addDebugHooks(hooks);
     program = program->apply(msaV1ModelBackend);
     if (::errorCount() > 0)
         return nullptr;
 
     return program;
-}
-
-const IR::P4Program* CSAV1ModelBackend::getCoreIR() {
-    FILE* in = nullptr;
-
-    cstring file = "core.p4";
-#ifdef __clang__
-    std::string cmd("cc -E -x c -Wno-comment");
-#else
-    std::string cmd("cpp");
-#endif
-
-    char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
-    cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
-           csaOptions.preprocessor_options
-        + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
-        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
-
-    // std::cout<<"p4includePath "<<p4includePath<<"\n";
-    file = p4includePath+cstring("/")+file;
-    in = popen(cmd.c_str(), "r");
-    if (in == nullptr) {
-        ::error("Error invoking preprocessor");
-        perror("");
-        return nullptr;
-    }
-
-    auto p4program = P4::P4ParserDriver::parse(in, file);
-    // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
-    if (::errorCount() > 0) { 
-        ::error("%1% errors encountered, aborting compilation", ::errorCount());
-        return nullptr;
-    }
-    return p4program;
-}
-
-
-const IR::P4Program* CSAV1ModelBackend::getV1ModelIR() {
-    FILE* in = nullptr;
-
-    cstring file = "v1model.p4";
-#ifdef __clang__
-    std::string cmd("cc -E -x c -Wno-comment");
-#else
-    std::string cmd("cpp");
-#endif
-
-    char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
-    cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
-           csaOptions.preprocessor_options
-        + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
-        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
-
-    // std::cout<<"p4includePath "<<p4includePath<<"\n";
-    file = p4includePath+cstring("/")+file;
-    in = popen(cmd.c_str(), "r");
-    if (in == nullptr) {
-        ::error("Error invoking preprocessor");
-        perror("");
-        return nullptr;
-    }
-
-    auto p4program = P4::P4ParserDriver::parse(in, file);
-    // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
-    if (::errorCount() > 0) { 
-        ::error("%1% errors encountered, aborting compilation", ::errorCount());
-        return nullptr;
-    }
-    return p4program;
 }
 
 } 

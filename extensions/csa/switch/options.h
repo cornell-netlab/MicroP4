@@ -16,12 +16,16 @@ class CSAOptions : public CompilerOptions {
 
     // file to output to
     cstring outputFile = nullptr;
+    cstring targetArch = "v1model";
 
     std::vector<cstring> inputIRFiles;
 
     CSAOptions() {
         registerOption("-o", "outfile",
                 [this](const char* arg) { outputFile = arg; return true; },
+                "Write output to outfile");
+        registerOption("--target-arch", "v1model or tna",
+                [this](const char* arg) { targetArch = arg; return true; },
                 "Write output to outfile");
         registerOption("-l", "IRFile1[,IRFile2]",
                 [this](const char* arg) {

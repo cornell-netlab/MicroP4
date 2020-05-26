@@ -24,12 +24,48 @@
 #include "extensions/csa/switch/options.h"
 #include "extensions/csa/switch/parseInput.h"
 #include "extensions/csa/midend/csamidend.h"
+#include "extensions/csa/backend/v1model/msaV1ModelBackend.h"
+#include "extensions/csa/backend/tofino/msaTofinoBackend.h"
 
 
 bool hasMain(const IR::P4Program* p4Program) {
     auto mainDecls = p4Program->getDeclsByName(IR::P4Program::main)->toVector();
     return (mainDecls->size() != 0);
 }
+
+
+const IR::P4Program* getIRForIncludeP4(cstring file, const CSA::CSAOptions& csaOptions) {
+    FILE* in = nullptr;
+#ifdef __clang__
+    std::string cmd("cc -E -x c -Wno-comment");
+#else
+    std::string cmd("cpp");
+#endif
+
+    char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
+    cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
+           csaOptions.preprocessor_options
+        + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
+        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
+
+    // std::cout<<"p4includePath "<<p4includePath<<"\n";
+    file = p4includePath+cstring("/")+file;
+    in = popen(cmd.c_str(), "r");
+    if (in == nullptr) {
+        ::error("Error invoking preprocessor");
+        perror("");
+        return nullptr;
+    }
+
+    auto p4program = P4::P4ParserDriver::parse(in, file);
+    // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
+    if (::errorCount() > 0) { 
+        ::error("%1% errors encountered, aborting compilation", ::errorCount());
+        return nullptr;
+    }
+    return p4program;
+}
+
 
 int main(int argc, char *const argv[]) {
     setup_gc_logging();
@@ -73,13 +109,9 @@ int main(int argc, char *const argv[]) {
         return 1;
     }
 
-        /*
-        CSA::CSAMidEnd csaMidend(options);
-        program = csaMidend.run(program, precompiledP4Programs);
-        */
 
     if (options.outputFile || !hasMain(program)) {
-        std::cout<<"Generating P4Runtime APIs...\n";
+        // std::cout<<"Generating P4Runtime APIs...\n";
         P4::serializeP4RuntimeIfRequired(program, options);
         if (::errorCount() > 0) {
             std::cout<<"error in generating P4Runtime APIs\n";
@@ -90,73 +122,50 @@ int main(int argc, char *const argv[]) {
     }
 
     if (hasMain(program)) {
-        std::cout<<"Running CSAMidend \n";
+        std::cout<<"Running MicroP4 Midend \n";
         CSA::CSAMidEnd csaMidend(options);
         program = csaMidend.run(program, precompiledP4Programs);
-        if (options.arch == nullptr)
-            options.arch = "tofino";
-
-        Util::PathName fname(options.file);
-        Util::PathName newName(fname.getBasename() + "-"+options.arch + "." + fname.getExtension());
-        auto fn = Util::PathName(options.dumpFolder).join(newName.toString());
-        cstring fileName = fn.toString();
-        auto stream = openFile(fileName, true);
-        if (stream != nullptr) {
-            if (Log::verbose())
-                std::cerr << "Writing program for "<<options.arch<< " to " << fileName << std::endl;
-            P4::ToP4 toP4(stream, Log::verbose(), options.file);
-            program->apply(toP4);
+        if (::errorCount() > 0) {
+            std::cout<<"error in running MicroP4 Midend\n";
+            return 1;
         }
 
+        //////////// invoking appropriate backend //////////// 
+
+        // preparing filename to dump translated code
+        Util::PathName fname(options.file);
+        Util::PathName newName(fname.getBasename() + "-"+options.targetArch + "." + fname.getExtension());
+        auto fn = Util::PathName(options.dumpFolder).join(newName.toString());
+        cstring fileName = fn.toString();
+        // getting target IR
+        auto targetArchIR = getIRForIncludeP4(options.targetArch+".p4", options);
+
+        std::cout<<"Running MicroP4 Backend \n";
+        if (options.targetArch == "v1model") {
+            CSA::MSAV1ModelBackend msaV1ModelBackend(options, targetArchIR);
+            program = msaV1ModelBackend.run(program);
+        }
+        else if (options.targetArch == "tna") {
+            CSA::MSATofinoBackend msaTofinoBackend(options, targetArchIR);
+            program = msaTofinoBackend.run(program);
+        } else {
+            std::cout<<"unknown target architecture \n";
+        }
         if (::errorCount() > 0) {
-            std::cout<<"error in running CSAMidend\n";
+            std::cout<<"error in running "<<options.targetArch<<"backend \n";
             return 1;
+        }
+
+        auto stream = openFile(fileName, true);
+        if (stream != nullptr) {
+            P4::ToP4 toP4(stream, Log::verbose(), options.file);
+            program->apply(toP4);
         }
         return 0;
     }
 
-
-
-/*
-    const IR::ToplevelBlock* toplevel = nullptr;
-    BMV2::SimpleSwitchMidEnd midEnd(options);
-    midEnd.addDebugHook(hook);
-    try {
-        toplevel = midEnd.process(program);
-        if (::errorCount() > 1 || toplevel == nullptr ||
-            toplevel->getMain() == nullptr)
-            return 1;
-        if (options.dumpJsonFile)
-            JSONGenerator(*openFile(options.dumpJsonFile, true)) << program << std::endl;
-    } catch (const Util::P4CExceptionBase &bug) {
-        std::cerr << bug.what() << std::endl;
-        return 1;
-    }
-    if (::errorCount() > 0)
-        return 1;
-*/
-
-/*
-    auto backend = new BMV2::SimpleSwitchBackend(options, &midEnd.refMap,
-                                                 &midEnd.typeMap, &midEnd.enumMap);
-
-    try {
-        backend->convert(toplevel);
-    } catch (const Util::P4CExceptionBase &bug) {
-        std::cerr << bug.what() << std::endl;
-        return 1;
-    }
-    if (::errorCount() > 0)
-        return 1;
-
-    if (!options.outputFile.isNullOrEmpty()) {
-        std::ostream* out = openFile(options.outputFile, false);
-        if (out != nullptr) {
-            backend->serialize(*out);
-            out->flush();
-        }
-    }
-*/
-
     return ::errorCount() > 0;
 }
+
+
+

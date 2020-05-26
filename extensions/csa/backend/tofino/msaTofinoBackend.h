@@ -19,23 +19,24 @@ class MSATofinoBackend {
     std::vector<DebugHook> hooks;
 
     CSAOptions csaOptions;
-    const IR::P4Program* getTofinoIR();
-    const IR::P4Program* getCoreIR();
+    const IR::P4Program* tnaP4Program;
 
  public:
     P4::ReferenceMap       refMap;
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit MSATofinoBackend(CSAOptions& options) {
+    explicit MSATofinoBackend(CSAOptions& options, 
+                              const IR::P4Program* tnaP4Prog) {
+        CHECK_NULL(tnaP4Prog);
         csaOptions = options;
+        tnaP4Program = tnaP4Prog;
         isv1 = options.isv1();
         hooks.push_back(options.getDebugHook());
         refMap.setIsV1(isv1);
     }
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }
-    const IR::P4Program* run(const IR::P4Program* program, 
-                             std::vector<const IR::P4Program*> precompiledIRs);
+    const IR::P4Program* run(const IR::P4Program* program);
 };
 
 }  // namespace CSA
