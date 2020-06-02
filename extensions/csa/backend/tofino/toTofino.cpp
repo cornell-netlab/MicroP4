@@ -2,62 +2,13 @@
  * Author: Hardik Soni
  * Email: hks57@cornell.edu
  */
-
 #include "frontends/p4/coreLibrary.h"
 #include "frontends/p4/methodInstance.h"
 #include "toTofino.h"
 #include "tofinoConstants.h"
 #include "replaceByteHdrStack.h"
 
-
 namespace CSA {
-
-/*
-const cstring CreateTofinoArchBlock::csaPacketStructInstanceName = "mpkt";
-const cstring CreateTofinoArchBlock::metadataArgName = "msa_um";
-const cstring CreateTofinoArchBlock::stdMetadataArgName = "msa_sm";
-const cstring CreateTofinoArchBlock::userMetadataStructTypeName = "msa_user_metadata_t";
-
-const cstring CreateTofinoArchBlock::ingressParserName = "msa_tofino_ig_parser";
-const cstring CreateTofinoArchBlock::egressParserName = "msa_tofino_eg_parser";
-const cstring CreateTofinoArchBlock::ingressDeparserName = "msa_tofino_ig_deparser";
-const cstring CreateTofinoArchBlock::egressDeparserName = "msa_tofino_eg_deparser";
-
-const cstring CreateTofinoArchBlock::ingressControlName = "msa_tofino_ig_control";
-const cstring CreateTofinoArchBlock::egressControlName = "msa_tofino_eg_control";
-
-const cstring CreateTofinoArchBlock::igIMTypeName = "ingress_intrinsic_metadata_t";
-const cstring CreateTofinoArchBlock::igIMArgName = "ig_intr_md";
-
-const cstring CreateTofinoArchBlock::igIMResubmitFlag = "resubmit_flag";
-
-const cstring CreateTofinoArchBlock::igIMFrmParTypeName = "ingress_intrinsic_metadata_from_parser_t";
-const cstring CreateTofinoArchBlock::igIMFrmParInstName = "ig_intr_md_from_prsr";
-
-const cstring CreateTofinoArchBlock::igIMForDePTypeName = "ingress_intrinsic_metadata_for_deparser_t";
-const cstring CreateTofinoArchBlock::igIMForDePInstName = "ig_intr_md_for_dprsr";
-
-const cstring CreateTofinoArchBlock::igIMForTMTypeName = "ingress_intrinsic_metadata_for_tm_t";
-const cstring CreateTofinoArchBlock::igIMForTMInstName = "ig_intr_md_for_tm";
-
-const cstring CreateTofinoArchBlock::egIMTypeName = "egress_intrinsic_metadata_t";
-const cstring CreateTofinoArchBlock::egIMArgName = "eg_intr_md";
-
-const cstring CreateTofinoArchBlock::egIMFrmParTypeName = "egress_intrinsic_metadata_from_parser_t";
-const cstring CreateTofinoArchBlock::egIMFrmParInstName = "eg_intr_md_from_prsr";
-
-const cstring CreateTofinoArchBlock::egIMForDePTypeName = "egress_intrinsic_metadata_for_deparser_t";
-const cstring CreateTofinoArchBlock::egIMForDePInstName = "eg_intr_md_for_dprsr";
-
-const cstring CreateTofinoArchBlock::egIMForOPTypeName = "egress_intrinsic_metadata_for_output_port_t";
-const cstring CreateTofinoArchBlock::egIMForOPInstName = "eg_intr_md_for_oport";
-
-
-const cstring CreateTofinoArchBlock::parseResubmitStateName = "parse_resubmit";
-const cstring CreateTofinoArchBlock::parsePortMetaStateName = "parse_port_metadata";
-*/
-
-
 
 bool GetCalleeP4Controls::preorder(const IR::P4Control* control) {
     visit(control->body);
@@ -730,6 +681,9 @@ const IR::Node* CreateTofinoArchBlock::createEgressP4Control(
 }
 
 
+
+// This is very similar to synthesizing IngressParser, but let there be
+// code redundancy to ease future modifications.
 const IR::Node* CreateTofinoArchBlock::createTofinoEgressParser() {
 
     cstring packetInArgName = "pin";

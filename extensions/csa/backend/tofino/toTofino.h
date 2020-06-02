@@ -2,7 +2,6 @@
  * Author: Hardik Soni
  * Email: hks57@cornell.edu
  */
-
 #ifndef _EXTENSIONS_CSA_BACKEND_TOFINO_TOTOFINO_H_ 
 #define _EXTENSIONS_CSA_BACKEND_TOFINO_TOTOFINO_H_ 
 
