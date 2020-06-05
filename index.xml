@@ -1,30 +1,30 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>μP4 on μP4: A framework for Portable, Modular and Composable dataplane programming</title>
-    <link>https://cornell-netlab.github.io/MicroP4/</link>
-    <description>Recent content in μP4 on μP4: A framework for Portable, Modular and Composable dataplane programming</description>
+    <title>μP4 on My New Hugo Site</title>
+    <link>http://example.org/</link>
+    <description>Recent content in μP4 on My New Hugo Site</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     
-	<atom:link href="https://cornell-netlab.github.io/MicroP4/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="http://example.org/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>Compiling Libraries</title>
-      <link>https://cornell-netlab.github.io/MicroP4/usage/lib/</link>
+      <link>http://example.org/usage/lib/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://cornell-netlab.github.io/MicroP4/usage/lib/</guid>
+      <guid>http://example.org/usage/lib/</guid>
       <description>TODO: text </description>
     </item>
     
     <item>
       <title>Generating P4-16</title>
-      <link>https://cornell-netlab.github.io/MicroP4/usage/obj/</link>
+      <link>http://example.org/usage/obj/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://cornell-netlab.github.io/MicroP4/usage/obj/</guid>
+      <guid>http://example.org/usage/obj/</guid>
       <description>TODO: text </description>
     </item>
     
