@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/usage/lib/</loc>
+  </url>
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/installation/</loc>
+  </url>
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/usage/</loc>
+  </url>
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/usage/obj/</loc>
+  </url>
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/contributors/</loc>
+  </url>
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/categories/</loc>
+  </url>
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/tags/</loc>
+  </url>
+  
+  <url>
+    <loc>https://cornell-netlab.github.io/MicroP4/</loc>
+  </url>
+  
+</urlset>
