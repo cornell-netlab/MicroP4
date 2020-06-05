@@ -3,35 +3,35 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>http://example.org/usage/lib/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/usage/lib/</loc>
   </url>
   
   <url>
-    <loc>http://example.org/installation/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/installation/</loc>
   </url>
   
   <url>
-    <loc>http://example.org/usage/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/usage/</loc>
   </url>
   
   <url>
-    <loc>http://example.org/usage/obj/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/usage/obj/</loc>
   </url>
   
   <url>
-    <loc>http://example.org/contributors/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/contributors/</loc>
   </url>
   
   <url>
-    <loc>http://example.org/categories/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/categories/</loc>
   </url>
   
   <url>
-    <loc>http://example.org/tags/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/tags/</loc>
   </url>
   
   <url>
-    <loc>http://example.org/</loc>
+    <loc>https://cornell-netlab.github.io/MicroP4/</loc>
   </url>
   
 </urlset>
