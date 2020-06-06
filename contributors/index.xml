@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Contributors on μP4: A framework for Portable, Modular and Composable dataplane programming</title>
+    <title>Contributors on μP4</title>
     <link>https://cornell-netlab.github.io/MicroP4/contributors/</link>
-    <description>Recent content in Contributors on μP4: A framework for Portable, Modular and Composable dataplane programming</description>
+    <description>Recent content in Contributors on μP4</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     
