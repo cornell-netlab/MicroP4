@@ -8,7 +8,7 @@
 
 #include "ir/ir.h"
 #include "frontends/common/options.h"
-#include "../switch/options.h"
+#include "../switch/msaOptions.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
 #include "controlStateReconInfo.h"
@@ -31,10 +31,8 @@ class CSAMidEnd {
   private:
     std::vector<DebugHook> hooks;
 
-    CSAOptions csaOptions;
+    MSAOptions msaOptions;
     MidendContext*  midendContext;
-    // const IR::P4Program* getV1ModelIR();
-    // const IR::P4Program* getTofinoIR();
     const IR::P4Program* getCoreIR();
 
  public:
@@ -42,12 +40,12 @@ class CSAMidEnd {
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit CSAMidEnd(CSAOptions& csaOptions, MidendContext*  midendContext) {
+    explicit CSAMidEnd(MSAOptions& msaOptions, MidendContext*  midendContext) {
         CHECK_NULL(midendContext);
-        csaOptions = csaOptions;
+        msaOptions = msaOptions;
         midendContext = midendContext;
-        isv1 = csaOptions.isv1();
-        hooks.push_back(csaOptions.getDebugHook());
+        isv1 = msaOptions.isv1();
+        hooks.push_back(msaOptions.getDebugHook());
         refMap.setIsV1(isv1);
     }
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }

@@ -8,7 +8,7 @@
 
 #include "ir/ir.h"
 #include "frontends/common/options.h"
-#include "../switch/options.h"
+#include "../switch/msaOptions.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
 #include "controlStateReconInfo.h"
@@ -19,7 +19,7 @@ class MSAV1ModelBackend {
   private:
     std::vector<DebugHook> hooks;
 
-    CSAOptions csaOptions;
+    MSAOptions msaOptions;
 
     const IR::P4Program* v1modelP4Program;
 
@@ -30,12 +30,12 @@ class MSAV1ModelBackend {
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit MSAV1ModelBackend(CSAOptions& options, 
+    explicit MSAV1ModelBackend(MSAOptions& options, 
                                const IR::P4Program* v1modelP4Program,
                                MidendContext* midendContext) {
         CHECK_NULL(v1modelP4Program);
         CHECK_NULL(midendContext);
-        csaOptions = options;
+        msaOptions = options;
         v1modelP4Program = v1modelP4Program;
         midendContext = midendContext;
         isv1 = options.isv1();

@@ -125,7 +125,7 @@ add_dependencies(msatofinobackend genIR frontend msamidend)
 # sources for backend executable
 set (MSA_COMPILER_SRCS
     switch/main.cpp
-    switch/options.h
+    switch/msaOptions.h
     switch/parseInput.h
     switch/parseInput.cpp
     )
@@ -133,8 +133,6 @@ add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MSA_COMPILER_SRCS}")
 
 set (P4C_MSA_EXT_HEADERS 
      ${CMAKE_CURRENT_SOURCE_DIR}/p4include/msa.p4
-     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/tna.p4
-     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/tofino.p4
      ${CMAKE_CURRENT_SOURCE_DIR}/p4include/v1model.p4
     )
 set (IR_DEF_FILES ${IR_DEF_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/ir/csa.def PARENT_SCOPE)

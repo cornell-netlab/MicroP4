@@ -28,7 +28,7 @@ std::string getFileName(cstring filePath) {
 }
 
 std::vector<std::pair<std::string, const IR::P4Program*>> 
-getPreCompiledIRs(CSAOptions& options) {
+getPreCompiledIRs(MSAOptions& options) {
 
     std::cout<<options.inputIRFiles;
 
@@ -50,7 +50,7 @@ getPreCompiledIRs(CSAOptions& options) {
 }
 */
 
-std::vector<const IR::P4Program*> getPreCompiledIRs(CSAOptions& options) {
+std::vector<const IR::P4Program*> getPreCompiledIRs(MSAOptions& options) {
 
 
     std::vector<const IR::P4Program*> retVec(options.inputIRFiles.size(), nullptr);

@@ -8,7 +8,7 @@
 
 #include "ir/ir.h"
 #include "frontends/common/options.h"
-#include "../switch/options.h"
+#include "../switch/msaOptions.h"
 #include "frontends/common/resolveReferences/resolveReferences.h"
 #include "frontends/p4/typeMap.h"
 
@@ -18,7 +18,7 @@ class MSATofinoBackend {
   private:
     std::vector<DebugHook> hooks;
 
-    CSAOptions csaOptions;
+    MSAOptions msaOptions;
     const IR::P4Program* tnaP4Program;
     MidendContext* midendContext;
 
@@ -27,12 +27,12 @@ class MSATofinoBackend {
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit MSATofinoBackend(CSAOptions& options, 
+    explicit MSATofinoBackend(MSAOptions& options, 
                               const IR::P4Program* tnaP4Prog,
                               MidendContext* midendContext) {
         CHECK_NULL(tnaP4Prog);
         CHECK_NULL(midendContext);
-        csaOptions = options;
+        msaOptions = options;
         tnaP4Program = tnaP4Prog;
         isv1 = options.isv1();
         hooks.push_back(options.getDebugHook());

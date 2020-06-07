@@ -215,7 +215,7 @@ const IR::P4Program* CSAMidEnd::getCoreIR() {
 
     char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
     cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
-           csaOptions.preprocessor_options
+           msaOptions.preprocessor_options
         + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
         + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
 
@@ -237,76 +237,6 @@ const IR::P4Program* CSAMidEnd::getCoreIR() {
     return p4program;
 }
 
-/*
-const IR::P4Program* CSAMidEnd::getV1ModelIR() {
-    FILE* in = nullptr;
-
-    cstring file = "v1model.p4";
-#ifdef __clang__
-    std::string cmd("cc -E -x c -Wno-comment");
-#else
-    std::string cmd("cpp");
-#endif
-
-    char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
-    cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
-           csaOptions.preprocessor_options
-        + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
-        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
-
-    // std::cout<<"p4includePath "<<p4includePath<<"\n";
-    file = p4includePath+cstring("/")+file;
-    in = popen(cmd.c_str(), "r");
-    if (in == nullptr) {
-        ::error("Error invoking preprocessor");
-        perror("");
-        return nullptr;
-    }
-
-    auto p4program = P4::P4ParserDriver::parse(in, file);
-    // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
-    if (::errorCount() > 0) { 
-        ::error("%1% errors encountered, aborting compilation", ::errorCount());
-        return nullptr;
-    }
-    return p4program;
-}
-
-
-const IR::P4Program* CSAMidEnd::getTofinoIR() {
-    FILE* in = nullptr;
-
-    cstring file = "tna.p4";
-#ifdef __clang__
-    std::string cmd("cc -E -x c -Wno-comment");
-#else
-    std::string cmd("cpp");
-#endif
-
-    char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
-    cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
-           csaOptions.preprocessor_options
-        + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
-        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
-
-    // std::cout<<"p4includePath "<<p4includePath<<"\n";
-    file = p4includePath+cstring("/")+file;
-    in = popen(cmd.c_str(), "r");
-    if (in == nullptr) {
-        ::error("Error invoking preprocessor");
-        perror("");
-        return nullptr;
-    }
-
-    auto p4program = P4::P4ParserDriver::parse(in, file);
-    // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
-    if (::errorCount() > 0) { 
-        ::error("%1% errors encountered, aborting compilation", ::errorCount());
-        return nullptr;
-    }
-    return p4program;
-}
-*/
 
 
 } 

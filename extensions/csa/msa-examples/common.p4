@@ -87,15 +87,6 @@ cpackage IPv6NatACL(pkt p, im_t im,
 
 cpackage Vlan(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout vlan_inout_t ethinfo);
-
-cpackage VlanID(pkt p, im_t im, 
-          in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo);
-          
-cpackage L2Vlan(pkt p, im_t im, 
-          in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo);
-          
-cpackage L3Vlan(pkt p, im_t im, 
-          in empty_t ia, out empty_t oa, inout vlan_inout_t vlanInfo);
           
 cpackage MplsLR(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout mplslr_inout_t ioa);
@@ -112,17 +103,9 @@ cpackage SR_v6(pkt p, im_t im,
 cpackage SR_v6_Simple(pkt p, im_t im, 
           in empty_t ia, out empty_t oa, inout empty_t ioa);  
 
-cpackage IPv6EXT(pkt p, im_t im, 
-          in empty_t ia, out bit<16> oa, inout empty_t ioa);
-
 cpackage IPSRv4(pkt p, im_t im, 
           in empty_t ia, out bit<16> nh,  inout empty_t ioa);
 
 cpackage L3(pkt p, im_t im, 
           in empty_t ia, out empty_t oa,  inout l3_inout_t ioa);
 
-cpackage INT(pkt p, im_t im, 
-          in empty_t ia, out empty_t oa, inout empty_t ioa);          
-
-cpackage VXlan(pkt p, im_t im, 
-          in empty_t ia, out empty_t oa, inout vxlan_inout_t outer_ethhdr);

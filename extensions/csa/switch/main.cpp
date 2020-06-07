@@ -21,7 +21,7 @@
 #include "lib/path.h"
 #include "lib/nullstream.h"
 #include "extensions/csa/switch/version.h"
-#include "extensions/csa/switch/options.h"
+#include "extensions/csa/switch/msaOptions.h"
 #include "extensions/csa/switch/parseInput.h"
 #include "extensions/csa/midend/csamidend.h"
 #include "extensions/csa/backend/v1model/msaV1ModelBackend.h"
@@ -34,7 +34,7 @@ bool hasMain(const IR::P4Program* p4Program) {
 }
 
 
-const IR::P4Program* getIRForIncludeP4(cstring file, const CSA::CSAOptions& csaOptions) {
+const IR::P4Program* getIRFromTargetArchP4(CSA::MSAOptions& msaOptions) {
     FILE* in = nullptr;
 #ifdef __clang__
     std::string cmd("cc -E -x c -Wno-comment");
@@ -42,14 +42,24 @@ const IR::P4Program* getIRForIncludeP4(cstring file, const CSA::CSAOptions& csaO
     std::string cmd("cpp");
 #endif
 
+    cstring absFilePath = "";
+    if (msaOptions.targetArchP4 != nullptr)
+        absFilePath = msaOptions.targetArchP4;
+    else if (msaOptions.targetArch != nullptr)
+        absFilePath = p4includePath+cstring("/")+msaOptions.targetArch+".p4";
+    else {
+        ::error("Error finding target arch P4 source");
+        return nullptr;
+    }
+
     char * driverP4IncludePath = getenv("P4C_16_INCLUDE_PATH");
     cmd += cstring(" -C -undef -nostdinc -x assembler-with-cpp") + " " + 
-           csaOptions.preprocessor_options
+           msaOptions.preprocessor_options
         + (driverP4IncludePath ? " -I" + cstring(driverP4IncludePath) : "")
-        + " -I" + (p4includePath) + " " + p4includePath+"/"+file;
+        + " -I" + (p4includePath) + " " + absFilePath;
 
     // std::cout<<"p4includePath "<<p4includePath<<"\n";
-    file = p4includePath+cstring("/")+file;
+    // file = p4includePath+cstring("/")+file;
     in = popen(cmd.c_str(), "r");
     if (in == nullptr) {
         ::error("Error invoking preprocessor");
@@ -57,7 +67,8 @@ const IR::P4Program* getIRForIncludeP4(cstring file, const CSA::CSAOptions& csaO
         return nullptr;
     }
 
-    auto p4program = P4::P4ParserDriver::parse(in, file);
+    //auto p4program = P4::P4ParserDriver::parse(in, file);
+    auto p4program = P4::P4ParserDriver::parse(in, absFilePath);
     // std::cout<<"v1model objects size : "<<p4program->objects.size()<<"\n";
     if (::errorCount() > 0) { 
         ::error("%1% errors encountered, aborting compilation", ::errorCount());
@@ -139,9 +150,16 @@ int main(int argc, char *const argv[]) {
         auto fn = Util::PathName(options.dumpFolder).join(newName.toString());
         cstring fileName = fn.toString();
         // getting target IR
-        auto targetArchIR = getIRForIncludeP4(options.targetArch+".p4", options);
 
         std::cout<<"Running MicroP4 Backend \n";
+
+        if (options.targetArch == nullptr) {
+            std::cout<<"targetArch not provided \n";
+            return 1;
+        }
+        
+        auto targetArchIR = getIRFromTargetArchP4(options);
+
         if (options.targetArch == "v1model") {
             CSA::MSAV1ModelBackend msaV1ModelBackend(options, targetArchIR, &midendContext);
             program = msaV1ModelBackend.run(program);

@@ -11,22 +11,26 @@
 
 namespace CSA {
 
-class CSAOptions : public CompilerOptions {
+class MSAOptions : public CompilerOptions {
  public:
 
     // file to output to
     cstring outputFile = nullptr;
-    cstring targetArch = "v1model";
+    cstring targetArch = nullptr;
 
+    cstring targetArchP4 = nullptr;
     std::vector<cstring> inputIRFiles;
 
-    CSAOptions() {
+    MSAOptions() {
         registerOption("-o", "outfile",
                 [this](const char* arg) { outputFile = arg; return true; },
                 "Write output to outfile");
         registerOption("--target-arch", "v1model or tna",
                 [this](const char* arg) { targetArch = arg; return true; },
                 "Write output to outfile");
+        registerOption("--target-arch-p4", "absolute file path to .p4",
+                [this](const char* arg) { targetArchP4 = arg; return true; },
+                "Target Architecture Definitions in P4, if --target-arch == tna, provide location of tna.p4 and put dependent .p4s in p4include directory");
         registerOption("-l", "IRFile1[,IRFile2]",
                 [this](const char* arg) {
                        auto copy = strdup(arg);
@@ -39,7 +43,7 @@ class CSAOptions : public CompilerOptions {
     }
 };
 
-using CSAContext = P4CContextWithOptions<CSAOptions>;
+using CSAContext = P4CContextWithOptions<MSAOptions>;
 
 };  // namespace CSA
 
