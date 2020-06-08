@@ -7,16 +7,20 @@ COMPILE_MAIN= -I ./p4include/ -l # used for tofino compilation
 #COMPILE_MAIN= --arch=v1model -l  used for v1model compilation
 #EXAMPLES_FOLDER= extensions/csa/msa-v2-example
 
+LIB_SRC_DIR := ./lib-src/
+
 comma:=,
 empty:=
 space:= $(empty) $(empty)
 
-MICRO_P4_MODULES := ipv4.p4 ipv6.p4
-MICRO_P4_MODULES += mpls-lsr.p4 mpls-lsr-x.p4 mpls-lr-x.p4 
-MICRO_P4_MODULES += srv4.p4  ip-sr-v4.p4 
-MICRO_P4_MODULES += ipv4-acl.p4 ipv4-nat-acl.p4
-MICRO_P4_MODULES += ipv6-acl.p4 ipv6-nat-acl.p4
-MICRO_P4_MODULES += l3.p4
+MICRO_PROGRAMS := ipv4.p4 ipv6.p4
+MICRO_PROGRAMS += mpls-lsr.p4 mpls-lsr-x.p4 mpls-lr-x.p4 
+MICRO_PROGRAMS += srv4.p4  ip-sr-v4.p4 
+MICRO_PROGRAMS += ipv4-acl.p4 ipv4-nat-acl.p4
+MICRO_PROGRAMS += ipv6-acl.p4 ipv6-nat-acl.p4
+MICRO_PROGRAMS += l3.p4
+
+MICRO_PROGRAMS_PATHS := $(addprefix $(LIB_SRC_DIR), MICRO_PROGRAMS)
 
 ROUTINGV46_DEPS := ipv4.json ipv6.json
 ROUTINGV46LSRX_DEPS := $(ROUTINGV46_DEPS) mpls-lsr-x.json
@@ -27,10 +31,9 @@ ROUTINGV46NATACL_DEPS +=ipv6-acl.json ipv6-nat-acl.json
 ROUTINGV46NATACL_DEPS +=l3.json
 ROUTINGV46NATACL_DEPS_FILES := $(subst $(space),$(comma),$(ROUTINGV46NATACL_DEPS))
 
-MICRO_P4_JSONS = $(MICRO_P4_MODULES:.p4=.json) 
+MICRO_P4_JSONS = $(MICRO_PROGRAMS_PATHS:.p4=.json) 
 JSONS : $(MICRO_P4_JSONS)
 
-.PHONY : default_target JSONS
 
 $(MICRO_P4_JSONS): %.json: %.p4
 	$(MSA) $(COMPILE_SUBMODULE) $@ $<
@@ -63,9 +66,9 @@ clean:
 	rm -f *json  *tofino.p4
 
 
-# TODO:  
-# 1) use split  variables to adjust dependency in compiling main
-# 2) string manipulation, such that file name should be given only once.
+.PHONY : default_target JSONS all clean
+
+# TODO:
 # x-main-tofino.p4 string should be automatically constructed. then following
 # 3) file modification after compilation
 # sed '5,7 d' x-tofino.p4
