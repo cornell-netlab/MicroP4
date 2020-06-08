@@ -5,7 +5,7 @@
  */
 
 #include"msa.p4"
-#include"common.p4"
+#include"../lib-src/common.p4"
 
 #define TABLE_SIZE 1024
 

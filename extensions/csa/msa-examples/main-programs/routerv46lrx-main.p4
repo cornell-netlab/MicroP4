@@ -4,7 +4,7 @@
  */
 
 #include"msa.p4"
-#include"common.p4"
+#include"../lib-src/common.p4"
 
 header ethernet_h {
   bit<48> dmac;

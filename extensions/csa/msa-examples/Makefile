@@ -1,5 +1,3 @@
-default_target: all
-
 
 MSA=../../../build/p4c-msa
 COMPILE_SUBMODULE= -o
@@ -20,7 +18,7 @@ MICRO_PROGRAMS += ipv4-acl.p4 ipv4-nat-acl.p4
 MICRO_PROGRAMS += ipv6-acl.p4 ipv6-nat-acl.p4
 MICRO_PROGRAMS += l3.p4
 
-MICRO_PROGRAMS_PATHS := $(addprefix $(LIB_SRC_DIR), MICRO_PROGRAMS)
+MICRO_PROGRAMS_PATHS := $(addprefix $(LIB_SRC_DIR), $(MICRO_PROGRAMS))
 
 ROUTINGV46_DEPS := ipv4.json ipv6.json
 ROUTINGV46LSRX_DEPS := $(ROUTINGV46_DEPS) mpls-lsr-x.json
@@ -63,10 +61,11 @@ routingv46natacl: $(ROUTINGV46NATACL_DEPS)
 	#routingv4 routingv6 routingv46 routingv46lsrx routingv46lrx routingl3srv4ipv6 routingv46natacl
 
 clean: 
-	rm -f *json  *tofino.p4
+	rm -f $(LIB_SRC_DIR)*json  $(LIB_SRC_DIR)*tofino.p4 $(LIB_SRC_DIR)*v1model.p4
 
 
-.PHONY : default_target JSONS all clean
+.PHONY : JSONS all clean
+default_target : JSONS
 
 # TODO:
 # x-main-tofino.p4 string should be automatically constructed. then following
