@@ -26,7 +26,8 @@ class HdrToStructs final : public Transform {
     P4::TypeMap* typeMap;
 
     ValidityOPType getValidityOPFlagName(const IR::MethodCallExpression* mce, 
-                                         cstring& hdrName);
+                                         cstring& hdrName, cstring& hdrTypeName);
+    bool skipHeaderTypes(cstring typeName);
 
  public:
     using Transform::preorder;

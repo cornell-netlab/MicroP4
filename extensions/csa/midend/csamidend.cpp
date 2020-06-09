@@ -39,9 +39,11 @@ namespace CSA {
 
 unsigned DebugPass::i = 0;
 const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program, 
-                                    std::vector<const IR::P4Program*> precompiledIRs) {
+            std::vector<const IR::P4Program*> precompiledIRs, 
+            MidendContext*  midendContext) {
 
-    cstring mainP4ControlTypeName;
+    CHECK_NULL(midendContext);
+    // cstring mainP4ControlTypeName;
     if (program == nullptr)
         return nullptr;
 
@@ -70,11 +72,11 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
     */
 
     PassManager csaMidEnd = {
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
         new CSA::MergeDeclarations(irs),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
 
         /*
         new CSA::AlignParamNames(&refMap, &typeMap),
@@ -109,11 +111,12 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         */
         // new CSA::DebugPass(),
 
-        new CSA::ToControl(&refMap, &typeMap, &mainP4ControlTypeName, 
+        new CSA::ToControl(&refMap, &typeMap, 
+                           &(midendContext->mainP4ControlTypeName), 
                            &(midendContext->controlToReconInfoMap), 
                            &(midendContext->minExtLen), 
                            &(midendContext->maxExtLen)),
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),

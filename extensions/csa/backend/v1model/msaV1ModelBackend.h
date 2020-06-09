@@ -21,29 +21,20 @@ class MSAV1ModelBackend {
 
     MSAOptions msaOptions;
 
-    const IR::P4Program* v1modelP4Program;
-
-    MidendContext* midendContext;
-
  public:
     P4::ReferenceMap       refMap;
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit MSAV1ModelBackend(MSAOptions& options, 
-                               const IR::P4Program* v1modelP4Program,
-                               MidendContext* midendContext) {
-        CHECK_NULL(v1modelP4Program);
-        CHECK_NULL(midendContext);
+    explicit MSAV1ModelBackend(MSAOptions& options) {
         msaOptions = options;
-        v1modelP4Program = v1modelP4Program;
-        midendContext = midendContext;
         isv1 = options.isv1();
         hooks.push_back(options.getDebugHook());
         refMap.setIsV1(isv1);
     }
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }
-    const IR::P4Program* run(const IR::P4Program* program);
+    const IR::P4Program* run(const IR::P4Program* program, 
+          MidendContext* midendContext, const IR::P4Program* v1modelP4Program);
 };
 
 }  // namespace CSA

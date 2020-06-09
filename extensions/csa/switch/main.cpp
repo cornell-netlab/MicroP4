@@ -134,9 +134,9 @@ int main(int argc, char *const argv[]) {
 
     if (hasMain(program)) {
         std::cout<<"Running MicroP4 Midend \n";
-        CSA::MidendContext midendContext;
-        CSA::CSAMidEnd csaMidend(options, &midendContext);
-        program = csaMidend.run(program, precompiledP4Programs);
+        auto midendContext = new CSA::MidendContext();
+        CSA::CSAMidEnd csaMidend(options);
+        program = csaMidend.run(program, precompiledP4Programs, midendContext);
         if (::errorCount() > 0) {
             std::cout<<"error in running MicroP4 Midend\n";
             return 1;
@@ -146,7 +146,8 @@ int main(int argc, char *const argv[]) {
 
         // preparing filename to dump translated code
         Util::PathName fname(options.file);
-        Util::PathName newName(fname.getBasename() + "-"+options.targetArch + "." + fname.getExtension());
+        Util::PathName newName(fname.getBasename() + "-"+options.targetArch 
+            + "." + fname.getExtension());
         auto fn = Util::PathName(options.dumpFolder).join(newName.toString());
         cstring fileName = fn.toString();
         // getting target IR
@@ -161,12 +162,12 @@ int main(int argc, char *const argv[]) {
         auto targetArchIR = getIRFromTargetArchP4(options);
 
         if (options.targetArch == "v1model") {
-            CSA::MSAV1ModelBackend msaV1ModelBackend(options, targetArchIR, &midendContext);
-            program = msaV1ModelBackend.run(program);
+            CSA::MSAV1ModelBackend msaV1ModelBackend(options);
+            program = msaV1ModelBackend.run(program, midendContext, targetArchIR);
         }
         else if (options.targetArch == "tna") {
-            CSA::MSATofinoBackend msaTofinoBackend(options, targetArchIR, &midendContext);
-            program = msaTofinoBackend.run(program);
+            CSA::MSATofinoBackend msaTofinoBackend(options);
+            program = msaTofinoBackend.run(program, midendContext, targetArchIR);
         } else {
             std::cout<<"unknown target architecture \n";
         }

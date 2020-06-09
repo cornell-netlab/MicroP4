@@ -20,26 +20,21 @@ class MSATofinoBackend {
 
     MSAOptions msaOptions;
     const IR::P4Program* tnaP4Program;
-    MidendContext* midendContext;
 
  public:
     P4::ReferenceMap       refMap;
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit MSATofinoBackend(MSAOptions& options, 
-                              const IR::P4Program* tnaP4Prog,
-                              MidendContext* midendContext) {
-        CHECK_NULL(tnaP4Prog);
-        CHECK_NULL(midendContext);
+    explicit MSATofinoBackend(MSAOptions& options) {
         msaOptions = options;
-        tnaP4Program = tnaP4Prog;
         isv1 = options.isv1();
         hooks.push_back(options.getDebugHook());
         refMap.setIsV1(isv1);
     }
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }
-    const IR::P4Program* run(const IR::P4Program* program);
+    const IR::P4Program* run(const IR::P4Program* program, 
+        MidendContext* midendContext, const IR::P4Program* tnaP4Program);
 };
 
 }  // namespace CSA

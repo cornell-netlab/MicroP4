@@ -35,9 +35,12 @@
 
 namespace CSA {
 
-const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program) {
+const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program, 
+              MidendContext* midendContext, const IR::P4Program* tnaP4Program) {
 
-    cstring mainP4ControlTypeName;
+    CHECK_NULL(tnaP4Program);
+    CHECK_NULL(midendContext);
+
     if (program == nullptr)
         return nullptr;
 
@@ -64,7 +67,8 @@ const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program) {
         // referenceMap. Not sure, why is that happening.
         // Therefore MergeDeclarations(a Transform Pass) without refMap and
         // typeMap is executed after it.
-        new CSA::CreateAllPartitions(&refMap, &typeMap, &mainP4ControlTypeName,
+        new CSA::CreateAllPartitions(&refMap, &typeMap, 
+                                     &(midendContext->mainP4ControlTypeName),
                                      &partitionsMap, 
                                      &(midendContext->controlToReconInfoMap), 
                                      &partitions),
@@ -94,8 +98,9 @@ const IR::P4Program* MSATofinoBackend::run(const IR::P4Program* program) {
         // new P4::MidEndLast(),
 
         new CSA::ToTofino(&refMap, &typeMap, &partitionsMap, &partitions, 
-            &(midendContext->minExtLen), &(midendContext->maxExtLen), newFieldBitWidth, stackSize, &numFullStacks, 
-            &residualStackSize),
+                          &(midendContext->minExtLen),
+                          &(midendContext->maxExtLen), newFieldBitWidth, 
+                          stackSize, &numFullStacks, &residualStackSize),
         // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),

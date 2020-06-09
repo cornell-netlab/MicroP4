@@ -106,12 +106,12 @@ typedef std::map<cstring, ControlStateReconInfo*> P4ControlStateReconInfoMap;
 class MidendContext {
 
   public:
-
     unsigned minExtLen = 0;
     unsigned maxExtLen = 0;
-    P4ControlStateReconInfoMap controlToReconInfoMap ;
+    cstring mainP4ControlTypeName;
+    P4ControlStateReconInfoMap controlToReconInfoMap;
 
-    explicit MidendContext() {}
+    MidendContext() {}
 };
 
 }   // namespace CSA

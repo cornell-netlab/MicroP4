@@ -13,7 +13,7 @@ namespace CSA {
 //
 // control ingress (csa_packet_struct_t pkt, csa_user_metadata_t metadataArgName,
 // standard_metadata_t csa_sm))
-const cstring V1ModelConstants::csaPacketStructInstanceName = "pkt_i";
+const cstring V1ModelConstants::csaPacketStructInstanceName = "mp";
 const cstring V1ModelConstants::metadataArgName = "csa_um";
 const cstring V1ModelConstants::stdMetadataArgName = "csa_sm";
 const cstring V1ModelConstants::userMetadataStructTypeName = "csa_user_metadata_t";

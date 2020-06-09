@@ -32,7 +32,6 @@ class CSAMidEnd {
     std::vector<DebugHook> hooks;
 
     MSAOptions msaOptions;
-    MidendContext*  midendContext;
     const IR::P4Program* getCoreIR();
 
  public:
@@ -40,17 +39,16 @@ class CSAMidEnd {
     P4::TypeMap            typeMap;
     bool isv1;
 
-    explicit CSAMidEnd(MSAOptions& msaOptions, MidendContext*  midendContext) {
-        CHECK_NULL(midendContext);
+    explicit CSAMidEnd(MSAOptions& msaOptions) {
         msaOptions = msaOptions;
-        midendContext = midendContext;
         isv1 = msaOptions.isv1();
         hooks.push_back(msaOptions.getDebugHook());
         refMap.setIsV1(isv1);
     }
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }
     const IR::P4Program* run(const IR::P4Program* program, 
-                             std::vector<const IR::P4Program*> precompiledIRs);
+                             std::vector<const IR::P4Program*> precompiledIRs,
+                             MidendContext*  midendContext);
 
 };
 

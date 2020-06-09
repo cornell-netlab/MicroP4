@@ -9,17 +9,34 @@
 namespace CSA {
 
 
+
+bool HdrToStructs::skipHeaderTypes(cstring typeName) {
+    if (typeName == NameConstants::multiByteHdrTypeName ||
+        typeName == NameConstants::headerTypeName || 
+        typeName == NameConstants::indicesHeaderTypeName ||
+        typeName == "ingress_intrinsic_metadata_t" ||
+        typeName == "egress_intrinsic_metadata_t"  ||
+        typeName == "pktgen_timer_header_t" ||
+        typeName == "pktgen_port_down_header_t" ||
+        typeName == "pktgen_recirc_header_t" ||
+        typeName == "ptp_metadata_t")
+        return true;
+
+    return false;
+}
+
 HdrToStructs::ValidityOPType 
 HdrToStructs::getValidityOPFlagName(const IR::MethodCallExpression* mce,
-                                    cstring& hdrName) {
+                                    cstring& hdrName, cstring& hdrTypeName) {
     auto mi = P4::MethodInstance::resolve(mce, refMap, typeMap);
 
     if (mi->is<P4::BuiltInMethod>()) { 
         auto bm = mi->to<P4::BuiltInMethod>();
         auto exp = bm->appliedTo;
         auto basetype = typeMap->getType(exp);
-        BUG_CHECK(basetype->is<IR::Type_Header>(), "only HeaderType expected");
-        // auto th = basetype->to<IR::Type_Header>();
+        auto th = basetype->to<IR::Type_Header>();
+        BUG_CHECK(th != nullptr, "only HeaderType expected");
+        hdrTypeName = th->getName();
         if (auto mem = exp->to<IR::Member>())
             hdrName = mem->member;
         if (auto pe = exp->to<IR::PathExpression>())
@@ -44,6 +61,7 @@ HdrToStructs::getValidityOPFlagName(const IR::MethodCallExpression* mce,
 
 const IR::Node* HdrToStructs::preorder(IR::Type_Header* typeHeader) {
     
+  /*
     if (typeHeader->name == NameConstants::multiByteHdrTypeName ||
         typeHeader->name == NameConstants::headerTypeName || 
         typeHeader->name == NameConstants::indicesHeaderTypeName ||
@@ -53,6 +71,9 @@ const IR::Node* HdrToStructs::preorder(IR::Type_Header* typeHeader) {
         typeHeader->name == "pktgen_port_down_header_t" ||
         typeHeader->name == "pktgen_recirc_header_t" ||
         typeHeader->name == "ptp_metadata_t")
+      */
+
+    if (skipHeaderTypes(typeHeader->name))
         return typeHeader;
 
 
@@ -64,11 +85,15 @@ const IR::Node* HdrToStructs::preorder(IR::Type_Header* typeHeader) {
     return ts;
 }
 
+
 const IR::Node* HdrToStructs::preorder(IR::MethodCallExpression* mce) {
 
     cstring hdrName = "";
-    auto call = getValidityOPFlagName(mce, hdrName);
+    cstring hdrTypeName = "";
+    auto call = getValidityOPFlagName(mce, hdrName, hdrTypeName);
     if (call != ValidityOPType::IsValid)
+        return mce;
+    if (skipHeaderTypes(hdrTypeName))
         return mce;
 
     auto hdrVFlagName = hdrName + NameConstants::hdrValidFlagSuffix;
@@ -84,11 +109,15 @@ const IR::Node* HdrToStructs::preorder(IR::MethodCallExpression* mce) {
     prune();
     return borExpr;
 }
+
     
 const IR::Node* HdrToStructs::preorder(IR::MethodCallStatement* mcs) {
     cstring hdrName = "";
-    auto call = getValidityOPFlagName(mcs->methodCall, hdrName);
+    cstring hdrTypeName = "";
+    auto call = getValidityOPFlagName(mcs->methodCall, hdrName, hdrTypeName);
     if (call == ValidityOPType::None)
+        return mcs;
+    if (skipHeaderTypes(hdrTypeName))
         return mcs;
 
     auto stmts = new IR::IndexedVector<IR::StatOrDecl> ();
