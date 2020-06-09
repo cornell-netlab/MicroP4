@@ -70,6 +70,7 @@ void FindModifiedFields::postorder(const IR::P4Program* program) {
     filterUserDefinedHdrType(modHdrTypeInstToFields);
     filterUserDefinedHdrType(accHdrTypeInstToFields);
 
+    /*
     std::cout<<"--- allUDefHdrTypeInst ---\n";
     for (auto hti : *allUDefHdrTypeInst)
         std::cout<<hti<<"\n";
@@ -80,7 +81,9 @@ void FindModifiedFields::postorder(const IR::P4Program* program) {
     std::cout<<"--- accHdrTypeInstToFields ---\n";
     printHdrTypeInstToFields(accHdrTypeInstToFields);
     std::cout<<"--------------------------\n";
+    */
     return;
+
 }
 
 void FindModifiedFields::printHdrTypeInstToFields(
@@ -294,11 +297,13 @@ bool ApplyDepActCSTR::preorder(const IR::P4Table* p4table) {
         
     auto c = findContext<IR::P4Control>();
     if (!currTblCtxt->canEliminateDeadField()) {
-        std::cout<<"---can not perform DeadFieldElimination in "<<c->name
-          <<" "<<p4table->name<<" \n";
+        ;
+        // std::cout<<"---can not perform DeadFieldElimination in "<<c->name
+        //   <<" "<<p4table->name<<" \n";
     } else {
-        std::cout<<"--- can perform DeadFieldElimination in "<<c->name
-          <<" "<<p4table->name<<" \n";
+        ;
+        // std::cout<<"--- can perform DeadFieldElimination in "<<c->name
+        //   <<" "<<p4table->name<<" \n";
     }
     return false;
 }
@@ -347,30 +352,6 @@ bool ApplyDepActCSTR::preorder(const IR::AssignmentStatement* asmt) {
     asmt->right->apply(isR);
     asmt->left->apply(isL);
 
-    /*
-    if (isL.isMSAHeaderStorage() && !(isR.isMSAHeaderStorage())) {
-        // std::cout<<" First if :  \n";
-        auto instName = isR.getName(1);
-        auto type = isR.getType(1);
-        auto ts = type->to<IR::Type_StructLike>();
-        BUG_CHECK(ts!=nullptr, "expected Type_StructLike in RHS");
-        auto fieldName = isR.getName(0);
-        cstring key = ts->name+"."+instName;
-        // std::cout<<" key : "<<key<<"\n";
-        auto it = modHdrTyInFns->find(key);
-        if (it != modHdrTyInFns->end() && 
-            it->second.find(fieldName) != it->second.end()) { 
-            delWritesOn.push_back(asmt->left);
-            // std::cout<<"Delete any more writes on : "<<asmt->left<<"\n";
-        } else {
-            // RHS is not modified, therefore it is safe to delete write-back
-            // assignment statement in deparser
-            currEntCtxt->insert(p4action, asmt);
-            // std::cout<<"storing in currEntCtxt to delete: "<<asmt<<"\n";
-        }
-    }
-    */
-
     if(isL.isMSAHeaderStorage() && !(isR.isMSAHeaderStorage())) {
         CommonStorageSubExp css(refMap, typeMap, modHdrTyInFns);
         asmt->right->apply(css);
@@ -397,8 +378,8 @@ bool ApplyDepActCSTR::preorder(const IR::AssignmentStatement* asmt) {
             dwo->apply(cse);
             if (cse.isMatch()) {
                 currEntCtxt->insert(p4action, asmt);
-                std::cout<<"to del - "<<asmt;
-                std::cout<<"-- in action - "<<p4action->name<<"\n";
+                // std::cout<<"to del - "<<asmt;
+                // std::cout<<"-- in action - "<<p4action->name<<"\n";
             }
         }
     }

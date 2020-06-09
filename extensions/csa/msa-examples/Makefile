@@ -1,6 +1,8 @@
 
 MSA=../../../build/p4c-msa
 COMPILE_SUBMODULE= -o
+TARGET_V1MODEL= --target-arch v1model
+TARGET_TNA= --target-arch tna
 COMPILE_MAIN= -I ./p4include/ -l # used for tofino compilation
 #COMPILE_MAIN= --arch=v1model -l  used for v1model compilation
 #EXAMPLES_FOLDER= extensions/csa/msa-v2-example
@@ -20,7 +22,11 @@ MICRO_PROGRAMS += l3.p4
 
 MICRO_PROGRAMS_PATHS := $(addprefix $(LIB_SRC_DIR), $(MICRO_PROGRAMS))
 
-ROUTINGV46_DEPS := ipv4.json ipv6.json
+
+
+ROUTINGV4_DEPS := ipv4.json
+ROUTINGV6_DEPS := ipv6.json
+ROUTINGV46_DEPS := $(ROUTINGV4_DEPS) $(ROUTINGV6_DEPS)
 ROUTINGV46LSRX_DEPS := $(ROUTINGV46_DEPS) mpls-lsr-x.json
 ROUTINGV46LRX_DEPS := $(ROUTINGV46_DEPS) MPLS-lr-x.json
 ROUTINGV46NATACL_DEPS := $(ROUTINGV46_DEPS)
@@ -39,8 +45,9 @@ $(MICRO_P4_JSONS): %.json: %.p4
 
 ############## main programs ##############
 
-routingv4: ipv4.json
-	$(MSA) $(COMPILE_MAIN) ipv4.json routerv4-main.p4
+routingv4: lib-src/ipv4.p4
+	$(MSA) $(TARGET_V1MODEL) $(COMPILE_MAIN) lib-src/ipv4.json main-programs/routerv4-main.p4
+	$(MSA) $(TARGET_V1MODEL) $(COMPILE_MAIN) lib-src/ipv4.json main-programs/routerv4-main.p4
 
 routingv6: ipv6.json
 	$(MSA) $(COMPILE_MAIN) ipv6.json routerv6-main.p4
@@ -57,7 +64,7 @@ routingl3srv4ipv6: srv4.json ip-sr-v4.json ipv6.json
 routingv46natacl: $(ROUTINGV46NATACL_DEPS)
 	$(MSA) $(COMPILE_MAIN) $(ROUTINGV46NATACL_DEPS_FILES) router-ipv4v6-nat-acl.p4
 
-#all:
+all:
 	#routingv4 routingv6 routingv46 routingv46lsrx routingv46lrx routingl3srv4ipv6 routingv46natacl
 
 clean: 

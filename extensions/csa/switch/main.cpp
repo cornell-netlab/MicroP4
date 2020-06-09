@@ -133,6 +133,10 @@ int main(int argc, char *const argv[]) {
     }
 
     if (hasMain(program)) {
+        if (options.targetArch == nullptr) {
+            std::cout<<"--targetArch mandatory [v1model  or tna]\n";
+            return 0;
+        }
         std::cout<<"Running MicroP4 Midend \n";
         auto midendContext = new CSA::MidendContext();
         CSA::CSAMidEnd csaMidend(options);

@@ -447,7 +447,6 @@ const IR::Node* CreateV1ModelArchBlock::preorder(IR::P4Program* p4program) {
     p4program->objects.push_back(createV1ModelChecksumControl(V1ModelConstants::computeChecksumName));
     p4program->objects.push_back(createMainPackageInstance());
 
-    std::cout<<"CreateV1ModelArchBlock::preorder(IR::P4Program* p4program \n";
     return p4program;
 
 }
