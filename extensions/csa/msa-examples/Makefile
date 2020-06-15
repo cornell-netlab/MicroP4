@@ -26,7 +26,7 @@ MICRO_PROGRAMS += mpls-lsr.p4 mpls-lsr-x.p4 mpls-lr-x.p4
 MICRO_PROGRAMS += srv4.p4  ip-sr-v4.p4 
 MICRO_PROGRAMS += ipv4-acl.p4 ipv4-nat-acl.p4
 MICRO_PROGRAMS += ipv6-acl.p4 ipv6-nat-acl.p4
-MICRO_PROGRAMS += l3.p4
+MICRO_PROGRAMS += srv6-simple.p4 l3.p4
 
 MICRO_PROGRAMS_PATHS := $(addprefix $(LIB_SRC_DIR), $(MICRO_PROGRAMS))
 
@@ -35,6 +35,7 @@ ROUTINGV6_OBJS := ipv6.json
 ROUTINGV46_OBJS := $(ROUTINGV4_OBJS) $(ROUTINGV6_OBJS)
 ROUTINGV46LRX_OBJS := $(ROUTINGV46_OBJS) mpls-lr-x.json
 ROUTINGV46SRV4_OBJS :=  srv4.json ip-sr-v4.json $(ROUTINGV6_OBJS)
+ROUTINGV46SRV6_OBJS := $(ROUTINGV46_OBJS) srv6-simple.json
 ROUTINGV46NATACL_OBJS := $(ROUTINGV46_OBJS) 
 ROUTINGV46NATACL_OBJS += ipv4-acl.json ipv4-nat-acl.json 
 ROUTINGV46NATACL_OBJS += ipv6-acl.json ipv6-nat-acl.json 
@@ -47,6 +48,7 @@ ROUTINGV6_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV6_OBJS)))
 ROUTINGV46_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46_OBJS)))
 ROUTINGV46LRX_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46LRX_OBJS)))
 ROUTINGV46SRV4_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46SRV4_OBJS)))
+ROUTINGV46SRV6_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46SRV6_OBJS)))
 ROUTINGV46NATACL_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46NATACL_OBJS)))
 
 MICRO_P4_JSONS = $(MICRO_PROGRAMS_PATHS:.p4=.json) 
@@ -75,14 +77,18 @@ routingv46srv4: $(ROUTINGV46SRV4_OBJS_PATHS)
 	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46SRV4_OBJS_PATHS)))
 	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4srv4ipv6-main.p4
 
+routingv46srv6: $(ROUTINGV46SRV6_OBJS_PATHS)
+	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46SRV6_OBJS_PATHS)))
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6srv6-main.p4
+
 routingv46natacl: $(ROUTINGV46NATACL_OBJS_PATHS)
 	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46NATACL_OBJS_PATHS)))
 	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6-nat-acl.p4
 
-all: routingv4 routingv6 routingv46 routingv46lrx routingv46srv4 routingv46natacl
+all: routingv4 routingv6 routingv46 routingv46lrx routingv46srv4 routingv46srv6 routingv46natacl
 
 clean: 
-	rm -f $(LIB_SRC_DIR)*json  *tofino.p4 *v1model.p4
+	rm -f $(LIB_SRC_DIR)*json  *-tofino.p4 *-v1model.p4 *-tna.p4
 
 
 # TODO:
