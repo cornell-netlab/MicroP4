@@ -98,6 +98,9 @@ enum Incremental_Checksum_Algorithm_t {
   INTERNET_CHECKSUM
 }
 
+/*
+ * W should be of type bit<N>
+ */
 extern Checksum<W> {
 
   Checksum(Checksum_Algorithm_t ca);
@@ -109,7 +112,6 @@ extern Checksum<W> {
   W get_sum();
 }
 
-
 extern IncrementalChecksum<W> {
 
   IncrementalChecksum(Incremental_Checksum_Algorithm_t icat);
@@ -120,11 +122,11 @@ extern IncrementalChecksum<W> {
 
   void remove_data<T>(in T data);
 
-  bit<W> get_sum();
+  W get_sum();
 
-  bit<W> get_state();
+  W get_state();
 
-  void set_state(in bit<W> checksum_state);
+  void set_state(in W checksum_state);
 }
 ///////////////////////////////////////////////////////////////////////////////
 

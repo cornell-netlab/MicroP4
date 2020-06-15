@@ -12,8 +12,8 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Path* path) {
         return path;
     }
         
-    if (path->name.name == pathToReplace)
-        return new IR::Path(replacementPath);
+    if (path->name.name == intermediatePath || path->name.name == pathToReplace)
+        return new IR::Path(NameConstants::csaPacketStructName);
     else
         return path;
 }
@@ -45,7 +45,7 @@ const IR::Node* MSAPacketSubstituter::preorder(IR::Declaration_Variable* dv) {
     auto p4c = findContext<IR::P4Control>();
     if (p4c == nullptr)
         return dv;
-    if (dv->getName() == replacementPath)
+    if (dv->getName() == intermediatePath)
         return nullptr;
     return dv;
 }

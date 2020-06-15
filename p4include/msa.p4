@@ -34,12 +34,12 @@ enum metadata_fields_t {
 extern pkt {
   void copy_from(pkt p);
   bit<32> get_length();
-  bit<9> get_in_port();
 }
 
 
 extern im_t {
   void set_out_port(in PortId_t out_port);
+  PortId_t get_in_port();
   PortId_t get_out_port(); // default 0x00
   bit<32> get_value(metadata_fields_t field_type);
   void copy_from(im_t im);
@@ -84,6 +84,51 @@ extern mc_buf<H, O> {
 
 
 action msa_no_action(){}
+
+///////////////////////////////////////////////////////////////////////////////
+/*
+ * Checksums externs are similar to PSA.
+ * For higher clarity and portability enums are separated.
+ */
+enum Checksum_Algorithm_t {
+  CRC32
+}
+
+enum Incremental_Checksum_Algorithm_t {
+  INTERNET_CHECKSUM
+}
+
+/*
+ * W should be of type bit<N>
+ */
+extern Checksum<W> {
+
+  Checksum(Checksum_Algorithm_t ca);
+
+  void clear();
+
+  void add_data<T>(in T data);
+
+  W get_sum();
+}
+
+extern IncrementalChecksum<W> {
+
+  IncrementalChecksum(Incremental_Checksum_Algorithm_t icat);
+
+  void clear();
+
+  void add_data<T>(in T data);
+
+  void remove_data<T>(in T data);
+
+  W get_sum();
+
+  W get_state();
+
+  void set_state(in W checksum_state);
+}
+///////////////////////////////////////////////////////////////////////////////
 
 
 extern multicast_engine<O> {

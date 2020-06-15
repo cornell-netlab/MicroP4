@@ -94,7 +94,8 @@ const IR::Node* SlicePipeControl::preorder(IR::Declaration_Variable* dv) {
     
     // isConvertedCPackage helps to identify deparser/parser and synthesize code
     // accordingly.
-    cstring var_name = NameConstants::csaPacketStructTypeName+"_var";
+    cstring var_name = NameConstants::csaPacketStructTypeName+
+                       NameConstants::intermediateVarDeclSuffix;
     if (dv->getName() == var_name ) {
         intermediateCSAPacketHeaderInst = var_name;
         isConvertedCPackage = true;
@@ -600,7 +601,8 @@ const IR::Node* SlicePipeControl::preorder(IR::MethodCallExpression* mce) {
 
             auto p4C1Name = iter->second.partition1->getName();
             auto p4C2Name = iter->second.partition2->getName();
-            cstring varName = structTypeName+"_var";
+            cstring varName = structTypeName+
+                              NameConstants::intermediateVarDeclSuffix;
             auto dv = new IR::Declaration_Variable(varName, 
                                             new IR::Type_Name(structTypeName));
 

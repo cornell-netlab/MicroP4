@@ -36,6 +36,7 @@ bool StaticAnalyzer::preorder(const IR::P4Program* p4Program) {
     visit(p4cp);
 
 
+    /*
     for (auto e : *hdrValidityOpsPkgMap) {
         std::cout<<"\n--- composable package ---\n";
         std::cout<<e.first<<"\n";
@@ -51,6 +52,7 @@ bool StaticAnalyzer::preorder(const IR::P4Program* p4Program) {
         std::cout<<"----------------------------\n";
     }
     std::cout<<"End of StaticAnalyzer\n";
+    */
     return false;
 }
 

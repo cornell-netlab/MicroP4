@@ -34,6 +34,9 @@ const cstring NameConstants::hdrValidFlagSuffix = "_v";
 const cstring NameConstants::hdrSetValidOpFlagSuffix = "_sv";
 const cstring NameConstants::hdrSetInvalidOpFlagSuffix = "_siv";
 
+const cstring NameConstants::intermediateVarDeclSuffix = "_var";
+
+
 // used by CSAPacketSubstituter
 const cstring NameConstants::csaPktGetPacketStruct = "get_packet_struct";
 const cstring NameConstants::csaPktSetPacketStruct = "set_packet_struct";

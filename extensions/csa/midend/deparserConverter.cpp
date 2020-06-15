@@ -156,11 +156,17 @@ IR::P4Table* DeparserConverter::initTableWithOffsetEntries(const IR::MethodCallS
 
     lastMcsEmitted = mcs;
 
+    auto amce = new IR::MethodCallExpression(new IR::PathExpression(noActionName));
+    auto actionRef = new IR::ActionListElement(amce);
+    actionListElements.push_back(actionRef);
+
     auto keyEle = new IR::KeyElement(ke2, new IR::PathExpression("exact"));
     keyElementList.push_back(keyEle);
     auto key = new IR::Key(keyElementList);
     auto actionList = new IR::ActionList(actionListElements);
     auto entriesList = new IR::EntriesList(entries);
+
+
 
     auto p4Table = createP4Table("reset_offsets", key, actionList, entriesList);
     return p4Table;
@@ -1174,15 +1180,13 @@ IR::P4Table* DeparserConverter::multiplyHdrValidityOpsTable(
 
     for (const auto& aIdecl : actionDecls[dummyMCS]) {
         auto amce = new IR::MethodCallExpression(
-            new IR::PathExpression(aIdecl->name.name), 
-            new IR::Vector<IR::Type>(), new IR::Vector<IR::Argument>());
+            new IR::PathExpression(aIdecl->name.name));
         auto actionRef = new IR::ActionListElement(amce);
         // std::cout<<"Action Name: "<<aIdecl->name.name<<"\n";
         actionListElements.push_back(actionRef);
     }
-    auto amce = new IR::MethodCallExpression(new IR::PathExpression(noActionName), 
-                                             new IR::Vector<IR::Type>(), 
-                                             new IR::Vector<IR::Argument>());
+    auto amce = new IR::MethodCallExpression(new IR::PathExpression(noActionName));
+    
     auto actionRef = new IR::ActionListElement(amce);
     actionListElements.push_back(actionRef);
 

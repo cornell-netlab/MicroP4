@@ -36,6 +36,7 @@ class NameConstants {
     static const cstring hdrSetValidOpFlagSuffix;
     static const cstring hdrSetInvalidOpFlagSuffix;
 
+    static const cstring intermediateVarDeclSuffix;
     static const cstring csaPktGetPacketStruct;
     static const cstring csaPktSetPacketStruct;
 

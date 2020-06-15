@@ -4,7 +4,7 @@
  */
 
 #include"msa.p4"
-#include"common.p4"
+#include"../lib-src/common.p4"
 
 struct meta_t { 
   bit<16> ethType; 

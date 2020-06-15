@@ -78,39 +78,9 @@ const IR::P4Program* CSAMidEnd::run(const IR::P4Program* program,
         new P4::TypeInference(&refMap, &typeMap, false),
         // new P4::MidEndLast(),
 
-        /*
-        new CSA::AlignParamNames(&refMap, &typeMap),
-        new P4::MidEndLast(),
-        new P4::ResolveReferences(&refMap, true),
-        new P4::TypeInference(&refMap, &typeMap, false),
-
-        new P4::MidEndLast(),
-        new CSA::ToWellFormedParser(&refMap, &typeMap),
-        new CSA::CloneWithFreshPath(),
-        new P4::MidEndLast(),
-        new P4::ResolveReferences(&refMap, true),
-        new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast(),
-        
-        new CSA::ConcatDeParMerge(&refMap, &typeMap),
-        new P4::MidEndLast(),
-        */
-
-        /*
-        // Ryan's testing
-        new CSA::ParaParserMerge(&refMap, &typeMap, "Dummy4", "Dummy4Duplicate"),
-
-        new P4::MidEndLast(),
-        new CSA::CloneWithFreshPath,
-
-        new P4::MidEndLast(),
-
-        new P4::ResolveReferences(&refMap, true),
-        new P4::TypeInference(&refMap, &typeMap, false),
-        new P4::MidEndLast()
-        */
         // new CSA::DebugPass(),
 
+        // new P4::MidEndLast(),
         new CSA::ToControl(&refMap, &typeMap, 
                            &(midendContext->mainP4ControlTypeName), 
                            &(midendContext->controlToReconInfoMap), 

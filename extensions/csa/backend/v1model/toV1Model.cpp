@@ -516,12 +516,20 @@ const IR::Node* CSAStdMetaSubstituter::preorder(IR::MethodCallExpression* mce) {
             "CSAStdMetaSubstituter:: unexpected use of %1%", mce);
         auto pathExp = new IR::PathExpression(IR::ID(stdMetaParam->name));
         if (em->method->name.name 
-            == P4::P4CoreLibrary::instance.im.getOutPort.name) {           
+            == P4::P4CoreLibrary::instance.im.getOutPort.name) {
             auto member = new IR::Member(mce->srcInfo, pathExp,
                 P4V1::V1Model::instance.standardMetadataType.egress_spec.name);
             prune();
             return member;
         }
+
+        if (em->method->name.name 
+            == P4::P4CoreLibrary::instance.im.getInPort.name) {
+            auto member = new IR::Member(mce->srcInfo, pathExp, "ingress_port");
+            prune();
+            return member;
+        }
+
         if (em->method->name.name 
             == P4::P4CoreLibrary::instance.im.getValue.name) {
             auto exp = mce->arguments->at(0)->expression;

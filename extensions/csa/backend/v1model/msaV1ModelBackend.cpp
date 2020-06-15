@@ -70,7 +70,7 @@ const IR::P4Program* MSAV1ModelBackend::run(const IR::P4Program* program,
         new CSA::MergeDeclarations(targetIR), 
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-        // new P4::MidEndLast(),
+        new P4::MidEndLast(),
         new CSA::MSAPacketSubstituter(&refMap, &typeMap), 
         // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
@@ -81,10 +81,10 @@ const IR::P4Program* MSAV1ModelBackend::run(const IR::P4Program* program,
                            &(midendContext->minExtLen), 
                            &(midendContext->maxExtLen)),
 
-        new P4::MidEndLast(),
+        // new P4::MidEndLast(),
         new P4::ResolveReferences(&refMap, true),
         new P4::TypeInference(&refMap, &typeMap, false),
-
+        new P4::MidEndLast(),
 
         new CSA::HdrToStructs(&refMap, &typeMap),
 

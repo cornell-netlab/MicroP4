@@ -576,7 +576,7 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     if (cp != nullptr) 
         cpkgName = cp->getName();
     parser_fqn = cpkgName +"_"+ parser->getName();
-    std::cout<<parser_fqn<<"\n";
+    // std::cout<<parser_fqn<<"\n";
     auto iter = parserStructures->find(parser_fqn);
     BUG_CHECK(iter != parserStructures->end(), 
         "Parser %1% of %2% is not evaluated", parser->name, cp->getName());
