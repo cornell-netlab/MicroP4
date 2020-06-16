@@ -37,8 +37,10 @@ Every μP4 Program must implemet at least one of the interfaces defined in μPA.
 #### A quick Intro to μP4 Program  skeleton
 ```
 // MyProg is user-defined package type.
-// cpackage is a keyword to indicate MyProg is a composable package with in-build `apply` method.
-// h_t, M_t, i_t, o_t, io_t are user-defined concrete types supplied to specialized H, M, I, O, and IO generic types in Unicast interface
+// cpackage is a keyword to indicate MyProg is a composable package 
+// with in-built `apply` method.
+// h_t, M_t, i_t, o_t, io_t are user-defined concrete types 
+// supplied to specialized H, M, I, O, and IO generic types in Unicast interface
 cpackage MyProg : implements Unicast<h_t, m_t, i_t, o_t, io_t> {
 
   // extractor, emitter, pkt, im_t are declared in μPA (msa.p4)
@@ -61,24 +63,26 @@ cpackage MyProg : implements Unicast<h_t, m_t, i_t, o_t, io_t> {
 ```
 
 How to instantiate cpackage types
-```
-// 
-// 1. Instantiating MyProg in micro_control block
-MyProg() inst_my_prog; // () is constructor parameter for future designs.
-
-// 2. Instantiating as main at file scope.
-MyProg() main; 
-```
+   1. Instantiating MyProg in micro_control block
+      ```
+      MyProg() inst_my_prog; // () is constructor parameter for future designs.
+      ```
+   2. Instantiating as main at file scope.
+      ```
+      MyProg() main; 
+      ```
 
 How to Invoke an instance of cpackage type
-```
-// 1. Invoking MyProg using 5 runtime parameters. 
-// First two are instances of of concrete types declared in μPA.
-// The last three are instances of user-defined types used to specialize generic types I, O and IO. 
-inst_my_prog.apply(p, im, i, o, io); 
 
-// 2. main instances can not be invoked explicitly.
-```
+   1. Invoking MyProg using 5 runtime parameters. 
+      First two are instances of of concrete types declared in μPA.
+      The last three are instances of user-defined types used 
+      to specialize generic types I, O and IO. 
+      ```
+      inst_my_prog.apply(p, im, i, o, io); 
+      ```
+
+   2. main instances can not be invoked explicitly.
 
 #### An example
 There are example programs at `extensions/csa/msa-examples` path.
