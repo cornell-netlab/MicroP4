@@ -115,8 +115,19 @@ const IR::Node* MSAStdMetaSubstituter::preorder(IR::MethodCallStatement* mcs) {
             pathExp = new IR::PathExpression(
                             IR::ID(TofinoConstants::igIMForTMInstName));
             auto lexp = new IR::Member(pathExp, "ucast_egress_port");
+            auto portas = new IR::AssignmentStatement(mcs->srcInfo, lexp, exp);
+
+            auto pathExpDropCtrl = new IR::PathExpression(
+                                    IR::ID(TofinoConstants::igIMForDePInstName));
+            auto ledc = new IR::Member(pathExpDropCtrl, "drop_ctl");
+            auto constant =  new IR::Constant(0, 16);
+            auto dcas = new IR::AssignmentStatement(mcs->srcInfo, ledc, constant);
             prune();
-            return new IR::AssignmentStatement(mcs->srcInfo, lexp, exp);
+
+            auto iv = new IR::IndexedVector<IR::StatOrDecl>();
+            iv->push_back(dcas);
+            iv->push_back(portas);
+            return iv;
         }
         if (em->method->name.name == "drop") {
             cstring instName = "";

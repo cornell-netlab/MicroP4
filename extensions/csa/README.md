@@ -1,4 +1,7 @@
-# Midend and Backend for Micro Switch Architecture.
+# Midend and Backend for μP4 Architecture.
+
+μP4 is implemented as an extension of P4-16 
+
 
 This back-end generates IR(.json) pertaining to Micro Switch Architecture
 (CSA) model. It accepts a source p4 file(.p4) and its dependencies (.json files)
