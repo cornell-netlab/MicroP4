@@ -102,17 +102,22 @@ For more details, have a look at
    1. Creating Libraries
    ```
    ./build/p4c-msa -o <<lib-name.json>> <<μp4 source file>>
-   ./build/p4c-msa -o ipv4.json ./extensions/csa/msa-examples/lib-src/ipv4.p4  
-   // ipv4.p4 contains μp4 program
+   ```
+   ##### An example
+   ipv4.p4 contains μp4 program
+   ```
+   ./build/p4c-msa -o ipv4.json ./extensions/csa/msa-examples/lib-src/ipv4.p4
    ```
 
    2. Generating Target Source
    ```
    ./build/p4c-msa --target-arch  <<target>> -I <<path to target's .p4>>  \
                    -l <<lib-name.json>> <<main μp4 source file>>
-   // An example
+   ```
+   ##### An example
+   This will generate routerv4-main-v1model.p4
+   ```
    ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json \
                    ./extensions/csa/msa-examples/main-programs/routerv4-main.p4
-   // This will generate routerv4-main-v1model.p4
    ```
 
