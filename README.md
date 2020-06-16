@@ -1,13 +1,5 @@
 # μP4 
 
-<style
-  type="text/css">
-h1 {color:red;}
-
-p {color:blue;}
-</style>
-okay
-
 ## Overview
 μP4 enables programming data plane in a portable, modular and composable manner. It comprises 
 1. μP4 Architecture (μPA) - a logical Architecture for data plane
