@@ -1,12 +1,15 @@
 # μP4 
 
 ## Overview
-μP4 enables programming data plane in a portable, modular and composable manner. It comprises 
+μP4 enables programming data plane in a portable, modular and composable manner. 
+It comprises 
 1. μP4 Architecture (μPA) - a logical Architecture for data plane
 2. μP4 Compiler (μP4C) - to compile data plane programs written against μPA 
 3. μP4 Language - A subtle variant of [P4-16](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html)
 
-μP4 allows to build libraries of packet-processing functions in data plane, reuse them to develop new programs and compile the programs to architectures of real target devices. μP4 maps its logical architecture to real targets like v1model and Tofino.
+μP4 allows to build libraries of packet-processing functions in data plane, reuse 
+them to develop new programs and compile the programs to architectures of real 
+target devices. μP4 maps its logical architecture to real targets like v1model and Tofino.
 
 Using μP4C, programmers can 
 1. Compile code to libraries (in form of `.json` files)
@@ -18,7 +21,8 @@ to generate executables.
 
 
 ## Getting started
-μP4C is developed by extending a fork repo `https://github.com/hksoni/p4c.git` of P4-16 prototype compiler `https://github.com/p4lang/p4c.git`
+μP4C is developed by extending a fork repo `https://github.com/hksoni/p4c.git` of 
+P4-16 prototype compiler `https://github.com/p4lang/p4c.git`
 
 ### 1. Install Dependencies
 Follow the instructions listed at `https://github.com/hksoni/p4c#dependencies`.
@@ -33,7 +37,10 @@ make -j4   // This should create p4c-msa executable in build directory
 ```
 
 ### 3. How to Write μP4 Programs
-Every μP4 Program must implemet at least one of the interfaces defined in μPA. μPA provides 3 interfaces, Unicast, Multicast and Orchestration. By implementing a μPA interface, a user-defined package type can be created. 
+Every μP4 Program must implemet at least one of the interfaces defined in μPA. 
+μPA provides 3 interfaces, Unicast, Multicast and Orchestration. By implementing 
+a μPA interface, a user-defined package type can be created. 
+
 #### A quick Intro to μP4 Program  skeleton
 ```
 // MyProg is user-defined package type.
@@ -95,14 +102,17 @@ For more details, have a look at
    1. Creating Libraries
    ```
    ./build/p4c-msa -o <<lib-name.json>> <<μp4 source file>>
-   ./build/p4c-msa -o ipv4.json ./extensions/csa/msa-examples/lib-src/ipv4.p4  // ipv4.p4 contains μp4 program
+   ./build/p4c-msa -o ipv4.json ./extensions/csa/msa-examples/lib-src/ipv4.p4  
+   // ipv4.p4 contains μp4 program
    ```
 
    2. Generating Target Source
    ```
-   ./build/p4c-msa --target-arch  <<target>> -I <<path to target's .p4>>  -l <<lib-name.json>> <<main μp4 source file>>
+   ./build/p4c-msa --target-arch  <<target>> -I <<path to target's .p4>>  \
+                   -l <<lib-name.json>> <<main μp4 source file>>
    // An example
-   ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json ./extensions/csa/msa-examples/main-programs/routerv4-main.p4
+   ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json \
+                   ./extensions/csa/msa-examples/main-programs/routerv4-main.p4
    // This will generate routerv4-main-v1model.p4
    ```
 
