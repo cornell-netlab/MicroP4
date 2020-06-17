@@ -120,6 +120,7 @@ cpackage SRv4 : implements Unicast<sr4_hdr_t, sr4_meta_t,
         set_nexthop_addr6;
         set_nexthop;
     	}
+      /*
     	const entries = {
     	   (8w0x03, ROUTER_IP,_, _ , _, _,_): set_nexthop_addr2();
     	   (8w0x03, _,ROUTER_IP, _ , _, _,_): set_nexthop_addr3();
@@ -142,7 +143,8 @@ cpackage SRv4 : implements Unicast<sr4_hdr_t, sr4_meta_t,
     	   (8w0x09,_,_,_,ROUTER_IP, _,_): set_nexthop_addr5();
     	   (8w0x09,_,_,_,_, ROUTER_IP,_): set_nexthop_addr6();
     	   (8w0x09, _,_, _ , _, _,_): drop_action();
-    	}
+    	};
+      */
     }
     action set_out_arg(bit<16> n) {
       nh = n; 
