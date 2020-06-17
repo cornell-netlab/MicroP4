@@ -21,12 +21,12 @@ comma:=,
 empty:=
 space:= $(empty) $(empty)
 
-MICRO_PROGRAMS := ipv4.p4 ipv6.p4
-MICRO_PROGRAMS += mpls-lsr.p4 mpls-lsr-x.p4 mpls-lr-x.p4 
-MICRO_PROGRAMS += srv4.p4  ip-sr-v4.p4 
-MICRO_PROGRAMS += ipv4-acl.p4 ipv4-nat-acl.p4
-MICRO_PROGRAMS += ipv6-acl.p4 ipv6-nat-acl.p4
-MICRO_PROGRAMS += srv6-simple.p4 l3.p4
+MICRO_PROGRAMS := ipv4.up4 ipv6.up4
+MICRO_PROGRAMS += mpls-lsr.up4 mpls-lsr-x.up4 mpls-lr-x.up4 
+MICRO_PROGRAMS += srv4.up4  ip-sr-v4.up4 
+MICRO_PROGRAMS += ipv4-acl.up4 ipv4-nat-acl.up4
+MICRO_PROGRAMS += ipv6-acl.up4 ipv6-nat-acl.up4
+MICRO_PROGRAMS += srv6-simple.up4 l3.up4
 
 MICRO_PROGRAMS_PATHS := $(addprefix $(LIB_SRC_DIR), $(MICRO_PROGRAMS))
 
@@ -51,39 +51,39 @@ ROUTINGV46SRV4_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46SRV
 ROUTINGV46SRV6_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46SRV6_OBJS)))
 ROUTINGV46NATACL_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46NATACL_OBJS)))
 
-MICRO_P4_JSONS = $(MICRO_PROGRAMS_PATHS:.p4=.json) 
+MICRO_P4_JSONS = $(MICRO_PROGRAMS_PATHS:.up4=.json) 
 JSONS : $(MICRO_P4_JSONS)
 
-$(MICRO_P4_JSONS): %.json: %.p4
+$(MICRO_P4_JSONS): %.json: %.up4
 	$(MSA) $(COMPILE_SUBMODULE) $@ $<
 
 ############## main program
 
 routingv4: $(ROUTINGV4_OBJS_PATHS)
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(ROUTINGV4_OBJS_PATHS) main-programs/routerv4-main.p4
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(ROUTINGV4_OBJS_PATHS) main-programs/routerv4-main.up4
 
 routingv6: $(ROUTINGV6_OBJS_PATHS)
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(ROUTINGV6_OBJS_PATHS) main-programs/routerv6-main.p4
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(ROUTINGV6_OBJS_PATHS) main-programs/routerv6-main.up4
 
 routingv46: $(ROUTINGV46_OBJS_PATHS)
 	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/routerv46-main.p4
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/routerv46-main.up4
 
 routingv46lrx: $(ROUTINGV46LRX_OBJS_PATHS)
 	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46LRX_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/routerv46lrx-main.p4
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/routerv46lrx-main.up4
 
 routingv46srv4: $(ROUTINGV46SRV4_OBJS_PATHS)
 	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46SRV4_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4srv4ipv6-main.p4
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4srv4ipv6-main.up4
 
 routingv46srv6: $(ROUTINGV46SRV6_OBJS_PATHS)
 	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46SRV6_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6srv6-main.p4
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6srv6-main.up4
 
 routingv46natacl: $(ROUTINGV46NATACL_OBJS_PATHS)
 	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46NATACL_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6-nat-acl.p4
+	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6-nat-acl.up4
 
 all: routingv4 routingv6 routingv46 routingv46lrx routingv46srv4 routingv46srv6 routingv46natacl
 

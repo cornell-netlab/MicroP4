@@ -3,8 +3,8 @@
  * Email: hks57@cornell.edu
  */
 
-#include"msa.p4"
-#include"../lib-src/common.p4"
+#include"msa.up4"
+#include"../lib-src/common.up4"
 
 struct meta_t { 
 	bit<8> l4proto;

@@ -132,7 +132,7 @@ set (MSA_COMPILER_SRCS
 add_cpplint_files (${CMAKE_CURRENT_SOURCE_DIR} "${MSA_COMPILER_SRCS}")
 
 set (P4C_MSA_EXT_HEADERS 
-     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/msa.p4
+     ${CMAKE_CURRENT_SOURCE_DIR}/p4include/msa.up4
      ${CMAKE_CURRENT_SOURCE_DIR}/p4include/v1model.p4
     )
 set (IR_DEF_FILES ${IR_DEF_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/ir/csa.def PARENT_SCOPE)

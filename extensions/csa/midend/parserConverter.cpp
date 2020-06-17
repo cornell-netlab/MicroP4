@@ -174,6 +174,20 @@ cstring ParserConverter::createInitdAction(IR::P4Parser* parser) {
     statOrDeclList->push_back(as);
 
 
+    if (initialOffsets->size() == 1 &&  (*initialOffsets)[0] == 0) {
+
+        auto pktParam =  parser->getApplyParameters()->parameters.at(1);
+        auto pktParamName = pktParam->getName();
+        auto indicesExp = new IR::Member(new IR::PathExpression(pktParamName), 
+                              NameConstants::indicesHeaderInstanceName);
+        auto offsetExp = new IR::Member(indicesExp, 
+                            NameConstants::csaPktStuCurrOffsetFName);
+        auto offsetValue = new IR::Constant(0, 10);
+        auto offsetAs = new IR::AssignmentStatement(offsetExp, offsetValue);
+        statOrDeclList->push_back(offsetAs);
+    }
+
+
     auto actionBlock = new IR::BlockStatement(*statOrDeclList);
     auto action = new IR::P4Action(headerInvalidActionName, 
                                    new IR::ParameterList(), actionBlock);

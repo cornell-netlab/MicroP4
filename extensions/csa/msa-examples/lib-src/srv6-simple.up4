@@ -3,8 +3,8 @@
  * Email: myriana.rifai@nokia-bell-labs.com
  */
 
-#include"msa.p4"
-#include"common.p4"
+#include"msa.up4"
+#include"common.up4"
 
 #define TABLE_SIZE 1024
 #define MAX_SEG_LEFT 256

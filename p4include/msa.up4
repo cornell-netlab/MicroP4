@@ -90,6 +90,7 @@ action msa_no_action(){}
  * Checksums externs are similar to PSA.
  * For higher clarity and portability enums are separated.
  */
+/* Disabled for AE 
 enum Checksum_Algorithm_t {
   CRC32
 }
@@ -97,10 +98,12 @@ enum Checksum_Algorithm_t {
 enum Incremental_Checksum_Algorithm_t {
   INTERNET_CHECKSUM
 }
+*/
 
 /*
  * W should be of type bit<N>
  */
+/* Disabled for AE 
 extern Checksum<W> {
 
   Checksum(Checksum_Algorithm_t ca);
@@ -128,6 +131,7 @@ extern IncrementalChecksum<W> {
 
   void set_state(in W checksum_state);
 }
+*/
 ///////////////////////////////////////////////////////////////////////////////
 
 

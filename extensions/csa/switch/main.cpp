@@ -151,7 +151,7 @@ int main(int argc, char *const argv[]) {
         // preparing filename to dump translated code
         Util::PathName fname(options.file);
         Util::PathName newName(fname.getBasename() + "-"+options.targetArch 
-            + "." + fname.getExtension());
+            + ".p4");
         auto fn = Util::PathName(options.dumpFolder).join(newName.toString());
         cstring fileName = fn.toString();
         // getting target IR

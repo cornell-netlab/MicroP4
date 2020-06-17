@@ -3,8 +3,8 @@
  * Email: hks57@cornell.edu
  */
 
-#include"msa.p4"
-#include"common.p4"
+#include"msa.up4"
+#include"common.up4"
 
 struct no_hdr_t {}
 cpackage IPv6ACL : implements Unicast<no_hdr_t, empty_t, 
