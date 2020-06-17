@@ -37,17 +37,19 @@ make -j4   // This should create p4c-msa executable in build directory
 ```
 
 ### 3. How to Write μP4 Programs
-Every μP4 Program must implemet at least one of the interfaces defined in μPA. 
+Every μP4 Program must implemet at least one of the interfaces defined as a part of 
+μPA in [extensions/csa/p4include/msa.p4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/p4include/msa.p4). 
 μPA provides 3 interfaces, Unicast, Multicast and Orchestration. By implementing 
 a μPA interface, a user-defined package type can be created. 
 
-#### A quick Intro to μP4 Program  skeleton
+#### A Quick Intro to μP4 Program Skeleton
 ```
-// MyProg is user-defined package type.
+// In the following example, MyProg is a user-defined package type.
 // cpackage is a keyword to indicate MyProg is a composable package 
 // with in-built `apply` method.
-// h_t, M_t, i_t, o_t, io_t are user-defined concrete types 
-// supplied to specialized H, M, I, O, and IO generic types in Unicast interface
+// h_t, M_t, i_t, o_t, io_t are user-defined concrete types supplied to 
+// specialized H, M, I, O, and IO generic types in Unicast interface
+
 cpackage MyProg : implements Unicast<h_t, m_t, i_t, o_t, io_t> {
 
   // extractor, emitter, pkt, im_t are declared in μPA (msa.p4)
