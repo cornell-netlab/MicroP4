@@ -96,8 +96,8 @@ How to Invoke an instance of cpackage type
 #### An example
 There are example programs at `extensions/csa/msa-examples` path.
 For more details, have a look at
-   1. `lib-src/ipv4.p4` a very simple IPv4 cpackage
-   2. `main-programs/routerv4-main.p4` a Main cpackage that uses IPv4 cpackage
+   1. `lib-src/ipv4.up4` a very simple IPv4 cpackage
+   2. `main-programs/routerv4-main.up4` a Main cpackage that uses IPv4 cpackage
 
 
 ### 4. How to Use μP4C
@@ -108,7 +108,7 @@ For more details, have a look at
       ##### An example
       ipv4.p4 contains μp4 program
       ```
-      ./build/p4c-msa -o ipv4.json ./extensions/csa/msa-examples/lib-src/ipv4.p4
+      ./build/p4c-msa -o ipv4.json ./extensions/csa/msa-examples/lib-src/ipv4.up4
       ```
 
    2. Generating Target Source
@@ -120,5 +120,5 @@ For more details, have a look at
       This will generate routerv4-main-v1model.p4
       ```
       ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json \
-                      ./extensions/csa/msa-examples/main-programs/routerv4-main.p4
+                      ./extensions/csa/msa-examples/main-programs/routerv4-main.up4
       ```
