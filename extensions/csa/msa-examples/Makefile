@@ -7,7 +7,12 @@ TARGET=  v1model
 TARGET_ARG= --target-arch 
 TARGET_P4_ARG:= --target-arch-p4 
 TARGET_P4:=none
-INCLUDE_FLAGS:= -I ./p4include/ 
+
+INCLUDE_FLAGS= -I ./p4include/ 
+ifeq "$(origin INCLUDE_PATH)" "command line"
+INCLUDE_FLAGS+= -I $(INCLUDE_PATH) 
+endif
+
 COMPILE_MAIN_FLAGS:= $(TARGET_ARG) $(TARGET)
 
 ifeq "$(origin TARGET_P4)" "command line"
