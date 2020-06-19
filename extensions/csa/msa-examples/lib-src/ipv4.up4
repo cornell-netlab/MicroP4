@@ -56,6 +56,12 @@ cpackage IPv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empty_
         process; 
         default_act;
       }
+      const entries = {
+        // 10.0.1.1, _
+        (32w167772417, _) : process(16w1);
+        // 10.0.2.1, _
+        (32w167772673, _): process(16w2);
+      }
       default_action = default_act;
 
     }

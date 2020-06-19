@@ -5,3 +5,9 @@
 [submodule "control-plane/p4runtime"]
 	path = control-plane/p4runtime
 	url = https://github.com/p4lang/p4runtime.git
+[submodule "extensions/csa/msa-examples/p4c"]
+	path = extensions/csa/msa-examples/p4c
+	url = https://github.com/hksoni/p4c.git
+[submodule "extensions/csa/msa-examples/bmv2"]
+	path = extensions/csa/msa-examples/bmv2
+	url = https://github.com/hksoni/behavioral-model.git
