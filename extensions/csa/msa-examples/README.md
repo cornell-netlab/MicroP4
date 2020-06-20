@@ -22,5 +22,8 @@ make TARGET=tna
 
 ## Comiling on using p4c
 
-BMV2 hash commit 8d9719ea7c7b59ece24feff58763a028f375a739
+## Using BMv2
+```
+ sudo ./bmv2/mininet/msa-examples/routerv4_sw.py --behavioral-exe ./bmv2/targets/simple_switch/simple_switch --num-hosts 2 --mode l3  --json ./p4c/build/v1model/routerv4-main-v1model.json
+```
 

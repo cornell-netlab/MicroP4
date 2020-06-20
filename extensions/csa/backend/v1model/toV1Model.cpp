@@ -93,7 +93,7 @@ const IR::Node* CreateV1ModelArchBlock::createV1ModelParser() {
 
         auto cel = new IR::Member(new IR::PathExpression(V1ModelConstants::stdMetadataArgName),
                                   IR::ID("packet_length"));
-        auto cer = new IR::Constant(100);
+        auto cer = new IR::Constant(14);
         auto verifyArg0 = new IR::Argument(new IR::Geq(cel, cer));
         auto verifyArg1 = new IR::Argument(new IR::Member(
               new IR::PathExpression("error"), IR::ID("PacketTooShort")));
