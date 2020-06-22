@@ -49,7 +49,8 @@ cpackage IPv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empty_
 
     table ipv4_lpm_tbl {
       key = { 
-        hdr.ipv4.dstAddr : lpm;
+        // Why not lpm? because can't specify prefix length in const entries
+        hdr.ipv4.dstAddr : exact; 
         hdr.ipv4.diffserv : ternary;
       } 
       actions = { 
@@ -57,10 +58,17 @@ cpackage IPv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empty_
         default_act;
       }
       const entries = {
+        // v1model mininet suitable entries
         // 10.0.1.1, _
         (32w167772417, _) : process(16w1);
         // 10.0.2.1, _
         (32w167772673, _): process(16w2);
+
+        // for tofino setup at cornell-netlab
+        // 10.0.0.22
+        (32w167772182, _) : process(16w22);
+        // 10.0.0.23
+        (32w167772183, _) : process(16w23);
       }
       default_action = default_act;
 

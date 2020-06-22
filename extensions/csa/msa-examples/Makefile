@@ -2,6 +2,7 @@
 .DEFAULT_GOAL := all
 
 MSA=../../../build/p4c-msa
+P4C_BMV2=../../p4c/build/p4c
 COMPILE_SUBMODULE= -o
 TARGET=  v1model
 TARGET_ARG= --target-arch 
@@ -26,80 +27,69 @@ comma:=,
 empty:=
 space:= $(empty) $(empty)
 
-MICRO_PROGRAMS := ipv4.up4 ipv6.up4
-MICRO_PROGRAMS += mpls-lsr.up4 mpls-lsr-x.up4 mpls-lr-x.up4 
-MICRO_PROGRAMS += srv4.up4  ip-sr-v4.up4 
-MICRO_PROGRAMS += ipv4-acl.up4 ipv4-nat-acl.up4
-MICRO_PROGRAMS += ipv6-acl.up4 ipv6-nat-acl.up4
-MICRO_PROGRAMS += srv6-simple.up4 l3.up4
 
-MICRO_PROGRAMS_PATHS := $(addprefix $(LIB_SRC_DIR), $(MICRO_PROGRAMS))
+PROGRAMS = ROUTINGV4 ROUTINGV6 ROUTINGV46 ROUTINGV46LRX ROUTINGV46SRV4 ROUTINGV46SRV6 ROUTINGV46NATACL 
 
-ROUTINGV4_OBJS := ipv4.json
-ROUTINGV6_OBJS := ipv6.json
-ROUTINGV46_OBJS := $(ROUTINGV4_OBJS) $(ROUTINGV6_OBJS)
-ROUTINGV46LRX_OBJS := $(ROUTINGV46_OBJS) mpls-lr-x.json
-ROUTINGV46SRV4_OBJS :=  srv4.json ip-sr-v4.json $(ROUTINGV6_OBJS)
-ROUTINGV46SRV6_OBJS := $(ROUTINGV46_OBJS) srv6-simple.json
-ROUTINGV46NATACL_OBJS := $(ROUTINGV46_OBJS) 
-ROUTINGV46NATACL_OBJS += ipv4-acl.json ipv4-nat-acl.json 
-ROUTINGV46NATACL_OBJS += ipv6-acl.json ipv6-nat-acl.json 
-ROUTINGV46NATACL_OBJS += l3.json
+ROUTINGV4_DEPS=$(addprefix $(LIB_SRC_DIR), ipv4.up4)
+ROUTINGV6_DEPS=$(addprefix $(LIB_SRC_DIR), ipv6.up4)
+ROUTINGV46_DEPS=$(addprefix $(LIB_SRC_DIR),   ipv4.up4 ipv6.up4)
+ROUTINGV46LRX_DEPS=$(addprefix $(LIB_SRC_DIR), ipv4.up4 ipv6.up4 mpls-lr-x.up4)
+ROUTINGV46SRV4_DEPS=$(addprefix $(LIB_SRC_DIR), srv4.up4 ip-sr-v4.up4 ipv6.up4)
+ROUTINGV46SRV6_DEPS=$(addprefix $(LIB_SRC_DIR), ipv4.up4 ipv6.up4 srv6-simple.up4)
+ROUTINGV46NATACL_DEPS=$(addprefix $(LIB_SRC_DIR), ipv4.up4 ipv6.up4 ipv4-acl.up4 \
+	                        ipv4-nat-acl.up4 ipv6-acl.up4 ipv6-nat-acl.up4 l3.up4)
+ROUTINGV46LSRX_DEPS=$(addprefix $(LIB_SRC_DIR),ipv4.up4 ipv6.up4  mpls-lsr-x.up4)
 
-ROUTINGV46LSRX_OBJS := $(ROUTINGV46_OBJS) mpls-lsr-x.json
+ROUTINGV4_MAIN=main-programs/routerv4_main.up4
+ROUTINGV6_MAIN=main-programs/routerv6_main.up4
+ROUTINGV46_MAIN=main-programs/routerv46_main.up4
+ROUTINGV46LRX_MAIN=main-programs/routerv46lrx_main.up4
+ROUTINGV46SRV4_MAIN=main-programs/router_ipv4srv4ipv6_main.up4
+ROUTINGV46SRV6_MAIN=main-programs/router_ipv4v6srv6_main.up4
+ROUTINGV46NATACL_MAIN=main-programs/router_ipv4v6_nat_acl.up4
 
-ROUTINGV4_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV4_OBJS)))
-ROUTINGV6_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV6_OBJS)))
-ROUTINGV46_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46_OBJS)))
-ROUTINGV46LRX_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46LRX_OBJS)))
-ROUTINGV46SRV4_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46SRV4_OBJS)))
-ROUTINGV46SRV6_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46SRV6_OBJS)))
-ROUTINGV46NATACL_OBJS_PATHS := $(addprefix $(LIB_SRC_DIR), $(strip $(ROUTINGV46NATACL_OBJS)))
+.PHONY: all clean
+all: $(PROGRAMS)
 
-MICRO_P4_JSONS = $(MICRO_PROGRAMS_PATHS:.up4=.json) 
-JSONS : $(MICRO_P4_JSONS)
-
-$(MICRO_P4_JSONS): %.json: %.up4
+%.json: %.up4
 	$(MSA) $(COMPILE_SUBMODULE) $@ $<
 
-############## main program
+define p4c_msa_compile =
+$(eval $(1)_OBJS=$($(1)_DEPS:.up4=.json))
+ALL_OBJS+=$($(1)_OBJS)
+$(1)_UP4=$(notdir $($(1)_MAIN))
 
-routingv4: $(ROUTINGV4_OBJS_PATHS)
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(ROUTINGV4_OBJS_PATHS) main-programs/routerv4-main.up4
+$(1)_TARGET_P4=$$($(1)_UP4:%.up4=%_$(strip $(2)).p4)
 
-routingv6: $(ROUTINGV6_OBJS_PATHS)
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(ROUTINGV6_OBJS_PATHS) main-programs/routerv6-main.up4
+$(eval $(1)_OBJS_LIST = $(subst $(space),$(comma),$($(1)_OBJS)))
+$(1)_BASENAME=$$(basename $$($(1)_TARGET_P4))
 
-routingv46: $(ROUTINGV46_OBJS_PATHS)
-	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/routerv46-main.up4
+$(1)_BUILD=build/$$($(1)_BASENAME)/$$($(1)_TARGET_P4)
+$(1)_BUILD_DIR=build/$$($(1)_BASENAME)
 
-routingv46lrx: $(ROUTINGV46LRX_OBJS_PATHS)
-	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46LRX_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/routerv46lrx-main.up4
+$$($(1)_BUILD) : $$($(1)_OBJS) $$($(1)_MAIN)
+	mkdir -p $$($(1)_BUILD_DIR)
+	$(MSA) $(COMPILE_MAIN_FLAGS) $$($(1)_OBJS_LIST)  $$($(1)_MAIN)
+	mv $$($(1)_TARGET_P4) $$($(1)_BUILD_DIR)/
 
-routingv46srv4: $(ROUTINGV46SRV4_OBJS_PATHS)
-	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46SRV4_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4srv4ipv6-main.up4
+$(1) : $$($(1)_BUILD)
+endef
 
-routingv46srv6: $(ROUTINGV46SRV6_OBJS_PATHS)
-	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46SRV6_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6srv6-main.up4
-
-routingv46natacl: $(ROUTINGV46NATACL_OBJS_PATHS)
-	$(eval OBJS_LIST := $(subst $(space),$(comma),$(ROUTINGV46NATACL_OBJS_PATHS)))
-	$(MSA) $(COMPILE_MAIN_FLAGS) $(OBJS_LIST) main-programs/router-ipv4v6-nat-acl.up4
-
-all: routingv4 routingv6 routingv46 routingv46lrx routingv46srv4 routingv46srv6 routingv46natacl
-
-clean: 
-	rm -f $(LIB_SRC_DIR)*json  *-tofino.p4 *-v1model.p4 *-tna.p4
+$(foreach prog,$(PROGRAMS),$(eval $(call p4c_msa_compile,$(prog),$(TARGET))))
 
 
-# TODO:
-# x-main-tofino.p4 string should be automatically constructed. then following
-# 3) file modification after compilation
-# sed '5,7 d' x-tofino.p4
-# cat tofino-multi-arch-include.txt x-main-tofino.p4 > temp ; 
-# mv temp x-main-tofino.p4 ; 
-# rm temp 
+
+
+define p4c_bmv2_compile =
+$(1)_BMV2_BUILD=$$(addprefix $$($(1)_BUILD_DIR), $$($(1)_BASENAME).json)
+$$($(1)_BMV2_BUILD) : $$($(1)_BUILD)
+	cd $$($(1)_BUILD_DIR) &&  $(P4C_BMV2) --target bmv2 --arch v1model --p4runtime-file  $$($(1)_BASENAME).p4rt --p4runtime-format json --std p4-16 $$($(1)_TARGET_P4) && cd -
+
+$(1) : $$($(1)_BMV2_BUILD)
+endef
+
+$(foreach prog,$(PROGRAMS),$(eval $(call p4c_bmv2_compile,$(prog))))
+
+
+clean:
+	rm -rf ./build $(ALL_OBJS)
