@@ -16,7 +16,7 @@ Download and install μP4C along with associated version of p4c and BMv2 by foll
 2. Tofino architecture files - It is recommended to put your copy of `.p4` of tofino architecture at the same location `p4include`.
 If you face erors from μP4C complaining absence of architecture files, copy them at `<repo root (microp4)>/build/p4include`.
 
-It is recommended to briefly understand build structure and Makefile. However, you are free to skip [1. Makefile](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples#1-makefile) and move to [1. Makefile](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples#2-compile)
+It is recommended to briefly understand build structure and Makefile. However, you are free to skip [1. Makefile](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples#1-makefile) and move to [2. Compile](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples#2-compile)
 ### 1. Makefile
 The makefile in this directory executes every step of compilation process described in the paper. In brief, there are two major steps.
 1. μP4 program to architecture-specific P4 program - Uses μP4C
@@ -36,7 +36,7 @@ The makefile has necessary function `p4c_tna_compile` to
 2. copy PTF tests ([tofino-ptf](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples/tofino-ptf)) and at appropriate location within your local installation of bf-sde-9.0.0. However, for that you need to export necessary environment variables before executing `make`.
 
 
-### 2. To Compile
+### 2. Compile
 #### For v1model
 ```
 make TARGET=v1model
@@ -47,7 +47,7 @@ make TARGET=v1model
 make TARGET=tna
 ```
 
-### 3. To Run
+### 3. Run
 ### Using BMv2
 ```
 run_up4_v1model.sh
