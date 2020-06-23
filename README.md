@@ -46,7 +46,7 @@ git submodule update --init --recursive
 
 ### 2. Install 
 Above clone commands download source code of μP4 along with p4c and BMv2 as submodules.
-To generate P4 source for programs specific to v1model from μP4 programs, installing only μP4 is enough. 
+To generate v1model-specific P4 source for μP4 programs, installing only μP4C is enough. 
 #### Install μP4C
 ```bash
 cd microp4
@@ -57,7 +57,7 @@ make -j4   # This should create p4c-msa executable in the build directory
 cd ..
 ```
 
-To create executable from μP4C-generated P4 program source for v1model, it is required to install p4c.
+To create executables for BMv2 from v1model-specific P4 source, install p4c.
 #### Install p4c and BMv2
 ```bash
 cd ./extensions/csa/msa-examples/p4c
@@ -67,7 +67,7 @@ cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG
 make -j4 
 cd  ../../  # at ./extensions/csa/msa-examples
 ```
-To run executables compilied from μP4C-generated v1model-specific P4 source for, it is required to install BMv2.
+To run executables generated for BMv2, install BMv2.
 ```bash
 cd bmv2 
 ./autogen.sh
