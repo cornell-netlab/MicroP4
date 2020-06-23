@@ -33,11 +33,11 @@ Follow the instructions provided at `https://github.com/hksoni/p4c#dependencies`
 #### Download
 
 ```
-git clone --recursive https://github.com/hksoni/microp4.git microp4 
+git clone --recursive https://github.com/cornell-netlab/MicroP4.git microp4 
 ```
 OR
 ```
-git clone --recurse-submodules https://github.com/hksoni/microp4.git microp4
+git clone --recurse-submodules https://github.com/cornell-netlab/MicroP4.git microp4
 ```
 if you forgot `--recursive` or `--recurse-submodules`
 ```
