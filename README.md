@@ -57,7 +57,7 @@ make -j4   # This should create p4c-msa executable in the build directory
 cd ..
 ```
 
-To create executable from μP4-generated P4 program source for v1model, it is required to install p4c.
+To create executable from μP4C-generated P4 program source for v1model, it is required to install p4c.
 #### Install p4c and BMv2
 ```bash
 cd ./extensions/csa/msa-examples/p4c
@@ -67,11 +67,11 @@ cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG
 make -j4 
 cd  ../../  # at ./extensions/csa/msa-examples
 ```
-To run executables compilied from μP4-generated v1model-specific P4 source for, it is required to install BMv2.
+To run executables compilied from μP4C-generated v1model-specific P4 source for, it is required to install BMv2.
 ```bash
 cd bmv2 
 ./autogen.sh
-./configure 'CXXFLAGS=-O0 -g' --enable-debugger # Mandatory for μP4
+./configure 'CXXFLAGS=-O0 -g' --enable-debugger # Mandatory for μP4, because I will need logs in error scenarios. :)
 make
 [sudo] make install  # if you need to install bmv2
 sudo ldconfig # for linux
