@@ -21,20 +21,53 @@ to generate executables.
 
 
 ## Getting started
-μP4C is developed by extending a fork repo `https://github.com/hksoni/p4c.git` of 
-P4-16 prototype compiler `https://github.com/p4lang/p4c.git`
+μP4C is developed by extending a forked repo `https://github.com/hksoni/p4c.git` of 
+P4-16 prototype compiler `https://github.com/p4lang/p4c.git`. The forked p4c repo is
+added as submodule at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
+Also, BMv2 version compatible to the forked p4c repo is added as submodule at [extensions/csa/msa-examples](https://github.com/hksoni/behavioral-model/tree/ed0174d54fc12f28b3b7371a7613d6303143daea).
 
-### 1. Install Dependencies
+### 1. Install Dependencies and Download
 Follow the instructions listed at `https://github.com/hksoni/p4c#dependencies`.
+
+```
+git clone --recursive https://github.com/hksoni/microp4.git microp4 
+git clone --recurse-submodules https://github.com/hksoni/microp4.git microp4
+```
+if you forgot `--recursive` or `--recurse-submodules`
+```
+git submodule update --init --recursive
+```
 
 ### 2. Install μP4C
 ```bash
-git clone --recursive https://github.com/hksoni/microp4.git microp4
 cd microp4
 mkdir build
+cd build
 cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
-make -j4   // This should create p4c-msa executable in build directory 
+make -j4   # This should create p4c-msa executable in build directory 
+cd ..
 ```
+
+It is recommended to install p4c and BMv2 along with μP4C.
+#### Install p4c and BMv2
+```bash
+cd ./extensions/csa/msa-examples/p4c
+mkdir build
+cd build
+cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
+make -j4 
+cd  ../../  # at ./extensions/csa/msa-examples
+```
+
+```bash
+cd bmv2 
+./autogen.sh
+./configure 'CXXFLAGS=-O0 -g' --enable-debugger # Mandatory for μP4
+make
+[sudo] make install  # if you need to install bmv2
+sudo ldconfig # for linux
+```
+
 
 ### 3. How to Write μP4 Programs
 Every μP4 Program must implemet at least one of the interfaces defined as a part of 
@@ -122,3 +155,5 @@ For more details, have a look at
       ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json \
                       ./extensions/csa/msa-examples/main-programs/routerv4-main.up4
       ```
+## Running Examples
+Have a look at [./extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples) for a set of examples.
