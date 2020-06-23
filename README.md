@@ -24,13 +24,19 @@ to generate executables.
 μP4C is developed by extending a forked repo `https://github.com/hksoni/p4c.git` of 
 P4-16 prototype compiler `https://github.com/p4lang/p4c.git`. The forked p4c repo is
 added as submodule at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
-Also, BMv2 version compatible to the forked p4c repo is added as submodule at [extensions/csa/msa-examples](https://github.com/hksoni/behavioral-model/tree/ed0174d54fc12f28b3b7371a7613d6303143daea).
+Also, a version of BMv2 compatible to the forked p4c repo is added as submodule at [extensions/csa/msa-examples](https://github.com/hksoni/behavioral-model/tree/ed0174d54fc12f28b3b7371a7613d6303143daea).
 
 ### 1. Install Dependencies and Download
-Follow the instructions listed at `https://github.com/hksoni/p4c#dependencies`.
+#### Dependencies
+Follow the instructions provided at `https://github.com/hksoni/p4c#dependencies`.
+
+#### Download
 
 ```
 git clone --recursive https://github.com/hksoni/microp4.git microp4 
+```
+OR
+```
 git clone --recurse-submodules https://github.com/hksoni/microp4.git microp4
 ```
 if you forgot `--recursive` or `--recurse-submodules`
@@ -44,7 +50,7 @@ cd microp4
 mkdir build
 cd build
 cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
-make -j4   # This should create p4c-msa executable in build directory 
+make -j4   # This should create p4c-msa executable in the build directory 
 cd ..
 ```
 
@@ -130,7 +136,7 @@ How to Invoke an instance of cpackage type
 There are example programs at `extensions/csa/msa-examples` path.
 For more details, have a look at
    1. `lib-src/ipv4.up4` a very simple IPv4 cpackage
-   2. `main-programs/routerv4-main.up4` a Main cpackage that uses IPv4 cpackage
+   2. `main-programs/routerv4_main.up4` the `main` cpackage that uses IPv4 cpackage
 
 
 ### 4. How to Use μP4C
@@ -150,10 +156,12 @@ For more details, have a look at
                       -l <<lib-name.json>> <<main μp4 source file>>
       ```
       ##### An example
-      This will generate routerv4-main-v1model.p4
+      This will generate routerv4_main_v1model.p4
       ```
       ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json \
-                      ./extensions/csa/msa-examples/main-programs/routerv4-main.up4
+                      ./extensions/csa/msa-examples/main-programs/routerv4_main.up4
       ```
 ## Running Examples
-Have a look at [./extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples) for a set of examples.
+There are more examples at [./extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples) along with p4c and BMv2 submodules.
+`./extensions/csa/msa-examples` also contains PTF tests for Barefoot's Tofino target. 
+
