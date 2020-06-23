@@ -94,7 +94,11 @@ $(1)_TNA_MAKEFILE=$$($(1)_BUILD_DIR)/Makefile
 $(1)_TNA_BIN=$$($(1)_BUILD_DIR)/tofino/$$($(1)_BASENAME)/pipe/tofino.bin
 $(1)_TNA_CONTEXT_JSON=$$($(1)_BUILD_DIR)/tofino/$$($(1)_BASENAME)/pipe/context.json
 
-$$($(1)_TNA_MAKEFILE) :  |$$($(1)_BUILD)
+$(1)_TNA_SDE_PTF_DIR=$$(SDE)/pkgsrc/p4-examples/p4_16_programs/
+$(1)_TNA_SDE_PTF=$$($(1)_TNA_SDE_PTF_DIR)/$$($(1)_BASENAME)/test.py
+$(1)_TNA_REPO_PTF_DIR=./tofino-ptf/$$($(1)_BASENAME)
+
+$$($(1)_TNA_MAKEFILE) :  | $$($(1)_BUILD)
 	cd $$($(1)_BUILD_DIR) && \
 		$$(SDE)/pkgsrc/p4-build/configure --with-tofino --with-p4c=p4c \
 		--prefix=$$(SDE_INSTALL) --bindir=$$(SDE_INSTALL)/bin P4_NAME=$$($(1)_BASENAME) \
@@ -102,10 +106,15 @@ $$($(1)_TNA_MAKEFILE) :  |$$($(1)_BUILD)
 		LDFLAGS="-L$$(SDE_INSTALL)/lib" && \
 		cd -
 
-$$($(1)_TNA_CONTEXT_JSON) $$($(1)_TNA_BIN) &:  $$($(1)_BUILD) | $$($(1)_TNA_MAKEFILE)
+$$($(1)_TNA_CONTEXT_JSON) $$($(1)_TNA_BIN) $&:  $$($(1)_BUILD) | $$($(1)_TNA_MAKEFILE)
 	cd $$($(1)_BUILD_DIR) && make && make install && cd -
 
-$(1) : $$($(1)_TNA_CONTEXT_JSON) $$($(1)_TNA_BIN)
+$$($(1)_TNA_SDE_PTF) : | $$($(1)_TNA_REPO_PTF)
+	cp -r $$($(1)_TNA_REPO_PTF_DIR) $$($(1)_TNA_SDE_PTF_DIR)
+
+$(1) : $$($(1)_TNA_SDE_PTF) 
+
+$(1) :  $$($(1)_TNA_CONTEXT_JSON) $$($(1)_TNA_BIN) 
 
 endef
 
