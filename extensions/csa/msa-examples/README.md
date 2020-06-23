@@ -48,13 +48,19 @@ make TARGET=tna
 ```
 
 ### 3. Execute
-The submodule `bmv2` contains mininet scripts for the examples at `mininet/msa-examples` directory. They can be launched from this directory (`./extensions/csa/msa-examples`) using `run_up4_v1model.sh` as follows.
 #### With BMv2
+##### Prerequisites
+Install Mininet system-wide from [here](https://github.com/mininet/mininet/blob/master/INSTALL).
+
+The submodule `bmv2` contains mininet scripts for the examples at `mininet/msa-examples` directory. They can be launched from this directory (`./extensions/csa/msa-examples`) using `run_up4_v1model.sh` as follows.
 ```bash
 ./run_up4_v1model.sh
 ```
 
 #### With Tofino
+##### Prerequisites
+You need to have access to proprietary Barefoot SDE 9.0.0.
+
 `make` would configure, compile and install μP4C-generated P4 source for `tna` along with ptf tests provided at `./tofino-ptf` directory.
 To launch PTF tests
 ```bash
