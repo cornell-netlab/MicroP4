@@ -94,7 +94,9 @@ void CPackageToControl::createMCS(const IR::Type_Control* tc) {
             if (iter != typeToArgsMap.end()) {
                 args->push_back(new IR::Argument(iter->second->clone()));
             } else {
-                cstring instName = typeName+"_var";
+                // cstring instName = typeName+"_var";
+                cstring instName = typeName+
+                  NameConstants::intermediateVarDeclSuffix;
                 auto pe = new IR::PathExpression(IR::ID(instName));
                 auto dl = newDeclInsts.getDeclaration(instName);
                 if (dl == nullptr) {
@@ -275,11 +277,28 @@ const IR::Node* CPackageToControl::postorder(IR::P4ComposablePackage* cp) {
     }
 
     auto tc = new IR::Type_Control(cp->getName(), cp->annotations->clone(), pl);
-    
     auto bs = new IR::BlockStatement();
+
+    cstring hdrValidityOpStrTypeName = cp->name + "_" 
+                                  + NameConstants::headerValidityOpStrTypeName;
+    auto program = findContext<IR::P4Program>();
+    auto decls = program->getDeclsByName(hdrValidityOpStrTypeName)->toVector();
+    if (decls->size() == 1) {
+        auto hdrValidityOpStrType = decls->at(0)->to<IR::Type_Struct>();
+        if (hdrValidityOpStrType != nullptr) {
+            for (auto f : hdrValidityOpStrType->fields) {
+                auto pe = new IR::PathExpression(IR::ID(hdrValidityOpStrTypeName
+                                    +NameConstants::intermediateVarDeclSuffix));
+                auto mem = new IR::Member(pe, IR::ID(f->name));
+                auto rhe = new IR::BoolLiteral(false);
+                auto as = new IR::AssignmentStatement(mem, rhe);
+                bs->push_back(as);
+            }
+        }
+    }
+
     addMCSs(bs);
 
-    
     auto iter = controlToReconInfoMap->find(cp->getName());
     if(iter != controlToReconInfoMap->end()) {
         auto itMCSMap = mcsMap.find("micro_deparser");
@@ -295,14 +314,12 @@ const IR::Node* CPackageToControl::postorder(IR::P4ComposablePackage* cp) {
         }
     }
 
-
     if (mcsMap.find("micro_parser") != mcsMap.end()) {
         // Adding intermediate calls to help CSAPacketSubstituter
         // addIntermediateExternCalls(bs);
     }
 
     auto p4ct = new IR::P4Control(IR::ID(cp->getName()), tc, controlLocals, bs);
-
     moveToTop->push_back(p4ct);
     return moveToTop;
 }

@@ -1,6 +1,7 @@
 
 # PROGRAMS = ROUTINGV4 ROUTINGV6 ROUTINGV46 ROUTINGV46LRX ROUTINGV46SRV4 ROUTINGV46SRV6 ROUTINGV46NATACL 
-PROGRAMS = ROUTINGV4  ROUTINGV6 ROUTINGV46
+# PROGRAMS = ROUTINGV4  ROUTINGV6 ROUTINGV46
+PROGRAMS = ROUTINGV46LRX
 comma:=,
 empty:=
 space:= $(empty) $(empty)
@@ -66,7 +67,7 @@ $$($(1)_BUILD) : $$($(1)_OBJS) $$($(1)_MAIN)
 	$(MSA) $(COMPILE_MAIN_FLAGS) $$($(1)_OBJS_LIST)  $$($(1)_MAIN)
 	mv $$($(1)_TARGET_P4) $$($(1)_BUILD_DIR)/
 
-$(1) : $$($(1)_BUILD)
+$(1) : $$($(1)_BUILD) $(MSA)
 
 endef
 $(foreach prog,$(PROGRAMS),$(eval $(call p4c_msa_compile,$(prog),$(TARGET))))
@@ -109,7 +110,7 @@ $$($(1)_TNA_MAKEFILE) :  | $$($(1)_BUILD)
 $$($(1)_TNA_CONTEXT_JSON) $$($(1)_TNA_BIN) $&:  $$($(1)_BUILD) | $$($(1)_TNA_MAKEFILE)
 	cd $$($(1)_BUILD_DIR) && make && make install && cd -
 
-$$($(1)_TNA_SDE_PTF) : | $$($(1)_TNA_REPO_PTF)
+$$($(1)_TNA_SDE_PTF) : $$($(1)_TNA_REPO_PTF)
 	cp -r $$($(1)_TNA_REPO_PTF_DIR) $$($(1)_TNA_SDE_PTF_DIR)
 
 $(1) : $$($(1)_TNA_SDE_PTF) 

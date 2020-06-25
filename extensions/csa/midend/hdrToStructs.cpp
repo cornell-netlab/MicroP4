@@ -8,8 +8,6 @@
 
 namespace CSA {
 
-
-
 bool HdrToStructs::skipHeaderTypes(cstring typeName) {
     if (typeName == NameConstants::multiByteHdrTypeName ||
         typeName == NameConstants::headerTypeName || 
