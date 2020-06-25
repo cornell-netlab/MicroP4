@@ -1,7 +1,7 @@
 
 # PROGRAMS = ROUTINGV4 ROUTINGV6 ROUTINGV46 ROUTINGV46LRX ROUTINGV46SRV4 ROUTINGV46SRV6 ROUTINGV46NATACL 
 # PROGRAMS = ROUTINGV4  ROUTINGV6 ROUTINGV46
-PROGRAMS = ROUTINGV46LRX
+PROGRAMS = ROUTINGV46NATACL
 comma:=,
 empty:=
 space:= $(empty) $(empty)
@@ -62,12 +62,12 @@ $(1)_BASENAME=$$(basename $$($(1)_TARGET_P4))
 $(1)_BUILD=build/$$($(1)_BASENAME)/$$($(1)_TARGET_P4)
 $(1)_BUILD_DIR=build/$$($(1)_BASENAME)
 
-$$($(1)_BUILD) : $$($(1)_OBJS) $$($(1)_MAIN)
+$$($(1)_BUILD) : $$($(1)_OBJS) $$($(1)_MAIN)  $(MSA)
 	mkdir -p $$($(1)_BUILD_DIR)
 	$(MSA) $(COMPILE_MAIN_FLAGS) $$($(1)_OBJS_LIST)  $$($(1)_MAIN)
 	mv $$($(1)_TARGET_P4) $$($(1)_BUILD_DIR)/
 
-$(1) : $$($(1)_BUILD) $(MSA)
+$(1) : $$($(1)_BUILD) 
 
 endef
 $(foreach prog,$(PROGRAMS),$(eval $(call p4c_msa_compile,$(prog),$(TARGET))))
@@ -75,7 +75,7 @@ $(foreach prog,$(PROGRAMS),$(eval $(call p4c_msa_compile,$(prog),$(TARGET))))
 define p4c_bmv2_compile =
 
 $(1)_BMV2_BUILD=$$(addprefix $$($(1)_BUILD_DIR), $$($(1)_BASENAME).json)
-$$($(1)_BMV2_BUILD) : $$($(1)_BUILD)
+$$($(1)_BMV2_BUILD) : $$($(1)_BUILD) $(MSA)
 	cd $$($(1)_BUILD_DIR) &&  \
 		$(P4C_BMV2) --target bmv2 --arch v1model \
 		--p4runtime-file  $$($(1)_BASENAME).p4rt \

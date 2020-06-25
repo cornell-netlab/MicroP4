@@ -303,6 +303,11 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 		        ExtractSubstitutor extctSubr(refMap, typeMap, stateInfo, initOffset,
                             pktParamName, NameConstants::csaHeaderInstanceName);
 		        auto components = statOrDecl->apply(extctSubr);
+            auto cc = components->to<IR::IndexedVector<IR::StatOrDecl>>()->clone();
+            // std::cout<<cc->size()<<" -> ";
+            if (cc->size()>1)  // pop_back? because empty not found error
+                cc->erase(--(cc->end()));
+            // std::cout<<cc->size()<<"\n";
 		 	 	    auto actionBlockStatements = *components;
             LOG3("evaluated instance "<< stateInfo->name);
             auto iter = toAppendStats.find(newActionName);
@@ -313,7 +318,8 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
 		        }
 		        for (auto p: stateInfo->nextParserStateInfo) {
                 auto nextAppendName = getActionName(p.second, initOffset);
-                toAppendStats.emplace(nextAppendName, actionBlockStatements);
+                toAppendStats.emplace(nextAppendName, *cc);
+                // toAppendStats.emplace(nextAppendName, actionBlockStatements);
 		        	  LOG3("adding info about what to append "<< nextAppendName);
 		        }
 
@@ -435,6 +441,17 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                                 }
               	 	  	 		    //entry processing
                                 auto caseKeysetExp = kseNSI.first->clone();
+                                // TODO: handle kseNSI.first as expressionList.
+                                // select({e1, e2,...}) is not handled with mask
+                                auto kseNSIType = typeMap->getType(kseNSI.first);
+                                auto kseNSITypeBits = kseNSIType->to<IR::Type_Bits>();
+                                if (kseNSITypeBits && exprList.size() > 0) {
+                                    auto w = kseNSITypeBits->width_bits();
+                                    auto me = new IR::Mask(caseKeysetExp,
+                                              IR::Constant::GetMask(w).clone());
+                                    caseKeysetExp = me;
+                                }
+
 								                if (hasSelectExpression(state)){
                                     suffExprList.push_back(caseKeysetExp);
                                     if (!unsubstKeyAdded) {
@@ -483,6 +500,16 @@ bool ParserConverter::stateIterator(IR::ParserState* state){
                                                            initOffset);
                         if (hasSelectExpression(state)) {
                             auto caseKeysetExp = kseNSI.first->clone();
+                            auto kseNSIType = typeMap->getType(kseNSI.first);
+                            auto kseNSITypeBits = kseNSIType->to<IR::Type_Bits>();
+                            if (kseNSITypeBits && exprList.size() > 0) {
+                                auto w = kseNSITypeBits->width_bits();
+                                auto me = new IR::Mask(caseKeysetExp,
+                                            IR::Constant::GetMask(w).clone());
+                                caseKeysetExp = me;
+                            }
+
+
                             exprList.push_back(caseKeysetExp);
                             //LOG3("caseKeysetExp" << caseKeysetExp);
                         }
@@ -619,7 +646,9 @@ const IR::Node* ExtractSubstitutor::preorder(IR::MethodCallStatement* mcs) {
     auto retVec = new IR::IndexedVector<IR::StatOrDecl>();
     // retVec->push_back(setValidMCS);
     retVec->push_back(as);
-    retVec->append(asmtSmts);
+    for (auto s : asmtSmts)
+        retVec->push_back(s);
+    // retVec->append(asmtSmts);
     prune();
     return retVec;
 }

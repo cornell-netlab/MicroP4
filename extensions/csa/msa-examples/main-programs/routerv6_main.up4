@@ -43,6 +43,8 @@ cpackage ModularRouterv6 : implements Unicast<hdr_t, meta_t,
       const entries = {
         (16w1) : forward(0x000000000001, 0x000000000002, 9w1);
         (16w2) : forward(0x000000000002, 0x000000000001, 9w2);
+        (16w22) : forward(0x3cfdfec3e540, 0x3cfdfec3e428, 9w44);
+        (16w23) : forward(0x3cfdfec3e428, 0x3cfdfec3e540, 9w52);
       }
     }
     apply {

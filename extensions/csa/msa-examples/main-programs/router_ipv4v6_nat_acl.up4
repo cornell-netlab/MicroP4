@@ -72,6 +72,12 @@ cpackage MicroP4Switch : implements Unicast<hdr_t, meta_t,
     table forward_tbl {
       key = { l3ioa.next_hop : exact; } 
       actions = { forward; }
+      const entries = {
+        (16w1) : forward(0x000000000001, 0x000000000002, 9w1);
+        (16w2) : forward(0x000000000002, 0x000000000001, 9w2);
+        (16w22) : forward(0x3cfdfec3e540, 0x3cfdfec3e428, 9w44);
+        (16w23) : forward(0x3cfdfec3e428, 0x3cfdfec3e540, 9w52);
+      }
     }
 
 /*
@@ -116,18 +122,16 @@ cpackage MicroP4Switch : implements Unicast<hdr_t, meta_t,
 
     apply { 
       l3ioa.next_hop = 16w0;
-      l3ioa.eth_type = m.ethType;
+      l3ioa.eth_type = hdr.eth.ethType;
       l3ioa.acl.hard_drop = 1w0;
       l3ioa.acl.soft_drop = 1w0;
-      if (l3ioa.eth_type == 0x0800) {
-        l3_i.apply(p, im, ia, oa, l3ioa);
-        if (l3ioa.acl.hard_drop == 1w0 && l3ioa.acl.soft_drop == 1w0)
-          forward_tbl.apply(); 
-        else if (l3ioa.next_hop == 16w0)
-          switch_tbl.apply();
-        else 
-          im.drop();
-      } 
+      l3_i.apply(p, im, ia, oa, l3ioa);
+      if (l3ioa.acl.hard_drop == 1w0 && l3ioa.acl.soft_drop == 1w0)
+        forward_tbl.apply(); 
+      else if (l3ioa.next_hop == 16w0)
+        switch_tbl.apply();
+      else 
+        im.drop();
       /*
       if (im.get_value(metadata_fields_t.QUEUE_DEPTH_AT_DEQUEUE) == (bit<32>)64) {
           im.drop();
