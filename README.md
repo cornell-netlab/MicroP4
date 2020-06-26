@@ -15,14 +15,14 @@ You can
 
 
 ## Download the code
-```
+```bash
 git clone --recursive https://github.com/cornell-netlab/MicroP4.git
 cd MicroP4
-git checkout gh-pages-src // ignore warnings for couple of directories
+git checkout gh-pages-src # ignore warnings for couple of directories
 
-// If you intend to compile after modifying .md files 
+# If you intend to compile after modifying .md files 
 git submodule update --remote 
-// If you intend to modify theme code
+# If you intend to modify theme code
 git submodule  update -f --checkout themes/ace-documentation
 ```
  
