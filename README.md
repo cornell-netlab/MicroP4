@@ -15,13 +15,14 @@ You can
 
 
 ## Download the code
-```
+```bash
 git clone --recursive https://github.com/cornell-netlab/MicroP4.git
-git checkout gh-pages-src // ignore warnings for couple of directories
+cd MicroP4
+git checkout gh-pages-src # ignore warnings for couple of directories
 
-// If you intend to compile after modifying .md files 
+# If you intend to compile after modifying .md files 
 git submodule update --remote 
-// If you intend to modify theme code
+# If you intend to modify theme code
 git submodule  update -f --checkout themes/ace-documentation
 ```
  
@@ -30,10 +31,7 @@ git submodule  update -f --checkout themes/ace-documentation
 The website is built using Hugo. Get Hugo.
 
 ### Install HUGO
-Use `hugo_extended_0.72.0_*` from 
-``` 
-https://github.com/gohugoio/hugo/releases
-```
+Install `hugo_extended_0.72.0_*` from https://github.com/gohugoio/hugo/releases/tag/v0.72.0
 
 
 ### How to run local server
