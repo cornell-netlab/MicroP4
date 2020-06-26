@@ -11,7 +11,8 @@
 #define SEG_LEN 128
 #define ROUTER_FUNC 0 // 0 for SR domain entry point , 1 for SR transit node
 #define FIRST_SEG 0x02560a0b0c025660a0b0f5670dbbfe03
-#define ROUTER_IP 0x20010a0b0c025660a0b0f5670dbbfe01
+// #define ROUTER_IP 0x20010a0b0c025660a0b0f5670dbbfe01
+#define ROUTER_IP 0x000000000000000000000000000bfe01
 #define LOCAL_SRV6_SID 0x025603a1cc025660000000000000000
 #define LOCAL_INT 0x02560a0b0c0256600000000000000000
 
@@ -133,8 +134,8 @@ parser ParserImpl (packet_in pin, out routerv46SRv6_hdr_t parsed_hdr,
     }
   
     state check_seg_routing {
-      transition select(parsed_hdr.ipv6.dstAddr){
-        ROUTER_IP : parse_seg_routing;
+      transition select(parsed_hdr.ipv6.dstAddr[127:112]){
+        16w0xff : parse_seg_routing;
         _ : accept;
       }
     }
