@@ -31,10 +31,7 @@ git submodule  update -f --checkout themes/ace-documentation
 The website is built using Hugo. Get Hugo.
 
 ### Install HUGO
-Use `hugo_extended_0.72.0_*` from 
-``` 
-https://github.com/gohugoio/hugo/releases
-```
+Install `hugo_extended_0.72.0_*` from https://github.com/gohugoio/hugo/releases/tag/v0.72.0
 
 
 ### How to run local server
