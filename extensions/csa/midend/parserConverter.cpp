@@ -180,10 +180,9 @@ cstring ParserConverter::createInitdAction(IR::P4Parser* parser) {
                                      NameConstants::indicesHeaderInstanceName);
     auto currOffsetExp = new IR::Member(indicesExp, 
                                       NameConstants::csaPktStuCurrOffsetFName);
-    indicesExp = new IR::Member(new IR::PathExpression(pktParamName), 
-                                NameConstants::indicesHeaderInstanceName);
-    auto initOffsetExp = new IR::Member(indicesExp, 
-                                      NameConstants::csaPktStuInitOffsetFName);
+    auto localOffsetExp = new IR::Member(
+        new IR::PathExpression(NameConstants::parserMetaStrParamName), 
+                              NameConstants::localCurrOffsetFName);
 
     if (initialOffsets->size() == 1 &&  (*initialOffsets)[0] == 0) {
         auto offsetVal = new IR::Constant(0, 10);
@@ -191,10 +190,10 @@ cstring ParserConverter::createInitdAction(IR::P4Parser* parser) {
         statOrDeclList->push_back(offsetAs);
 
         offsetVal = new IR::Constant(0, 10);
-        auto initOffsetAs = new IR::AssignmentStatement(initOffsetExp, offsetVal);
-        statOrDeclList->push_back(initOffsetAs);
+        auto lclOffsetAs = new IR::AssignmentStatement(localOffsetExp, offsetVal);
+        statOrDeclList->push_back(lclOffsetAs);
     } else {
-        auto oas = new IR::AssignmentStatement(initOffsetExp, currOffsetExp);
+        auto oas = new IR::AssignmentStatement(localOffsetExp, currOffsetExp);
         statOrDeclList->push_back(oas);
     }
 

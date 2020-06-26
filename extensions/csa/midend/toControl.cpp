@@ -362,21 +362,16 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
 
     auto pktLengthFieldType = IR::Type::Bits::get(16, false);
     auto stackHeadFieldType = IR::Type::Bits::get(16, false);
-    auto initOffsetFieldType = IR::Type::Bits::get(16, false);
     auto stackHeadField = new IR::StructField(
                                   NameConstants::csaPktStuCurrOffsetFName, 
                                   stackHeadFieldType);
     auto pktLengthField = new IR::StructField(
                                   NameConstants::csaPktStuLenFName, 
                                   pktLengthFieldType);
-    auto initOffsetField = new IR::StructField(
-                                  NameConstants::csaPktStuInitOffsetFName, 
-                                  initOffsetFieldType);
 
     IR::IndexedVector<IR::StructField> indicesFields;
     indicesFields.push_back(pktLengthField);
     indicesFields.push_back(stackHeadField);
-    indicesFields.push_back(initOffsetField);
     auto csaIndicesHeaderType = new IR::Type_Header(
                                       NameConstants::indicesHeaderTypeName, indicesFields);
 
@@ -608,10 +603,14 @@ const IR::Node* Converter::preorder(IR::P4Parser* parser) {
     auto flagField = new IR::StructField(
                          NameConstants::csaParserRejectStatus, flagType);
 
+    auto lclCurrOffsetFieldType = IR::Type::Bits::get(16, false);
+    auto currOffsetField = new IR::StructField(
+                  NameConstants::localCurrOffsetFName, lclCurrOffsetFieldType);
     cstring parserMSAMetaStrTypeName = 
                           cpkgName+"_"+NameConstants::parserMetaStrTypeName;
     auto ts = createValidityStruct(hdrStrType, parserMSAMetaStrTypeName);
     ts->fields.push_back(flagField);
+    ts->fields.push_back(currOffsetField);
     addInP4ProgramObjects.push_back(ts);
 
     ParserConverter pc(refMap, typeMap, parserStructure, offsetsStack.back(), 

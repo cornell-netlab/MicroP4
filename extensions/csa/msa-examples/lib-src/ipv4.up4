@@ -40,7 +40,9 @@ cpackage IPv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empty_
                           in empty_t e, out bit<16> nexthop, 
                           inout empty_t ioa) { // nexthop out arg
     action process(bit<16> nh) {
-      hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+      // disabling for pings
+      // hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+
       nexthop = nh;  // setting out param
     }
     action default_act() {

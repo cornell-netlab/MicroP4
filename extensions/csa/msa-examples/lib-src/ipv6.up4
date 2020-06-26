@@ -38,7 +38,7 @@ cpackage IPv6 : implements Unicast<l3v6_hdr_t, l3_meta_t, empty_t, bit<16>, empt
                           in empty_t e, out bit<16> nexthop, 
                           inout empty_t ioa) { // nexthop out arg
 	action process(bit<16> nh){
-      hdr.ipv6.hoplimit = hdr.ipv6.hoplimit - 1;
+      // hdr.ipv6.hoplimit = hdr.ipv6.hoplimit - 1;
       nexthop = nh;
     }
     action default_act() {

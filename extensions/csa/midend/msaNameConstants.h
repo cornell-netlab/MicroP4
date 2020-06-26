@@ -31,6 +31,7 @@ class NameConstants {
     static const cstring headerValidityOpStrParamName;
     static const cstring parserMetaStrTypeName;
     static const cstring parserMetaStrParamName;
+    static const cstring localCurrOffsetFName;
 
     static const cstring hdrValidFlagSuffix;
     static const cstring hdrSetValidOpFlagSuffix;
@@ -42,8 +43,6 @@ class NameConstants {
 
     static const cstring csaPktStuLenFName;
     static const cstring csaPktStuCurrOffsetFName;
-    static const cstring csaPktStuInitOffsetFName;
-
 
     static const cstring csaParserRejectStatus;
   private:

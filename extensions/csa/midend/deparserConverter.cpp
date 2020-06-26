@@ -122,12 +122,17 @@ bool DeparserConverter::isDeparser(const IR::P4Control* p4control) {
 
 IR::P4Table* DeparserConverter::initTableWithOffsetEntries(const IR::MethodCallStatement* mcs) {
     
-    auto offsetName = NameConstants::csaPktStuCurrOffsetFName;
+    auto offsetName = NameConstants::localCurrOffsetFName;
     // indicesHeaderInstanceName
     auto ke1 = new IR::Member(new IR::PathExpression(paketOutParamName), 
                               NameConstants::indicesHeaderInstanceName);
     auto ke2 = new IR::Member(ke1, offsetName);
-    keyElementLists[mcs].emplace_back(ke2, true);
+
+    auto parserMetaCurrOS = new IR::Member(
+                  new IR::PathExpression(NameConstants::parserMetaStrParamName), 
+                  IR::ID(NameConstants::localCurrOffsetFName));
+
+    keyElementLists[mcs].emplace_back(parserMetaCurrOS, true);
     keyNamesWidths.emplace_back(offsetName, 0);
 
     IR::Vector<IR::KeyElement> keyElementList;
@@ -381,6 +386,7 @@ const IR::Node* DeparserConverter::postorder(IR::BlockStatement* bs) {
     if (tableDecls.size() != 1)
         return bs;
     auto p4Table = tableDecls[0];
+    /*
     auto indicesExp = new IR::Member(new IR::PathExpression(paketOutParamName), 
                                      NameConstants::indicesHeaderInstanceName);
     auto currOffsetExp = new IR::Member(indicesExp, 
@@ -390,7 +396,8 @@ const IR::Node* DeparserConverter::postorder(IR::BlockStatement* bs) {
     auto initOffsetExp = new IR::Member(indicesExp, 
                                       NameConstants::csaPktStuInitOffsetFName);
     auto oas = new IR::AssignmentStatement(currOffsetExp, initOffsetExp);
-    // bs->push_back(oas);
+    bs->push_back(oas);
+    */
 
     auto method = new IR::Member(new IR::PathExpression(p4Table->name.name), IR::ID("apply"));
     auto mce = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
