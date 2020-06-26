@@ -1,11 +1,12 @@
 
-# PROGRAMS = ROUTINGV4 ROUTINGV6 ROUTINGV46 ROUTINGV46LRX ROUTINGV46SRV4 ROUTINGV46SRV6 ROUTINGV46NATACL 
-PROGRAMS = ROUTINGV4 ROUTINGV6 ROUTINGV46 ROUTINGV46NATACL
+PROGRAMS = ROUTINGV4 ROUTINGV6 ROUTINGV46 ROUTINGV46LRX ROUTINGV46SRV4 ROUTINGV46SRV6 ROUTINGV46NATACL 
+# PROGRAMS = ROUTINGV4 ROUTINGV6 ROUTINGV46 ROUTINGV46NATACL
 comma:=,
 empty:=
 space:= $(empty) $(empty)
 MSA=../../../build/p4c-msa
 P4C_BMV2=../../p4c/build/p4c
+P4C_TNA=bin/bf-p4c -b tofino --verbose 3 -g --create-graphs 
 COMPILE_SUBMODULE= -o
 TARGET=  v1model
 TARGET_ARG= --target-arch 
@@ -94,9 +95,12 @@ $(1)_TNA_MAKEFILE=$$($(1)_BUILD_DIR)/Makefile
 $(1)_TNA_BIN=$$($(1)_BUILD_DIR)/tofino/$$($(1)_BASENAME)/pipe/tofino.bin
 $(1)_TNA_CONTEXT_JSON=$$($(1)_BUILD_DIR)/tofino/$$($(1)_BASENAME)/pipe/context.json
 
-$(1)_TNA_SDE_PTF_DIR=$$(SDE)/pkgsrc/p4-examples/p4_16_programs/
+$(1)_TNA_SDE_PTF_DIR=$$(SDE)/pkgsrc/p4-examples/p4_16_programs
 $(1)_TNA_SDE_PTF=$$($(1)_TNA_SDE_PTF_DIR)/$$($(1)_BASENAME)/test.py
 $(1)_TNA_REPO_PTF_DIR=./tofino-ptf/$$($(1)_BASENAME)
+
+
+$(1)_TNA_MAKEFILE=$$($(1)_BUILD_DIR)/_vb 
 
 $$($(1)_TNA_MAKEFILE) :  | $$($(1)_BUILD)
 	cd $$($(1)_BUILD_DIR) && \
@@ -107,10 +111,12 @@ $$($(1)_TNA_MAKEFILE) :  | $$($(1)_BUILD)
 		cd -
 
 $$($(1)_TNA_CONTEXT_JSON) $$($(1)_TNA_BIN) $&:  $$($(1)_BUILD) | $$($(1)_TNA_MAKEFILE)
-	cd $$($(1)_BUILD_DIR) && make && make install && cd -
+	cd $$($(1)_BUILD_DIR) && make && make install && cd - && \
+		cd ./build/ &&  $$(SDE_INSTALL)/$$(P4C_TNA)  $$(PWD)/$$($(1)_BUILD) &&  cd -
 
-$$($(1)_TNA_SDE_PTF) : $$($(1)_TNA_REPO_PTF)
-	cp -r $$($(1)_TNA_REPO_PTF_DIR) $$($(1)_TNA_SDE_PTF_DIR)
+$$($(1)_TNA_SDE_PTF) : $$($(1)_TNA_REPO_PTF_DIR)
+	mkdir -p $$($(1)_TNA_SDE_PTF_DIR)/$$($(1)_BASENAME) && \
+	cp  -r  $$($(1)_TNA_REPO_PTF_DIR)  $$($(1)_TNA_SDE_PTF_DIR)
 
 $(1) : $$($(1)_TNA_SDE_PTF) 
 
