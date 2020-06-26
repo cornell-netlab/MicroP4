@@ -28,7 +28,7 @@ Also, a version of BMv2 compatible to the forked p4c repo is added as submodule 
 
 ### 1. Install Dependencies and Download
 #### Dependencies
-Follow the instructions provided at `https://github.com/hksoni/p4c#dependencies`.
+Follow the instructions provided at https://github.com/hksoni/p4c#dependencies.
 
 #### Download
 
