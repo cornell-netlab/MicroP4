@@ -20,14 +20,14 @@ include_directories (
     )
 
 set (MSA_MIDEND_HDRS
-    midend/headerMerge.h
-    midend/compareStorageExp.h
-    midend/deParMotionCSTRChkr.h
-    midend/toWellFormedParser.h
-    midend/concatDeParMerge.h
-    midend/paraDeParMerge.h
-    midend/alignParamNames.h
-    midend/deParMotion.h
+  #  midend/headerMerge.h
+  #  midend/compareStorageExp.h
+  #  midend/deParMotionCSTRChkr.h
+  #  midend/toWellFormedParser.h
+  #  midend/concatDeParMerge.h
+  #  midend/paraDeParMerge.h
+  #  midend/alignParamNames.h
+  #  midend/deParMotion.h
     midend/msaNameConstants.h
     midend/cloneWithFreshPath.h
     midend/staticAnalyzer.h
@@ -49,14 +49,14 @@ set (MSA_MIDEND_HDRS
     )
 
 set (MSA_MIDEND_SRCS
-    midend/headerMerge.cpp
-    midend/compareStorageExp.cpp
-    midend/deParMotionCSTRChkr.cpp
-    midend/toWellFormedParser.cpp
-    midend/concatDeParMerge.cpp
-    midend/paraDeParMerge.cpp
-    midend/alignParamNames.cpp
-    midend/deParMotion.cpp
+ #   midend/headerMerge.cpp
+ #   midend/compareStorageExp.cpp
+ #   midend/deParMotionCSTRChkr.cpp
+ #   midend/toWellFormedParser.cpp
+ #   midend/concatDeParMerge.cpp
+ #   midend/paraDeParMerge.cpp
+ #   midend/alignParamNames.cpp
+ #   midend/deParMotion.cpp
     midend/msaNameConstants.cpp
     midend/cloneWithFreshPath.cpp
     midend/staticAnalyzer.cpp

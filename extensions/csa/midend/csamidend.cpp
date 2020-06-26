@@ -18,7 +18,6 @@
 #include "frontends/parsers/parserDriver.h"
 #include "midend/parserUnroll.h"
 #include "midend/midEndLast.h"
-#include "alignParamNames.h"
 #include "mergeDeclarations.h"
 #include "slicePipeControl.h"
 #include "toControl.h"
@@ -32,8 +31,11 @@
 #include "cloneWithFreshPath.h"
 #include "deadFieldElimination.h"
 #include "toWellFormedParser.h"
+/*
+#include "alignParamNames.h"
 #include "paraDeParMerge.h"
 #include "concatDeParMerge.h"
+*/
 
 namespace CSA {
 

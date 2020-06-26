@@ -6,6 +6,8 @@
 #ifndef _EXTENSIONS_CSA_MIDEND_NAMECONSTANTS_H_ 
 #define _EXTENSIONS_CSA_MIDEND_NAMECONSTANTS_H_ 
 
+#include "lib/cstring.h"
+
 namespace CSA {
 
 class NameConstants {
