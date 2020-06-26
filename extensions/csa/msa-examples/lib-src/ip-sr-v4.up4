@@ -41,7 +41,7 @@ cpackage IPSRv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empt
                           inout empty_t ioa) { // nexthop out arg
     SRv4() srv4;
     action process(bit<16> nh) {
-      hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+      // hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
       nexthop = nh;  // setting out param
     }
     action default_act() {
@@ -50,13 +50,27 @@ cpackage IPSRv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empt
 
     table ipv4_lpm_tbl {
       key = { 
-        hdr.ipv4.dstAddr : lpm;
+        hdr.ipv4.dstAddr : exact;
         hdr.ipv4.diffserv : ternary;
       } 
       actions = { 
         process; 
         default_act;
       }
+      const entries = {
+        // v1model mininet suitable entries
+        // 10.0.1.1, _
+        (32w167772417, _) : process(16w1);
+        // 10.0.2.1, _
+        (32w167772673, _): process(16w2);
+
+        // for tofino setup at cornell-netlab
+        // 10.0.0.22
+        (32w167772182, _) : process(16w22);
+        // 10.0.0.23
+        (32w167772183, _) : process(16w23);
+      }
+
       default_action = default_act;
 
     }
