@@ -17,6 +17,7 @@ You can
 ## Download the code
 ```
 git clone --recursive https://github.com/cornell-netlab/MicroP4.git
+cd MicroP4
 git checkout gh-pages-src // ignore warnings for couple of directories
 
 // If you intend to compile after modifying .md files 
