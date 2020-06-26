@@ -24,7 +24,7 @@ ordersectionsby = "weight" # ordersectionsby = "title"
 disableSearch = true # default is false
 disableReadmoreNav = false # set true to hide prev/next navigation, default is false
 highlightClientSide = false # set true to use highlight.pack.js instead of the default hugo chroma highlighter
-menushortcutsnewtab = true # set true to open shortcuts links to a new tab/window
+menushortcutsnewtab = false # set true to open shortcuts links to a new tab/window
 
 [markup]
   [markup.goldmark]
@@ -35,12 +35,13 @@ menushortcutsnewtab = true # set true to open shortcuts links to a new tab/windo
 home = [ "HTML", "RSS", "JSON"]
 
 [[menu.shortcuts]]
-name = "<i class='fab fa-github'></i> μP4"
+name = "<i class='fab fa-github'></i> Code"
 url = "https://github.com/cornell-netlab/MicroP4/"
 weight = 1
 
+
 [[menu.shortcuts]]
-name = "Documentation"
+name = "<i class='fa fa-home'></i> Home"
 url = "https://cornell-netlab.github.io/MicroP4/"
 weight = 2
 
