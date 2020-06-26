@@ -1,12 +1,5 @@
 [
 {
-	"uri": "https://cornell-netlab.github.io/MicroP4/usage/lib/",
-	"title": "Compiling Libraries",
-	"tags": [],
-	"description": "",
-	"content": "TODO: text "
-},
-{
 	"uri": "https://cornell-netlab.github.io/MicroP4/installation/",
 	"title": "Installing μP4",
 	"tags": [],
@@ -15,17 +8,10 @@
 },
 {
 	"uri": "https://cornell-netlab.github.io/MicroP4/usage/",
-	"title": "Compiling with μP4C",
+	"title": "Using μP4",
 	"tags": [],
 	"description": "",
-	"content": "two possible ways to compile Compiling Libraries   Generating P4-16    "
-},
-{
-	"uri": "https://cornell-netlab.github.io/MicroP4/usage/obj/",
-	"title": "Generating P4-16",
-	"tags": [],
-	"description": "",
-	"content": "TODO: text "
+	"content": "There are two steps in using μP4:\n Writing μP4 programs: See this page for instructions on writing new programs. Compiling μP4 programs: See this page for instructions on compiling μP4 programs with μP4C.   -- "
 },
 {
 	"uri": "https://cornell-netlab.github.io/MicroP4/contributors/",

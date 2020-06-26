@@ -1,32 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Compiling with μP4C on μP4</title>
+    <title>Using μP4 on μP4</title>
     <link>https://cornell-netlab.github.io/MicroP4/usage/</link>
-    <description>Recent content in Compiling with μP4C on μP4</description>
+    <description>Recent content in Using μP4 on μP4</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     
 	<atom:link href="https://cornell-netlab.github.io/MicroP4/usage/index.xml" rel="self" type="application/rss+xml" />
     
-    
-    <item>
-      <title>Compiling Libraries</title>
-      <link>https://cornell-netlab.github.io/MicroP4/usage/lib/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://cornell-netlab.github.io/MicroP4/usage/lib/</guid>
-      <description>TODO: text </description>
-    </item>
-    
-    <item>
-      <title>Generating P4-16</title>
-      <link>https://cornell-netlab.github.io/MicroP4/usage/obj/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://cornell-netlab.github.io/MicroP4/usage/obj/</guid>
-      <description>TODO: text </description>
-    </item>
     
   </channel>
 </rss>

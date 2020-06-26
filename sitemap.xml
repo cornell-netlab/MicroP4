@@ -3,19 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://cornell-netlab.github.io/MicroP4/usage/lib/</loc>
-  </url>
-  
-  <url>
     <loc>https://cornell-netlab.github.io/MicroP4/installation/</loc>
   </url>
   
   <url>
     <loc>https://cornell-netlab.github.io/MicroP4/usage/</loc>
-  </url>
-  
-  <url>
-    <loc>https://cornell-netlab.github.io/MicroP4/usage/obj/</loc>
   </url>
   
   <url>
