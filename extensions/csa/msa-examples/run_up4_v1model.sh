@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # PROGRAMS="routerv4_main routerv6_main routerv46_main"
-PROGRAMS="router_ipv4v6_nat_acl"
+# PROGRAMS="router_ipv4v6_nat_acl"
+PROGRAMS="routerv4_main routerv6_main routerv46_main router_ipv4v6_nat_acl"
 
 BMV2_MININET_PATH=./bmv2/mininet/msa-examples
 BMV2_SIMPLE_SWITCH_BIN=./bmv2/targets/simple_switch/simple_switch

@@ -42,6 +42,7 @@ class NameConstants {
 
     static const cstring csaPktStuLenFName;
     static const cstring csaPktStuCurrOffsetFName;
+    static const cstring csaPktStuInitOffsetFName;
 
 
     static const cstring csaParserRejectStatus;

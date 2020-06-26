@@ -362,16 +362,21 @@ const IR::Node* AddCSAByteHeader::preorder(IR::P4Program* p4Program) {
 
     auto pktLengthFieldType = IR::Type::Bits::get(16, false);
     auto stackHeadFieldType = IR::Type::Bits::get(16, false);
+    auto initOffsetFieldType = IR::Type::Bits::get(16, false);
     auto stackHeadField = new IR::StructField(
                                   NameConstants::csaPktStuCurrOffsetFName, 
                                   stackHeadFieldType);
     auto pktLengthField = new IR::StructField(
                                   NameConstants::csaPktStuLenFName, 
                                   pktLengthFieldType);
+    auto initOffsetField = new IR::StructField(
+                                  NameConstants::csaPktStuInitOffsetFName, 
+                                  initOffsetFieldType);
 
     IR::IndexedVector<IR::StructField> indicesFields;
     indicesFields.push_back(pktLengthField);
     indicesFields.push_back(stackHeadField);
+    indicesFields.push_back(initOffsetField);
     auto csaIndicesHeaderType = new IR::Type_Header(
                                       NameConstants::indicesHeaderTypeName, indicesFields);
 

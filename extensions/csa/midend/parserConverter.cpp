@@ -171,20 +171,31 @@ cstring ParserConverter::createInitdAction(IR::P4Parser* parser) {
                                 IR::ID(NameConstants::csaParserRejectStatus));
     auto rval = new IR::Constant(0, 2);
     auto as = new IR::AssignmentStatement(lval, rval);
+    
     statOrDeclList->push_back(as);
 
+    auto pktParam =  parser->getApplyParameters()->parameters.at(1);
+    auto pktParamName = pktParam->getName();
+    auto indicesExp = new IR::Member(new IR::PathExpression(pktParamName), 
+                                     NameConstants::indicesHeaderInstanceName);
+    auto currOffsetExp = new IR::Member(indicesExp, 
+                                      NameConstants::csaPktStuCurrOffsetFName);
+    indicesExp = new IR::Member(new IR::PathExpression(pktParamName), 
+                                NameConstants::indicesHeaderInstanceName);
+    auto initOffsetExp = new IR::Member(indicesExp, 
+                                      NameConstants::csaPktStuInitOffsetFName);
 
     if (initialOffsets->size() == 1 &&  (*initialOffsets)[0] == 0) {
-
-        auto pktParam =  parser->getApplyParameters()->parameters.at(1);
-        auto pktParamName = pktParam->getName();
-        auto indicesExp = new IR::Member(new IR::PathExpression(pktParamName), 
-                              NameConstants::indicesHeaderInstanceName);
-        auto offsetExp = new IR::Member(indicesExp, 
-                            NameConstants::csaPktStuCurrOffsetFName);
-        auto offsetValue = new IR::Constant(0, 10);
-        auto offsetAs = new IR::AssignmentStatement(offsetExp, offsetValue);
+        auto offsetVal = new IR::Constant(0, 10);
+        auto offsetAs = new IR::AssignmentStatement(currOffsetExp, offsetVal);
         statOrDeclList->push_back(offsetAs);
+
+        offsetVal = new IR::Constant(0, 10);
+        auto initOffsetAs = new IR::AssignmentStatement(initOffsetExp, offsetVal);
+        statOrDeclList->push_back(initOffsetAs);
+    } else {
+        auto oas = new IR::AssignmentStatement(initOffsetExp, currOffsetExp);
+        statOrDeclList->push_back(oas);
     }
 
 

@@ -381,6 +381,17 @@ const IR::Node* DeparserConverter::postorder(IR::BlockStatement* bs) {
     if (tableDecls.size() != 1)
         return bs;
     auto p4Table = tableDecls[0];
+    auto indicesExp = new IR::Member(new IR::PathExpression(paketOutParamName), 
+                                     NameConstants::indicesHeaderInstanceName);
+    auto currOffsetExp = new IR::Member(indicesExp, 
+                                      NameConstants::csaPktStuCurrOffsetFName);
+    indicesExp = new IR::Member(new IR::PathExpression(paketOutParamName), 
+                                NameConstants::indicesHeaderInstanceName);
+    auto initOffsetExp = new IR::Member(indicesExp, 
+                                      NameConstants::csaPktStuInitOffsetFName);
+    auto oas = new IR::AssignmentStatement(currOffsetExp, initOffsetExp);
+    // bs->push_back(oas);
+
     auto method = new IR::Member(new IR::PathExpression(p4Table->name.name), IR::ID("apply"));
     auto mce = new IR::MethodCallExpression(method, new IR::Vector<IR::Argument>());
     auto tblApplyMCS = new IR::MethodCallStatement(mce);

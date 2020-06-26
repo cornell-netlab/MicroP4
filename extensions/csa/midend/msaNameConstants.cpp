@@ -24,6 +24,7 @@ const cstring NameConstants::bitStreamFieldName = "data";
               
 const cstring NameConstants::csaPktStuLenFName = "pkt_len";
 const cstring NameConstants::csaPktStuCurrOffsetFName = "curr_offset";
+const cstring NameConstants::csaPktStuInitOffsetFName = "init_offset";
 
 const cstring NameConstants::headerValidityOpStrTypeName = "hdr_vop_t";
 const cstring NameConstants::headerValidityOpStrParamName = "hdr_vop";
