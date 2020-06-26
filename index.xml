@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>μP4</title>
+    <title>Composing Dataplane Programs with μP4 on μP4</title>
     <link>https://cornell-netlab.github.io/MicroP4/</link>
-    <description>Recent content on μP4</description>
+    <description>Recent content in Composing Dataplane Programs with μP4 on μP4</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     
