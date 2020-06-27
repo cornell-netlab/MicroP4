@@ -20,13 +20,13 @@ yourself to support TNA.
 ## Pre-built VM
 
 We provide a VM with μP4, along with all the dependencies, pre-installed here:
-[TODO](link-to-vm).
+[μP4 VM](https://drive.google.com/drive/folders/1aF9uOZvxBYH3b5GuH_mC3iu8gFCyW1_-?usp=sharing).
 1. Install and start [Virtualbox](https://www.virtualbox.org/wiki/Downloads) on your machine.
 2. Download μP4 VM image, and import it to Virtualbox by selecting  "File" -> "Import Appliance" in Virtualbox.
 3. Allocate the VM as much RAM as possible (at least 2GB). A single processor should suffice (recommended: 2).
 4. You may need to turn on virtualization extensions in your BIOS to enable 64-bit virtualization.
 5. When the VM starts up, the `microp4` user should be automatically logged in. (username: `microp4`, password: `microp4`).
-6. To get the latest version of μP4, do `cd microp4 && git pull`. To build it, follow the instructions at https://github.com/cornell-netlab/MicroP4#2-install.
+6. Get the latest version of μP4, do `cd microp4 && git pull`. To build it, follow the instructions at https://github.com/cornell-netlab/MicroP4#2-install.
 
 **Note**: The VM does not include Barefoot's SDE. You will need to install it yourself.
 
