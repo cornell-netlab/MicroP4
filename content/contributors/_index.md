@@ -5,7 +5,7 @@ weight = 3
 +++
 
 {{< lead >}}
-- [Hardik Soni](https://www.linkedin.com/in/sonihardik), Cornell University
+- [Hardik Soni](https://hksoni.github.io), Cornell University
 - [Myriana Rifai](https://sites.google.com/site/myrianarifaiinfo/), Nokia-Bell Labs
 - [Praveen Kumar](https://www.cs.cornell.edu/~praveenk/), Cornell University
 - [Ryan Doenges](http://ryandoeng.es/), Cornell University
