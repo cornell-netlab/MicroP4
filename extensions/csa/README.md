@@ -3,7 +3,7 @@
 μP4 is a logical architecture that can be mapped to real target architectures.
 It defines following logical externs and programmable blocks to enable modular programming.
 
-```C
+```P4
 /*
  * Author: Hardik Soni
  * Email: hks57@cornell.edu
