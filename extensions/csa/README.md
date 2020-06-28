@@ -3,6 +3,25 @@
 μP4 is a logical architecture that can be mapped to real target architectures.
 It defines following logical externs and programmable blocks to enable modular programming.
 
+## Programming Model
+Every μP4 program is modeled as black-box. Every μP4 program is an instance of a cpackage type. 
+Every cpackage type has a `apply` method call with runtime behaviour shown in following model. 
+                       ___________________                   ___ 
+    ___               |                   |-- out args.1 -->|   |
+   |in |              |                   |--inout args.1-->|out|
+   |   |--in  args -->|                   |--  packet.1  -->|   |
+   | b |--inout args->|                   |-- std.meta.1 -->| b |
+   | u |--  packet -->|                   |                 | u |
+   | f |-- standard   |   cpackage type   |-- out args.n -->| f |
+   | f |  metadata -->|                   |--inout args.n-->| f |
+   | e |  (std.meta)  |                   |--  packet.n  -->| e |
+   |_r_|              |                   |--  std.meta.n-->| r |
+                      |                   |                 |___|
+                      |___________________|                   
+ 
+  H type headers, M type metadata, parsers, controls are parts of cpackage implementation. 
+  They are encapulated within definitions of cpackages.
+
 ```P4
 /*
  * Author: Hardik Soni
