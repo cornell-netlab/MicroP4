@@ -1,6 +1,8 @@
 /*
  * Hardik Soni (hardik.soni@cornell.edu)
- * This file describes execution semanics for composable switch package types.
+ * This file is depreacted. I will upload updated semantics in near future.
+ * It describes execution semanics for composable switch package types.
+ * 
  */
 
 /********* Expressing full program compositions and their semantics ************\
