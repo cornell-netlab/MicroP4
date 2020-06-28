@@ -6,6 +6,8 @@ It defines following logical externs and programmable blocks to enable modular p
 ## Programming Model
 Every μP4 program is modeled as black-box. Every μP4 program is an instance of a cpackage type. 
 Every cpackage type has a `apply` method call with runtime behaviour shown in following model. 
+
+```
                        ___________________                   ___ 
     ___               |                   |-- out args.1 -->|   |
    |in |              |                   |--inout args.1-->|out|
@@ -18,6 +20,7 @@ Every cpackage type has a `apply` method call with runtime behaviour shown in fo
    |_r_|              |                   |--  std.meta.n-->| r |
                       |                   |                 |___|
                       |___________________|                   
+ ```
  
   H type headers, M type metadata, parsers, controls are parts of cpackage implementation. 
   They are encapulated within definitions of cpackages.
