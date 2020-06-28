@@ -112,6 +112,13 @@ cpackage MyProg : implements Unicast<h_t, m_t, i_t, o_t, io_t> {
     // Deparser code
     // a sequence of em.emit(...) calls
   }
+  
+  // in-built apply BlockStatement.
+  apply {
+    micro_parser.apply(...);
+    micro_control.apply(...);
+    micro_deparser.apply(...);
+  }
 }
 ```
 
