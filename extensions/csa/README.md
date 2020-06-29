@@ -4,8 +4,7 @@
 It defines following logical externs and programmable blocks to enable modular programming.
 
 ## Programming Model
-Every μP4 program is modeled as black-box. Every μP4 program is an instance of a cpackage type. 
-Every cpackage type has a `apply` method call with runtime behaviour shown in following model. 
+μP4 programs are modeled as a black-box that takes packet, metadata and user-defined arguments as input and produces one (not zero) or more tuples of the same. μP4 programs can drop packets by setting marking packets to drop, in such case packet is not enqueued to out buffer. Every μP4 program is an instance of a cpackage type.  Every cpackage type has a `apply` method call with runtime behaviour shown in the following model. 
 
 ```
                        ___________________                   ___ 
