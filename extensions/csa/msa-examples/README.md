@@ -49,12 +49,14 @@ make TARGET=tna
 ### 3. Execute
 #### With BMv2
 ##### Prerequisites
-Install Mininet system-wide from [here](https://github.com/mininet/mininet/blob/master/INSTALL).
+Install Mininet system-wide from [here](https://github.com/mininet/mininet/blob/master/INSTALL). For Ubuntu, just run `sudo apt install mininet`.
 
 The submodule `bmv2` contains mininet scripts for the examples at `mininet/msa-examples` directory. They can be launched from this directory (`./extensions/csa/msa-examples`) using `run_up4_v1model.sh` as follows.
 ```bash
 ./run_up4_v1model.sh
 ```
+This command will launch instances of Mininet with each composed program, and verify that packets can be sent through the composed dataplane.
+
 #### With Tofino
 ##### Prerequisites
 You need to have access to proprietary Barefoot SDE 9.0.0.
