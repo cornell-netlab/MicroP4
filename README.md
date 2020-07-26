@@ -26,9 +26,26 @@ P4-16 prototype compiler `https://github.com/p4lang/p4c.git`. The forked p4c rep
 added as submodule at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
 Also, a version of BMv2 compatible to the forked p4c repo is added as submodule at [extensions/csa/msa-examples](https://github.com/hksoni/behavioral-model/tree/ed0174d54fc12f28b3b7371a7613d6303143daea).
 
-### 1. Install Dependencies and Download
+### 1. Install dependencies and download μP4
 #### Dependencies
-Follow the instructions provided at https://github.com/hksoni/p4c#dependencies.
+The dependencies for μP4 as the same as those required for P4. We list the steps here for Ubuntu 16.04:
+```bash
+sudo apt-get install cmake g++ git automake libtool libgc-dev bison flex libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev libboost-graph-dev llvm pkg-config python python-scapy python-ipaddr python-ply tcpdump
+```
+
+Install `protobuf` version 3.2.0 as follows:
+```bash
+sudo apt-get install autoconf automake libtool curl make g++ unzip
+wget https://github.com/protocolbuffers/protobuf/releases/download/v3.2.0/protobuf-cpp-3.2.0.zip
+unzip protobuf-cpp-3.2.0.zip
+cd protobuf-3.2.0
+./configure
+ make
+ make check
+ sudo make install
+ sudo ldconfig
+```
+If you encounter any error, see more details at https://github.com/hksoni/p4c#dependencies.
 
 #### Download
 
@@ -45,7 +62,7 @@ git submodule update --init --recursive
 ```
 
 ### 2. Install 
-Above clone commands download source code of μP4 along with p4c and BMv2 as submodules.
+The previous commands download the source code of μP4 along with `p4c` and `BMv2` as submodules.
 To generate v1model-specific P4 source for μP4 programs, installing only μP4C is enough. 
 #### Install μP4C
 ```bash
