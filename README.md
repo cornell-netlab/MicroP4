@@ -70,7 +70,7 @@ The previous commands download the source code of μP4 along with `p4c` and `BMv
 To generate v1model-specific P4 source for μP4 programs, installing only μP4C is enough. 
 #### Install μP4C
 ```bash
-cd microp4
+cd {$UP4ROOT}
 mkdir build
 cd build
 cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
@@ -87,18 +87,19 @@ bash ./install_deps.sh
 ./autogen.sh
 ./configure 'CXXFLAGS=-O0 -g' --enable-debugger    # Mandatory for μP4, because I will need logs in error scenarios. :)
 make
-[sudo] make install  # if you need to install bmv2
+sudo make install  # if you need to install bmv2
 sudo ldconfig # for linux
 ```
 
 ```bash
-cd ./extensions/csa/msa-examples/p4c
+cd {$UP4ROOT}/extensions/csa/msa-examples/p4c
 mkdir build
 cd build
 cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
 make -j4 
-cd  ../../  # at ./extensions/csa/msa-examples
 ```
+If you get an error related to LLVM (`CMake Error at /usr/share/llvm-3.8/cmake/LLVMConfig.cmake:178 (include):`), remove LLVM as `sudo apt remove llvm-3.8`.
+
 
 #### Install Barefoot's SDE for Tofino 
 μP4C can generate P4 source specific Barefoot's Tofino architecture(TNA). It is recommended to install Barefoot SDE 9.0.0. at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
