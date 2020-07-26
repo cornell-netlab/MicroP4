@@ -28,7 +28,7 @@ Also, a version of BMv2 compatible to the forked p4c repo is added as submodule 
 
 ### 1. Install dependencies and download μP4
 #### Dependencies
-The dependencies for μP4 as the same as those required for P4. We list the steps here for Ubuntu 16.04:
+The dependencies for μP4 as the same as those required for P4. We list the steps here for Ubuntu 18.04:
 ```bash
 sudo apt-get install cmake g++ git automake libtool libgc-dev bison flex libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev libboost-graph-dev llvm pkg-config python python-scapy python-ipaddr python-ply tcpdump
 ```
@@ -74,7 +74,7 @@ To create executables for BMv2 from v1model-specific P4 source, install p4c.
 #### Install p4c and BMv2
 To run executables generated for BMv2, install BMv2.
 ```bash
-cd {$UP4ROOT}/extensions/csa/msa-examples/bmv2
+cd ${UP4ROOT}/extensions/csa/msa-examples/bmv2
 bash ./install_deps.sh
 ./autogen.sh
 ./configure 'CXXFLAGS=-O0 -g' --enable-debugger    # Mandatory for μP4, because I will need logs in error scenarios. :)
@@ -84,7 +84,7 @@ sudo ldconfig # for linux
 ```
 
 ```bash
-cd {$UP4ROOT}/extensions/csa/msa-examples/p4c
+cd ${UP4ROOT}/extensions/csa/msa-examples/p4c
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=DEBUG # or `just cmake ..`
