@@ -93,11 +93,11 @@ make -j4
 
 #### Install μP4C
 ```bash
-cd {$UP4ROOT}
+cd ${UP4ROOT}
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=DEBUG  # or just `cmake .. `
-make -j4   # This should create p4c-msa executable in the build directory 
+make -j2   # This should create p4c-msa executable in the build directory 
 cd ..
 ```
 
