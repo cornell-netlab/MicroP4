@@ -3,8 +3,8 @@
 Instructions to reproduce results published in the paper titled "Composing Dataplane Programs with μP4".
 μP4C is source-to-source compiler. It can translate μP4 programs to P4 programs specific to two real target architectures,[v1model (BMv2)](https://github.com/hksoni/p4c/blob/master/p4include/v1model.p4) and [Tofino](https://www.barefootnetworks.com/products/brief-tofino/). It is necessary to use the specified versions of both architectures, because μP4C backends are target specific.
 
-- v1model : https://github.com/hksoni/p4c.git. It is included as a submodule in this directory.
-- Tofino : bf-sde-9.0.0.  It is recommended to install the sde in this directory of your local repo. However, you are free to install anywhere as long as necessary environment variables are exported.
+- `v1model` : It is included as a submodule (`p4c`) in this directory.
+- Tofino : bf-sde-9.0.0.  It is recommended to install the SDE in this directory of your local clone. However, you are free to install anywhere as long as necessary environment variables are configured properly.
 
 ## Prerequisites
 Download and install μP4C along with associated version of p4c and BMv2 by following steps described at [here](https://github.com/cornell-netlab/MicroP4/blob/master/README.md).
@@ -12,7 +12,7 @@ Download and install μP4C along with associated version of p4c and BMv2 by foll
 ## How to Compile Examples
 ### 0. Prerequisites
 μP4C requires target-specific architecture file to generate P4 source of μP4 program.
-1.  v1model.p4 - The compatible is already available at [p4include/v1model.p4](https://github.com/cornell-netlab/MicroP4/blob/master/p4include/v1model.p4) path of this repository.
+1.  `v1model.p4` - The compatible version is already available at [p4include/v1model.p4](https://github.com/cornell-netlab/MicroP4/blob/master/p4include/v1model.p4) path of this repository.
 2. Tofino architecture files - It is recommended to put your copy of `.p4` of tofino architecture at the same location `p4include`.
 If you face erors from μP4C complaining absence of architecture files, copy them at `<repo root (microp4)>/build/p4include`.
 
