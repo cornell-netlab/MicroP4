@@ -107,7 +107,7 @@ cd ..
 
 ### 3. How to Write μP4 Programs
 Every μP4 Program must implemet at least one of the interfaces defined as a part of 
-μPA in [extensions/csa/p4include/msa.p4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/p4include/msa.p4). 
+μPA in [extensions/csa/p4include/msa.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/p4include/msa.up4). 
 μPA provides 3 interfaces, Unicast, Multicast and Orchestration. By implementing 
 a μPA interface, a user-defined package type can be created. 
 
