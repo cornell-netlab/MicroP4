@@ -90,8 +90,6 @@ cd build
 cmake .. -DCMAKE_BUILD_TYPE=DEBUG # or `just cmake ..`
 make -j4 
 ```
-If you get an error related to LLVM (`CMake Error at /usr/share/llvm-3.8/cmake/LLVMConfig.cmake:178 (include):`), remove LLVM as `sudo apt remove llvm-3.8`.
-
 
 #### Install μP4C
 ```bash
