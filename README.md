@@ -86,9 +86,16 @@ cd  ../../  # at ./extensions/csa/msa-examples
 ```
 To run executables generated for BMv2, install BMv2.
 ```bash
-cd bmv2 
+cd {$UP4ROOT}/extensions/csa/msa-examples/bmv2
+# install thrift
+sudo apt install libssl-dev
+cd ./travis
+bash ./install-thrift.sh
+cd ..
+
+# continue building BMv2
 ./autogen.sh
-./configure 'CXXFLAGS=-O0 -g' --enable-debugger # Mandatory for μP4, because I will need logs in error scenarios. :)
+./configure 'CXXFLAGS=-O0 -g' --enable-debugger    # Mandatory for μP4, because I will need logs in error scenarios. :)
 make
 [sudo] make install  # if you need to install bmv2
 sudo ldconfig # for linux
