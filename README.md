@@ -61,6 +61,10 @@ if you forgot `--recursive` or `--recurse-submodules`
 git submodule update --init --recursive
 ```
 
+Set up the environment variable for μP4 root directory:
+```bash
+export UP4ROOT=$PWD/microp4
+```
 ### 2. Install 
 The previous commands download the source code of μP4 along with `p4c` and `BMv2` as submodules.
 To generate v1model-specific P4 source for μP4 programs, installing only μP4C is enough. 
@@ -76,14 +80,6 @@ cd ..
 
 To create executables for BMv2 from v1model-specific P4 source, install p4c.
 #### Install p4c and BMv2
-```bash
-cd ./extensions/csa/msa-examples/p4c
-mkdir build
-cd build
-cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
-make -j4 
-cd  ../../  # at ./extensions/csa/msa-examples
-```
 To run executables generated for BMv2, install BMv2.
 ```bash
 cd {$UP4ROOT}/extensions/csa/msa-examples/bmv2
@@ -94,6 +90,16 @@ make
 [sudo] make install  # if you need to install bmv2
 sudo ldconfig # for linux
 ```
+
+```bash
+cd ./extensions/csa/msa-examples/p4c
+mkdir build
+cd build
+cmake ..  or cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
+make -j4 
+cd  ../../  # at ./extensions/csa/msa-examples
+```
+
 #### Install Barefoot's SDE for Tofino 
 μP4C can generate P4 source specific Barefoot's Tofino architecture(TNA). It is recommended to install Barefoot SDE 9.0.0. at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
 
