@@ -26,9 +26,10 @@ We provide a VM with μP4, along with all the dependencies, pre-installed here:
 3. Allocate the VM as much RAM as possible (at least 2GB). A single processor should suffice (recommended: 2).
 4. You may need to turn on virtualization extensions in your BIOS to enable 64-bit virtualization.
 5. When the VM starts up, the `microp4` user should be automatically logged in. (username: `microp4`, password: `microp4`).
-6. Get the latest version of μP4, do `cd microp4 && git pull`. To build it, follow the instructions at https://github.com/cornell-netlab/MicroP4#2-install.
+6. Get the latest version of μP4, do `cd microp4 && git pull`. To build it, follow the instructions at https://github.com/cornell-netlab/MicroP4#install-%CE%BCp4c
+7. Next step: you can directly jump to building and testing composed programs by following the instructions here: https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples.
 
-**Note**: The VM does not include Barefoot's SDE. You will need to install it yourself.
+**Note**: The VM does not include Barefoot's SDE. You will need to install it yourself on your local machine and compile the generated P4 programs following the SDE instructions.
 
 ## From Source
 We have released the source code for μP4 at https://github.com/cornell-netlab/MicroP4/ under an open-source license.
