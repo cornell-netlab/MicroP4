@@ -62,6 +62,8 @@ Note that this will build all the seven programs mentioned in the paper:
 make TARGET=v1model
 ```
 #### Compile for TNA (Barefoot's Tofino)
+SDE and SDE_INSTALL environmental variables must be pointing to bf-sde 9.0.0 installation.
+Also, we highly recommended to use native environment of your OS for bf-sde 9.0.0. 
 ```
 make TARGET=tna
 ```
