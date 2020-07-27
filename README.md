@@ -60,7 +60,7 @@ if you forgot `--recursive` or `--recurse-submodules`
 ```
 git submodule update --init --recursive
 ```
-
+#### Setup Environment
 Set up the environment variable for μP4 root directory:
 ```bash
 export UP4ROOT=$PWD/microp4
@@ -87,7 +87,7 @@ sudo ldconfig # for linux
 cd ${UP4ROOT}/extensions/csa/msa-examples/p4c
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=DEBUG # or `just cmake ..`
+cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
 make -j4 
 ```
 
@@ -96,7 +96,7 @@ make -j4
 cd ${UP4ROOT}
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=DEBUG  # or just `cmake .. `
+cmake .. -DCMAKE_BUILD_TYPE=DEBUG  
 make -j2   # This should create p4c-msa executable in the build directory 
 cd ..
 ```
