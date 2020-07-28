@@ -101,11 +101,16 @@ make -j2   # This should create p4c-msa executable in the build directory
 cd ..
 ```
 
-#### Install Barefoot's SDE for Tofino 
-μP4C can generate P4 source specific Barefoot's Tofino architecture(TNA). It is recommended to install Barefoot SDE 9.0.0. at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
+#### (Optional) Install Barefoot's SDE for Tofino if you want to test with Tofino
+μP4C can generate P4 source specific Barefoot's Tofino architecture(TNA). It is recommended to install Barefoot SDE 9.0.0 inside [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples) directory.
+
+### 3. Running Examples
+Before we dive into the details of how to write new μP4 Programs, we provide instructions to test example μP4 programs.
+We have provided a set of example programs at [./extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
+Follow the [README](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples/README.md) which outlines instructions to compile the composed programs and test it with BMv2 or with Tofino. The directory `./extensions/csa/msa-examples` also contains PTF tests for Tofino.
 
 
-### 3. How to Write μP4 Programs
+### 4. How to Write μP4 Programs
 Every μP4 Program must implemet at least one of the interfaces defined as a part of 
 μPA in [extensions/csa/p4include/msa.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/p4include/msa.up4). 
 μPA provides 3 interfaces, Unicast, Multicast and Orchestration. By implementing 
@@ -176,7 +181,7 @@ For more details, have a look at
    2. `main-programs/routerv4_main.up4` the `main` cpackage that uses IPv4 cpackage
 
 
-### 4. How to Use μP4C
+### 5. How to Use μP4C
    1. Creating Libraries
       ```
       ./build/p4c-msa -o <<lib-name.json>> <<μp4 source file>>
@@ -198,7 +203,4 @@ For more details, have a look at
       ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json \
                       ./extensions/csa/msa-examples/main-programs/routerv4_main.up4
       ```
-## Running Examples
-There are more examples at [./extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples) along with p4c and BMv2 submodules.
-`./extensions/csa/msa-examples` also contains PTF tests for Barefoot's Tofino target. 
 
