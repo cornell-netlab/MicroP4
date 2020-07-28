@@ -1,13 +1,19 @@
 # μP4 Tutorials
 
-Welcome to μP4 tutorials! This is a step by step tutorial that teach you modular approach for dataplane programming.
+Welcome to μP4 tutorials! This is a step by step tutorial that teach you the art of composing network dataplane programs.
+Our goal is to make you [Chopin](https://en.wikipedia.org/wiki/Fr%C3%A9d%C3%A9ric_Chopin) of Dataplane Programming.
 
-Our goal is to make you Chopin of Dataplane Programming.
+### Scenario
+TODO: explain modular router with diagrams.
 
 ### Exercise 1: Composing μP4 Module
-TODO: 
-We provide all the code around main Router and  ipv4 μP4 module.
-We ask programmers to perform three steps
+In this exercise, you will learn how to compose μP4 Modules. You are given all the required code for two μP4 Modules. However, they are not composed together. 
+Concretely, μP4 module
+1. Router - is going to be considered as the main module
+2. ipv4 - is an independent one that does simple processing for IPv4 protocol. 
+We provide all the code for the main Router and ipv4 modules.
+
+
 1. Compile current code and see packets are dropped.
 2. add one line `ipv4.apply(...)`. Here, we explain how to declare module signatures in a common file or in the main file.
    Explanation of runtime parameters and in/out args.
@@ -53,9 +59,9 @@ To help you better understand the language we will refer to the examples found a
 
 ### Defining the Modules Structure 
 
-To create a μP4 module we need first to create a .upv4 file (e.g.  [extensions/csa/msa-examples/lib-src/common.upv4](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples/lib-src/comomn.upv4)) that will hold all μP4 modules structures that are used to transfer data between different modules and μP4 module global syntax format. 
+To create a μP4 module we need first to create a .up4 file (e.g.  [extensions/csa/msa-examples/lib-src/common.upv4](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples/lib-src/comomn.upv4)) that will hold all μP4 modules structures that are used to transfer data between different modules and μP4 module global syntax format. 
 
-For example to create IPv4 module that takes a packet as input and returns the next hop address we need to add the cpackage IPv4 module interface description to "common.upv4" and the input and output metadata description.
+For example to create IPv4 module that takes a packet as input and returns the next hop address we need to add the cpackage IPv4 module interface description to "common.up4" and the input and output metadata description.
 
 ```
 struct empty_t { }
@@ -90,7 +96,7 @@ cpackage IPv6ACL(pkt p, im_t im, in ipv6_acl_in_t ia, out empty_t oa, inout acl_
 
 ### Creating the Module
 
-Each μP4 module is defined in an independent "*.upv4" file. The "*.upv4" file contains 4 sections. 
+Each μP4 module is defined in an independent "*.up4" file. The "*.up4" file contains 4 sections. 
    1. The included libraries 
      a. All μP4 modules should include μP4 architecture definition file "msa.up4" 
      b. μP4 modules should include the μP4 functions and global metadata definition file "common.up4"
