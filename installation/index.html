@@ -110,13 +110,13 @@ yourself to support TNA.</p>
 <ol>
 <li>Install and start <a href="https://www.virtualbox.org/wiki/Downloads">Virtualbox</a> on your machine.</li>
 <li>Download μP4 VM image, and import it to Virtualbox by selecting  &ldquo;File&rdquo; -&gt; &ldquo;Import Appliance&rdquo; in Virtualbox.</li>
-<li>Allocate the VM as much RAM as possible (at least 2GB). A single processor should suffice (recommended: 2).</li>
+<li>Allocate the VM as much RAM as possible (at least 2GB) and two processors. Building <code>p4c</code> and <code>BMv2</code> software switch from source can be resource intensive. The VM comes with these pre-built and installed. In case you want to rebuild them within the VM, allocate more resources.</li>
 <li>You may need to turn on virtualization extensions in your BIOS to enable 64-bit virtualization.</li>
 <li>When the VM starts up, the <code>microp4</code> user should be automatically logged in. (username: <code>microp4</code>, password: <code>microp4</code>).</li>
-<li>Get the latest version of μP4, do <code>cd microp4 &amp;&amp; git pull</code>. To build it, follow the instructions at <a href="https://github.com/cornell-netlab/MicroP4#install-%CE%BCp4c">https://github.com/cornell-netlab/MicroP4#install-%CE%BCp4c</a></li>
+<li>Get the latest version of μP4, do <code>cd microp4 &amp;&amp; git pull</code>. To build it, follow the instructions at <a href="https://github.com/cornell-netlab/MicroP4#22-build-and-install-%CE%BCp4c">https://github.com/cornell-netlab/MicroP4#22-build-and-install-%CE%BCp4c</a>. p4c and BMv2 software switch are already installed on the VM, and you would not need to re-build them normally.</li>
 <li>Next step: you can directly jump to building and testing composed programs by following the instructions here: <a href="https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples">https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples</a>.</li>
 </ol>
-<p><strong>Note</strong>: The VM does not include Barefoot&rsquo;s SDE. You will need to install it yourself on your local machine and compile the generated P4 programs following the SDE instructions.</p>
+<p><strong>Note</strong>: The VM does not include Barefoot&rsquo;s SDE. You will need to install it yourself on your local machine and compile the generated P4 programs following the instructions provided with the SDE.</p>
 <h2 id="from-source">From Source</h2>
 <p>We have released the source code for μP4 at <a href="https://github.com/cornell-netlab/MicroP4/">https://github.com/cornell-netlab/MicroP4/</a> under an open-source license.</p>
 <p>To build and install μP4, follow the instructions at:
