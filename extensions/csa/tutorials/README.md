@@ -1,6 +1,5 @@
 # μP4 Tutorials
 
-## Introduction 
 Welcome to μP4 tutorials! This is a step by step tutorial that teach you modular approach for dataplane programming.
 
 Our goal is to make you Chopin of Dataplane Programming.
@@ -29,7 +28,7 @@ We need to rearrange text from the below description to above 3 exercises.
 
 
 
-
+## Introduction 
 
 To help you better understand the language we will refer to the examples found at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
 
@@ -50,7 +49,7 @@ To help you better understand the language we will refer to the examples found a
      b. Compiling to TNA 
      
      
-## μP4 Modules
+
 
 ### Defining the Modules Structure 
 
