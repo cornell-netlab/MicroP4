@@ -22,6 +22,8 @@ bool FindModifiedFields::preorder(const IR::AssignmentStatement* asmt) {
         // Store the instance name in left expression storage in allUserDefinedHdrTypes
         auto instName = isL.getName(1);
         auto type = isL.getType(1);
+        if (type == nullptr)
+            return false;
         auto ts = type->to<IR::Type_StructLike>();
         BUG_CHECK(ts!=nullptr, "expected Type_StructLike in LHS");
         cstring key = ts->name+"."+instName;
@@ -35,13 +37,18 @@ bool FindModifiedFields::preorder(const IR::AssignmentStatement* asmt) {
     }
 
     if (!isR.isMSAHeaderStorage() && !isL.isMSAHeaderStorage()) {
-        auto st = isL.getType(1)->to<IR::Type_StructLike>();
+        auto isLType = isL.getType(1);
+        if (isLType != nullptr) {
+
+        auto st = isLType->to<IR::Type_StructLike>();
         if (st != nullptr) {
             auto fn1 = isL.getName(1);
             auto fn0 = isL.getName(0);
             cstring key = st->name+"."+fn1;
             auto& fm = (*modHdrTypeInstToFields)[key];
             fm.emplace(fn0);
+        }
+
         }
     }
     // std::cout<<"  --- AssignmentStatement "<<asmt<<"\n";
