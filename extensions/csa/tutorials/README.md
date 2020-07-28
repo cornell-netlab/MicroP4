@@ -1,7 +1,37 @@
 # μP4 Tutorials
 
 ## Introduction 
-Welcome to μP4 tutorials! This is a step by step tutorial that explains how to write μP4 modules, complex functions and main programs. To help you better understand the language we will refer to the examples found at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples). This tutorial assumes that the reader is familiar with P4 programming language and P4 notions. 
+Welcome to μP4 tutorials! This is a step by step tutorial that teach you modular approach for dataplane programming.
+
+Our goal is to make you Chopin of Dataplane Programming.
+
+### Exercise 1: Composing μP4 Module
+TODO: 
+We provide all the code around main Router and  ipv4 μP4 module.
+We ask programmers to perform three steps
+1. Compile current code and see packets are dropped.
+2. add one line `ipv4.apply(...)`. Here, we explain how to declare module signatures in a common file or in the main file.
+   Explanation of runtime parameters and in/out args.
+3. We ask them to add `-l` parameter to link module. 
+4. runt the program and see packets are forwarded.
+
+### Exercise 2: Writing new μP4 Modules
+1. We ask programmers to develop write ipv6 module that returns  nexthop.
+2. at this point explain parser, deparser and control block at high level.
+3. Introduce them to `-o` flag of `p4c-msa` and compile ipv6 module.
+
+### Exercise 3: Composing Dataplane program using your μP4 Modules
+plug ipv6 in router's main.
+pass both ipv4 and ipv6 packets.
+bravo! They have developed a modular router and completed Chopin 1O1 tutorial.
+
+We need to rearrange text from the below description to above 3 exercises.
+
+
+
+
+
+To help you better understand the language we will refer to the examples found at [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
 
 
   1. μP4 modules [extensions/csa/msa-examples/lib-src](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples/lib-src).
@@ -18,7 +48,8 @@ Welcome to μP4 tutorials! This is a step by step tutorial that explains how to 
   3. Compiling μP4 programs to a given target architecture 
      a. Compiling to v1model 
      b. Compiling to TNA 
-
+     
+     
 ## μP4 Modules
 
 ### Defining the Modules Structure 
