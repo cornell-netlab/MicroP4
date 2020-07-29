@@ -11,13 +11,19 @@ export SDE_INSTALL=<The path to the installation directory of the SDE>
 
 ### 1. Makefile
 There are two targets in the Makefile
-1. all - This will compile `P1` to `P6` and store required information in the `build`
+1. P1_P6 - This will compile `P1` to `P6` and store required information in the `build`
    directory.
-2. P7 - P7 - It will try to compile the P7 program mentioned in the below table
+```bash
+make P1_P6
+```
+2. P7 - It will try to compile the P7 program mentioned in the below table
    with Barefoot SDE. The compilation will not terminate. You are recommended to
-   press `ctrl+c` at your convenient time. You can notice massive consumption 
-   of storage by `./build/router_ipv4srv4ipv6_main.tofino` directory using 
-   `du -sh ./build/router_ipv4srv4ipv6_main.tofino` 
+   interrupt it at your convenient time. 
+```bash
+make P7
+// After sometime
+ctrl+c
+```
 
 ### 2. Compile
 The two steps in the compilation process can be invoked together using a single command show below.
