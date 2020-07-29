@@ -59,6 +59,7 @@ Note that this will build all the seven programs mentioned in the paper:
 
 #### Compile for v1model (BMv2)
 ```
+cd ${UP4ROOT}/extensions/csa/msa-examples
 make TARGET=v1model
 ```
 #### Compile for TNA (Barefoot's Tofino)
