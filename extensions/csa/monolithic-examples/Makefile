@@ -1,4 +1,4 @@
-.PHONY: all clean ipv46srv4 P7
+.PHONY: all clean ipv46srv4 P7 P1_P6
 
 P4C_TNA=bin/bf-p4c -b tofino -a v1model --verbose 3 -g --create-graphs 
 PROGRAMS = routerv4_main.p4 \
@@ -21,6 +21,7 @@ rmipv46srv4:
 	rm -rf $(IPv46SRv4_TOFINO_DIR)
 
 P7: rmipv46srv4 ipv46srv4
+P1_P6: all
 
 $(PROGRAMS_TOFINO_DIR): ./build/%.tofino: %.p4
 	mkdir -p build && \
