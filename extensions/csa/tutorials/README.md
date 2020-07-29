@@ -10,24 +10,26 @@ TODO: explain modular router with diagrams.
 In this exercise, you will learn how to compose μP4 Modules. You are given all the required code for two μP4 Modules. However, they are not composed together. 
 Concretely, μP4 module
 1. Router - is going to be considered as the main module
-2. ipv4 - is an independent one that does simple processing for IPv4 protocol. 
+2. ipv4 - is an independent one that processes IPv4 headers. 
 We provide all the code for the main Router and ipv4 modules.
 
+#### Step 1: Compile & Run
 
-1. Compile current code and see packets are dropped.
-2. add one line `ipv4.apply(...)`. Here, we explain how to declare module signatures in a common file or in the main file.
-   Explanation of runtime parameters and in/out args.
-3. We ask them to add `-l` parameter to link module. 
-4. runt the program and see packets are forwarded.
+#### Step 2: Compose
+
+#### Step 3: Re-compile & Run
+
 
 ### Exercise 2: Writing new μP4 Modules
-1. We ask programmers to develop write ipv6 module that returns  nexthop.
-2. at this point explain parser, deparser and control block at high level.
-3. Introduce them to `-o` flag of `p4c-msa` and compile ipv6 module.
+#### Step 1: Write a μP4 Module to process IPv6 header
+#### Step 2: Compile IPv6 μP4 Module
+
 
 ### Exercise 3: Composing Dataplane program using your μP4 Modules
-plug ipv6 in router's main.
-pass both ipv4 and ipv6 packets.
+#### Step 1: Modify `Router.up4`
+#### Step 2: Compile `Router.up4`
+#### Step 3: Pass IPv4 and IPv6 pings
+
 bravo! They have developed a modular router and completed Chopin 1O1 tutorial.
 
 We need to rearrange text from the below description to above 3 exercises.
