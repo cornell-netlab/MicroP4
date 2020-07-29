@@ -91,7 +91,7 @@ To compile generated P4-16 programs, install `p4c` as follows.
 cd ${UP4ROOT}/extensions/csa/msa-examples/p4c
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=DEBUG 
+cmake ..   # (optional add the debug flag) -DCMAKE_BUILD_TYPE=DEBUG  
 make -j2
 ```
 
