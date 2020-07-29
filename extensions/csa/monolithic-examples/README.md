@@ -25,9 +25,7 @@ make P7
 ctrl+c
 ```
 
-### 2. Compile
-The two steps in the compilation process can be invoked together using a single command show below.
-Note that this will build all the seven programs mentioned in the paper:
+#### Program and Makefile Target mappings
 
 | Program in paper | Monolithic Example | Functions                 | 
 |------------------|-----------------------------|---------------------------|
