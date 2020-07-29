@@ -27,7 +27,7 @@ if swports == []:
 
 
 class MSARouterv46SRv6Test(BfRuntimeTest):
-    """@brief Basic test for microp4 composed IPv4 and IPv6 routing
+    """@brief Basic test for microp4 composed program router_ipv4v6srv6_main_tna
     """
 
     def setUp(self):
