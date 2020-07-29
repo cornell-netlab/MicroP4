@@ -8,6 +8,7 @@ Instructions to reproduce results published in the paper titled "Composing Datap
 
 ## Prerequisites
 Download and install μP4C along with associated version of p4c and BMv2 by following steps described at [here](https://github.com/cornell-netlab/MicroP4/blob/master/README.md).
+Make sure the environment variable is setup using `export UP4ROOT=$PWD/microp4`
 
 ## How to Compile Examples
 ### 0. Prerequisites
@@ -67,6 +68,7 @@ SDE and SDE_INSTALL environmental variables must be pointing to bf-sde 9.0.0 ins
 Also, we highly recommended to use native environment of your OS for bf-sde 9.0.0. We have NOT used virtual environment(VM) for the SDE throughout our experiments.
 
 ```
+cd ${UP4ROOT}/extensions/csa/msa-examples
 export SDE=<The path to the SDE>
 export SDE_INSTALL=<The path to the installation directory of the SDE
 make TARGET=tna
