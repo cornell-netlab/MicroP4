@@ -119,9 +119,9 @@ In the `${UP4ROOT}/extensions/csa/msa-examples/build` directory, for every `tna`
 ### 4. Monolithic Programs
 Please visit [monolithic-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/monolithic-examples), to compile and study behaviour discussed in the paper.
 
-### 6. Generating Tables
-We have not shared a script that automatically fetches values from logs of the Barefoot SDE. However, the number of MAU utilized can be easily read from the logs for artefact evaluation purposes. 
+### 5. Generating Tables
+While we can not share the script that we used to automatically parse the logs from the Barefoot SDE, the resource utilization in terms of MAUs can be easily read from the logs for artefact evaluation purposes. 
 
-### 5. Miscellaneous
-Modified MPLS header in example P2 can be easily compiled with the Barefoot SDE, even though it is larger than standard MPLS header. However, we performed various manual transformations to compile standard MPLS header, as shown in [manual-hacks](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/msa-examples/tofino_compiled_programs/routerv46lsr-with-manual-hacks-main-tofino.p4#L806)
+### 6. Miscellaneous
+The modified MPLS header in example P2 can be easily compiled with the Barefoot SDE even though it is larger than standard MPLS header. However, we performed various manual transformations to compile the standard MPLS header as shown in [manual-hacks](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/msa-examples/tofino_compiled_programs/routerv46lsr-with-manual-hacks-main-tofino.p4#L806).
 
