@@ -178,6 +178,6 @@ mininet> h1 ping -6 2001::2
 
 ctrl + d
 ```
-We have provided solution for every exercise.
+We have provided a solution for every exercise.
 
-bravo! They have developed a modular router and completed Chopin 1O1 tutorial.
+bravo! You have developed a modular router and completed Chopin 1O1 tutorial.
