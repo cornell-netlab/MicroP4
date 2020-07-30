@@ -97,6 +97,9 @@ ipv4_i.apply(...); // args for pkt p, im_t im,
                    // in empty_t ia, out bit<16> nh, inout empty_t ioa
 ```
 
+##### Table Entries
+You should observe the table entries in Router.up4 and ipv4.up4.
+
 #### Step 3: Re-compile & Run
 This time compilation is little different than the Step 1.
 Note `-l ipv4.json` flag in the last command below. This links library 
@@ -144,11 +147,20 @@ In this exercise, you need to integrate IPv6 Module with `Router`from Exercise 1
 1. You can use [./exercise-3/Router.up4](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials/exercise-3/Router.up4) having 
 required boilerplate code.
 2. Add your code at `exercise-3` bookmarks in the file. 
+3. You might need to add const entries in your IPv6 table. Our mininet script
+   configures network according to the following values.
+```bash
+ipv6 dest                             nexthop
+0x20010000000000000000000000000001 -> 1
+0x20010000000000000000000000000002 -> 2
+```
 
 #### Step 2: Compile `Router.up4`
 You need to compile the router with IPv4 and IPv6 modules.
 ```bash
 cd ${UP4ROOT}/extensions/csa/tutorials/exercise-3
+${UP4ROOT}/build/p4c-msa -I ${UP4ROOT}/build/p4include -o ipv4.json ipv4.up4 
+${UP4ROOT}/build/p4c-msa -I ${UP4ROOT}/build/p4include -o ipv6.json ipv6.up4 
 ${UP4ROOT}/build/p4c-msa  --target-arch v1model -I ${UP4ROOT}/build/p4include \
                           -l ipv4.json,ipv6.json  Router.up4
 ```
