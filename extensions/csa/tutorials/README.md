@@ -30,7 +30,7 @@ Concretely, μP4 module
 2. ipv4 - is an independent one that processes IPv4 headers. 
 As a part of this exercise, you need to complete the implementaion of [./exercise-1/Router.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/tutorials/exercise-1/Router.up4).
 
-Given [./exercise-1/Router.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/tutorials/exercise-1/Router.up4) doe not route packets.
+[./exercise-1/Router.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/tutorials/exercise-1/Router.up4) does not route packets.
 #### Step 1: Compile & Run
 ##### Compile with μP4
 ```bash
