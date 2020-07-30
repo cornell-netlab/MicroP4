@@ -71,14 +71,30 @@ ipv4_i.apply(...); // args for pkt p, im_t im, in empty_t ia, out bit<16> nh, in
 #### Step 3: Re-compile & Run
 ```bash
 cd ${UP4ROOT}/extensions/csa/tutorials/exercise-1
-${UP4ROOT}/build/p4c-msa  -I ${UP4ROOT}/build/p4include  -o ipv4.json ipv4.up4 // compiles module as a library
-${UP4ROOT}/build/p4c-msa  --target-arch v1model -I ${UP4ROOT}/build/p4include  -l ipv4.json Router.up4
+// compiles module as a library
+${UP4ROOT}/build/p4c-msa -I ${UP4ROOT}/build/p4include -o ipv4.json ipv4.up4 
+${UP4ROOT}/build/p4c-msa --target-arch v1model -I ${UP4ROOT}/build/p4include -l ipv4.json Router.up4
 ```
+##### Run
 
 ### Exercise 2: Writing new μP4 Modules
+In this exercise, you will learn to write your own μP4 Module. You need to implement a routing protocol like IPv4.
+The module should have `bit<16> nh` as a part of its `out` arguments. 
 #### Step 1: Write a μP4 Module to process IPv6 header
-#### Step 2: Compile IPv6 μP4 Module
+The boilerplate code to develop the module is given at [./exercise-2/ipv6.up4](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials/exercise-2).
+IPv6 should implement `Unicast` interface by providing implementation for `micro_parser`, `micro_control` and `micro_deparser`.
+To implement these constructs, you can use sub-lanuages of [P4](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html) described in 
+[12](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html#sec-packet-parsing) & [13](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html#sec-control).
+Compared to P4, μP4 provides `extractor` and `emitter` for packet parsing and reassembly. You can look at [./exercise-1/ipv4.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/tutorials/exercise-1/ipv4.up4) for their example usage.
+To know more about `extractor` and `emitter` of μP4 Architecture, 
+you can look at [msa.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/p4include/msa.up4)
 
+#### Step 2: Compile IPv6 μP4 Module
+```bash
+cd ${UP4ROOT}/extensions/csa/tutorials/exercise-2
+// compiles IPv6 module as a library
+${UP4ROOT}/build/p4c-msa -I ${UP4ROOT}/build/p4include -o ipv6.json ipv6.up4 
+```
 
 ### Exercise 3: Composing Dataplane program using your μP4 Modules
 #### Step 1: Modify `Router.up4`
