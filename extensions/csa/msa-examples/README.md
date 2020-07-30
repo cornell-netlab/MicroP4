@@ -1,32 +1,30 @@
 # Composing Dataplane Programs with μP4 - SIGCOMM '20
 
 Instructions to reproduce results published in the paper titled "Composing Dataplane Programs with μP4".
-μP4C is source-to-source compiler. It can translate μP4 programs to P4 programs specific to two real target architectures,[v1model (BMv2)](https://github.com/hksoni/p4c/blob/master/p4include/v1model.p4) and [Tofino](https://www.barefootnetworks.com/products/brief-tofino/). It is necessary to use the specified versions of both architectures, because μP4C backends are target specific.
+μP4C is source-to-source compiler. It can translate μP4 programs to P4 programs specific to two real target architectures,[v1model (BMv2)](https://github.com/hksoni/p4c/blob/master/p4include/v1model.p4) and [Tofino](https://www.barefootnetworks.com/products/brief-tofino/). It is necessary to use the specified versions of both architectures as μP4C backends are target specific.
 
 - `v1model` : It is included as a submodule (`p4c`) in this directory.
-- Tofino : bf-sde-9.0.0.  It is recommended to install the SDE in this directory of your local clone. However, you are free to install anywhere as long as necessary environment variables are configured properly. We recommend attempting it on your local machine rather than the provided VM.
+- Tofino : bf-sde-9.0.0.  It is recommended to install the SDE in this directory of your local clone. However, you are free to install anywhere as long as necessary environment variables are configured properly. We recommend attempting it on your local machine rather than the provided VM. You should install the SDE with `all_profile` settings. 
 
 ## Prerequisites
-Download and install μP4C along with associated version of p4c and BMv2 by following steps described at [here](https://github.com/cornell-netlab/MicroP4/blob/master/README.md).
-Make sure the environment variable is setup using `export UP4ROOT=$PWD/microp4`
+Download and install μP4C along with associated version of p4c and BMv2 by following the steps described [here](https://github.com/cornell-netlab/MicroP4/blob/master/README.md). Make sure the environment variable `UP4ROOT` is set up properly.
 
 ## How to Compile Examples
-### 0. Prerequisites
 μP4C requires target-specific architecture file to generate P4 source of μP4 program.
 1.  `v1model.p4` - The compatible version is already available at [p4include/v1model.p4](https://github.com/cornell-netlab/MicroP4/blob/master/p4include/v1model.p4) path of this repository.
-2. Tofino architecture files - It is recommended to put your copy of `.p4` of tofino architecture at the same location `p4include`.
-If you face erors from μP4C complaining absence of architecture files, copy them at `<repo root (microp4)>/build/p4include`.
+2. Tofino architecture files - It is recommended to put your copy of `.p4` of TNA at the same location (i.e., inside `p4include/`).
+If you face erors from μP4C complaining absence of architecture files, copy the architecture files to `${UP4ROOT}/build/p4include`.
 
 It is recommended to briefly understand build structure and Makefile. However, you are free to skip [1. Makefile](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples#1-makefile) and move to [2. Compile](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples#2-compile)
 ### 1. Makefile
-The makefile in this directory executes every step of compilation process described in the paper. In brief, there are two major steps.
+The [Makefile](./Makefile) in this directory executes every step of compilation process described in the paper. In brief, there are two major steps.
 1. Compiling a μP4 program to an architecture-specific P4 program - Uses μP4C.
 2. Compiling the generated architecture-specific P4 program to executable files for the target - Uses `p4c` or Barefoot's compiler for Tofino.
 
 #### Step 1: Compiling μP4 programs to P4 programs
-The makefile creates a directory, named `build`, and copies compilation output for every main program at `main-programs` in the `build` directory.
-For example, Compiling `main-programs/routerv4_main.up4` with `p4c-msa` for v1model would generate `routerv4_main_v1model.p4` and move it to `build/routerv4_main_v1model/`. Similarly, for tofino, `routerv4_main_tna.p4` will be available at `build/routerv4_main_tna/`.
-The makefile performs this step using a function, `p4c_msa_compile`, defined in it. You are invited to look at it and change your local copy as needed.
+The makefile creates a directory, named `build`, and copies compilation output for every main program (in [main-programs](./main-programs)) to the `build` directory.
+For example, Compiling [main-programs/routerv4_main.up4](./main-programs/routerv4_main.up4) with `p4c-msa` for v1model would generate `routerv4_main_v1model.p4` and move it to `build/routerv4_main_v1model/`. Similarly, for TNA, `routerv4_main_tna.p4` will be available at `build/routerv4_main_tna/`.
+The makefile performs this step using a function, `p4c_msa_compile`, defined in it. You are invited to look at it and modify your local copy as needed.
 
 #### Step 2: Compiling generated architecture-specific P4 programs
 μP4C can generate P4 programs for two architectures which require a different set of steps to compile for the associated targets.
@@ -37,7 +35,7 @@ The makefile compiles μP4C-generated P4 program with `p4c` compiler added as su
 #### Using Barefoot's SDE for Tofino
 The makefile has the function `p4c_tna_compile` to
 1. compile and install P4 programs (μP4C-generated, tofino-specific) with bf-sde-9.0.0.
-2. copy PTF tests ([tofino-ptf](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples/tofino-ptf)) and at appropriate location within your local installation of bf-sde-9.0.0. 
+2. copy PTF tests ([tofino-ptf](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples/tofino-ptf)) at appropriate location within your local installation of bf-sde-9.0.0. 
 
 It is mandatory to configure `SDE` and `SDE_INSTALL` environment variables to point to the appropriate location of the SDE before invoking `make`.
 
@@ -74,8 +72,15 @@ export SDE_INSTALL=<The path to the installation directory of the SDE
 make TARGET=tna
 ```
 
-##### Handling Special Case for Tofino Model Simulator
-Two versions of P5.
+##### Code Allocation and Transformation from μP4's Logical to Target dataplanes.  
+There are two versions for P5.
+1. `./main-programs/routerv4_main.up4`
+2. `./main-programs/routerv4_simple_main.up4`
+
+The first version uses the `get_value` method of logical extern `im_t`. The goal is to show the mapping between μP4's logical externs to target-specific ones.
+The example also shows a scenario with non-trivial mapping of μP4's logical pipeline to the target pipeline model by enforcing some constraints.
+The first version conditionally, at [56-59](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/msa-examples/main-programs/routerv4_main.up4#L56), drops packets based on a specific value of a metric. With Tofino hardware, we have been able to see packets passing if condition is not satisfied whereas on simulator it may or may not work. Therefore, we have provided a simple version.
+The first version shows that μP4 is able to partition control blocks of logical pipelines to the ingress and egress pipelines of `v1model` or `tna`. For this particular example, μP4-generated source is human readable. Therefore, it is easy to verify the code partitioning discussed in the paper.
 
 
 
@@ -86,17 +91,37 @@ Install Mininet system-wide from [here](https://github.com/mininet/mininet/blob/
 
 The submodule `bmv2` contains mininet scripts for the examples at `mininet/msa-examples` directory. They can be launched from this directory (`./extensions/csa/msa-examples`) using `run_up4_v1model.sh` as follows.
 ```bash
+cd ${UP4ROOT}/extensions/csa/msa-examples
 ./run_up4_v1model.sh
 ```
-This command will launch instances of Mininet with each composed program, and verify that packets can be sent through the composed dataplane.
+This command will launch an instance of Mininet for every composed program, and verify that packets can be sent through the composed dataplane.
 
 #### With Tofino
 ##### Prerequisites
 You need to have access to proprietary Barefoot SDE 9.0.0.
-To execute programs with Tofino, PTF tests are provided at `./tofino-ptf`.
-`make` would configure, compile and install μP4C-generated P4 source for `tna` along with ptf tests at appropriate location in your local installation of SDE.
+To execute programs with Tofino, PTF tests are provided at `${UP4ROOT}/extensions/csa/msa-examples/tofino-ptf`.
+`make` would 
+1. configure  
+2. compile 
+3. install μP4C-generated P4 source for `tna`
+4. copy ptf tests at appropriate location in your local installation of SDE.
 
-To launch PTF tests
-```bash
-a one a two a you know what to do!!
-```
+In the `${UP4ROOT}/extensions/csa/msa-examples/build` directory, for every `tna` program there are two directories.
+1. <program_name_wo_up4_ext>\_tna.tofino - contains build with logs enabled. The logs allow to retrieve resource allocation metrics.
+2. <program_name_wo_up4_ext>\_tna - contains configurations for executing μP4-generated `tna` source.  
+
+##### Launch PTF Tests
+1. Find a directory name `p4_16_programs` in your SDE 9.0.0
+2. If `make` performed all the above four steps successfully, there should be directories of the pattern `<program_name_wo_up4_ext>\_tna` at `p4_16_programs` in your SDE.  
+2. Locate `README.md` at `p4_16_programs`. Follow the instructions from lines `80-102` of the file. You should supply `<program name>` with the above pattern. 
+  e.g., for `routerv46_main.up4`, provide `routerv46_main_tna`
+
+### 4. Monolithic Programs
+Please visit [monolithic-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/monolithic-examples), to compile and study behaviour discussed in the paper.
+
+### 5. Generating Tables
+While we can not share the script that we used to automatically parse the logs from the Barefoot SDE, the resource utilization in terms of MAUs can be easily read from the logs for artefact evaluation purposes. 
+
+### 6. Miscellaneous
+The modified MPLS header in example P2 can be easily compiled with the Barefoot SDE even though it is larger than standard MPLS header. However, we performed various manual transformations to compile the standard MPLS header as shown in [manual-hacks](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/msa-examples/tofino_compiled_programs/routerv46lsr-with-manual-hacks-main-tofino.p4#L806).
+
