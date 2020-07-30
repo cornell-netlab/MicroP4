@@ -25,7 +25,7 @@ We provide a VM with μP4, along with all the dependencies, pre-installed here: 
 3. Allocate the VM as much RAM as possible (at least 2GB) and two processors. Building `p4c` and `BMv2` software switch from source can be resource intensive. The VM comes with these pre-built and installed. In case you want to rebuild them within the VM, allocate more resources.
 4. You may need to turn on virtualization extensions in your BIOS to enable 64-bit virtualization.
 5. When the VM starts up, the `microp4` user should be automatically logged in. (username: `microp4`, password: `microp4`).
-6. (Optional) Get the latest version of μP4: `cd microp4 && git pull`. Then, to build it, do `cd build && make -j2`. (The complete build instructions are here https://github.com/cornell-netlab/MicroP4#22-build-and-install-%CE%BCp4c in case you would like to build it from scratch. p4c and BMv2 software switch are already installed on the VM, and you would not need to re-build them normally.)
+6. (Optional) Get the latest version of μP4: `cd microp4 && git pull --recurse-submodules`. Then, to build it, do `cd build && make -j2`. (The complete build instructions are here https://github.com/cornell-netlab/MicroP4#22-build-and-install-%CE%BCp4c in case you would like to build it from scratch. p4c and BMv2 software switch are already installed on the VM, and you would not need to re-build them normally.)
 7. Next step: you can directly jump to building and testing composed programs by following the instructions here: https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples.
 
 **Video**: We have also shared a video illustrating the steps and what to expect here:
