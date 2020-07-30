@@ -1,6 +1,6 @@
 # Monolithic Examples 
-This directory contains the set of monolithic examples discussed in "Composing Dataplane Programs with μP4" - SIGCOMM '20
-Instructions to reproduce results published in the paper titled "Composing Dataplane Programs with μP4".
+This directory contains the set of monolithic examples and instructions to reproduce results discussed in the paper "Composing Dataplane Programs with μP4" - SIGCOMM '20.
+
 ## How to Compile Examples
 ### 0. Prerequisites
 Barefoot SDE 9.0.0. is required. 
