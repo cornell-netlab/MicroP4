@@ -1,5 +1,6 @@
 #!/bin/bash
-
+bold=$(tput bold)
+normal=$(tput sgr0)
 
 for prog in $*; do
   echo -e "${bold}\n*********************************"

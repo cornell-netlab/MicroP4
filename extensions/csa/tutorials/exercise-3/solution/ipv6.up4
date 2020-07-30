@@ -22,27 +22,50 @@ struct l3v6_hdr_t {
 }
 
 cpackage IPv6 : implements Unicast<l3v6_hdr_t, empty_t, empty_t, bit<16>, empty_t> {
-
-
   parser micro_parser(extractor ex, pkt p, im_t im, out l3v6_hdr_t hdr, inout empty_t meta,  
                         in empty_t ia, inout empty_t ioa) { //inout arg
-    // TODO:exercise-2:
-    // implement parser for IPv6 header
+    state start {
+      ex.extract(p, hdr.ipv6);
+      transition accept;
+    }
   }
 
   control micro_control(pkt p, im_t im, inout l3v6_hdr_t hdr, inout empty_t m,
-                          in empty_t e, out bit<16> nexthop, // nexthop out arg
-                          inout empty_t ioa) {     
-    // TODO:exercise-2:
-    // write MAT to determine nexthop
+                          in empty_t e, out bit<16> nexthop, 
+                          inout empty_t ioa) { // nexthop out arg
+	action process(bit<16> nh){
+      // hdr.ipv6.hoplimit = hdr.ipv6.hoplimit - 1;
+      nexthop = nh;
+    }
+    action default_act() {
+      nexthop = 0; 
+    }
+    table ipv6_lpm_tbl {
+      key = { 
+        hdr.ipv6.dstAddr : exact;
+        hdr.ipv6.class : ternary;
+        hdr.ipv6.label : ternary;
+      } 
+      actions = {
+        process; 
+        default_act;
+      }
+      const entries = {
+          (0x20010000000000000000000000000001, _, _) : process(16w1);
+          (0x20010000000000000000000000000002, _, _) : process(16w2);
+      }
+      default_action = default_act;
+    }
     apply {
+      ipv6_lpm_tbl.apply(); 
     }
   }
 
   control micro_deparser(emitter em, pkt p, in l3v6_hdr_t h) {
-    // TODO:exercise-2:
-    // assemble IPv6 header
-    apply {
+    apply { 
+      em.emit(p, h.ipv6); 
     }
   }
 }
+
+ 
