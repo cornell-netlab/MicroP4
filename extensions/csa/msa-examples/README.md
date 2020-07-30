@@ -74,13 +74,14 @@ export SDE_INSTALL=<The path to the installation directory of the SDE
 make TARGET=tna
 ```
 
-##### Handling Special Case for Tofino Model Simulator
+##### Code Allocation and Transformation from μP4's Logical to Target dataplanes.  
 There are two versions for P5.
 1. `./main-programs/routerv4_main.up4`
 2. `./main-programs/routerv4_simple_main.up4`
+
 The first version uses the `get_value` method of logical extern `im_t`. The goal is to show mapping between logical externs to target-specific ones.
 Also, create a scenario to show non-trivial mapping of μP4's logical pipeline to the target pipeline model by enforcing some constraint.
-The first version conditionally at [56-59](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/msa-examples/main-programs/routerv4_main.up4#L56) drops packets based on a specific value of metric. With real Tofino, we have been able to see packets passing in case the condition is not satisfied whereas on simulator it may or may not work. Therefore, we have provided a simple version.
+The first version conditionally, at [56-59](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/msa-examples/main-programs/routerv4_main.up4#L56), drops packets based on a specific value of a metric. With real Tofino, we have been able to see packets passing if condition is not satisfied whereas on simulator it may or may not work. Therefore, we have provided a simple version.
 The first version shows that μP4 is able to partition control blocks of logical pipelines to ingress-egress control of `v1model` or `tna`. For this particular example μP4-generated source is human readable. Therefore, it is easy to verify the code partitioning discussed in the paper.
 
 
