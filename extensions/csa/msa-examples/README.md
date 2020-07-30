@@ -96,7 +96,7 @@ The submodule `bmv2` contains mininet scripts for the examples at `mininet/msa-e
 cd ${UP4ROOT}/extensions/csa/msa-examples
 ./run_up4_v1model.sh
 ```
-This command will launch an instances of Mininet for each composed program, and verify that packets can be sent through the composed dataplane.
+This command will launch an instance of Mininet for every composed program, and verify that packets can be sent through the composed dataplane.
 
 #### With Tofino
 ##### Prerequisites
