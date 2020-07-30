@@ -101,44 +101,18 @@ ${UP4ROOT}/build/p4c-msa -I ${UP4ROOT}/build/p4include -o ipv6.json ipv6.up4
 ```
 
 ### Exercise 3: Composing Dataplane program using your μP4 Modules
+In this exercise, you need to integrate IPv6 Module with `Router`from Exercise 1.
 #### Step 1: Modify `Router.up4`
+1. You can use [./exercise-3/Router.up4](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials/exercise-3/Router.up4) having required boilerplate code.
+2. Add your code at `exercise-3` bookmarks in the file. 
+
 #### Step 2: Compile `Router.up4`
+You need to compile the router with IPv4 and IPv6 modules.
+```bash
+cd ${UP4ROOT}/extensions/csa/tutorials/exercise-3
+${UP4ROOT}/build/p4c-msa  --target-arch v1model -I ${UP4ROOT}/build/p4include -l ipv4.json,ipv6.json  Router.up4
+```
+
 #### Step 3: Pass IPv4 and IPv6 pings
 
 bravo! They have developed a modular router and completed Chopin 1O1 tutorial.
-
-We need to rearrange text from the below description to above 3 exercises.
-
-
-### Creating the Module
-
-Each μP4 module is defined in an independent "*.up4" file. The "*.up4" file contains 4 sections. 
-   1. The included libraries 
-     a. All μP4 modules should include μP4 architecture definition file "msa.up4" 
-     b. μP4 modules should include the μP4 functions and global metadata definition file "common.up4"
-   2. Headers to be extracted 
-   3. Structure to be used to hold 
-     a. Headers 
-     b. Inner metadata 
-   4. The module cpackage details
-
-The module's cpackage can implement either the Unicast, Multicast or Orchestration interface. To use the Unicast interface we need to define the packet header structure to be used in this module, the msa.up4 metadata to be used and the input,output and in/out structures used by the module to communicate with other modules.
-
-The package contains 3 main parts the micro_parser, micro_control and micro_deparser. 
-
-#### Micro_Parser 
-
-The parser extracts the module defined headers from the received packet, micro_parser takes as input the μP4 extrator, packet and internal metadata structures, the extracted output header structure, the metadata to be modified, the input and output data. 
-
-To extract the modules headers we use ```ex.extract(packet, header)``` μP4 function. To process the headers, match fields and transition between states we use P4 programming language syntax. 
-
-For example to extract the ipv4 header in ipv4.up4 module we add the following to the cpackage details: 
-``` 
-  parser micro_parser(extractor ex, pkt p, im_t im, out ipv4_hdr_t hdr, 
-                      inout empty_t meta, in empty_t ia, inout empty_t ioa) {
-    state start {
-      ex.extract(p, hdr.ipv4);
-      transition accept;
-    }
-  }
-```
