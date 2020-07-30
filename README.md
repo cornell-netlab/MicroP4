@@ -210,3 +210,16 @@ For more details, have a look at
       ./build/p4c-msa --target-arch  v1model -I ./build/p4include/ -l ipv4.json \
                       ./extensions/csa/msa-examples/main-programs/routerv4_main.up4
       ```
+
+### 6. μP4 Tutorial
+We have created a tutorial with three exercises to help you write μP4 programs. Please visit [μP4-Tutorial](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials) for more information.
+
+### 7. Limitations
+μP4 is our ongoing work and has certain limitations which we plan to address asap.
+1. Checksum Computation: For current prototype, you should disable checksum compute at hosts side.
+2. Packet Replication: Current μP4 Architecture provides required constructs like `Multicast` and `Orchestration` interfaces, `copy_from` methods of logical externs, buffers etc that allow programmers to express packet replications. We have algorithms and mechanisms outlined but current version of μP4 Compiler does not implement them. We hope to release the required implementation soon.
+3. Stateful Packet Processing: Current μP4 Architecture design does not provide any particular constructs for it. However, we have plan in place to extend μP4 Architecture and Compiler to support it.
+4. Control Plane APIs: μP4 Compiler inserts `@name` annotations for tables, but we have not tested it. For now, the best and easy way is to put constant entries in the tables of your programs. 
+4. Variable Length Headers: μP4 Architecture supports it but μP4 compiler does not have proper implementation for it. 
+5. Recursion: Not supported for now. You can try at your own risk.
+Please refer the paper ["Composing Dataplane Programs with µP4"](https://hksoni.github.io/microp4.pdf) for more detailed discussion on limitations and our future plan.
