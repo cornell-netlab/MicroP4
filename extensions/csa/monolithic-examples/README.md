@@ -14,12 +14,14 @@ There are two targets in the Makefile
 1. P1_P6 - This will compile `P1` to `P6` and store required information in the `build`
    directory.
 ```bash
+cd ${UP4ROOT}/extensions/csa/monolithic-examples
 make P1_P6
 ```
 2. P7 - It will try to compile the P7 program mentioned in the below table
    with Barefoot SDE. The compilation will not terminate. You are recommended to
    interrupt it at your convenient time. 
 ```bash
+cd ${UP4ROOT}/extensions/csa/monolithic-examples
 make P7
 // After sometime
 ctrl+c
