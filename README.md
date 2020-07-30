@@ -26,7 +26,7 @@ This repository also contains a version of BMv2 compatible with the forked p4c, 
 
 ### 1. Install dependencies and download μP4
 #### 1.1 Dependencies
-The dependencies for μP4 as the same as those required for P4. We list the steps here for Ubuntu 18.04:
+The dependencies for μP4 are the same as those required for the reference P4 compiler. We list the steps here for Ubuntu 18.04:
 ```bash
 sudo apt-get install cmake g++ git automake libtool libgc-dev bison flex libfl-dev libgmp-dev \
    libboost-dev libboost-iostreams-dev libboost-graph-dev llvm pkg-config python python-scapy \
@@ -119,12 +119,12 @@ Follow the [README](https://github.com/cornell-netlab/MicroP4/tree/master/extens
 
 
 ### 4. How to write μP4 programs
-Every μP4 Program must implemet at least one of the interfaces defined as a part of 
+Every μP4 Program must implement at least one of the interfaces defined as a part of 
 μPA in [extensions/csa/p4include/msa.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/p4include/msa.up4). 
 μPA provides 3 interfaces, Unicast, Multicast and Orchestration. By implementing a μPA interface, a user-defined package type can be created. 
 
 #### A quick introduction to μP4 program structure
-```
+```p4
 // In the following example, MyProg is a user-defined package type.
 // cpackage is a keyword to indicate MyProg is a composable package 
 // with in-built `apply` method.
@@ -159,33 +159,33 @@ cpackage MyProg : implements Unicast<h_t, m_t, i_t, o_t, io_t> {
 }
 ```
 
-How to instantiate cpackage types
-   1. Instantiating MyProg in micro_control block
+How to instantiate cpackage types:
+   1. Instantiating `MyProg` in `micro_control` block
       ```
-      MyProg() inst_my_prog; // () is constructor parameter for future designs.
+      MyProg() inst_my_prog;   // () is constructor parameter for future designs.
       ```
-   2. Instantiating as main at file scope.
+   2. Instantiating as `main` at file scope.
       ```
       MyProg() main; 
       ```
 
-How to invoke an instance of cpackage type
+How to invoke an instance of `cpackage` type:
 
-   1. Invoking MyProg using 5 runtime parameters. 
-      First two are instances of of concrete types declared in μPA.
-      The last three are instances of user-defined types used 
+   1. Invoking `MyProg` using 5 runtime parameters. 
+      First two (`p` and `im`) are instances of concrete types declared in μPA.
+      The last three (`i`, `o`, and `io`) are instances of user-defined types used 
       to specialize generic types I, O and IO. 
       ```
       inst_my_prog.apply(p, im, i, o, io); 
       ```
 
-   2. main instances can not be invoked explicitly.
+   2. `main` instances can not be invoked explicitly.
 
 #### An example
-There are example programs at `extensions/csa/msa-examples` path.
+There are example programs at [extensions/csa/msa-examples] path.
 For more details, have a look at
-   1. `lib-src/ipv4.up4` a very simple IPv4 cpackage
-   2. `main-programs/routerv4_main.up4` the `main` cpackage that uses IPv4 cpackage
+   1. [lib-src/ipv4.up4](extensions/csa/msa-examples/lib-src/ipv4.up4): a very simple IPv4 cpackage, and
+   2. [main-programs/routerv4_main.up4](extensions/csa/msa-examples/main-programs/routerv4_main.up4) the `main` cpackage that uses IPv4 cpackage.
 
 
 ### 5. How to Use μP4C
