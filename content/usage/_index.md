@@ -23,7 +23,7 @@ be compiler using a single Makefile as mentioned in the [README](https://github.
 | P6 | main-programs/router_ipv4v6_nat_acl.up4   | Eth + IPv4 + IPv6 + NAT + NPT6 + ACL |
 | P7 | main-programs/router_ipv4srv4ipv6_main.up4 | Eth + IPv4 + IPv6 + SRv4 |
 
-
+The videos from the installation step also show the usage: https://www.youtube.com/watch?v=ZtmLH0UFeqw&t=77s
 ## Details
 There are two steps in using μP4:
 
