@@ -17,6 +17,11 @@ using libraries(μP4 Modules) of routing protocols.
    libraries and applications. You are required to integrate μP4 Modules
    developed by and provided to you.
 
+### Prerequisites: 
+You MUST have completed [step 1](https://github.com/cornell-netlab/MicroP4#1-install-dependencies-and-download-%CE%BCp4) 
+and [2](https://github.com/cornell-netlab/MicroP4#2-install) to download and install μP4.
+Reminder, make sure `UP4ROOT` is set with appropriate path.
+
 ### Exercise 1: Composing μP4 Module
 In this exercise, you will learn how to compose μP4 Modules. You are given all 
 the required code for two μP4 Modules. However, they are not composed together. 
@@ -152,7 +157,27 @@ cd ${UP4ROOT}/extensions/csa/tutorials/exercise-3
 ${UP4ROOT}/build/p4c-msa  --target-arch v1model -I ${UP4ROOT}/build/p4include \
                           -l ipv4.json,ipv6.json  Router.up4
 ```
+##### Compile with P4
+```bash
+cd ${UP4ROOT}/extensions/csa/tutorials/exercise-3
+../p4c-compile.sh  Router_v1model.p4
+```
+
 
 #### Step 3: Pass IPv4 and IPv6 pings
+Next, you should verify that IPv4 and IPv6 packets are forwarded.
+##### Run
+```bash
+cd ${UP4ROOT}/extensions/csa/tutorials/exercise-3
+../run-tutorial.sh
+
+// On  mininet term, for IPv4 ping
+mininet> h1 ping h2
+// for IPv6 ping
+mininet> h1 ping -6 2001::2
+
+ctrl + d
+```
+We have provided solution for every exercise.
 
 bravo! They have developed a modular router and completed Chopin 1O1 tutorial.
