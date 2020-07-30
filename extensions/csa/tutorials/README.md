@@ -48,7 +48,7 @@ cpackage Unicast<H, M, I, O, IO>(pkt p, im_t im, in I in_param, out O out_param,
 } 
 ```
 H = ipv4_hdr_t, M, I, IO = empty_t, O = bit<16>.
-The type of runtime parameters of Ipv4 module are `(pkt, im_t, empty_t, bit<16>, empty_t)`.
+The types of runtime parameters of Ipv4 module are `(pkt, im_t, empty_t, bit<16>, empty_t)`.
 ##### Declare
 Every μP4 module needs to be declared within the same scope it is used.
 To use `IPv4` without its definition, it can be declared as a user-defined type using `cpackage` keyword and
@@ -81,11 +81,15 @@ ${UP4ROOT}/build/p4c-msa --target-arch v1model -I ${UP4ROOT}/build/p4include -l 
 In this exercise, you will learn to write your own μP4 Module. You need to implement a routing protocol like IPv4.
 The module should have `bit<16> nh` as a part of its `out` arguments. 
 #### Step 1: Write a μP4 Module to process IPv6 header
-The boilerplate code to develop the module is given at [./exercise-2/ipv6.up4](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials/exercise-2).
-IPv6 should implement `Unicast` interface by providing implementation for `micro_parser`, `micro_control` and `micro_deparser`.
-To implement these constructs, you can use sub-lanuages of [P4](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html) described in 
+1. The boilerplate code to develop the module is given at [./exercise-2/ipv6.up4](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials/exercise-2).
+2. IPv6 should implement `Unicast` interface by providing implementation for 
+⋅⋅1. `micro_parser`
+--2. `micro_control`
+--3. `micro_deparser`.
+3. sub-languages of P4: To implement the above constructs, you can use sub-lanuages of [P4](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html) described in 
 [12](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html#sec-packet-parsing) & [13](https://p4.org/p4-spec/docs/P4-16-v1.2.1.html#sec-control).
-Compared to P4, μP4 provides `extractor` and `emitter` for packet parsing and reassembly. You can look at [./exercise-1/ipv4.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/tutorials/exercise-1/ipv4.up4) for their example usage.
+4. μP4 Constructs:  Compared to P4, μP4 provides `extractor` and `emitter` for packet parsing and reassembly. 
+You can look at [./exercise-1/ipv4.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/tutorials/exercise-1/ipv4.up4) for their example usage.
 To know more about `extractor` and `emitter` of μP4 Architecture, 
 you can look at [msa.up4](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/p4include/msa.up4)
 
