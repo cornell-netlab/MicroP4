@@ -1,0 +1,90 @@
+/*
+ * Author: Hardik Soni
+ * Email: hks57@cornell.edu
+ */
+
+#include"msa.up4"
+#include"../exe_common.up4"
+
+header ipv4_h {
+  // bit<4> version;
+  // bit<4> ihl;
+  bit<8> ihl_version;
+  bit<8> diffserv;
+  bit<16> totalLen;
+  bit<16> identification;
+  bit<3> flags;
+  bit<13> fragOffset;
+  bit<8> ttl;
+  bit<8> protocol;
+  bit<16> hdrChecksum;
+  bit<32> srcAddr;
+  bit<32> dstAddr; 
+}
+
+struct ipv4_hdr_t {
+  ipv4_h ipv4;
+}
+
+cpackage IPv4 : implements Unicast<ipv4_hdr_t, empty_t, empty_t, bit<16>, empty_t> {
+
+  parser micro_parser(extractor ex, pkt p, im_t im, out ipv4_hdr_t hdr, 
+                      inout empty_t meta, in empty_t ia, inout empty_t ioa) {
+    state start {
+      ex.extract(p, hdr.ipv4);
+      transition accept;
+    }
+  }
+
+  control micro_control(pkt p, im_t im, inout ipv4_hdr_t hdr, inout empty_t m,
+                          in empty_t e, out bit<16> nexthop, 
+                          inout empty_t ioa) { // nexthop out arg
+    action process(bit<16> nh) {
+      // disabling for pings
+      // hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+
+      nexthop = nh;  // setting out param
+    }
+    action default_act() {
+      nexthop = 0; 
+    }
+
+    table ipv4_lpm_tbl {
+      key = { 
+        // Why not lpm? because can't specify prefix length in const entries
+        hdr.ipv4.dstAddr : exact; 
+        hdr.ipv4.diffserv : ternary;
+      } 
+      actions = { 
+        process; 
+        default_act;
+      }
+      const entries = {
+        // v1model mininet suitable entries
+        // 10.0.1.1, _
+        (32w167772417, _) : process(16w1);
+        // 10.0.2.1, _
+        (32w167772673, _): process(16w2);
+
+        // for tofino setup at cornell-netlab
+        // 10.0.0.22
+        (32w167772182, _) : process(16w22);
+        // 10.0.0.23
+        (32w167772183, _) : process(16w23);
+      }
+      default_action = default_act;
+
+    }
+    apply { 
+      ipv4_lpm_tbl.apply(); 
+    }
+  }
+
+  control micro_deparser(emitter em, pkt p, in ipv4_hdr_t h) {
+    apply { 
+      em.emit(p, h.ipv4); 
+    }
+  }
+}
+
+ 
