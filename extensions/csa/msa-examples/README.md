@@ -4,7 +4,7 @@ Instructions to reproduce results published in the paper titled "Composing Datap
 μP4C is source-to-source compiler. It can translate μP4 programs to P4 programs specific to two real target architectures,[v1model (BMv2)](https://github.com/hksoni/p4c/blob/master/p4include/v1model.p4) and [Tofino](https://www.barefootnetworks.com/products/brief-tofino/). It is necessary to use the specified versions of both architectures as μP4C backends are target specific.
 
 - `v1model` : It is included as a submodule (`p4c`) in this directory.
-- Tofino : bf-sde-9.0.0.  It is recommended to install the SDE in this directory of your local clone. However, you are free to install anywhere as long as necessary environment variables are configured properly. We recommend attempting it on your local machine rather than the provided VM.
+- Tofino : bf-sde-9.0.0.  It is recommended to install the SDE in this directory of your local clone. However, you are free to install anywhere as long as necessary environment variables are configured properly. We recommend attempting it on your local machine rather than the provided VM. You should install the SDE with `all_profile` settings. 
 
 ## Prerequisites
 Download and install μP4C along with associated version of p4c and BMv2 by following the steps described [here](https://github.com/cornell-netlab/MicroP4/blob/master/README.md). Make sure the environment variable `UP4ROOT` is set up properly.
