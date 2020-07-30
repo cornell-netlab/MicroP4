@@ -6,7 +6,7 @@ weight = 2
 
 {{< lead >}}
 
-## Examples from SIGCOMM '20 paper
+## Functionality: Examples from SIGCOMM '20 paper
 To reproduce the examples from our SIGCOMM '20 paper, see the code and
 instructions here:
 [extensions/csa/msa-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/msa-examples).
@@ -24,13 +24,14 @@ be compiler using a single Makefile as mentioned in the [README](https://github.
 | P7 | main-programs/router_ipv4srv4ipv6_main.up4 | Eth + IPv4 + IPv6 + SRv4 |
 
 The videos from the installation step also show the usage: https://www.youtube.com/watch?v=ZtmLH0UFeqw&t=77s
-## Details
-There are two steps in using μP4:
+
+## Reusability:
+The framework can be used to write, compose and build new dataplane programs. We are working on a [step-by-step tutorial](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials) to get you started with programming with μP4.
+At a high-level, There are two steps in using μP4:
 
 1. Writing μP4 programs: See [this page](https://github.com/cornell-netlab/MicroP4#4-how-to-write-%CE%BCp4-programs) for instructions on writing new programs.
 2. Compiling μP4 programs: See [this page](https://github.com/cornell-netlab/MicroP4#5-how-to-use-%CE%BCp4c) for instructions on compiling μP4 programs with μP4C.
 
-We are working on a [step-by-step tutorial](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/tutorials) to get you started with programming with μP4.
 
 {{< /lead >}}
 
