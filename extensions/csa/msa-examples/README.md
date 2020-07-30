@@ -75,7 +75,13 @@ make TARGET=tna
 ```
 
 ##### Handling Special Case for Tofino Model Simulator
-Two versions of P5.
+There are two versions for P5.
+1. `./main-programs/routerv4_main.up4`
+2. `./main-programs/routerv4_simple_main.up4`
+The first version uses the `get_value` method of logical extern `im_t`. The goal is to show mapping between logical externs to target-specific ones.
+Also, create a scenario to show non-trivial mapping of μP4's logical pipeline to the target pipeline model by enforcing some constraint.
+The first version conditionally at [56-59](https://github.com/cornell-netlab/MicroP4/blob/master/extensions/csa/msa-examples/main-programs/routerv4_main.up4#L56) drops packets based on a specific value of metric. With real Tofino, we have been able to see packets passing in case the condition is not satisfied whereas on simulator it may or may not work. Therefore, we have provided a simple version.
+The first version shows that μP4 is able to partition control blocks of logical pipelines to ingress-egress control of `v1model` or `tna`. For this particular example μP4-generated source is human readable. Therefore, it is easy to verify the code partitioning discussed in the paper.
 
 
 
@@ -86,17 +92,32 @@ Install Mininet system-wide from [here](https://github.com/mininet/mininet/blob/
 
 The submodule `bmv2` contains mininet scripts for the examples at `mininet/msa-examples` directory. They can be launched from this directory (`./extensions/csa/msa-examples`) using `run_up4_v1model.sh` as follows.
 ```bash
+cd ${UP4ROOT}/extensions/csa/msa-examples
 ./run_up4_v1model.sh
 ```
-This command will launch instances of Mininet with each composed program, and verify that packets can be sent through the composed dataplane.
+This command will launch an instances of Mininet for each composed program, and verify that packets can be sent through the composed dataplane.
 
 #### With Tofino
 ##### Prerequisites
 You need to have access to proprietary Barefoot SDE 9.0.0.
-To execute programs with Tofino, PTF tests are provided at `./tofino-ptf`.
-`make` would configure, compile and install μP4C-generated P4 source for `tna` along with ptf tests at appropriate location in your local installation of SDE.
+To execute programs with Tofino, PTF tests are provided at `${UP4ROOT}/extensions/csa/msa-examples/tofino-ptf`.
+`make` would 
+1. configure  
+2. compile 
+3. install μP4C-generated P4 source for `tna`
+4. copy ptf tests at appropriate location in your local installation of SDE.
 
-To launch PTF tests
-```bash
-a one a two a you know what to do!!
-```
+In the `${UP4ROOT}/extensions/csa/msa-examples/build` directory, for every `tna` program there are two directories.
+1. <program_name_wo_up4_ext>\_tna.tofino - contains build with logs enabled. The logs allow to retrieve resource allocation metrics.
+2. <program_name_wo_up4_ext>\_tna - contains configurations for executing μP4-generated `tna` source.  
+
+##### Launch PTF Tests
+1. Find a directory name `p4_16_programs` in your SDE 9.0.0
+2. If `make` performed all the above four steps successfully, there should be directories of the pattern `<program_name_wo_up4_ext>\_tna` at `p4_16_programs` in your SDE.  
+2. Locate `README.md` at `p4_16_programs`. Follow the instructions from lines `80-102` of the file. You should supply `<program name>` with the above pattern. 
+  e.g., for `routerv46_main.up4`, provide `routerv46_main_tna`
+
+### 4. Monolithic Programs
+Please visit [monolithic-examples](https://github.com/cornell-netlab/MicroP4/tree/master/extensions/csa/monolithic-examples), to compile and study behaviour discussed in the paper.
+
+
