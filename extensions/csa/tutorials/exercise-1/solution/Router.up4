@@ -45,8 +45,8 @@ cpackage Router : implements Unicast<hdr_t, empty_t,
       key = { nh : exact; } 
       actions = { forward; }
       const entries = {
-        (16w1) : forward(0x000000000001, 0x000000000002, 9w1);
-        (16w2) : forward(0x000000000002, 0x000000000001, 9w2);
+        (16w1) : forward(0x000000000001, 48w0x00aabb000001, 9w1);
+        (16w2) : forward(0x000000000002, 48w0x00aabb000002, 9w2);
       }
     }
     apply { 

@@ -34,7 +34,7 @@ cpackage IPv6 : implements Unicast<l3v6_hdr_t, empty_t, empty_t, bit<16>, empty_
                           in empty_t e, out bit<16> nexthop, 
                           inout empty_t ioa) { // nexthop out arg
 	action process(bit<16> nh){
-      // hdr.ipv6.hoplimit = hdr.ipv6.hoplimit - 1;
+      hdr.ipv6.hoplimit = hdr.ipv6.hoplimit - 1;
       nexthop = nh;
     }
     action default_act() {
@@ -51,8 +51,8 @@ cpackage IPv6 : implements Unicast<l3v6_hdr_t, empty_t, empty_t, bit<16>, empty_
         default_act;
       }
       const entries = {
-          (0x20010000000000000000000000000001, _, _) : process(16w1);
-          (0x20010000000000000000000000000002, _, _) : process(16w2);
+          (0x20210000000000000000000000000001, _, _) : process(16w1);
+          (0x20220000000000000000000000000001, _, _) : process(16w2);
       }
       default_action = default_act;
     }

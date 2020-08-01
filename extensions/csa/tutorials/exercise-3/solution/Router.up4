@@ -2,10 +2,11 @@
  * Author: Hardik Soni
  * Email: hks57@cornell.edu
  */
-
 #include"msa.up4"
 #include"../exe_common.up4"
 
+// solution:exercise-1: 
+// declare module here
 cpackage IPv4(pkt p, im_t im, in empty_t ia, out bit<16> nh, inout empty_t ioa);
 cpackage IPv6(pkt p, im_t im, in empty_t ia, out bit<16> nh, inout empty_t ioa);
 
@@ -19,7 +20,7 @@ struct hdr_t {
   ethernet_h eth;
 }
 
-cpackage MPRouter : implements Unicast<hdr_t, empty_t, 
+cpackage Router : implements Unicast<hdr_t, empty_t, 
                                             empty_t, empty_t, empty_t> {
   parser micro_parser(extractor ex, pkt p, im_t im, out hdr_t hdr, inout empty_t m,
                         in empty_t ia, inout empty_t ioa) {
@@ -32,8 +33,11 @@ cpackage MPRouter : implements Unicast<hdr_t, empty_t,
   control micro_control(pkt p, im_t im, inout hdr_t hdr, inout empty_t m,
                           in empty_t ia, out empty_t oa, inout empty_t ioa) {
     bit<16> nh;
+  
+    // solution:exercise-1: 
     IPv4() ipv4_i;
     IPv6() ipv6_i;
+  
     action forward(bit<48> dmac, bit<48> smac, PortId_t port) {
       hdr.eth.dmac = dmac;
       hdr.eth.smac = smac;
@@ -43,12 +47,13 @@ cpackage MPRouter : implements Unicast<hdr_t, empty_t,
       key = { nh : exact; } 
       actions = { forward; }
       const entries = {
-        (16w1) : forward(0x000000000001, 0x000000000002, 9w1);
-        (16w2) : forward(0x000000000002, 0x000000000001, 9w2);
+        (16w1) : forward(0x000000000001, 48w0x00aabb000001, 9w1);
+        (16w2) : forward(0x000000000002, 48w0x00aabb000002, 9w2);
       }
     }
     apply { 
       nh = 16w0;
+      // solution:exercise-1: 
       if (hdr.eth.ethType == 0x0800)
         ipv4_i.apply(p, im, ia, nh, ioa);
       else if (hdr.eth.ethType == 0x86DD)
@@ -65,7 +70,7 @@ cpackage MPRouter : implements Unicast<hdr_t, empty_t,
   }
 }
 
-MPRouter() main;
+Router() main;
 
 
  
